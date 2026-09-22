@@ -119,6 +119,7 @@ class CapitalGovernor:
                     executor_id TEXT NOT NULL,
                     pair TEXT NOT NULL,
                     intent TEXT NOT NULL,
+                    executor_type TEXT,
                     status TEXT NOT NULL,
                     close_type TEXT,
                     filled_amount_quote TEXT NOT NULL,
@@ -132,6 +133,18 @@ class CapitalGovernor:
                 )
                 """
             )
+
+            accounting_columns = {
+                row["name"]
+                for row in conn.execute(
+                    "PRAGMA table_info(executor_accounting_observations)"
+                ).fetchall()
+            }
+            if "executor_type" not in accounting_columns:
+                conn.execute(
+                    "ALTER TABLE executor_accounting_observations "
+                    "ADD COLUMN executor_type TEXT"
+                )
 
             conn.execute(
                 """
@@ -1065,11 +1078,18 @@ class CapitalGovernor:
         """
         executor_id = observation.executor_id.strip()
         status = observation.status.strip()
+        executor_type = (
+            None
+            if observation.executor_type is None
+            else observation.executor_type.strip()
+        )
 
         if not executor_id:
             raise ValueError("executor_id is required")
         if not status:
             raise ValueError("status is required")
+        if observation.executor_type is not None and not executor_type:
+            raise ValueError("executor_type cannot be empty")
 
         self._validate_accounting_decimal(
             observation.filled_amount_quote,
@@ -1153,6 +1173,7 @@ class CapitalGovernor:
                 fee_delta = observation.cum_fees_quote - previous_fees
 
                 comparable = (
+                    executor_type,
                     status,
                     observation.close_type,
                     observation.filled_amount_quote,
@@ -1164,6 +1185,7 @@ class CapitalGovernor:
 
                 if previous is not None:
                     previous_comparable = (
+                        previous["executor_type"],
                         previous["status"],
                         previous["close_type"],
                         Decimal(previous["filled_amount_quote"]),
@@ -1199,6 +1221,7 @@ class CapitalGovernor:
                             position_size_quote=observation.position_size_quote,
                             status=status,
                             close_type=observation.close_type,
+                            executor_type=executor_type,
                         )
 
                 conn.execute(
@@ -1208,6 +1231,7 @@ class CapitalGovernor:
                         executor_id,
                         pair,
                         intent,
+                        executor_type,
                         status,
                         close_type,
                         filled_amount_quote,
@@ -1219,13 +1243,14 @@ class CapitalGovernor:
                         realized_pnl_quote,
                         observed_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         provenance["proposal_id"],
                         executor_id,
                         provenance["pair"],
                         provenance["intent"],
+                        executor_type,
                         status,
                         observation.close_type,
                         str(observation.filled_amount_quote),
@@ -1265,6 +1290,7 @@ class CapitalGovernor:
                     position_size_quote=observation.position_size_quote,
                     status=status,
                     close_type=observation.close_type,
+                    executor_type=executor_type,
                 )
 
             except Exception:

@@ -83,6 +83,7 @@ def test_fetch_and_reconcile_executor_accounting(tmp_path):
     client = Client(
         {
             "id": "exec-flow-1",
+            "executor_type": "grid_executor",
             "status": "RUNNING",
             "filled_amount_quote": "12.50",
             "cum_fees_quote": "0.025",

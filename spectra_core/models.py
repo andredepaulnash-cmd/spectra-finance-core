@@ -76,6 +76,16 @@ class ExecutorAccountingObservation:
     net_pnl_quote: Decimal | None = None
     realized_pnl_quote: Decimal | None = None
     close_type: str | None = None
+    executor_type: str | None = None
+
+
+@dataclass(frozen=True)
+class RecoveryExposureAssessment:
+    executor_id: str
+    exposure_quote: Decimal
+    source: str
+    conservative: bool = False
+    requires_position_hold_reconciliation: bool = False
 
 
 @dataclass(frozen=True)
@@ -91,6 +101,7 @@ class ExecutorAccountingDelta:
     position_size_quote: Decimal | None
     status: str
     close_type: str | None
+    executor_type: str | None = None
 
 
 @dataclass(frozen=True)

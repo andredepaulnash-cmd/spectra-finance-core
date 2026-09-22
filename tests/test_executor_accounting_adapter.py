@@ -11,6 +11,7 @@ def test_strict_adapter_preserves_decimal_accounting_fields():
     observation = executor_accounting_observation_from_raw(
         {
             "id": "exec-1",
+            "executor_type": "grid_executor",
             "status": "RUNNING",
             "close_type": None,
             "filled_amount_quote": "15.2500",
@@ -25,6 +26,7 @@ def test_strict_adapter_preserves_decimal_accounting_fields():
     )
 
     assert observation.executor_id == "exec-1"
+    assert observation.executor_type == "grid_executor"
     assert observation.status == "RUNNING"
     assert observation.filled_amount_quote == Decimal("15.2500")
     assert observation.cum_fees_quote == Decimal("0.031")

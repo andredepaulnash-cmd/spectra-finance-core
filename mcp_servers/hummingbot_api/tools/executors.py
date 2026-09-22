@@ -153,6 +153,9 @@ async def fetch_and_reconcile_executor_accounting(
         expected_executor_id=requested_executor_id,
     )
 
+    if observation.executor_type is None:
+        raise ValueError("missing required executor field: executor_type")
+
     return governor.reconcile_executor_accounting(observation)
 
 

@@ -9,7 +9,12 @@ precision.
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from .models import ExecutorAccountingObservation
+from .models import (
+    ExecutionProvenance,
+    ExecutorAccountingObservation,
+    IntentKind,
+    RecoveryExposureAssessment,
+)
 
 
 def _decimal_value(
@@ -96,6 +101,162 @@ def _optional_text(raw: dict[str, Any], key: str) -> str | None:
     return value or None
 
 
+
+_DCA_FLAT_TERMINAL_CLOSE_TYPES = {
+    "TIME_LIMIT",
+    "STOP_LOSS",
+    "TAKE_PROFIT",
+    "EXPIRED",
+    "EARLY_STOP",
+    "TRAILING_STOP",
+    "INSUFFICIENT_BALANCE",
+    "COMPLETED",
+}
+
+
+def assess_recovery_exposure(
+    observation: ExecutorAccountingObservation,
+    provenance: ExecutionProvenance,
+) -> RecoveryExposureAssessment:
+    """Assess quote capital still attributable to one RECOVERY executor.
+
+    This is deliberately conservative. Unknown or ambiguous states retain the
+    authorized recovery claim rather than silently freeing recovery budget.
+
+    ``filled_amount_quote`` is never treated generically as exposure:
+    GridExecutor exposes current open basis as ``position_size_quote``.
+    DCAExecutor's filled amount is usable as opening basis only while RUNNING;
+    after close-side execution begins it becomes turnover.
+    """
+    if observation.executor_id != provenance.executor_id:
+        raise ValueError(
+            "accounting observation executor does not match provenance: "
+            f"{observation.executor_id} != {provenance.executor_id}"
+        )
+
+    authorized = provenance.authorized_quote
+    if not authorized.is_finite() or authorized < Decimal("0"):
+        raise ValueError("authorized_quote must be finite and non-negative")
+
+    if provenance.intent != IntentKind.RECOVERY:
+        return RecoveryExposureAssessment(
+            executor_id=observation.executor_id,
+            exposure_quote=Decimal("0"),
+            source="NON_RECOVERY",
+        )
+
+    status = observation.status.strip()
+    executor_type = (
+        ""
+        if observation.executor_type is None
+        else observation.executor_type.strip()
+    )
+    close_type = (
+        None
+        if observation.close_type is None
+        else observation.close_type.strip()
+    )
+
+    def authorized_fallback(
+        source: str,
+        *,
+        requires_hold: bool = False,
+    ) -> RecoveryExposureAssessment:
+        return RecoveryExposureAssessment(
+            executor_id=observation.executor_id,
+            exposure_quote=authorized,
+            source=source,
+            conservative=True,
+            requires_position_hold_reconciliation=requires_hold,
+        )
+
+    if executor_type == "grid_executor":
+        if status == "NOT_STARTED":
+            if (
+                observation.filled_amount_quote == Decimal("0")
+                and (
+                    observation.position_size_quote is None
+                    or observation.position_size_quote == Decimal("0")
+                )
+            ):
+                return RecoveryExposureAssessment(
+                    executor_id=observation.executor_id,
+                    exposure_quote=Decimal("0"),
+                    source="GRID_NOT_STARTED",
+                )
+            return authorized_fallback("GRID_NOT_STARTED_WITH_ACTIVITY")
+
+        if status in {"RUNNING", "SHUTTING_DOWN"}:
+            if observation.position_size_quote is None:
+                return authorized_fallback("GRID_POSITION_MISSING")
+
+            return RecoveryExposureAssessment(
+                executor_id=observation.executor_id,
+                exposure_quote=observation.position_size_quote,
+                source="GRID_POSITION_BASIS",
+            )
+
+        if status == "TERMINATED":
+            if close_type == "POSITION_HOLD":
+                return authorized_fallback(
+                    "POSITION_HOLD_PENDING_RECONCILIATION",
+                    requires_hold=True,
+                )
+
+            if observation.position_size_quote is not None:
+                return RecoveryExposureAssessment(
+                    executor_id=observation.executor_id,
+                    exposure_quote=observation.position_size_quote,
+                    source="GRID_TERMINAL_POSITION_BASIS",
+                )
+
+            return authorized_fallback("GRID_TERMINAL_POSITION_MISSING")
+
+        return authorized_fallback("GRID_UNKNOWN_STATUS")
+
+    if executor_type == "dca_executor":
+        if status == "NOT_STARTED":
+            if observation.filled_amount_quote == Decimal("0"):
+                return RecoveryExposureAssessment(
+                    executor_id=observation.executor_id,
+                    exposure_quote=Decimal("0"),
+                    source="DCA_NOT_STARTED",
+                )
+            return authorized_fallback("DCA_NOT_STARTED_WITH_ACTIVITY")
+
+        if status == "RUNNING":
+            return RecoveryExposureAssessment(
+                executor_id=observation.executor_id,
+                exposure_quote=observation.filled_amount_quote,
+                source="DCA_RUNNING_OPEN_BASIS",
+            )
+
+        if status == "SHUTTING_DOWN":
+            return authorized_fallback("DCA_SHUTTING_DOWN")
+
+        if status == "TERMINATED":
+            if close_type == "POSITION_HOLD":
+                return authorized_fallback(
+                    "POSITION_HOLD_PENDING_RECONCILIATION",
+                    requires_hold=True,
+                )
+
+            if close_type == "FAILED" or close_type is None:
+                return authorized_fallback("DCA_AMBIGUOUS_TERMINAL")
+
+            if close_type in _DCA_FLAT_TERMINAL_CLOSE_TYPES:
+                return RecoveryExposureAssessment(
+                    executor_id=observation.executor_id,
+                    exposure_quote=Decimal("0"),
+                    source="DCA_FLAT_TERMINAL",
+                )
+
+            return authorized_fallback("DCA_UNKNOWN_TERMINAL_CLOSE_TYPE")
+
+        return authorized_fallback("DCA_UNKNOWN_STATUS")
+
+    return authorized_fallback("UNSUPPORTED_EXECUTOR_TYPE")
+
 def executor_accounting_observation_from_raw(
     raw: Any,
     *,
@@ -124,6 +285,7 @@ def executor_accounting_observation_from_raw(
 
     status = _required_text(raw, "status")
     close_type = _optional_text(raw, "close_type")
+    executor_type = _optional_text(raw, "executor_type")
 
     filled_amount_quote = _decimal_value(
         raw,
@@ -175,4 +337,5 @@ def executor_accounting_observation_from_raw(
         net_pnl_quote=net_pnl_quote,
         realized_pnl_quote=realized_pnl_quote,
         close_type=close_type,
+        executor_type=executor_type,
     )
