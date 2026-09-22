@@ -187,8 +187,16 @@ def allowlist_mutes(agent_slug: str | None) -> set[str]:
     from condor.agents.agent import AgentStore
 
     agent = AgentStore().get(agent_slug)
+
+    # Spectra is a real-capital seat. Missing or empty capability metadata must
+    # fail closed rather than inherit the historical "unrestricted" behavior
+    # used by ordinary uncurated agents.
+    if agent_slug == "spectra" and (agent is None or not agent.tools):
+        return _every_tool_name()
+
     if agent is None or not agent.tools:
         return set()
+
     allowed = {str(name).rsplit("__", 1)[-1] for name in agent.tools}
     return _every_tool_name() - allowed
 

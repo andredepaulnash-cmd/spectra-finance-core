@@ -587,3 +587,114 @@ def test_the_chat_identity_doc_does_not_resurrect_place_order():
             assert (
                 "no `place_order`" in line
             ), f"AGENT.md presents place_order as usable: {line!r}"
+
+
+
+
+
+def test_spectra_agent_capability_boundary_is_fail_closed(
+    monkeypatch,
+):
+    from pathlib import Path
+
+    from condor.agents.agent import AgentStore
+    from condor.paths import STOCK_AGENTS_ROOT_ENV
+    from condor.runtime.toolsets import allowlist_mutes
+
+    repo_agents = Path(__file__).resolve().parents[1] / "agents"
+    monkeypatch.setenv(STOCK_AGENTS_ROOT_ENV, str(repo_agents))
+
+    agent = AgentStore().get("spectra")
+
+    assert agent is not None
+
+    allowed = set(agent.tools)
+
+    expected = {
+        "get_prices",
+        "get_market_data",
+        "get_portfolio_overview",
+        "search_history",
+        "list_executors",
+        "get_executor",
+        "list_positions_held",
+        "get_performance_report",
+        "list_orphaned_positions",
+        "create_grid_executor",
+        "create_dca_executor",
+        "stop_executor",
+        "delegate",
+        "send_notification",
+        "trading_agent_journal_read",
+        "trading_agent_journal_write",
+    }
+
+    assert allowed == expected
+    assert allowed
+
+    muted = allowlist_mutes("spectra")
+
+    dangerous = {
+        "run_code",
+        "manage_bots",
+        "manage_controllers",
+        "create_position_executor",
+        "create_order_executor",
+        "create_lp_executor",
+        "execute_swap",
+        "set_account_position_mode_and_leverage",
+        "configure_server",
+        "manage_gateway_config",
+    }
+
+    assert dangerous <= muted
+    assert not (expected & muted)
+
+
+def test_spectra_missing_definition_fails_closed():
+    from condor.runtime.toolsets import (
+        _every_tool_name,
+        allowlist_mutes,
+    )
+
+    # The suite's autouse fixture points both agent roots at empty temp dirs.
+    # Spectra must therefore lose every capability, not become unrestricted.
+    assert allowlist_mutes("spectra") == _every_tool_name()
+
+
+def test_spectra_capability_mutes_render_to_subprocess_argument(
+    monkeypatch,
+):
+    from pathlib import Path
+
+    from condor.paths import STOCK_AGENTS_ROOT_ENV
+    from condor.runtime.toolsets import (
+        _muted_tool_args,
+        allowlist_mutes,
+    )
+
+    repo_agents = Path(__file__).resolve().parents[1] / "agents"
+    monkeypatch.setenv(STOCK_AGENTS_ROOT_ENV, str(repo_agents))
+
+    capability_mutes = sorted(allowlist_mutes("spectra"))
+    args = _muted_tool_args(capability_mutes)
+
+    assert args[0] == "--mute-tools"
+
+    rendered = set(args[1].split(","))
+
+    assert rendered == set(capability_mutes)
+
+    assert "run_code" in rendered
+    assert "manage_bots" in rendered
+    assert "manage_controllers" in rendered
+    assert "create_position_executor" in rendered
+    assert "create_order_executor" in rendered
+    assert "create_lp_executor" in rendered
+    assert "execute_swap" in rendered
+    assert "set_account_position_mode_and_leverage" in rendered
+
+    assert "create_grid_executor" not in rendered
+    assert "create_dca_executor" not in rendered
+    assert "stop_executor" not in rendered
+    assert "get_portfolio_overview" not in rendered
