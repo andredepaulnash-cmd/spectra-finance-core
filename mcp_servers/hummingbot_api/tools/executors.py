@@ -16,6 +16,12 @@ dangerous by name and everything here except ``stop_executor`` is safe by name.
 import logging
 from typing import Any
 
+from spectra_core.capital_governor import CapitalGovernor
+from spectra_core.executor_accounting import (
+    executor_accounting_observation_from_raw,
+)
+from spectra_core.models import ExecutorAccountingDelta
+
 from mcp_servers.hummingbot_api.executor_preferences import executor_preferences
 from mcp_servers.hummingbot_api.formatters.executors import (
     format_executor_detail,
@@ -122,6 +128,32 @@ def _format_logs(
         if exc:
             formatted += f"  Exception: {exc}\n"
     return formatted
+
+
+async def fetch_and_reconcile_executor_accounting(
+    client: Any,
+    *,
+    executor_id: str,
+    governor: CapitalGovernor,
+) -> ExecutorAccountingDelta:
+    """Fetch one executor and reconcile its accounting state into Spectra Core.
+
+    This is intentionally an internal helper rather than an MCP read tool.
+    Fetching executor detail remains read-only; callers that want accounting
+    persistence must opt into this explicit reconciliation path.
+    """
+    requested_executor_id = executor_id.strip()
+    if not requested_executor_id:
+        raise ValueError("executor_id cannot be empty")
+
+    raw = await client.executors.get_executor(requested_executor_id)
+
+    observation = executor_accounting_observation_from_raw(
+        raw,
+        expected_executor_id=requested_executor_id,
+    )
+
+    return governor.reconcile_executor_accounting(observation)
 
 
 async def get_executor(
