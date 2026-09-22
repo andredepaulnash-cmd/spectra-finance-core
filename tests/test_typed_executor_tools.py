@@ -1138,3 +1138,269 @@ def test_spectra_corrupt_breaker_state_fails_closed(
         tmp_path,
         "breaker-corrupt-state",
     )
+
+
+def test_spectra_grid_derives_legal_child_floor_and_safe_defaults(
+    monkeypatch,
+    tmp_path,
+):
+    from decimal import Decimal as D
+
+    from spectra_core import (
+        CapitalProposal,
+        CapitalSnapshot,
+        DecisionStatus,
+        IntentKind,
+    )
+
+    g = _spectra_bridge_governor(tmp_path)
+
+    claim = CapitalProposal(
+        proposal_id="grid-child-floor",
+        pair="BTC-USD",
+        intent=IntentKind.ENTRY,
+        amount_quote=D("50"),
+        leverage=D("1"),
+    )
+
+    assert g.reserve(
+        claim,
+        CapitalSnapshot(free_quote=D("500")),
+    ).status == DecisionStatus.RESERVED
+
+    captured = []
+
+    class _Client:
+        class _Executors:
+            @staticmethod
+            async def create_executor(
+                executor_config,
+                account_name,
+                controller_id,
+            ):
+                captured.append(executor_config.copy())
+                return {"executor_id": "exec-grid-child-floor"}
+
+        executors = _Executors()
+
+    monkeypatch.setattr(
+        executor_create.settings,
+        "agent_slug",
+        "spectra",
+    )
+    monkeypatch.setattr(
+        executor_create,
+        "get_breaker_mode",
+        lambda: executor_create.BreakerMode.NORMAL,
+    )
+
+    async def rules(*args, **kwargs):
+        return {
+            "min_order_size": "0.01",
+            "min_notional_size": "5",
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        rules,
+    )
+    monkeypatch.setattr(
+        executor_create,
+        "get_capital_governor",
+        lambda: g,
+    )
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            _Client(),
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            leverage=1,
+            keep_position=True,
+            deduct_base_fees=True,
+            spectra_proposal_id="grid-child-floor",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert result["executor_id"] == "exec-grid-child-floor"
+    assert len(captured) == 1
+
+    payload = captured[0]
+
+    # The base-size equivalent is:
+    # 0.01 BTC * $100 = $1, so the $5 notional minimum dominates.
+    # A stricter saved Spectra/executor preference is also valid; the
+    # invariant is that the effective child floor may never be below $5.
+    assert D(str(payload["min_order_amount_quote"])) >= D("5")
+
+    # Spectra's initial spot lane does not inherit/accept these
+    # inventory-sensitive defaults.
+    assert payload["keep_position"] is False
+    assert payload["deduct_base_fees"] is False
+
+
+def test_spectra_grid_rejects_child_floor_below_base_minimum(
+    monkeypatch,
+):
+    client = _RecordingClient()
+
+    monkeypatch.setattr(
+        executor_create.settings,
+        "agent_slug",
+        "spectra",
+    )
+
+    async def rules(*args, **kwargs):
+        return {
+            "min_order_size": "0.1",
+            "min_notional_size": "1",
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        rules,
+    )
+
+    def governor_must_not_be_touched():
+        raise AssertionError(
+            "illegal Grid child sizing reached capital commit"
+        )
+
+    monkeypatch.setattr(
+        executor_create,
+        "get_capital_governor",
+        governor_must_not_be_touched,
+    )
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            client,
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            min_order_amount_quote=5,
+            leverage=1,
+            spectra_proposal_id="illegal-grid-child",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert client.calls == []
+    assert "venue-legal minimum" in result["error"]
+
+
+def test_spectra_dca_rejects_child_below_base_minimum(
+    monkeypatch,
+):
+    client = _RecordingClient()
+
+    monkeypatch.setattr(
+        executor_create.settings,
+        "agent_slug",
+        "spectra",
+    )
+
+    async def rules(*args, **kwargs):
+        return {
+            "min_order_size": "0.1",
+            "min_notional_size": "1",
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        rules,
+    )
+
+    def governor_must_not_be_touched():
+        raise AssertionError(
+            "illegal DCA child sizing reached capital commit"
+        )
+
+    monkeypatch.setattr(
+        executor_create,
+        "get_capital_governor",
+        governor_must_not_be_touched,
+    )
+
+    result = asyncio.run(
+        executor_create.create_dca_executor(
+            client,
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            amounts_quote=[5, 5],
+            prices=[100, 90],
+            leverage=1,
+            spectra_proposal_id="illegal-dca-child",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert client.calls == []
+    assert "venue-legal minimum" in result["error"]
+
+
+def test_spectra_incomplete_trading_rules_fail_closed(
+    monkeypatch,
+):
+    client = _RecordingClient()
+
+    monkeypatch.setattr(
+        executor_create.settings,
+        "agent_slug",
+        "spectra",
+    )
+
+    async def incomplete_rules(*args, **kwargs):
+        return {
+            "min_notional_size": "5",
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        incomplete_rules,
+    )
+
+    def governor_must_not_be_touched():
+        raise AssertionError(
+            "incomplete venue rules reached capital commit"
+        )
+
+    monkeypatch.setattr(
+        executor_create,
+        "get_capital_governor",
+        governor_must_not_be_touched,
+    )
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            client,
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            leverage=1,
+            spectra_proposal_id="incomplete-rules",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert client.calls == []
+    assert "trading rules are incomplete" in result["error"]

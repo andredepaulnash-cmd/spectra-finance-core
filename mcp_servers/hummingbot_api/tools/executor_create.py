@@ -193,6 +193,14 @@ async def _trading_rule_violation(
     min_order_size = _rule(rules, "min_order_size")
     min_notional = _rule(rules, "min_notional_size", "min_notional")
 
+    if settings.agent_slug == "spectra":
+        if min_order_size is None or min_notional is None:
+            return (
+                "Spectra execution refused: trading rules are incomplete "
+                f"for {connector} {pair}; both min_order_size and "
+                "min_notional are required"
+            )
+
     if executor_type in ("position_executor", "order_executor"):
         return await _base_amount_violation(
             client,
@@ -209,36 +217,151 @@ async def _trading_rule_violation(
         return None
 
     if executor_type == "grid_executor":
-        per_level = _amount(config.get("min_order_amount_quote"))
+        per_level = _amount(
+            config.get("min_order_amount_quote")
+        )
+        total = _amount(
+            config.get("total_amount_quote")
+        )
+
+        if settings.agent_slug == "spectra":
+            start_price = _amount(config.get("start_price"))
+            end_price = _amount(config.get("end_price"))
+
+            if start_price is None or end_price is None:
+                return (
+                    "Spectra Grid execution refused: start_price and "
+                    "end_price must be positive numbers"
+                )
+
+            # Every Grid child order must satisfy BOTH:
+            #   quote notional >= venue minimum
+            #   base amount >= venue minimum
+            #
+            # base = quote / price, so the highest Grid price is the
+            # strictest point for a fixed quote amount.
+            required_per_level = max(
+                min_notional,
+                min_order_size * max(start_price, end_price),
+            )
+
+            # Do not delegate Spectra child sizing to Hummingbot's
+            # generic backend default. If the strategy omitted the
+            # floor, derive an explicit venue-legal one.
+            if per_level is None:
+                per_level = required_per_level
+                config["min_order_amount_quote"] = float(
+                    required_per_level
+                )
+
+            if per_level < required_per_level:
+                return (
+                    "Spectra Grid child order floor "
+                    f"{_usd(per_level)} is below the venue-legal "
+                    f"minimum of {_usd(required_per_level)} for "
+                    f"{connector} {pair}"
+                )
+
+            if total is None:
+                return (
+                    "Spectra Grid execution refused: "
+                    "total_amount_quote must be positive"
+                )
+
+            if total < per_level:
+                return (
+                    "Spectra Grid total_amount_quote "
+                    f"{_usd(total)} cannot fund even one legal child "
+                    f"order of {_usd(per_level)}"
+                )
+
+            return None
+
         if per_level is not None and per_level < min_notional:
             return (
                 f"Grid min_order_amount_quote {_usd(per_level)} is below "
-                f"{connector}'s minimum order notional of {_usd(min_notional)} for "
-                f"{pair}. Raise min_order_amount_quote to at least "
+                f"{connector}'s minimum order notional of "
+                f"{_usd(min_notional)} for {pair}. Raise "
+                f"min_order_amount_quote to at least "
                 f"{_usd(min_notional)}."
             )
-        total = _amount(config.get("total_amount_quote"))
+
         if total is not None and total < min_notional:
             return (
-                f"Grid total_amount_quote {_usd(total)} is below {connector}'s "
-                f"minimum order notional of {_usd(min_notional)} for {pair} — not "
-                f"one level could be placed. Fund the grid with at least "
+                f"Grid total_amount_quote {_usd(total)} is below "
+                f"{connector}'s minimum order notional of "
+                f"{_usd(min_notional)} for {pair} — not one level "
+                f"could be placed. Fund the grid with at least "
                 f"{_usd(min_notional)}."
             )
+
         return None
 
     if executor_type == "dca_executor":
         levels = config.get("amounts_quote")
+
+        if settings.agent_slug == "spectra":
+            prices = config.get("prices")
+
+            if not isinstance(levels, (list, tuple)) or not levels:
+                return (
+                    "Spectra DCA execution refused: amounts_quote "
+                    "must contain at least one level"
+                )
+
+            if (
+                not isinstance(prices, (list, tuple))
+                or len(prices) != len(levels)
+            ):
+                return (
+                    "Spectra DCA execution refused: prices and "
+                    "amounts_quote must contain the same number "
+                    "of levels"
+                )
+
+            for index, (level, price_raw) in enumerate(
+                zip(levels, prices),
+                start=1,
+            ):
+                value = _amount(level)
+                price = _amount(price_raw)
+
+                if value is None or price is None:
+                    return (
+                        f"Spectra DCA level {index} has an invalid "
+                        "amount or price"
+                    )
+
+                required = max(
+                    min_notional,
+                    min_order_size * price,
+                )
+
+                if value < required:
+                    return (
+                        f"Spectra DCA level {index} of {len(levels)} "
+                        f"is {_usd(value)}, below the venue-legal "
+                        f"minimum of {_usd(required)} for "
+                        f"{connector} {pair}"
+                    )
+
+            return None
+
         if not isinstance(levels, (list, tuple)):
             return None
+
         for index, level in enumerate(levels, start=1):
             value = _amount(level)
+
             if value is not None and value < min_notional:
                 return (
-                    f"DCA level {index} of {len(levels)} is {_usd(value)}, below "
-                    f"{connector}'s minimum order notional of {_usd(min_notional)} "
-                    f"for {pair}. Raise that level to at least {_usd(min_notional)}."
+                    f"DCA level {index} of {len(levels)} is "
+                    f"{_usd(value)}, below {connector}'s minimum "
+                    f"order notional of {_usd(min_notional)} for "
+                    f"{pair}. Raise that level to at least "
+                    f"{_usd(min_notional)}."
                 )
+
         return None
 
     if executor_type == "lp_executor":
@@ -316,9 +439,13 @@ def _authorize_spectra_execution(
     if leverage != Decimal("1"):
         return "Spectra Kraken spot execution requires leverage=1"
 
-    # Make the backend payload explicit. Grid's backend default is not allowed
-    # to decide leverage for a Spectra spot trade.
+    # Make the backend payload explicit. Saved/backend defaults are not
+    # allowed to decide these risk-sensitive fields for Spectra spot.
     config["leverage"] = 1
+
+    if executor_type == "grid_executor":
+        config["keep_position"] = False
+        config["deduct_base_fees"] = False
 
     try:
         if executor_type == "grid_executor":
