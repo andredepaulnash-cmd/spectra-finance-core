@@ -12,6 +12,12 @@ class IntentKind(StrEnum):
     ROTATION = "ROTATION"
 
 
+class BreakerMode(StrEnum):
+    NORMAL = "NORMAL"
+    DEFENSIVE = "DEFENSIVE"
+    HALTED = "HALTED"
+
+
 class DecisionStatus(StrEnum):
     RESERVED = "RESERVED"
     REJECTED = "REJECTED"

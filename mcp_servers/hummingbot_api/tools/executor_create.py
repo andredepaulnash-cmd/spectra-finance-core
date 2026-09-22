@@ -29,7 +29,8 @@ from mcp_servers.hummingbot_api.executor_preferences import executor_preferences
 from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
 from mcp_servers.hummingbot_api.settings import settings
 from spectra_core import CapitalProposal, IntentKind
-from spectra_core.runtime import get_capital_governor
+from spectra_core.models import BreakerMode
+from spectra_core.runtime import get_breaker_mode, get_capital_governor
 
 logger = logging.getLogger("hummingbot-mcp")
 
@@ -260,6 +261,29 @@ def _authorize_spectra_execution(
     """Commit the exact Spectra capital claim before any external mutation."""
     if settings.agent_slug != "spectra":
         return None
+
+    try:
+        breaker_mode = get_breaker_mode()
+    except Exception as exc:
+        return (
+            "Spectra breaker could not be read; execution is fail-closed "
+            f"as HALTED: {exc}"
+        )
+
+    if breaker_mode == BreakerMode.HALTED:
+        return (
+            "Spectra breaker is HALTED; execution refused before "
+            "capital commit"
+        )
+
+    if breaker_mode not in {
+        BreakerMode.NORMAL,
+        BreakerMode.DEFENSIVE,
+    }:
+        return (
+            "Spectra breaker returned an unknown state; execution is "
+            "fail-closed as HALTED"
+        )
 
     if executor_type not in {"grid_executor", "dca_executor"}:
         return (

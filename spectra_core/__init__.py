@@ -1,5 +1,6 @@
 from .capital_governor import CapitalGovernor
 from .models import (
+    BreakerMode,
     CapitalDecision,
     CapitalPolicy,
     CapitalProposal,
@@ -9,6 +10,7 @@ from .models import (
 )
 
 __all__ = [
+    "BreakerMode",
     "CapitalGovernor",
     "CapitalDecision",
     "CapitalPolicy",

@@ -154,6 +154,11 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         executor_create,
+        "get_breaker_mode",
+        lambda: executor_create.BreakerMode.NORMAL,
+    )
+    monkeypatch.setattr(
+        executor_create,
         "get_capital_governor",
         lambda: g,
     )

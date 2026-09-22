@@ -537,6 +537,11 @@ def test_spectra_without_claim_never_touches_hummingbot(monkeypatch):
     client = _RecordingClient()
 
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+    monkeypatch.setattr(
+        executor_create,
+        "get_breaker_mode",
+        lambda: executor_create.BreakerMode.NORMAL,
+    )
 
     async def valid_rules(*args, **kwargs):
         return {
@@ -617,6 +622,11 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
         executors = _Executors()
 
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+    monkeypatch.setattr(
+        executor_create,
+        "get_breaker_mode",
+        lambda: executor_create.BreakerMode.NORMAL,
+    )
 
     async def valid_rules(*args, **kwargs):
         return {
@@ -689,6 +699,11 @@ def test_spectra_missing_trading_rules_stops_before_capital_commit(monkeypatch):
     client = _RecordingClient()
 
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+    monkeypatch.setattr(
+        executor_create,
+        "get_breaker_mode",
+        lambda: executor_create.BreakerMode.NORMAL,
+    )
 
     async def no_rules(*args, **kwargs):
         return None
@@ -785,6 +800,11 @@ def test_spectra_backend_exception_leaves_capital_committed(
         executor_create.settings,
         "agent_slug",
         "spectra",
+    )
+    monkeypatch.setattr(
+        executor_create,
+        "get_breaker_mode",
+        lambda: executor_create.BreakerMode.NORMAL,
     )
 
     async def valid_rules(*args, **kwargs):
@@ -897,6 +917,11 @@ def test_spectra_missing_executor_id_leaves_capital_committed(
         "agent_slug",
         "spectra",
     )
+    monkeypatch.setattr(
+        executor_create,
+        "get_breaker_mode",
+        lambda: executor_create.BreakerMode.NORMAL,
+    )
 
     async def valid_rules(*args, **kwargs):
         return {
@@ -947,4 +972,169 @@ def test_spectra_missing_executor_id_leaves_capital_committed(
             "bridge-missing-id"
         )
         is None
+    )
+
+
+
+def test_spectra_breaker_normal_reads_persisted_state(
+    monkeypatch,
+    tmp_path,
+):
+    from spectra_core.models import BreakerMode
+    from spectra_core.runtime import get_breaker_mode
+
+    state_dir = tmp_path / "spectra-state"
+    state_dir.mkdir()
+    (state_dir / "breaker_state.json").write_text(
+        '{"mode":"NORMAL"}'
+    )
+
+    monkeypatch.setenv(
+        "SPECTRA_STATE_DIR",
+        str(state_dir),
+    )
+
+    assert get_breaker_mode() == BreakerMode.NORMAL
+
+
+def _assert_spectra_breaker_refuses_before_commit(
+    monkeypatch,
+    tmp_path,
+    proposal_id,
+):
+    from decimal import Decimal as D
+
+    from spectra_core import (
+        CapitalProposal,
+        CapitalSnapshot,
+        DecisionStatus,
+        IntentKind,
+    )
+
+    g = _spectra_bridge_governor(tmp_path)
+
+    claim = CapitalProposal(
+        proposal_id=proposal_id,
+        pair="BTC-USD",
+        intent=IntentKind.ENTRY,
+        amount_quote=D("50"),
+        leverage=D("1"),
+    )
+
+    assert g.reserve(
+        claim,
+        CapitalSnapshot(free_quote=D("500")),
+    ).status == DecisionStatus.RESERVED
+
+    client = _RecordingClient()
+
+    monkeypatch.setattr(
+        executor_create.settings,
+        "agent_slug",
+        "spectra",
+    )
+
+    async def valid_rules(*args, **kwargs):
+        return {
+            "min_order_size": "0.00001",
+            "min_notional_size": "1",
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        valid_rules,
+    )
+
+    def governor_must_not_be_touched():
+        raise AssertionError(
+            "HALTED Spectra execution touched the capital governor"
+        )
+
+    monkeypatch.setattr(
+        executor_create,
+        "get_capital_governor",
+        governor_must_not_be_touched,
+    )
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            client,
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            leverage=1,
+            spectra_proposal_id=proposal_id,
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert client.calls == []
+    assert "HALTED" in result["error"]
+
+    decision = g.get_decision(proposal_id)
+
+    assert decision is not None
+    assert decision.status == DecisionStatus.RESERVED
+    assert g.get_execution_receipt(proposal_id) is None
+
+
+def test_spectra_halted_breaker_stops_before_capital_commit(
+    monkeypatch,
+    tmp_path,
+):
+    monkeypatch.setattr(
+        executor_create,
+        "get_breaker_mode",
+        lambda: executor_create.BreakerMode.HALTED,
+    )
+
+    _assert_spectra_breaker_refuses_before_commit(
+        monkeypatch,
+        tmp_path,
+        "breaker-explicit-halted",
+    )
+
+
+def test_spectra_missing_breaker_state_fails_closed(
+    monkeypatch,
+    tmp_path,
+):
+    state_dir = tmp_path / "missing-breaker-state"
+
+    monkeypatch.setenv(
+        "SPECTRA_STATE_DIR",
+        str(state_dir),
+    )
+
+    _assert_spectra_breaker_refuses_before_commit(
+        monkeypatch,
+        tmp_path,
+        "breaker-missing-state",
+    )
+
+
+def test_spectra_corrupt_breaker_state_fails_closed(
+    monkeypatch,
+    tmp_path,
+):
+    state_dir = tmp_path / "corrupt-breaker-state"
+    state_dir.mkdir()
+    (state_dir / "breaker_state.json").write_text(
+        "{this-is-not-json"
+    )
+
+    monkeypatch.setenv(
+        "SPECTRA_STATE_DIR",
+        str(state_dir),
+    )
+
+    _assert_spectra_breaker_refuses_before_commit(
+        monkeypatch,
+        tmp_path,
+        "breaker-corrupt-state",
     )

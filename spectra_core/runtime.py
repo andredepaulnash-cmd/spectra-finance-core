@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from .capital_governor import CapitalGovernor
-from .models import CapitalPolicy
+from .models import BreakerMode, CapitalPolicy
 
 
 def spectra_state_dir() -> Path:
@@ -16,6 +16,36 @@ def spectra_state_dir() -> Path:
         return Path(override).expanduser()
 
     return Path(__file__).resolve().parent.parent / "data" / "spectra"
+
+
+def get_breaker_mode() -> BreakerMode:
+    """
+    Read Spectra's persisted execution breaker.
+
+    This is intentionally not cached: changing breaker_state.json must affect
+    the next authorization attempt.
+
+    Missing, malformed, or unknown state fails closed as HALTED.
+    """
+    path = spectra_state_dir() / "breaker_state.json"
+
+    if not path.is_file():
+        return BreakerMode.HALTED
+
+    try:
+        raw = json.loads(path.read_text())
+    except Exception:
+        return BreakerMode.HALTED
+
+    if not isinstance(raw, dict):
+        return BreakerMode.HALTED
+
+    try:
+        return BreakerMode(
+            str(raw.get("mode") or "").strip().upper()
+        )
+    except ValueError:
+        return BreakerMode.HALTED
 
 
 @lru_cache(maxsize=1)
