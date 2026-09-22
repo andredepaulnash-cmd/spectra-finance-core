@@ -21,6 +21,10 @@ from spectra_core.executor_accounting import (
     executor_accounting_observation_from_raw,
 )
 from spectra_core.models import ExecutorAccountingDelta
+from spectra_core.position_hold_accounting import (
+    PositionHoldAccounting,
+    position_hold_accounting_from_raw,
+)
 
 from mcp_servers.hummingbot_api.executor_preferences import executor_preferences
 from mcp_servers.hummingbot_api.formatters.executors import (
@@ -157,6 +161,55 @@ async def fetch_and_reconcile_executor_accounting(
         raise ValueError("missing required executor field: executor_type")
 
     return governor.reconcile_executor_accounting(observation)
+
+
+async def fetch_active_position_hold_accounting(
+    client: Any,
+    *,
+    account_name: str,
+    connector_name: str,
+    trading_pair: str,
+    controller_id: str,
+) -> tuple[PositionHoldAccounting, ...]:
+    """Fetch and strictly validate persisted ACTIVE PositionHold accounting.
+
+    This is an internal capital-accounting helper, not a public MCP tool.
+    The installed Hummingbot client predates the strict accounting endpoint,
+    so this uses its existing authenticated HTTP transport directly.
+    """
+    filters = {
+        "account_name": account_name.strip(),
+        "connector_name": connector_name.strip(),
+        "trading_pair": trading_pair.strip().upper(),
+        "controller_id": controller_id.strip(),
+    }
+
+    for field, value in filters.items():
+        if not value:
+            raise ValueError(f"{field} cannot be empty")
+
+    response = await client.executors.session.get(
+        f"{client.executors.base_url}/executors/positions/accounting",
+        params=filters,
+    )
+    response.raise_for_status()
+    raw = await response.json()
+
+    if not isinstance(raw, list):
+        raise ValueError(
+            "position hold accounting response must be a list"
+        )
+
+    return tuple(
+        position_hold_accounting_from_raw(
+            row,
+            expected_account_name=filters["account_name"],
+            expected_connector_name=filters["connector_name"],
+            expected_trading_pair=filters["trading_pair"],
+            expected_controller_id=filters["controller_id"],
+        )
+        for row in raw
+    )
 
 
 async def get_executor(
