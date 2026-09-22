@@ -687,6 +687,472 @@ def check_hummingbot_api() -> list[Check]:
     return checks
 
 
+
+# ── Spectra Finance semantic health ──────────────────────────────────────────
+
+
+def _spectra_runtime_checks() -> list[Check]:
+    """Inspect Spectra's persisted safety state without creating runtime state."""
+    import json
+
+    from spectra_core.models import BreakerMode
+    from spectra_core.runtime import (
+        load_capital_policy,
+        spectra_state_dir,
+    )
+
+    checks: list[Check] = []
+    state_dir = spectra_state_dir()
+
+    # Breaker: explicit HALTED is healthy. Missing/corrupt state is still
+    # fail-closed at runtime, but the doctor reports the configuration gap.
+    breaker_path = state_dir / "breaker_state.json"
+
+    if not breaker_path.is_file():
+        checks.append(
+            Check(
+                "Spectra breaker",
+                WARN,
+                "state file missing — runtime fails closed as HALTED",
+            )
+        )
+    else:
+        try:
+            raw = json.loads(breaker_path.read_text())
+            if not isinstance(raw, dict):
+                raise ValueError("state is not a JSON object")
+
+            mode = BreakerMode(
+                str(raw.get("mode") or "").strip().upper()
+            )
+
+            if mode == BreakerMode.HALTED:
+                detail = "HALTED — healthy and deliberately disarmed"
+            elif mode == BreakerMode.DEFENSIVE:
+                detail = "DEFENSIVE — execution is restricted"
+            else:
+                detail = "NORMAL — execution may be authorized by Spectra Core"
+
+            checks.append(Check("Spectra breaker", OK, detail))
+
+        except Exception as exc:
+            checks.append(
+                Check(
+                    "Spectra breaker",
+                    WARN,
+                    f"invalid state ({exc}) — runtime fails closed as HALTED",
+                )
+            )
+
+    # Policy validation must remain read-only. load_capital_policy() was split
+    # from Governor construction specifically so doctor cannot create SQLite.
+    try:
+        policy = load_capital_policy()
+
+        checks.append(
+            Check(
+                "Spectra capital policy",
+                OK,
+                (
+                    f"valid — reserve=${policy.reserve_floor_quote}, "
+                    f"total=${policy.max_total_committed_quote}, "
+                    f"pair=${policy.max_pair_quote}, "
+                    f"position=${policy.max_position_quote}, "
+                    f"recovery=${policy.max_recovery_quote}, "
+                    f"leverage={policy.max_leverage}x"
+                ),
+            )
+        )
+    except Exception as exc:
+        checks.append(
+            Check(
+                "Spectra capital policy",
+                FAIL,
+                str(exc),
+            )
+        )
+
+    # Merely report whether the Governor DB has ever been initialized.
+    # Never instantiate CapitalGovernor here: doing so would create/migrate it.
+    db_path = state_dir / "capital.sqlite3"
+    checks.append(
+        Check(
+            "Spectra capital DB",
+            OK if db_path.is_file() else WARN,
+            (
+                str(db_path)
+                if db_path.is_file()
+                else "not initialized yet — doctor did not create it"
+            ),
+        )
+    )
+
+    # Verify the mounted capability boundary still denies the tools that could
+    # bypass Spectra Core or create unsupported executor types.
+    try:
+        from condor.runtime.toolsets import seat_mutes
+
+        muted = set(seat_mutes("spectra"))
+
+        must_be_muted = {
+            "run_code",
+            "manage_bots",
+            "manage_controllers",
+            "create_position_executor",
+            "create_order_executor",
+            "create_lp_executor",
+            "execute_swap",
+            "set_account_position_mode_and_leverage",
+            "configure_server",
+            "manage_gateway_config",
+        }
+
+        must_be_available = {
+            "create_grid_executor",
+            "create_dca_executor",
+            "stop_executor",
+        }
+
+        escaped = sorted(must_be_muted - muted)
+        wrongly_muted = sorted(must_be_available & muted)
+
+        if escaped or wrongly_muted:
+            detail = []
+            if escaped:
+                detail.append("dangerously available: " + ", ".join(escaped))
+            if wrongly_muted:
+                detail.append(
+                    "required tools muted: " + ", ".join(wrongly_muted)
+                )
+
+            checks.append(
+                Check(
+                    "Spectra capability boundary",
+                    FAIL,
+                    "; ".join(detail),
+                )
+            )
+        else:
+            checks.append(
+                Check(
+                    "Spectra capability boundary",
+                    OK,
+                    "dangerous bypass tools muted; executor lane intact",
+                )
+            )
+
+    except Exception as exc:
+        checks.append(
+            Check(
+                "Spectra capability boundary",
+                FAIL,
+                f"could not verify: {exc}",
+            )
+        )
+
+    return checks
+
+
+async def _spectra_exchange_checks() -> list[Check]:
+    """Read the real Kraken path with a fresh one-shot Hummingbot client."""
+    from decimal import Decimal
+
+    from config_manager import get_config_manager
+    from mcp_servers.hummingbot_api.hummingbot_client import (
+        HummingbotClient,
+    )
+    from mcp_servers.hummingbot_api.settings import settings as hb_settings
+    from spectra_core.kraken_snapshot import build_kraken_capital_snapshot
+
+    if not (REPO_ROOT / "config.yml").is_file():
+        return [
+            Check(
+                "Spectra Kraken",
+                FAIL,
+                "config.yml is missing — no authenticated Hummingbot server",
+            )
+        ]
+
+    cm = get_config_manager()
+    servers = cm.list_servers()
+
+    if not servers:
+        return [
+            Check(
+                "Spectra Kraken",
+                FAIL,
+                "no Hummingbot API server is configured",
+            )
+        ]
+
+    server_name = "local" if "local" in servers else next(iter(servers))
+    server = cm.get_server(server_name)
+
+    if not server:
+        return [
+            Check(
+                "Spectra Kraken",
+                FAIL,
+                f"configured server {server_name!r} could not be loaded",
+            )
+        ]
+
+    saved = (
+        hb_settings.api_url,
+        hb_settings.api_username,
+        hb_settings.api_password,
+        hb_settings.server_name,
+    )
+
+    hb_settings.api_url = (
+        f"http://{server['host']}:{server['port']}"
+    )
+    hb_settings.api_username = str(server["username"])
+    hb_settings.api_password = str(server["password"])
+    hb_settings.server_name = server_name
+
+    manager = HummingbotClient()
+    client = None
+    checks: list[Check] = []
+
+    min_order_size = None
+    live_price = None
+    snapshot = None
+
+    try:
+        try:
+            client = await manager.get_client()
+            checks.append(
+                Check(
+                    "Spectra API session",
+                    OK,
+                    f"{server_name} — reachable and authenticated",
+                )
+            )
+        except Exception as exc:
+            return [
+                Check(
+                    "Spectra API session",
+                    FAIL,
+                    f"{server_name} — {exc}",
+                )
+            ]
+
+        try:
+            credentials = await client.accounts.list_account_credentials(
+                "master_account"
+            )
+
+            if "kraken" in credentials:
+                checks.append(
+                    Check(
+                        "Kraken credentials",
+                        OK,
+                        "master_account has Kraken credentials",
+                    )
+                )
+            else:
+                checks.append(
+                    Check(
+                        "Kraken credentials",
+                        FAIL,
+                        "Kraken is not bound to master_account",
+                    )
+                )
+        except Exception as exc:
+            checks.append(
+                Check(
+                    "Kraken credentials",
+                    FAIL,
+                    f"could not read credential metadata: {exc}",
+                )
+            )
+
+        try:
+            payload = await client.connectors.get_trading_rules(
+                connector_name="kraken",
+                trading_pairs=["BTC-USD"],
+            )
+
+            rules = (
+                payload.get("BTC-USD")
+                if isinstance(payload, dict)
+                else None
+            )
+
+            if not isinstance(rules, dict):
+                raise RuntimeError("BTC-USD rule row is missing")
+
+            min_order_size = Decimal(
+                str(rules["min_order_size"])
+            )
+
+            raw_notional = rules.get(
+                "min_notional_size",
+                rules.get("min_notional", 0),
+            )
+            min_notional = Decimal(str(raw_notional))
+
+            if (
+                not min_order_size.is_finite()
+                or min_order_size <= 0
+                or not min_notional.is_finite()
+                or min_notional < 0
+            ):
+                raise RuntimeError("venue minimums are invalid")
+
+            checks.append(
+                Check(
+                    "Kraken BTC-USD rules",
+                    OK,
+                    (
+                        f"min base={min_order_size} BTC, "
+                        f"min notional={min_notional}"
+                    ),
+                )
+            )
+
+        except Exception as exc:
+            checks.append(
+                Check(
+                    "Kraken BTC-USD rules",
+                    FAIL,
+                    str(exc),
+                )
+            )
+
+        try:
+            payload = await client.market_data.get_prices(
+                connector_name="kraken",
+                trading_pairs=["BTC-USD"],
+            )
+
+            prices = (
+                payload.get("prices")
+                if isinstance(payload, dict)
+                else None
+            )
+
+            if not isinstance(prices, dict):
+                raise RuntimeError("price payload has no prices mapping")
+
+            live_price = Decimal(str(prices["BTC-USD"]))
+
+            if not live_price.is_finite() or live_price <= 0:
+                raise RuntimeError("BTC-USD price is invalid")
+
+            checks.append(
+                Check(
+                    "Kraken BTC-USD price",
+                    OK,
+                    f"${live_price}",
+                )
+            )
+
+        except Exception as exc:
+            checks.append(
+                Check(
+                    "Kraken BTC-USD price",
+                    FAIL,
+                    str(exc),
+                )
+            )
+
+        try:
+            snapshot = await build_kraken_capital_snapshot(
+                client,
+                account_name="master_account",
+                trading_pair="BTC-USD",
+                refresh=True,
+            )
+
+            checks.append(
+                Check(
+                    "Kraken private portfolio",
+                    OK,
+                    (
+                        f"free USD=${snapshot.free_quote}, "
+                        f"pair exposure=${snapshot.pair_exposure_quote}, "
+                        f"global exposure=${snapshot.committed_quote}"
+                    ),
+                )
+            )
+
+        except Exception as exc:
+            checks.append(
+                Check(
+                    "Kraken private portfolio",
+                    FAIL,
+                    str(exc),
+                )
+            )
+
+        if (
+            snapshot is not None
+            and min_order_size is not None
+            and live_price is not None
+        ):
+            legal_floor = min_order_size * live_price
+
+            if snapshot.free_quote >= legal_floor:
+                checks.append(
+                    Check(
+                        "Kraken probe capital",
+                        OK,
+                        (
+                            f"${snapshot.free_quote} free USD; "
+                            f"venue floor is about ${legal_floor:.4f}"
+                        ),
+                    )
+                )
+            else:
+                checks.append(
+                    Check(
+                        "Kraken probe capital",
+                        WARN,
+                        (
+                            f"${snapshot.free_quote} free USD; "
+                            f"below BTC-USD venue floor of about "
+                            f"${legal_floor:.4f}"
+                        ),
+                    )
+                )
+
+    finally:
+        if client is not None:
+            try:
+                await client.close()
+            except Exception:
+                pass
+
+        (
+            hb_settings.api_url,
+            hb_settings.api_username,
+            hb_settings.api_password,
+            hb_settings.server_name,
+        ) = saved
+
+    return checks
+
+
+def check_spectra_finance() -> list[Check]:
+    """Semantic Spectra Finance health: safety state plus real Kraken reads."""
+    checks = _spectra_runtime_checks()
+
+    try:
+        checks.extend(asyncio.run(_spectra_exchange_checks()))
+    except Exception as exc:
+        checks.append(
+            Check(
+                "Spectra exchange probe",
+                FAIL,
+                f"unexpected failure: {exc}",
+            )
+        )
+
+    return checks
+
+
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 
@@ -713,6 +1179,7 @@ def main(argv: list[str] | None = None) -> int:
         ("Dashboard", check_dashboard_port()),
         ("Tailscale", check_tailscale()),
         ("Hummingbot API", check_hummingbot_api()),
+        ("Spectra Finance", check_spectra_finance()),
     ]
 
     width = _report_width(sections)

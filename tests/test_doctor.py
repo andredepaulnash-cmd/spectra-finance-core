@@ -479,3 +479,87 @@ def test_hummingbot_api_check_fails_when_env_exists_but_config_does_not(
 
     checks = doctor.check_hummingbot_api()
     assert checks[0].state == doctor.FAIL
+
+
+
+# ── Spectra Finance semantic doctor ──────────────────────────────────────────
+
+
+def _write_spectra_policy(path):
+    import json
+
+    path.write_text(
+        json.dumps(
+            {
+                "reserve_floor_quote": "100",
+                "max_total_committed_quote": "500",
+                "max_pair_quote": "150",
+                "max_position_quote": "150",
+                "max_recovery_quote": "100",
+                "max_leverage": "1",
+                "reservation_ttl_seconds": 120,
+            }
+        )
+    )
+
+
+def test_spectra_runtime_doctor_is_read_only(
+    monkeypatch,
+    tmp_path,
+):
+    import json
+
+    state_dir = tmp_path / "spectra"
+    state_dir.mkdir()
+
+    _write_spectra_policy(
+        state_dir / "capital_policy.json"
+    )
+    (state_dir / "breaker_state.json").write_text(
+        json.dumps({"mode": "HALTED"})
+    )
+
+    monkeypatch.setenv(
+        "SPECTRA_STATE_DIR",
+        str(state_dir),
+    )
+
+    db_path = state_dir / "capital.sqlite3"
+    assert not db_path.exists()
+
+    checks = doctor._spectra_runtime_checks()
+    by_name = {check.name: check for check in checks}
+
+    assert by_name["Spectra breaker"].state == doctor.OK
+    assert "HALTED" in by_name["Spectra breaker"].detail
+    assert by_name["Spectra capital policy"].state == doctor.OK
+
+    # Doctor must not initialize Governor persistence.
+    assert not db_path.exists()
+
+
+def test_spectra_missing_breaker_is_safe_warning(
+    monkeypatch,
+    tmp_path,
+):
+    state_dir = tmp_path / "spectra"
+    state_dir.mkdir()
+
+    _write_spectra_policy(
+        state_dir / "capital_policy.json"
+    )
+
+    monkeypatch.setenv(
+        "SPECTRA_STATE_DIR",
+        str(state_dir),
+    )
+
+    checks = doctor._spectra_runtime_checks()
+    breaker = next(
+        check
+        for check in checks
+        if check.name == "Spectra breaker"
+    )
+
+    assert breaker.state == doctor.WARN
+    assert "fails closed as HALTED" in breaker.detail
