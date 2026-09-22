@@ -13,6 +13,8 @@ from .models import (
     DecisionStatus,
     IntentKind,
     ExecutionProvenance,
+    ExecutorAccountingObservation,
+    ExecutorAccountingDelta,
 )
 
 
@@ -105,6 +107,39 @@ class CapitalGovernor:
                     proposal_id TEXT PRIMARY KEY,
                     executor_id TEXT NOT NULL UNIQUE,
                     created_at REAL NOT NULL
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS executor_accounting_observations (
+                    observation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    proposal_id TEXT NOT NULL,
+                    executor_id TEXT NOT NULL,
+                    pair TEXT NOT NULL,
+                    intent TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    close_type TEXT,
+                    filled_amount_quote TEXT NOT NULL,
+                    cum_fees_quote TEXT NOT NULL,
+                    filled_delta_quote TEXT NOT NULL,
+                    fee_delta_quote TEXT NOT NULL,
+                    position_size_quote TEXT,
+                    net_pnl_quote TEXT,
+                    realized_pnl_quote TEXT,
+                    observed_at REAL NOT NULL
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_executor_accounting_executor
+                ON executor_accounting_observations(
+                    executor_id,
+                    observation_id
                 )
                 """
             )
@@ -1004,6 +1039,237 @@ class CapitalGovernor:
             authorized_quote=Decimal(str(row["authorized_quote"])),
             leverage=Decimal(str(row["leverage"])),
         )
+
+    @staticmethod
+    def _validate_accounting_decimal(
+        value: Decimal,
+        *,
+        name: str,
+        allow_negative: bool = False,
+    ) -> None:
+        if not value.is_finite():
+            raise ValueError(f"{name} must be finite")
+        if not allow_negative and value < ZERO:
+            raise ValueError(f"{name} cannot be negative")
+
+    def reconcile_executor_accounting(
+        self,
+        observation: ExecutorAccountingObservation,
+    ) -> ExecutorAccountingDelta:
+        """
+        Persist one cumulative Hummingbot executor observation.
+
+        Filled amount and cumulative fees are monotonic counters. Only their
+        deltas represent new accounting activity. Position/PnL fields are
+        observations, not monotonic counters.
+        """
+        executor_id = observation.executor_id.strip()
+        status = observation.status.strip()
+
+        if not executor_id:
+            raise ValueError("executor_id is required")
+        if not status:
+            raise ValueError("status is required")
+
+        self._validate_accounting_decimal(
+            observation.filled_amount_quote,
+            name="filled_amount_quote",
+        )
+        self._validate_accounting_decimal(
+            observation.cum_fees_quote,
+            name="cum_fees_quote",
+        )
+
+        for name, value, allow_negative in (
+            ("position_size_quote", observation.position_size_quote, False),
+            ("net_pnl_quote", observation.net_pnl_quote, True),
+            ("realized_pnl_quote", observation.realized_pnl_quote, True),
+        ):
+            if value is not None:
+                self._validate_accounting_decimal(
+                    value,
+                    name=name,
+                    allow_negative=allow_negative,
+                )
+
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+
+            try:
+                provenance = conn.execute(
+                    """
+                    SELECT
+                        proposal_id,
+                        executor_id,
+                        pair,
+                        intent
+                    FROM execution_provenance
+                    WHERE executor_id = ?
+                    """,
+                    (executor_id,),
+                ).fetchone()
+
+                if provenance is None:
+                    raise RuntimeError(
+                        f"executor has no Spectra provenance: {executor_id}"
+                    )
+
+                previous = conn.execute(
+                    """
+                    SELECT *
+                    FROM executor_accounting_observations
+                    WHERE executor_id = ?
+                    ORDER BY observation_id DESC
+                    LIMIT 1
+                    """,
+                    (executor_id,),
+                ).fetchone()
+
+                previous_filled = (
+                    ZERO
+                    if previous is None
+                    else Decimal(previous["filled_amount_quote"])
+                )
+                previous_fees = (
+                    ZERO
+                    if previous is None
+                    else Decimal(previous["cum_fees_quote"])
+                )
+
+                if observation.filled_amount_quote < previous_filled:
+                    raise RuntimeError(
+                        "filled_amount_quote moved backwards for "
+                        f"{executor_id}"
+                    )
+
+                if observation.cum_fees_quote < previous_fees:
+                    raise RuntimeError(
+                        f"cum_fees_quote moved backwards for {executor_id}"
+                    )
+
+                filled_delta = (
+                    observation.filled_amount_quote - previous_filled
+                )
+                fee_delta = observation.cum_fees_quote - previous_fees
+
+                comparable = (
+                    status,
+                    observation.close_type,
+                    observation.filled_amount_quote,
+                    observation.cum_fees_quote,
+                    observation.position_size_quote,
+                    observation.net_pnl_quote,
+                    observation.realized_pnl_quote,
+                )
+
+                if previous is not None:
+                    previous_comparable = (
+                        previous["status"],
+                        previous["close_type"],
+                        Decimal(previous["filled_amount_quote"]),
+                        Decimal(previous["cum_fees_quote"]),
+                        (
+                            None
+                            if previous["position_size_quote"] is None
+                            else Decimal(previous["position_size_quote"])
+                        ),
+                        (
+                            None
+                            if previous["net_pnl_quote"] is None
+                            else Decimal(previous["net_pnl_quote"])
+                        ),
+                        (
+                            None
+                            if previous["realized_pnl_quote"] is None
+                            else Decimal(previous["realized_pnl_quote"])
+                        ),
+                    )
+
+                    if comparable == previous_comparable:
+                        conn.commit()
+                        return ExecutorAccountingDelta(
+                            proposal_id=str(provenance["proposal_id"]),
+                            executor_id=executor_id,
+                            pair=str(provenance["pair"]),
+                            intent=IntentKind(str(provenance["intent"])),
+                            filled_delta_quote=ZERO,
+                            fee_delta_quote=ZERO,
+                            cumulative_filled_quote=observation.filled_amount_quote,
+                            cumulative_fees_quote=observation.cum_fees_quote,
+                            position_size_quote=observation.position_size_quote,
+                            status=status,
+                            close_type=observation.close_type,
+                        )
+
+                conn.execute(
+                    """
+                    INSERT INTO executor_accounting_observations (
+                        proposal_id,
+                        executor_id,
+                        pair,
+                        intent,
+                        status,
+                        close_type,
+                        filled_amount_quote,
+                        cum_fees_quote,
+                        filled_delta_quote,
+                        fee_delta_quote,
+                        position_size_quote,
+                        net_pnl_quote,
+                        realized_pnl_quote,
+                        observed_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        provenance["proposal_id"],
+                        executor_id,
+                        provenance["pair"],
+                        provenance["intent"],
+                        status,
+                        observation.close_type,
+                        str(observation.filled_amount_quote),
+                        str(observation.cum_fees_quote),
+                        str(filled_delta),
+                        str(fee_delta),
+                        (
+                            None
+                            if observation.position_size_quote is None
+                            else str(observation.position_size_quote)
+                        ),
+                        (
+                            None
+                            if observation.net_pnl_quote is None
+                            else str(observation.net_pnl_quote)
+                        ),
+                        (
+                            None
+                            if observation.realized_pnl_quote is None
+                            else str(observation.realized_pnl_quote)
+                        ),
+                        time.time(),
+                    ),
+                )
+
+                conn.commit()
+
+                return ExecutorAccountingDelta(
+                    proposal_id=str(provenance["proposal_id"]),
+                    executor_id=executor_id,
+                    pair=str(provenance["pair"]),
+                    intent=IntentKind(str(provenance["intent"])),
+                    filled_delta_quote=filled_delta,
+                    fee_delta_quote=fee_delta,
+                    cumulative_filled_quote=observation.filled_amount_quote,
+                    cumulative_fees_quote=observation.cum_fees_quote,
+                    position_size_quote=observation.position_size_quote,
+                    status=status,
+                    close_type=observation.close_type,
+                )
+
+            except Exception:
+                conn.rollback()
+                raise
 
     def protected_quote(self) -> Decimal:
         """

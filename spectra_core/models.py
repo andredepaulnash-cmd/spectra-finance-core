@@ -67,6 +67,33 @@ class ExecutionProvenance:
 
 
 @dataclass(frozen=True)
+class ExecutorAccountingObservation:
+    executor_id: str
+    status: str
+    filled_amount_quote: Decimal
+    cum_fees_quote: Decimal
+    position_size_quote: Decimal | None = None
+    net_pnl_quote: Decimal | None = None
+    realized_pnl_quote: Decimal | None = None
+    close_type: str | None = None
+
+
+@dataclass(frozen=True)
+class ExecutorAccountingDelta:
+    proposal_id: str
+    executor_id: str
+    pair: str
+    intent: IntentKind
+    filled_delta_quote: Decimal
+    fee_delta_quote: Decimal
+    cumulative_filled_quote: Decimal
+    cumulative_fees_quote: Decimal
+    position_size_quote: Decimal | None
+    status: str
+    close_type: str | None
+
+
+@dataclass(frozen=True)
 class CapitalDecision:
     proposal_id: str
     status: DecisionStatus

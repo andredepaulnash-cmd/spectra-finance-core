@@ -631,3 +631,153 @@ def test_execution_provenance_conflict_fails_closed_on_reopen(tmp_path):
         match="execution provenance conflicts",
     ):
         type(g)(g.db_path, g.policy)
+
+
+
+def test_executor_accounting_uses_cumulative_deltas(tmp_path):
+    from spectra_core.models import (
+        CapitalProposal,
+        ExecutorAccountingObservation,
+        IntentKind,
+    )
+
+    g = governor(tmp_path)
+
+    p = CapitalProposal(
+        proposal_id="accounting-recovery",
+        pair="BTC-USD",
+        intent=IntentKind.RECOVERY,
+        amount_quote=D("25"),
+        leverage=D("1"),
+    )
+
+    assert g.reserve(
+        p,
+        CapitalSnapshot(
+            free_quote=D("500"),
+            committed_quote=D("100"),
+            pair_exposure_quote=D("20"),
+            position_exposure_quote=D("20"),
+            recovery_exposure_quote=D("10"),
+        ),
+    ).status == DecisionStatus.RESERVED
+
+    assert g.commit("accounting-recovery")
+    assert g.reconcile_execution(
+        proposal_id="accounting-recovery",
+        executor_id="exec-accounting",
+    )
+
+    first = g.reconcile_executor_accounting(
+        ExecutorAccountingObservation(
+            executor_id="exec-accounting",
+            status="RUNNING",
+            filled_amount_quote=D("10"),
+            cum_fees_quote=D("0.10"),
+            position_size_quote=D("8"),
+        )
+    )
+
+    assert first.intent == IntentKind.RECOVERY
+    assert first.filled_delta_quote == D("10")
+    assert first.fee_delta_quote == D("0.10")
+    assert first.position_size_quote == D("8")
+
+    replay = g.reconcile_executor_accounting(
+        ExecutorAccountingObservation(
+            executor_id="exec-accounting",
+            status="RUNNING",
+            filled_amount_quote=D("10"),
+            cum_fees_quote=D("0.10"),
+            position_size_quote=D("8"),
+        )
+    )
+
+    assert replay.filled_delta_quote == D("0")
+    assert replay.fee_delta_quote == D("0")
+
+    # Numeric-equivalent Decimal representations are also idempotent.
+    equivalent = g.reconcile_executor_accounting(
+        ExecutorAccountingObservation(
+            executor_id="exec-accounting",
+            status="RUNNING",
+            filled_amount_quote=D("10.00"),
+            cum_fees_quote=D("0.1000"),
+            position_size_quote=D("8.0"),
+        )
+    )
+
+    assert equivalent.filled_delta_quote == D("0")
+    assert equivalent.fee_delta_quote == D("0")
+
+    second = g.reconcile_executor_accounting(
+        ExecutorAccountingObservation(
+            executor_id="exec-accounting",
+            status="RUNNING",
+            filled_amount_quote=D("15"),
+            cum_fees_quote=D("0.16"),
+            position_size_quote=D("11"),
+            net_pnl_quote=D("-0.25"),
+        )
+    )
+
+    assert second.filled_delta_quote == D("5")
+    assert second.fee_delta_quote == D("0.06")
+    assert second.position_size_quote == D("11")
+
+
+def test_executor_accounting_rejects_backward_counters(tmp_path):
+    import pytest
+
+    from spectra_core.models import ExecutorAccountingObservation
+
+    g = governor(tmp_path)
+    p = proposal("accounting-monotonic", "50")
+
+    assert g.reserve(
+        p,
+        CapitalSnapshot(free_quote=D("500")),
+    ).status == DecisionStatus.RESERVED
+
+    assert g.commit("accounting-monotonic")
+    assert g.reconcile_execution(
+        proposal_id="accounting-monotonic",
+        executor_id="exec-monotonic",
+    )
+
+    g.reconcile_executor_accounting(
+        ExecutorAccountingObservation(
+            executor_id="exec-monotonic",
+            status="RUNNING",
+            filled_amount_quote=D("20"),
+            cum_fees_quote=D("0.20"),
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="moved backwards"):
+        g.reconcile_executor_accounting(
+            ExecutorAccountingObservation(
+                executor_id="exec-monotonic",
+                status="RUNNING",
+                filled_amount_quote=D("19"),
+                cum_fees_quote=D("0.20"),
+            )
+        )
+
+
+def test_executor_accounting_requires_spectra_provenance(tmp_path):
+    import pytest
+
+    from spectra_core.models import ExecutorAccountingObservation
+
+    g = governor(tmp_path)
+
+    with pytest.raises(RuntimeError, match="no Spectra provenance"):
+        g.reconcile_executor_accounting(
+            ExecutorAccountingObservation(
+                executor_id="foreign-executor",
+                status="RUNNING",
+                filled_amount_quote=D("1"),
+                cum_fees_quote=D("0"),
+            )
+        )
