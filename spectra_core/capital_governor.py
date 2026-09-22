@@ -12,6 +12,7 @@ from .models import (
     CapitalSnapshot,
     DecisionStatus,
     IntentKind,
+    ExecutionProvenance,
 )
 
 
@@ -107,6 +108,78 @@ class CapitalGovernor:
                 )
                 """
             )
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS execution_provenance (
+                    proposal_id TEXT PRIMARY KEY,
+                    executor_id TEXT NOT NULL UNIQUE,
+                    pair TEXT NOT NULL,
+                    intent TEXT NOT NULL,
+                    authorized_quote TEXT NOT NULL,
+                    leverage TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+
+            # Upgrade existing reconciled receipts deterministically. This is
+            # provenance of authorization/executor ownership, not fill data.
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO execution_provenance (
+                    proposal_id,
+                    executor_id,
+                    pair,
+                    intent,
+                    authorized_quote,
+                    leverage,
+                    created_at
+                )
+                SELECT
+                    r.proposal_id,
+                    e.executor_id,
+                    r.pair,
+                    r.intent,
+                    r.amount_quote,
+                    r.leverage,
+                    e.created_at
+                FROM execution_receipts AS e
+                JOIN capital_reservations AS r
+                  ON r.proposal_id = e.proposal_id
+                WHERE r.status = ?
+                """,
+                (DecisionStatus.RECONCILED.value,),
+            )
+
+            conflict = conn.execute(
+                """
+                SELECT
+                    r.proposal_id
+                FROM execution_receipts AS e
+                JOIN capital_reservations AS r
+                  ON r.proposal_id = e.proposal_id
+                LEFT JOIN execution_provenance AS p
+                  ON p.proposal_id = r.proposal_id
+                WHERE r.status = ?
+                  AND (
+                      p.proposal_id IS NULL
+                      OR p.executor_id != e.executor_id
+                      OR p.pair != r.pair
+                      OR p.intent != r.intent
+                      OR p.authorized_quote != r.amount_quote
+                      OR p.leverage != r.leverage
+                  )
+                LIMIT 1
+                """,
+                (DecisionStatus.RECONCILED.value,),
+            ).fetchone()
+
+            if conflict is not None:
+                raise RuntimeError(
+                    "execution provenance conflicts with reconciled "
+                    f"reservation: {conflict['proposal_id']}"
+                )
 
     def _validate_policy(self) -> None:
         validate_capital_policy(self.policy)
@@ -699,7 +772,12 @@ class CapitalGovernor:
             try:
                 reservation = conn.execute(
                     """
-                    SELECT status
+                    SELECT
+                        status,
+                        pair,
+                        intent,
+                        amount_quote,
+                        leverage
                     FROM capital_reservations
                     WHERE proposal_id = ?
                     """,
@@ -733,6 +811,47 @@ class CapitalGovernor:
                         raise RuntimeError(
                             "execution receipt exists but proposal is not "
                             f"RECONCILED: {proposal_id}"
+                        )
+
+                    provenance = conn.execute(
+                        """
+                        SELECT
+                            executor_id,
+                            pair,
+                            intent,
+                            authorized_quote,
+                            leverage
+                        FROM execution_provenance
+                        WHERE proposal_id = ?
+                        """,
+                        (proposal_id,),
+                    ).fetchone()
+
+                    if provenance is None:
+                        raise RuntimeError(
+                            "execution receipt exists but provenance is "
+                            f"missing: {proposal_id}"
+                        )
+
+                    expected = (
+                        executor_id,
+                        reservation["pair"],
+                        reservation["intent"],
+                        reservation["amount_quote"],
+                        reservation["leverage"],
+                    )
+                    actual = (
+                        provenance["executor_id"],
+                        provenance["pair"],
+                        provenance["intent"],
+                        provenance["authorized_quote"],
+                        provenance["leverage"],
+                    )
+
+                    if actual != expected:
+                        raise RuntimeError(
+                            "execution provenance conflicts with reservation "
+                            f"for {proposal_id}"
                         )
 
                     conn.commit()
@@ -769,6 +888,30 @@ class CapitalGovernor:
                     VALUES (?, ?, ?)
                     """,
                     (proposal_id, executor_id, now),
+                )
+
+                conn.execute(
+                    """
+                    INSERT INTO execution_provenance (
+                        proposal_id,
+                        executor_id,
+                        pair,
+                        intent,
+                        authorized_quote,
+                        leverage,
+                        created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        proposal_id,
+                        executor_id,
+                        reservation["pair"],
+                        reservation["intent"],
+                        reservation["amount_quote"],
+                        reservation["leverage"],
+                        now,
+                    ),
                 )
 
                 cursor = conn.execute(
@@ -823,6 +966,44 @@ class CapitalGovernor:
             ).fetchone()
 
         return None if row is None else str(row["executor_id"])
+
+    def get_execution_provenance(
+        self,
+        proposal_id: str,
+    ) -> ExecutionProvenance | None:
+        """Return immutable authorization provenance for one executor."""
+        proposal_id = proposal_id.strip()
+
+        if not proposal_id:
+            raise ValueError("proposal_id is required")
+
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    proposal_id,
+                    executor_id,
+                    pair,
+                    intent,
+                    authorized_quote,
+                    leverage
+                FROM execution_provenance
+                WHERE proposal_id = ?
+                """,
+                (proposal_id,),
+            ).fetchone()
+
+        if row is None:
+            return None
+
+        return ExecutionProvenance(
+            proposal_id=str(row["proposal_id"]),
+            executor_id=str(row["executor_id"]),
+            pair=str(row["pair"]),
+            intent=IntentKind(str(row["intent"])),
+            authorized_quote=Decimal(str(row["authorized_quote"])),
+            leverage=Decimal(str(row["leverage"])),
+        )
 
     def protected_quote(self) -> Decimal:
         """

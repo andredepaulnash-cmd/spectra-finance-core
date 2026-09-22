@@ -521,3 +521,113 @@ def test_execution_receipt_conflict_fails_closed(tmp_path):
         g.get_decision("receipt-conflict").status
         == DecisionStatus.RECONCILED
     )
+
+
+
+def test_execution_provenance_preserves_recovery_authorization(tmp_path):
+    from spectra_core.models import (
+        CapitalProposal,
+        ExecutionProvenance,
+        IntentKind,
+    )
+
+    g = governor(tmp_path)
+
+    p = CapitalProposal(
+        proposal_id="recovery-provenance",
+        pair="BTC-USD",
+        intent=IntentKind.RECOVERY,
+        amount_quote=D("25"),
+        leverage=D("1"),
+    )
+
+    assert g.reserve(
+        p,
+        CapitalSnapshot(
+            free_quote=D("500"),
+            committed_quote=D("100"),
+            pair_exposure_quote=D("20"),
+            position_exposure_quote=D("20"),
+            recovery_exposure_quote=D("10"),
+        ),
+    ).status == DecisionStatus.RESERVED
+
+    assert g.commit("recovery-provenance")
+
+    # Authorization is not execution provenance until an executor exists.
+    assert g.get_execution_provenance("recovery-provenance") is None
+
+    assert g.reconcile_execution(
+        proposal_id="recovery-provenance",
+        executor_id="exec-recovery",
+    )
+
+    assert g.get_execution_provenance(
+        "recovery-provenance"
+    ) == ExecutionProvenance(
+        proposal_id="recovery-provenance",
+        executor_id="exec-recovery",
+        pair="BTC-USD",
+        intent=IntentKind.RECOVERY,
+        authorized_quote=D("25"),
+        leverage=D("1"),
+    )
+
+    # Exact replay remains idempotent and preserves the same provenance.
+    assert g.reconcile_execution(
+        proposal_id="recovery-provenance",
+        executor_id="exec-recovery",
+    )
+
+    assert (
+        g.get_execution_provenance(
+            "recovery-provenance"
+        ).authorized_quote
+        == D("25")
+    )
+
+
+
+def test_execution_provenance_conflict_fails_closed_on_reopen(tmp_path):
+    import pytest
+
+    g = governor(tmp_path)
+
+    p = proposal("provenance-conflict", "50")
+
+    assert g.reserve(
+        p,
+        CapitalSnapshot(
+            free_quote=D("500"),
+            committed_quote=D("100"),
+            pair_exposure_quote=D("20"),
+            position_exposure_quote=D("20"),
+            recovery_exposure_quote=D("0"),
+        ),
+    ).status == DecisionStatus.RESERVED
+
+    assert g.commit("provenance-conflict")
+
+    assert g.reconcile_execution(
+        proposal_id="provenance-conflict",
+        executor_id="exec-provenance-conflict",
+    )
+
+    with g._connect() as conn:
+        conn.execute(
+            """
+            UPDATE execution_provenance
+            SET intent = ?
+            WHERE proposal_id = ?
+            """,
+            (
+                IntentKind.RECOVERY.value,
+                "provenance-conflict",
+            ),
+        )
+
+    with pytest.raises(
+        RuntimeError,
+        match="execution provenance conflicts",
+    ):
+        type(g)(g.db_path, g.policy)

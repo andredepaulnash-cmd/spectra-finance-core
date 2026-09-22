@@ -57,6 +57,16 @@ class CapitalProposal:
 
 
 @dataclass(frozen=True)
+class ExecutionProvenance:
+    proposal_id: str
+    executor_id: str
+    pair: str
+    intent: IntentKind
+    authorized_quote: Decimal
+    leverage: Decimal
+
+
+@dataclass(frozen=True)
 class CapitalDecision:
     proposal_id: str
     status: DecisionStatus
