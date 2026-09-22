@@ -105,10 +105,28 @@ def _usd(value: float) -> str:
 
 
 def _rule(rules: dict[str, Any], *names: str) -> float | None:
+    """Read a venue rule as a finite non-negative float.
+
+    Exchange rules may legitimately use zero to mean "no minimum".
+    That is different from a missing or malformed rule and must not be
+    collapsed to None.
+    """
+    import math
+
     for name in names:
-        value = _amount(rules.get(name))
-        if value is not None:
+        raw = rules.get(name)
+
+        if raw is None or isinstance(raw, bool):
+            continue
+
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            continue
+
+        if math.isfinite(value) and value >= 0:
             return value
+
     return None
 
 

@@ -1404,3 +1404,100 @@ def test_spectra_incomplete_trading_rules_fail_closed(
 
     assert client.calls == []
     assert "trading rules are incomplete" in result["error"]
+
+
+def test_spectra_accepts_zero_notional_rule_and_uses_base_minimum(
+    monkeypatch,
+    tmp_path,
+):
+    from decimal import Decimal as D
+
+    from spectra_core import (
+        CapitalProposal,
+        CapitalSnapshot,
+        DecisionStatus,
+        IntentKind,
+    )
+
+    g = _spectra_bridge_governor(tmp_path)
+
+    claim = CapitalProposal(
+        proposal_id="kraken-zero-notional",
+        pair="BTC-USD",
+        intent=IntentKind.ENTRY,
+        amount_quote=D("50"),
+        leverage=D("1"),
+    )
+
+    assert g.reserve(
+        claim,
+        CapitalSnapshot(free_quote=D("500")),
+    ).status == DecisionStatus.RESERVED
+
+    captured = []
+
+    class _Client:
+        class _Executors:
+            @staticmethod
+            async def create_executor(
+                executor_config,
+                account_name,
+                controller_id,
+            ):
+                captured.append(executor_config.copy())
+                return {"executor_id": "exec-zero-notional"}
+
+        executors = _Executors()
+
+    monkeypatch.setattr(
+        executor_create.settings,
+        "agent_slug",
+        "spectra",
+    )
+    monkeypatch.setattr(
+        executor_create,
+        "get_breaker_mode",
+        lambda: executor_create.BreakerMode.NORMAL,
+    )
+
+    async def kraken_rules(*args, **kwargs):
+        return {
+            "min_order_size": 0.00005,
+            "min_notional_size": 0.0,
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        kraken_rules,
+    )
+    monkeypatch.setattr(
+        executor_create,
+        "get_capital_governor",
+        lambda: g,
+    )
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            _Client(),
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90000,
+            end_price=100000,
+            limit_price=85000,
+            total_amount_quote=50,
+            leverage=1,
+            spectra_proposal_id="kraken-zero-notional",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert result["executor_id"] == "exec-zero-notional"
+    assert len(captured) == 1
+
+    # 0.00005 BTC * $100,000 highest grid price = $5.
+    assert (
+        D(str(captured[0]["min_order_amount_quote"]))
+        >= D("5")
+    )
