@@ -395,6 +395,14 @@ class CapitalGovernor:
                     intent=IntentKind.RECOVERY,
                 )
 
+                # Recovery attribution must be read under the same write
+                # transaction as RESERVED/COMMITTED claims. Otherwise a
+                # COMMITTED -> RECONCILED handoff could briefly disappear
+                # from both buckets between two separate reads.
+                reconciled_recovery = (
+                    self._current_recovery_exposure_quote(conn)
+                )
+
                 amount = proposal.amount_quote
 
                 available_after = (
@@ -409,6 +417,7 @@ class CapitalGovernor:
                     active_total=active_total,
                     active_pair=active_pair,
                     active_recovery=active_recovery,
+                    reconciled_recovery=reconciled_recovery,
                     available_after=available_after,
                 )
 
@@ -479,6 +488,7 @@ class CapitalGovernor:
         active_total: Decimal,
         active_pair: Decimal,
         active_recovery: Decimal,
+        reconciled_recovery: Decimal,
         available_after: Decimal,
     ) -> str:
         p = self.policy
@@ -496,6 +506,7 @@ class CapitalGovernor:
             "active_total": active_total,
             "active_pair": active_pair,
             "active_recovery": active_recovery,
+            "reconciled_recovery": reconciled_recovery,
             "available_after": available_after,
         }
 
@@ -582,7 +593,7 @@ class CapitalGovernor:
         # Recovery capital is separately bounded.
         if proposal.intent == IntentKind.RECOVERY:
             recovery_after = (
-                snapshot.recovery_exposure_quote
+                reconciled_recovery
                 + active_recovery
                 + amount
             )
@@ -1324,52 +1335,42 @@ class CapitalGovernor:
                 raise
 
 
-    def current_recovery_exposure_quote(self) -> Decimal:
-        """Return current quote capital attributable to RECOVERY executors.
+    def _current_recovery_exposure_quote(
+        self,
+        conn: sqlite3.Connection,
+    ) -> Decimal:
+        """Compute reconciled RECOVERY exposure using one DB transaction."""
+        rows = conn.execute(
+            """
+            SELECT
+                p.proposal_id,
+                p.executor_id,
+                p.pair,
+                p.intent,
+                p.authorized_quote,
+                p.leverage,
 
-        Only executors with immutable RECOVERY execution provenance are
-        considered. Each executor is assessed from its latest persisted
-        accounting observation.
-
-        If no observation exists yet, the full authorized quote remains
-        charged. Ambiguous observations are handled conservatively by
-        ``assess_recovery_exposure`` rather than silently freeing budget.
-
-        POSITION_HOLD remains charged until the separate held-position
-        reconciliation path proves the residual exposure.
-        """
-        with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT
-                    p.proposal_id,
-                    p.executor_id,
-                    p.pair,
-                    p.intent,
-                    p.authorized_quote,
-                    p.leverage,
-
-                    o.observation_id,
-                    o.executor_type AS obs_executor_type,
-                    o.status AS obs_status,
-                    o.close_type AS obs_close_type,
-                    o.filled_amount_quote AS obs_filled_amount_quote,
-                    o.cum_fees_quote AS obs_cum_fees_quote,
-                    o.position_size_quote AS obs_position_size_quote,
-                    o.net_pnl_quote AS obs_net_pnl_quote,
-                    o.realized_pnl_quote AS obs_realized_pnl_quote
-                FROM execution_provenance AS p
-                LEFT JOIN executor_accounting_observations AS o
-                  ON o.observation_id = (
-                      SELECT MAX(latest.observation_id)
-                      FROM executor_accounting_observations AS latest
-                      WHERE latest.executor_id = p.executor_id
-                  )
-                WHERE p.intent = ?
-                ORDER BY p.proposal_id
-                """,
-                (IntentKind.RECOVERY.value,),
-            ).fetchall()
+                o.observation_id,
+                o.executor_type AS obs_executor_type,
+                o.status AS obs_status,
+                o.close_type AS obs_close_type,
+                o.filled_amount_quote AS obs_filled_amount_quote,
+                o.cum_fees_quote AS obs_cum_fees_quote,
+                o.position_size_quote AS obs_position_size_quote,
+                o.net_pnl_quote AS obs_net_pnl_quote,
+                o.realized_pnl_quote AS obs_realized_pnl_quote
+            FROM execution_provenance AS p
+            LEFT JOIN executor_accounting_observations AS o
+              ON o.observation_id = (
+                  SELECT MAX(latest.observation_id)
+                  FROM executor_accounting_observations AS latest
+                  WHERE latest.executor_id = p.executor_id
+              )
+            WHERE p.intent = ?
+            ORDER BY p.proposal_id
+            """,
+            (IntentKind.RECOVERY.value,),
+        ).fetchall()
 
         total = ZERO
 
@@ -1383,8 +1384,6 @@ class CapitalGovernor:
                 leverage=Decimal(str(row["leverage"])),
             )
 
-            # Executor exists and owns recovery capital, but we have not yet
-            # persisted enough live accounting evidence to reduce that claim.
             if row["observation_id"] is None:
                 total += provenance.authorized_quote
                 continue
@@ -1432,6 +1431,11 @@ class CapitalGovernor:
             total += assessment.exposure_quote
 
         return total
+
+    def current_recovery_exposure_quote(self) -> Decimal:
+        """Return current quote capital attributable to RECOVERY executors."""
+        with self._connect() as conn:
+            return self._current_recovery_exposure_quote(conn)
 
     def protected_quote(self) -> Decimal:
         """

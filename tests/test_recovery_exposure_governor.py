@@ -14,7 +14,7 @@ from spectra_core.models import (
 D = Decimal
 
 
-def governor(tmp_path):
+def governor(tmp_path, *, max_recovery="5000"):
     return CapitalGovernor(
         tmp_path / "capital.sqlite",
         CapitalPolicy(
@@ -22,7 +22,7 @@ def governor(tmp_path):
             max_total_committed_quote=D("5000"),
             max_pair_quote=D("5000"),
             max_position_quote=D("5000"),
-            max_recovery_quote=D("5000"),
+            max_recovery_quote=D(max_recovery),
             max_leverage=D("1"),
             reservation_ttl_seconds=120,
         ),
@@ -169,3 +169,39 @@ def test_position_hold_stays_charged_until_hold_reconciliation(tmp_path):
     # Until the position-hold ledger is reconciled, fail closed at the full
     # authorized recovery claim rather than assuming the executor is flat.
     assert g.current_recovery_exposure_quote() == D("25")
+
+
+def test_reserve_uses_atomic_reconciled_recovery_not_stale_snapshot(tmp_path):
+    g = governor(tmp_path, max_recovery="40")
+
+    bind_executor(
+        g,
+        proposal_id="existing-recovery",
+        executor_id="existing-executor",
+        amount="30",
+    )
+
+    # Intentionally stale caller snapshot: the executor has already moved to
+    # RECONCILED, but this snapshot still says recovery attribution is zero.
+    stale_snapshot = CapitalSnapshot(
+        free_quote=D("1000"),
+        committed_quote=D("0"),
+        pair_exposure_quote=D("0"),
+        position_exposure_quote=D("0"),
+        recovery_exposure_quote=D("0"),
+    )
+
+    proposal = CapitalProposal(
+        proposal_id="new-recovery",
+        pair="BTC-USD",
+        intent=IntentKind.RECOVERY,
+        amount_quote=D("20"),
+        leverage=D("1"),
+    )
+
+    decision = g.reserve(proposal, stale_snapshot)
+
+    # 30 reconciled + 0 active + 20 requested = 50 > 40.
+    assert decision.status == DecisionStatus.REJECTED
+    assert "recovery budget exceeded" in decision.reason
+    assert "50 > 40" in decision.reason
