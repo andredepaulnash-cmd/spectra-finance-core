@@ -5,6 +5,7 @@ import time
 from decimal import Decimal
 from pathlib import Path
 
+from .executor_accounting import assess_recovery_exposure
 from .models import (
     CapitalDecision,
     CapitalPolicy,
@@ -1321,6 +1322,116 @@ class CapitalGovernor:
             except Exception:
                 conn.rollback()
                 raise
+
+
+    def current_recovery_exposure_quote(self) -> Decimal:
+        """Return current quote capital attributable to RECOVERY executors.
+
+        Only executors with immutable RECOVERY execution provenance are
+        considered. Each executor is assessed from its latest persisted
+        accounting observation.
+
+        If no observation exists yet, the full authorized quote remains
+        charged. Ambiguous observations are handled conservatively by
+        ``assess_recovery_exposure`` rather than silently freeing budget.
+
+        POSITION_HOLD remains charged until the separate held-position
+        reconciliation path proves the residual exposure.
+        """
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    p.proposal_id,
+                    p.executor_id,
+                    p.pair,
+                    p.intent,
+                    p.authorized_quote,
+                    p.leverage,
+
+                    o.observation_id,
+                    o.executor_type AS obs_executor_type,
+                    o.status AS obs_status,
+                    o.close_type AS obs_close_type,
+                    o.filled_amount_quote AS obs_filled_amount_quote,
+                    o.cum_fees_quote AS obs_cum_fees_quote,
+                    o.position_size_quote AS obs_position_size_quote,
+                    o.net_pnl_quote AS obs_net_pnl_quote,
+                    o.realized_pnl_quote AS obs_realized_pnl_quote
+                FROM execution_provenance AS p
+                LEFT JOIN executor_accounting_observations AS o
+                  ON o.observation_id = (
+                      SELECT MAX(latest.observation_id)
+                      FROM executor_accounting_observations AS latest
+                      WHERE latest.executor_id = p.executor_id
+                  )
+                WHERE p.intent = ?
+                ORDER BY p.proposal_id
+                """,
+                (IntentKind.RECOVERY.value,),
+            ).fetchall()
+
+        total = ZERO
+
+        for row in rows:
+            provenance = ExecutionProvenance(
+                proposal_id=str(row["proposal_id"]),
+                executor_id=str(row["executor_id"]),
+                pair=str(row["pair"]),
+                intent=IntentKind(str(row["intent"])),
+                authorized_quote=Decimal(str(row["authorized_quote"])),
+                leverage=Decimal(str(row["leverage"])),
+            )
+
+            # Executor exists and owns recovery capital, but we have not yet
+            # persisted enough live accounting evidence to reduce that claim.
+            if row["observation_id"] is None:
+                total += provenance.authorized_quote
+                continue
+
+            observation = ExecutorAccountingObservation(
+                executor_id=str(row["executor_id"]),
+                executor_type=(
+                    None
+                    if row["obs_executor_type"] is None
+                    else str(row["obs_executor_type"])
+                ),
+                status=str(row["obs_status"]),
+                close_type=(
+                    None
+                    if row["obs_close_type"] is None
+                    else str(row["obs_close_type"])
+                ),
+                filled_amount_quote=Decimal(
+                    str(row["obs_filled_amount_quote"])
+                ),
+                cum_fees_quote=Decimal(
+                    str(row["obs_cum_fees_quote"])
+                ),
+                position_size_quote=(
+                    None
+                    if row["obs_position_size_quote"] is None
+                    else Decimal(str(row["obs_position_size_quote"]))
+                ),
+                net_pnl_quote=(
+                    None
+                    if row["obs_net_pnl_quote"] is None
+                    else Decimal(str(row["obs_net_pnl_quote"]))
+                ),
+                realized_pnl_quote=(
+                    None
+                    if row["obs_realized_pnl_quote"] is None
+                    else Decimal(str(row["obs_realized_pnl_quote"]))
+                ),
+            )
+
+            assessment = assess_recovery_exposure(
+                observation,
+                provenance,
+            )
+            total += assessment.exposure_quote
+
+        return total
 
     def protected_quote(self) -> Decimal:
         """
