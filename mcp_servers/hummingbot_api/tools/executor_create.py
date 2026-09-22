@@ -176,6 +176,17 @@ async def _trading_rule_violation(
         return None
 
     rules = await trading_rules_cache.get(client, connector, pair)
+
+    # Generic Condor historically treats unavailable venue rules as fail-open.
+    # Spectra's real-money seat does not: unknown exchange constraints mean
+    # capital execution is not authorized.
+    if settings.agent_slug == "spectra" and rules is None:
+        error = (
+            f"Spectra execution refused: trading rules unavailable "
+            f"for {connector} {pair}"
+        )
+        logger.warning("%s", error)
+        return error
     if not rules:
         return None
     min_order_size = _rule(rules, "min_order_size")

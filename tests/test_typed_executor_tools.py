@@ -538,6 +538,18 @@ def test_spectra_without_claim_never_touches_hummingbot(monkeypatch):
 
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
 
+    async def valid_rules(*args, **kwargs):
+        return {
+            "min_order_size": "0.00001",
+            "min_notional_size": "1",
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        valid_rules,
+    )
+
     result = asyncio.run(
         executor_create.create_grid_executor(
             client,
@@ -605,6 +617,18 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
         executors = _Executors()
 
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+
+    async def valid_rules(*args, **kwargs):
+        return {
+            "min_order_size": "0.00001",
+            "min_notional_size": "1",
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        valid_rules,
+    )
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: g)
 
     result = asyncio.run(
@@ -652,3 +676,48 @@ def test_non_spectra_executor_keeps_existing_behavior(monkeypatch):
 
     assert len(client.calls) == 1
     assert result["executor_id"] == "exec-1"
+
+
+def test_spectra_missing_trading_rules_stops_before_capital_commit(monkeypatch):
+    client = _RecordingClient()
+
+    monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+
+    async def no_rules(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        no_rules,
+    )
+
+    def governor_must_not_be_touched():
+        raise AssertionError(
+            "capital claim was touched before trading rules were validated"
+        )
+
+    monkeypatch.setattr(
+        executor_create,
+        "get_capital_governor",
+        governor_must_not_be_touched,
+    )
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            client,
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            leverage=1,
+            spectra_proposal_id="rules-test",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert client.calls == []
+    assert "trading rules unavailable" in result["error"]
