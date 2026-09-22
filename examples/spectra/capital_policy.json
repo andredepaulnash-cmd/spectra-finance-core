@@ -1,0 +1,9 @@
+{
+  "reserve_floor_quote": "0",
+  "max_total_committed_quote": "0",
+  "max_pair_quote": "0",
+  "max_position_quote": "0",
+  "max_recovery_quote": "0",
+  "max_leverage": "1",
+  "reservation_ttl_seconds": 120
+}

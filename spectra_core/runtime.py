@@ -59,7 +59,17 @@ def get_capital_governor() -> CapitalGovernor:
             f"Spectra capital policy is not configured: {policy_path}"
         )
 
-    raw = json.loads(policy_path.read_text())
+    try:
+        raw = json.loads(policy_path.read_text())
+    except Exception as exc:
+        raise RuntimeError(
+            f"Spectra capital policy is invalid: {policy_path}: {exc}"
+        ) from exc
+
+    if not isinstance(raw, dict):
+        raise RuntimeError(
+            f"Spectra capital policy must be a JSON object: {policy_path}"
+        )
 
     required = (
         "reserve_floor_quote",
@@ -77,19 +87,41 @@ def get_capital_governor() -> CapitalGovernor:
             "Spectra capital policy is missing: " + ", ".join(missing)
         )
 
-    policy = CapitalPolicy(
-        reserve_floor_quote=Decimal(str(raw["reserve_floor_quote"])),
-        max_total_committed_quote=Decimal(
-            str(raw["max_total_committed_quote"])
-        ),
-        max_pair_quote=Decimal(str(raw["max_pair_quote"])),
-        max_position_quote=Decimal(str(raw["max_position_quote"])),
-        max_recovery_quote=Decimal(str(raw["max_recovery_quote"])),
-        max_leverage=Decimal(str(raw["max_leverage"])),
-        reservation_ttl_seconds=int(raw["reservation_ttl_seconds"]),
-    )
+    try:
+        ttl = raw["reservation_ttl_seconds"]
+        if not isinstance(ttl, int) or isinstance(ttl, bool):
+            raise ValueError(
+                "reservation_ttl_seconds must be an integer"
+            )
 
-    return CapitalGovernor(db_path, policy)
+        policy = CapitalPolicy(
+            reserve_floor_quote=Decimal(
+                str(raw["reserve_floor_quote"])
+            ),
+            max_total_committed_quote=Decimal(
+                str(raw["max_total_committed_quote"])
+            ),
+            max_pair_quote=Decimal(
+                str(raw["max_pair_quote"])
+            ),
+            max_position_quote=Decimal(
+                str(raw["max_position_quote"])
+            ),
+            max_recovery_quote=Decimal(
+                str(raw["max_recovery_quote"])
+            ),
+            max_leverage=Decimal(
+                str(raw["max_leverage"])
+            ),
+            reservation_ttl_seconds=ttl,
+        )
+
+        return CapitalGovernor(db_path, policy)
+
+    except Exception as exc:
+        raise RuntimeError(
+            f"Spectra capital policy is invalid: {policy_path}: {exc}"
+        ) from exc
 
 
 def reset_runtime_cache() -> None:
