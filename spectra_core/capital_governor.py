@@ -72,6 +72,16 @@ class CapitalGovernor:
                 """
             )
 
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS execution_receipts (
+                    proposal_id TEXT PRIMARY KEY,
+                    executor_id TEXT NOT NULL UNIQUE,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+
     def _validate_policy(self) -> None:
         p = self.policy
 
@@ -657,6 +667,159 @@ class CapitalGovernor:
             except Exception:
                 conn.rollback()
                 raise
+
+    def reconcile_execution(
+        self,
+        *,
+        proposal_id: str,
+        executor_id: str,
+        reason: str = "reconciled with Hummingbot executor receipt",
+    ) -> bool:
+        """
+        Atomically bind one Spectra proposal to one Hummingbot executor and
+        transition COMMITTED -> RECONCILED.
+
+        Exact replay of the same proposal/executor mapping is idempotent.
+        Conflicting mappings fail closed.
+        """
+        proposal_id = proposal_id.strip()
+        executor_id = executor_id.strip()
+
+        if not proposal_id:
+            raise ValueError("proposal_id is required")
+        if not executor_id:
+            raise ValueError("executor_id is required")
+
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+
+            try:
+                reservation = conn.execute(
+                    """
+                    SELECT status
+                    FROM capital_reservations
+                    WHERE proposal_id = ?
+                    """,
+                    (proposal_id,),
+                ).fetchone()
+
+                if reservation is None:
+                    conn.rollback()
+                    return False
+
+                receipt = conn.execute(
+                    """
+                    SELECT executor_id
+                    FROM execution_receipts
+                    WHERE proposal_id = ?
+                    """,
+                    (proposal_id,),
+                ).fetchone()
+
+                if receipt is not None:
+                    existing_executor = receipt["executor_id"]
+
+                    if existing_executor != executor_id:
+                        raise RuntimeError(
+                            "conflicting execution receipt for "
+                            f"{proposal_id}: existing={existing_executor!r}, "
+                            f"new={executor_id!r}"
+                        )
+
+                    if reservation["status"] != DecisionStatus.RECONCILED.value:
+                        raise RuntimeError(
+                            "execution receipt exists but proposal is not "
+                            f"RECONCILED: {proposal_id}"
+                        )
+
+                    conn.commit()
+                    return True
+
+                other = conn.execute(
+                    """
+                    SELECT proposal_id
+                    FROM execution_receipts
+                    WHERE executor_id = ?
+                    """,
+                    (executor_id,),
+                ).fetchone()
+
+                if other is not None:
+                    raise RuntimeError(
+                        f"executor_id {executor_id!r} is already bound to "
+                        f"proposal {other['proposal_id']!r}"
+                    )
+
+                if reservation["status"] != DecisionStatus.COMMITTED.value:
+                    conn.rollback()
+                    return False
+
+                now = time.time()
+
+                conn.execute(
+                    """
+                    INSERT INTO execution_receipts (
+                        proposal_id,
+                        executor_id,
+                        created_at
+                    )
+                    VALUES (?, ?, ?)
+                    """,
+                    (proposal_id, executor_id, now),
+                )
+
+                cursor = conn.execute(
+                    """
+                    UPDATE capital_reservations
+                    SET
+                        status = ?,
+                        reason = ?,
+                        updated_at = ?
+                    WHERE proposal_id = ?
+                      AND status = ?
+                    """,
+                    (
+                        DecisionStatus.RECONCILED.value,
+                        reason,
+                        now,
+                        proposal_id,
+                        DecisionStatus.COMMITTED.value,
+                    ),
+                )
+
+                if cursor.rowcount != 1:
+                    raise RuntimeError(
+                        "proposal changed state during execution reconciliation"
+                    )
+
+                conn.commit()
+                return True
+
+            except Exception:
+                conn.rollback()
+                raise
+
+    def get_execution_receipt(
+        self,
+        proposal_id: str,
+    ) -> str | None:
+        """Return the executor bound to a proposal, if one exists."""
+        proposal_id = proposal_id.strip()
+
+        if not proposal_id:
+            raise ValueError("proposal_id is required")
+
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT executor_id
+                FROM execution_receipts
+                WHERE proposal_id = ?
+                """,
+                (proposal_id,),
+            ).fetchone()
+
+        return None if row is None else str(row["executor_id"])
 
     def protected_quote(self) -> Decimal:
         """

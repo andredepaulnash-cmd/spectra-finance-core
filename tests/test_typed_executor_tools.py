@@ -649,7 +649,14 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
 
     assert len(calls) == 1
     assert result["executor_id"] == "exec-spectra-1"
-    assert g.get_decision("bridge-1").status == DecisionStatus.COMMITTED
+
+    # COMMITTED was already asserted inside the fake Hummingbot call.
+    # Once a concrete executor_id returns, receipt reconciliation completes.
+    assert (
+        g.get_decision("bridge-1").status
+        == DecisionStatus.RECONCILED
+    )
+    assert g.get_execution_receipt("bridge-1") == "exec-spectra-1"
 
 
 def test_non_spectra_executor_keeps_existing_behavior(monkeypatch):
@@ -721,3 +728,223 @@ def test_spectra_missing_trading_rules_stops_before_capital_commit(monkeypatch):
 
     assert client.calls == []
     assert "trading rules unavailable" in result["error"]
+
+
+def test_spectra_backend_exception_leaves_capital_committed(
+    monkeypatch,
+    tmp_path,
+):
+    import asyncio
+    from decimal import Decimal as D
+
+    from spectra_core import (
+        CapitalProposal,
+        CapitalSnapshot,
+        DecisionStatus,
+        IntentKind,
+    )
+
+    g = _spectra_bridge_governor(tmp_path)
+
+    claim = CapitalProposal(
+        proposal_id="bridge-backend-exception",
+        pair="BTC-USD",
+        intent=IntentKind.ENTRY,
+        amount_quote=D("50"),
+        leverage=D("1"),
+    )
+
+    assert g.reserve(
+        claim,
+        CapitalSnapshot(free_quote=D("500")),
+    ).status == DecisionStatus.RESERVED
+
+    calls = []
+
+    class _Client:
+        class _Executors:
+            @staticmethod
+            async def create_executor(
+                executor_config,
+                account_name,
+                controller_id,
+            ):
+                assert (
+                    g.get_decision(
+                        "bridge-backend-exception"
+                    ).status
+                    == DecisionStatus.COMMITTED
+                )
+
+                calls.append(executor_config)
+                raise RuntimeError("simulated backend ambiguity")
+
+        executors = _Executors()
+
+    monkeypatch.setattr(
+        executor_create.settings,
+        "agent_slug",
+        "spectra",
+    )
+
+    async def valid_rules(*args, **kwargs):
+        return {
+            "min_order_size": "0.00001",
+            "min_notional_size": "1",
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        valid_rules,
+    )
+    monkeypatch.setattr(
+        executor_create,
+        "get_capital_governor",
+        lambda: g,
+    )
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            _Client(),
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            leverage=1,
+            spectra_proposal_id="bridge-backend-exception",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert len(calls) == 1
+    assert "error" in result
+
+    assert (
+        g.get_decision(
+            "bridge-backend-exception"
+        ).status
+        == DecisionStatus.COMMITTED
+    )
+
+    assert (
+        g.get_execution_receipt(
+            "bridge-backend-exception"
+        )
+        is None
+    )
+
+
+def test_spectra_missing_executor_id_leaves_capital_committed(
+    monkeypatch,
+    tmp_path,
+):
+    import asyncio
+    from decimal import Decimal as D
+
+    from spectra_core import (
+        CapitalProposal,
+        CapitalSnapshot,
+        DecisionStatus,
+        IntentKind,
+    )
+
+    g = _spectra_bridge_governor(tmp_path)
+
+    claim = CapitalProposal(
+        proposal_id="bridge-missing-id",
+        pair="BTC-USD",
+        intent=IntentKind.ENTRY,
+        amount_quote=D("50"),
+        leverage=D("1"),
+    )
+
+    assert g.reserve(
+        claim,
+        CapitalSnapshot(free_quote=D("500")),
+    ).status == DecisionStatus.RESERVED
+
+    calls = []
+
+    class _Client:
+        class _Executors:
+            @staticmethod
+            async def create_executor(
+                executor_config,
+                account_name,
+                controller_id,
+            ):
+                assert (
+                    g.get_decision(
+                        "bridge-missing-id"
+                    ).status
+                    == DecisionStatus.COMMITTED
+                )
+
+                calls.append(executor_config)
+
+                # Deliberately ambiguous:
+                # backend says "success-like" but gives no identity.
+                return {"status": "ok"}
+
+        executors = _Executors()
+
+    monkeypatch.setattr(
+        executor_create.settings,
+        "agent_slug",
+        "spectra",
+    )
+
+    async def valid_rules(*args, **kwargs):
+        return {
+            "min_order_size": "0.00001",
+            "min_notional_size": "1",
+        }
+
+    monkeypatch.setattr(
+        executor_create.trading_rules_cache,
+        "get",
+        valid_rules,
+    )
+    monkeypatch.setattr(
+        executor_create,
+        "get_capital_governor",
+        lambda: g,
+    )
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            _Client(),
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            leverage=1,
+            spectra_proposal_id="bridge-missing-id",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert len(calls) == 1
+    assert "error" in result
+    assert "ambiguous" in result["error"].lower()
+
+    assert (
+        g.get_decision(
+            "bridge-missing-id"
+        ).status
+        == DecisionStatus.COMMITTED
+    )
+
+    assert (
+        g.get_execution_receipt(
+            "bridge-missing-id"
+        )
+        is None
+    )

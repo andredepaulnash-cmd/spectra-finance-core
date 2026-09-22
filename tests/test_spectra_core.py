@@ -428,3 +428,96 @@ def test_expired_claim_cannot_commit(tmp_path):
 
     assert g.commit_if_matches(expected) is False
     assert g.get_decision("claim-expired").status == DecisionStatus.EXPIRED
+
+
+def test_execution_receipt_reconciles_atomically(tmp_path):
+    g = governor(tmp_path)
+
+    p = proposal("receipt-1", "50")
+
+    assert g.reserve(
+        p,
+        CapitalSnapshot(
+            free_quote=D("500"),
+            committed_quote=D("100"),
+            pair_exposure_quote=D("20"),
+            position_exposure_quote=D("20"),
+            recovery_exposure_quote=D("0"),
+        ),
+    ).status == DecisionStatus.RESERVED
+    assert g.commit("receipt-1")
+
+    assert g.reconcile_execution(
+        proposal_id="receipt-1",
+        executor_id="exec-1",
+    )
+
+    assert g.get_decision("receipt-1").status == DecisionStatus.RECONCILED
+    assert g.get_execution_receipt("receipt-1") == "exec-1"
+
+
+def test_execution_receipt_exact_replay_is_idempotent(tmp_path):
+    g = governor(tmp_path)
+
+    p = proposal("receipt-replay", "50")
+
+    assert g.reserve(
+        p,
+        CapitalSnapshot(
+            free_quote=D("500"),
+            committed_quote=D("100"),
+            pair_exposure_quote=D("20"),
+            position_exposure_quote=D("20"),
+            recovery_exposure_quote=D("0"),
+        ),
+    ).status == DecisionStatus.RESERVED
+    assert g.commit("receipt-replay")
+
+    assert g.reconcile_execution(
+        proposal_id="receipt-replay",
+        executor_id="exec-replay",
+    )
+
+    assert g.reconcile_execution(
+        proposal_id="receipt-replay",
+        executor_id="exec-replay",
+    )
+
+    assert g.get_execution_receipt("receipt-replay") == "exec-replay"
+
+
+def test_execution_receipt_conflict_fails_closed(tmp_path):
+    import pytest
+
+    g = governor(tmp_path)
+
+    p = proposal("receipt-conflict", "50")
+
+    assert g.reserve(
+        p,
+        CapitalSnapshot(
+            free_quote=D("500"),
+            committed_quote=D("100"),
+            pair_exposure_quote=D("20"),
+            position_exposure_quote=D("20"),
+            recovery_exposure_quote=D("0"),
+        ),
+    ).status == DecisionStatus.RESERVED
+    assert g.commit("receipt-conflict")
+
+    assert g.reconcile_execution(
+        proposal_id="receipt-conflict",
+        executor_id="exec-original",
+    )
+
+    with pytest.raises(RuntimeError, match="conflicting execution receipt"):
+        g.reconcile_execution(
+            proposal_id="receipt-conflict",
+            executor_id="exec-different",
+        )
+
+    assert g.get_execution_receipt("receipt-conflict") == "exec-original"
+    assert (
+        g.get_decision("receipt-conflict").status
+        == DecisionStatus.RECONCILED
+    )

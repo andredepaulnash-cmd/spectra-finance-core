@@ -195,4 +195,8 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
     final_decision = g.get_decision(proposal.proposal_id)
 
     assert final_decision is not None
-    assert final_decision.status == DecisionStatus.COMMITTED
+    assert final_decision.status == DecisionStatus.RECONCILED
+    assert (
+        g.get_execution_receipt(proposal.proposal_id)
+        == "spectra-e2e-1"
+    )

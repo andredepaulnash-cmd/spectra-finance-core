@@ -416,10 +416,63 @@ async def create_executor(
             "formatted_output": f"Error creating {executor_type}: {exc}",
         }
 
+    executor_id = result.get("executor_id") or result.get("id")
+
+    if settings.agent_slug == "spectra":
+        if not executor_id:
+            error = (
+                "Spectra execution result is ambiguous: Hummingbot returned "
+                "success without an executor_id. Capital remains COMMITTED; "
+                "do not retry blindly."
+            )
+            logger.error("%s", error)
+            return {
+                "action": "create",
+                "executor_type": executor_type,
+                "error": error,
+                "result": result,
+                "formatted_output": f"Error creating {executor_type}: {error}",
+            }
+
+        try:
+            reconciled = get_capital_governor().reconcile_execution(
+                proposal_id=str(spectra_proposal_id or ""),
+                executor_id=str(executor_id),
+            )
+        except Exception as exc:
+            error = (
+                "Spectra executor was created but receipt reconciliation failed; "
+                f"executor_id={executor_id}. Capital remains protected. "
+                f"Do not retry blindly: {exc}"
+            )
+            logger.exception("%s", error)
+            return {
+                "action": "create",
+                "executor_id": executor_id,
+                "executor_type": executor_type,
+                "error": error,
+                "result": result,
+                "formatted_output": f"Error reconciling {executor_type}: {error}",
+            }
+
+        if not reconciled:
+            error = (
+                "Spectra executor was created but its committed capital claim "
+                f"could not be reconciled; executor_id={executor_id}. "
+                "Do not retry blindly."
+            )
+            logger.error("%s", error)
+            return {
+                "action": "create",
+                "executor_id": executor_id,
+                "executor_type": executor_type,
+                "error": error,
+                "result": result,
+                "formatted_output": f"Error reconciling {executor_type}: {error}",
+            }
+
     if save_as_default:
         executor_preferences.update_defaults(executor_type, config)
-
-    executor_id = result.get("executor_id") or result.get("id")
 
     formatted = (
         "Executor created successfully!\n\n"
