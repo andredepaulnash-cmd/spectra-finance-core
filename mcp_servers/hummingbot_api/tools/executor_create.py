@@ -527,7 +527,11 @@ async def create_executor(
     (``validate_executor_config``) existed only because the config was an opaque dict.
     """
     account = account_name or "master_account"
-    tag = controller_id or "main"
+    tag = (
+        "spectra"
+        if settings.agent_slug == "spectra"
+        else (controller_id or "main")
+    )
 
     merged_config = executor_preferences.merge_with_defaults(executor_type, config)
     merged_config["type"] = executor_type

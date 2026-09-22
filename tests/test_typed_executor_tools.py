@@ -652,12 +652,14 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
             limit_price=80,
             total_amount_quote=50,
             leverage=1,
+            controller_id="wrong-controller",
             spectra_proposal_id="bridge-1",
             spectra_intent="ENTRY",
         )
     )
 
     assert len(calls) == 1
+    assert calls[0]["controller_id"] == "spectra"
     assert result["executor_id"] == "exec-spectra-1"
 
     # COMMITTED was already asserted inside the fake Hummingbot call.
