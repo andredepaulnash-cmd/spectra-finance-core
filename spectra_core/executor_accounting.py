@@ -9,6 +9,8 @@ precision.
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from .position_hold_accounting import PositionHoldAccounting
+
 from .models import (
     ExecutionProvenance,
     ExecutorAccountingObservation,
@@ -256,6 +258,97 @@ def assess_recovery_exposure(
         return authorized_fallback("DCA_UNKNOWN_STATUS")
 
     return authorized_fallback("UNSUPPORTED_EXECUTOR_TYPE")
+
+def reconcile_recovery_exposure_with_position_holds(
+    observation: ExecutorAccountingObservation,
+    provenance: ExecutionProvenance,
+    holds: tuple[PositionHoldAccounting, ...],
+) -> RecoveryExposureAssessment:
+    """Resolve a POSITION_HOLD recovery claim from exact persisted hold data.
+
+    Only a uniquely matching, singleton-owned long residual is allowed to
+    reduce the conservative authorized recovery claim.
+
+    Missing, duplicated, aggregated, cross-pair, short, or internally
+    inconsistent hold evidence remains fail-closed at authorized_quote.
+    """
+    base = assess_recovery_exposure(
+        observation,
+        provenance,
+    )
+
+    if not base.requires_position_hold_reconciliation:
+        return base
+
+    authorized = provenance.authorized_quote
+    executor_id = provenance.executor_id
+
+    def fallback(source: str) -> RecoveryExposureAssessment:
+        return RecoveryExposureAssessment(
+            executor_id=executor_id,
+            exposure_quote=authorized,
+            source=source,
+            conservative=True,
+            requires_position_hold_reconciliation=True,
+        )
+
+    matching = tuple(
+        hold
+        for hold in holds
+        if executor_id in hold.executor_ids
+    )
+
+    if not matching:
+        return fallback("POSITION_HOLD_MISSING")
+
+    if len(matching) != 1:
+        return fallback("POSITION_HOLD_MULTIPLE_MATCHES")
+
+    hold = matching[0]
+
+    if hold.trading_pair != provenance.pair.strip().upper():
+        return fallback("POSITION_HOLD_PAIR_MISMATCH")
+
+    # A shared PositionHold aggregates multiple executors. Its residual cannot
+    # be allocated back to one recovery executor without inventing a split.
+    if hold.executor_ids != (executor_id,):
+        return fallback("POSITION_HOLD_AGGREGATED_OWNERSHIP")
+
+    buy_base = hold.buy_amount_base
+    buy_quote = hold.buy_amount_quote
+    sell_base = hold.sell_amount_base
+    sell_quote = hold.sell_amount_quote
+
+    # Exact flat hold: nothing remains economically open.
+    if (
+        buy_base == Decimal("0")
+        and buy_quote == Decimal("0")
+        and sell_base == Decimal("0")
+        and sell_quote == Decimal("0")
+    ):
+        return RecoveryExposureAssessment(
+            executor_id=executor_id,
+            exposure_quote=Decimal("0"),
+            source="POSITION_HOLD_EXACT_FLAT",
+        )
+
+    # Phase-2 Kraken RECOVERY is spot-long capital. After Hummingbot settles
+    # matched volume, an exact long residual should live entirely on the buy
+    # side. Any sell-side residue or zero-cost positive base is ambiguous.
+    if (
+        buy_base > Decimal("0")
+        and buy_quote > Decimal("0")
+        and sell_base == Decimal("0")
+        and sell_quote == Decimal("0")
+    ):
+        return RecoveryExposureAssessment(
+            executor_id=executor_id,
+            exposure_quote=buy_quote,
+            source="POSITION_HOLD_EXACT_LONG_BASIS",
+        )
+
+    return fallback("POSITION_HOLD_UNRESOLVED_SHAPE")
+
 
 def executor_accounting_observation_from_raw(
     raw: Any,
