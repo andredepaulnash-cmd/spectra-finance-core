@@ -78,6 +78,7 @@ def load_capital_policy() -> CapitalPolicy:
         "max_recovery_quote",
         "max_leverage",
         "reservation_ttl_seconds",
+        "position_hold_snapshot_ttl_seconds",
     )
 
     missing = [name for name in required if name not in raw]
@@ -93,6 +94,12 @@ def load_capital_policy() -> CapitalPolicy:
                 "reservation_ttl_seconds must be an integer"
             )
 
+        hold_ttl = raw["position_hold_snapshot_ttl_seconds"]
+        if not isinstance(hold_ttl, int) or isinstance(hold_ttl, bool):
+            raise ValueError(
+                "position_hold_snapshot_ttl_seconds must be an integer"
+            )
+
         policy = CapitalPolicy(
             reserve_floor_quote=Decimal(str(raw["reserve_floor_quote"])),
             max_total_committed_quote=Decimal(
@@ -103,6 +110,7 @@ def load_capital_policy() -> CapitalPolicy:
             max_recovery_quote=Decimal(str(raw["max_recovery_quote"])),
             max_leverage=Decimal(str(raw["max_leverage"])),
             reservation_ttl_seconds=ttl,
+            position_hold_snapshot_ttl_seconds=hold_ttl,
         )
 
         validate_capital_policy(policy)

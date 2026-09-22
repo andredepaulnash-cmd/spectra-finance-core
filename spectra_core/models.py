@@ -36,6 +36,7 @@ class CapitalPolicy:
     max_recovery_quote: Decimal
     max_leverage: Decimal = Decimal("1")
     reservation_ttl_seconds: int = 120
+    position_hold_snapshot_ttl_seconds: int = 30
 
 
 @dataclass(frozen=True)

@@ -47,6 +47,15 @@ def validate_capital_policy(policy: CapitalPolicy) -> None:
             "reservation_ttl_seconds must be a positive integer"
         )
 
+    if (
+        not isinstance(policy.position_hold_snapshot_ttl_seconds, int)
+        or isinstance(policy.position_hold_snapshot_ttl_seconds, bool)
+        or policy.position_hold_snapshot_ttl_seconds <= 0
+    ):
+        raise ValueError(
+            "position_hold_snapshot_ttl_seconds must be a positive integer"
+        )
+
 
 class CapitalGovernor:
     """

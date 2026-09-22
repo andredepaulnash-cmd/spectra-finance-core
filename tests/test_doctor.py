@@ -498,6 +498,7 @@ def _write_spectra_policy(path):
                 "max_recovery_quote": "100",
                 "max_leverage": "1",
                 "reservation_ttl_seconds": 120,
+                "position_hold_snapshot_ttl_seconds": 30,
             }
         )
     )

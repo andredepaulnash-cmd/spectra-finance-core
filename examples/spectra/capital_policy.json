@@ -5,5 +5,6 @@
   "max_position_quote": "0",
   "max_recovery_quote": "0",
   "max_leverage": "1",
-  "reservation_ttl_seconds": 120
+  "reservation_ttl_seconds": 120,
+  "position_hold_snapshot_ttl_seconds": 30
 }

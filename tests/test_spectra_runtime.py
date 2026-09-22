@@ -22,6 +22,7 @@ def _valid_policy():
         "max_recovery_quote": "100",
         "max_leverage": "1",
         "reservation_ttl_seconds": 120,
+        "position_hold_snapshot_ttl_seconds": 30,
     }
 
 
@@ -190,3 +191,50 @@ def test_load_capital_policy_validates_without_creating_db(
     assert not db_path.exists()
 
     reset_runtime_cache()
+
+
+def test_capital_policy_requires_position_hold_snapshot_ttl(
+    monkeypatch,
+    tmp_path,
+):
+    policy = _valid_policy()
+    del policy["position_hold_snapshot_ttl_seconds"]
+
+    (tmp_path / "capital_policy.json").write_text(
+        json.dumps(policy)
+    )
+
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(tmp_path))
+    reset_runtime_cache()
+
+    with pytest.raises(
+        RuntimeError,
+        match="position_hold_snapshot_ttl_seconds",
+    ):
+        load_capital_policy()
+
+    reset_runtime_cache()
+
+
+def test_position_hold_snapshot_ttl_must_be_positive_integer(
+    monkeypatch,
+    tmp_path,
+):
+    for bad_value in (0, -1, True):
+        policy = _valid_policy()
+        policy["position_hold_snapshot_ttl_seconds"] = bad_value
+
+        (tmp_path / "capital_policy.json").write_text(
+            json.dumps(policy)
+        )
+
+        monkeypatch.setenv("SPECTRA_STATE_DIR", str(tmp_path))
+        reset_runtime_cache()
+
+        with pytest.raises(
+            RuntimeError,
+            match="position_hold_snapshot_ttl_seconds",
+        ):
+            load_capital_policy()
+
+        reset_runtime_cache()
