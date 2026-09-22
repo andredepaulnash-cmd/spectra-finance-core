@@ -1156,7 +1156,28 @@ class CapitalGovernor:
                     else Decimal(previous["cum_fees_quote"])
                 )
 
-                if observation.filled_amount_quote < previous_filled:
+                # GridExecutor changes the meaning of filled_amount_quote when
+                # it terminates with POSITION_HOLD: while live it includes the
+                # current open position plus matched volume, but POSITION_HOLD
+                # reports matched volume only. That legal terminal handoff can
+                # therefore make the raw Hummingbot value move backwards.
+                #
+                # Preserve our monotonic accounting high-water mark for that
+                # one proven transition. We cannot reconstruct any additional
+                # terminal trading volume from the rebased field safely, so its
+                # filled delta is zero. All other regressions remain fatal.
+                grid_position_hold_rebase = (
+                    previous is not None
+                    and executor_type == "grid_executor"
+                    and status == "TERMINATED"
+                    and observation.close_type == "POSITION_HOLD"
+                    and observation.filled_amount_quote < previous_filled
+                )
+
+                if (
+                    observation.filled_amount_quote < previous_filled
+                    and not grid_position_hold_rebase
+                ):
                     raise RuntimeError(
                         "filled_amount_quote moved backwards for "
                         f"{executor_id}"
@@ -1167,16 +1188,20 @@ class CapitalGovernor:
                         f"cum_fees_quote moved backwards for {executor_id}"
                     )
 
-                filled_delta = (
-                    observation.filled_amount_quote - previous_filled
+                accounting_filled = (
+                    previous_filled
+                    if grid_position_hold_rebase
+                    else observation.filled_amount_quote
                 )
+
+                filled_delta = accounting_filled - previous_filled
                 fee_delta = observation.cum_fees_quote - previous_fees
 
                 comparable = (
                     executor_type,
                     status,
                     observation.close_type,
-                    observation.filled_amount_quote,
+                    accounting_filled,
                     observation.cum_fees_quote,
                     observation.position_size_quote,
                     observation.net_pnl_quote,
@@ -1216,7 +1241,7 @@ class CapitalGovernor:
                             intent=IntentKind(str(provenance["intent"])),
                             filled_delta_quote=ZERO,
                             fee_delta_quote=ZERO,
-                            cumulative_filled_quote=observation.filled_amount_quote,
+                            cumulative_filled_quote=accounting_filled,
                             cumulative_fees_quote=observation.cum_fees_quote,
                             position_size_quote=observation.position_size_quote,
                             status=status,
@@ -1253,7 +1278,7 @@ class CapitalGovernor:
                         executor_type,
                         status,
                         observation.close_type,
-                        str(observation.filled_amount_quote),
+                        str(accounting_filled),
                         str(observation.cum_fees_quote),
                         str(filled_delta),
                         str(fee_delta),
@@ -1285,7 +1310,7 @@ class CapitalGovernor:
                     intent=IntentKind(str(provenance["intent"])),
                     filled_delta_quote=filled_delta,
                     fee_delta_quote=fee_delta,
-                    cumulative_filled_quote=observation.filled_amount_quote,
+                    cumulative_filled_quote=accounting_filled,
                     cumulative_fees_quote=observation.cum_fees_quote,
                     position_size_quote=observation.position_size_quote,
                     status=status,

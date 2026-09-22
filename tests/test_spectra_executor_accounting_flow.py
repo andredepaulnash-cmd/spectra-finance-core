@@ -155,3 +155,63 @@ def test_fetch_and_reconcile_fails_closed_on_wrong_executor(tmp_path):
         ).fetchone()[0]
 
     assert count == 0
+
+
+def test_grid_position_hold_counter_rebase_preserves_high_water(tmp_path):
+    from spectra_core.models import ExecutorAccountingObservation
+
+    g = governor(tmp_path)
+    prepare_recovery_executor(g)
+
+    running = ExecutorAccountingObservation(
+        executor_id="exec-flow-1",
+        executor_type="grid_executor",
+        status="RUNNING",
+        filled_amount_quote=D("12.50"),
+        cum_fees_quote=D("0.025"),
+        position_size_quote=D("9.75"),
+    )
+
+    first = g.reconcile_executor_accounting(running)
+
+    assert first.cumulative_filled_quote == D("12.50")
+    assert first.filled_delta_quote == D("12.50")
+
+    # GridExecutor POSITION_HOLD rebases filled_amount_quote to matched
+    # volume only, so the raw value may legitimately be lower here.
+    held = ExecutorAccountingObservation(
+        executor_id="exec-flow-1",
+        executor_type="grid_executor",
+        status="TERMINATED",
+        close_type="POSITION_HOLD",
+        filled_amount_quote=D("2.75"),
+        cum_fees_quote=D("0.030"),
+        position_size_quote=D("9.75"),
+    )
+
+    second = g.reconcile_executor_accounting(held)
+
+    assert second.cumulative_filled_quote == D("12.50")
+    assert second.filled_delta_quote == D("0")
+    assert second.fee_delta_quote == D("0.005")
+    assert second.status == "TERMINATED"
+    assert second.close_type == "POSITION_HOLD"
+
+    # Replaying the same terminal observation remains semantically idempotent.
+    third = g.reconcile_executor_accounting(held)
+
+    assert third.cumulative_filled_quote == D("12.50")
+    assert third.filled_delta_quote == D("0")
+    assert third.fee_delta_quote == D("0")
+
+    with g._connect() as conn:
+        count = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM executor_accounting_observations
+            WHERE executor_id = ?
+            """,
+            ("exec-flow-1",),
+        ).fetchone()[0]
+
+    assert count == 2
