@@ -22,10 +22,14 @@ a live API server. See ``mcp_servers/TOOL_STYLE.md``.
 """
 
 import logging
+from decimal import Decimal
 from typing import Any
 
 from mcp_servers.hummingbot_api.executor_preferences import executor_preferences
 from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
+from mcp_servers.hummingbot_api.settings import settings
+from spectra_core import CapitalProposal, IntentKind
+from spectra_core.runtime import get_capital_governor
 
 logger = logging.getLogger("hummingbot-mcp")
 
@@ -236,6 +240,94 @@ async def _trading_rule_violation(
     return None
 
 
+def _authorize_spectra_execution(
+    executor_type: str,
+    config: dict[str, Any],
+    proposal_id: str | None,
+    intent: str | None,
+) -> str | None:
+    """Commit the exact Spectra capital claim before any external mutation."""
+    if settings.agent_slug != "spectra":
+        return None
+
+    if executor_type not in {"grid_executor", "dca_executor"}:
+        return (
+            f"Spectra execution is not enabled for {executor_type}; "
+            "only Kraken spot grid/DCA are authorized in this phase"
+        )
+
+    if not (proposal_id or "").strip():
+        return "Spectra execution requires a capital proposal_id"
+
+    if not (intent or "").strip():
+        return "Spectra execution requires a capital intent"
+
+    connector = str(config.get("connector_name") or "").strip().lower()
+    if connector != "kraken":
+        return (
+            f"Spectra live execution is Kraken spot only; "
+            f"connector {connector!r} is not authorized"
+        )
+
+    pair = str(config.get("trading_pair") or "").strip()
+    if not pair:
+        return "Spectra execution requires a trading_pair"
+
+    try:
+        leverage = Decimal(str(config.get("leverage", 1)))
+    except Exception:
+        return "Spectra execution leverage could not be parsed"
+
+    if leverage != Decimal("1"):
+        return "Spectra Kraken spot execution requires leverage=1"
+
+    # Make the backend payload explicit. Grid's backend default is not allowed
+    # to decide leverage for a Spectra spot trade.
+    config["leverage"] = 1
+
+    try:
+        if executor_type == "grid_executor":
+            amount_quote = Decimal(str(config["total_amount_quote"]))
+        else:
+            amounts = config.get("amounts_quote") or []
+            amount_quote = sum(
+                (Decimal(str(value)) for value in amounts),
+                Decimal("0"),
+            )
+    except Exception:
+        return "Spectra execution quote amount could not be determined"
+
+    if amount_quote <= 0:
+        return "Spectra execution quote amount must be positive"
+
+    try:
+        intent_kind = IntentKind(str(intent).strip().upper())
+    except ValueError:
+        return f"Unknown Spectra capital intent: {intent!r}"
+
+    proposal = CapitalProposal(
+        proposal_id=str(proposal_id).strip(),
+        pair=pair,
+        intent=intent_kind,
+        amount_quote=amount_quote,
+        leverage=leverage,
+    )
+
+    try:
+        governor = get_capital_governor()
+        committed = governor.commit_if_matches(proposal)
+    except Exception as exc:
+        return f"Spectra capital governor unavailable: {exc}"
+
+    if not committed:
+        return (
+            "Spectra capital claim refused: missing, expired, already used, "
+            "or its pair/amount/intent/leverage does not match this execution"
+        )
+
+    return None
+
+
 async def create_executor(
     client: Any,
     executor_type: str,
@@ -244,6 +336,8 @@ async def create_executor(
     account_name: str | None = None,
     controller_id: str | None = None,
     save_as_default: bool = False,
+    spectra_proposal_id: str | None = None,
+    spectra_intent: str | None = None,
 ) -> dict[str, Any]:
     """Merge saved defaults, stamp the type, and create the executor.
 
@@ -280,6 +374,21 @@ async def create_executor(
             "executor_type": executor_type,
             "error": violation,
             "formatted_output": f"Error creating {executor_type}: {violation}",
+        }
+
+    spectra_error = _authorize_spectra_execution(
+        executor_type,
+        merged_config,
+        spectra_proposal_id,
+        spectra_intent,
+    )
+    if spectra_error:
+        logger.warning("create_%s refused by Spectra Core: %s", executor_type, spectra_error)
+        return {
+            "action": "create",
+            "executor_type": executor_type,
+            "error": spectra_error,
+            "formatted_output": f"Error creating {executor_type}: {spectra_error}",
         }
 
     try:
@@ -412,6 +521,8 @@ async def create_grid_executor(
     account_name: str | None = None,
     controller_id: str | None = None,
     save_as_default: bool = False,
+    spectra_proposal_id: str | None = None,
+    spectra_intent: str | None = None,
 ) -> dict[str, Any]:
     """Run a grid of limit orders across a price range.
 
@@ -471,6 +582,8 @@ async def create_grid_executor(
         account_name=account_name,
         controller_id=controller_id,
         save_as_default=save_as_default,
+        spectra_proposal_id=spectra_proposal_id,
+        spectra_intent=spectra_intent,
     )
 
 
@@ -493,6 +606,8 @@ async def create_dca_executor(
     account_name: str | None = None,
     controller_id: str | None = None,
     save_as_default: bool = False,
+    spectra_proposal_id: str | None = None,
+    spectra_intent: str | None = None,
 ) -> dict[str, Any]:
     """Average into a position over a ladder of price levels.
 
@@ -539,6 +654,8 @@ async def create_dca_executor(
         account_name=account_name,
         controller_id=controller_id,
         save_as_default=save_as_default,
+        spectra_proposal_id=spectra_proposal_id,
+        spectra_intent=spectra_intent,
     )
 
 

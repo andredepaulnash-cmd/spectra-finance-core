@@ -514,3 +514,141 @@ def test_saving_a_partial_barrier_updates_the_stored_block_rather_than_truncatin
     stored = shipped_preferences.get_defaults("grid_executor")["triple_barrier_config"]
     assert stored["take_profit"] == 0.005
     assert stored["open_order_type"] == 3, "the untouched key must survive the save"
+
+
+def _spectra_bridge_governor(tmp_path):
+    from decimal import Decimal as D
+    from spectra_core import CapitalGovernor, CapitalPolicy
+
+    return CapitalGovernor(
+        tmp_path / "spectra-bridge.sqlite3",
+        CapitalPolicy(
+            reserve_floor_quote=D("0"),
+            max_total_committed_quote=D("500"),
+            max_pair_quote=D("500"),
+            max_position_quote=D("500"),
+            max_recovery_quote=D("500"),
+            max_leverage=D("1"),
+        ),
+    )
+
+
+def test_spectra_without_claim_never_touches_hummingbot(monkeypatch):
+    client = _RecordingClient()
+
+    monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            client,
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            leverage=1,
+        )
+    )
+
+    assert client.calls == []
+    assert "proposal_id" in result["error"]
+
+
+def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
+    from decimal import Decimal as D
+    from spectra_core import (
+        CapitalProposal,
+        CapitalSnapshot,
+        DecisionStatus,
+        IntentKind,
+    )
+
+    g = _spectra_bridge_governor(tmp_path)
+
+    claim = CapitalProposal(
+        proposal_id="bridge-1",
+        pair="BTC-USD",
+        intent=IntentKind.ENTRY,
+        amount_quote=D("50"),
+        leverage=D("1"),
+    )
+
+    assert g.reserve(
+        claim,
+        CapitalSnapshot(free_quote=D("500")),
+    ).status == DecisionStatus.RESERVED
+
+    calls = []
+
+    class _Client:
+        class _Executors:
+            @staticmethod
+            async def create_executor(executor_config, account_name, controller_id):
+                # This assertion executes INSIDE the fake external call.
+                # Therefore COMMITTED must already be durable.
+                assert (
+                    g.get_decision("bridge-1").status
+                    == DecisionStatus.COMMITTED
+                )
+
+                calls.append(
+                    {
+                        "config": executor_config,
+                        "account_name": account_name,
+                        "controller_id": controller_id,
+                    }
+                )
+                return {"executor_id": "exec-spectra-1"}
+
+        executors = _Executors()
+
+    monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+    monkeypatch.setattr(executor_create, "get_capital_governor", lambda: g)
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            _Client(),
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            leverage=1,
+            spectra_proposal_id="bridge-1",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert len(calls) == 1
+    assert result["executor_id"] == "exec-spectra-1"
+    assert g.get_decision("bridge-1").status == DecisionStatus.COMMITTED
+
+
+def test_non_spectra_executor_keeps_existing_behavior(monkeypatch):
+    client = _RecordingClient()
+
+    monkeypatch.setattr(
+        executor_create.settings,
+        "agent_slug",
+        "adaptive_grid_trader",
+    )
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            client,
+            connector_name="binance",
+            trading_pair="SOL-USDT",
+            side=1,
+            start_price=140,
+            end_price=150,
+            limit_price=138,
+            total_amount_quote=50,
+        )
+    )
+
+    assert len(client.calls) == 1
+    assert result["executor_id"] == "exec-1"

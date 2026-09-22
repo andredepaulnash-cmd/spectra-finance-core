@@ -852,6 +852,8 @@ async def create_grid_executor(
     account_name: str | None = None,
     controller_id: str | None = None,
     save_as_default: bool = False,
+    spectra_proposal_id: str | None = None,
+    spectra_intent: str | None = None,
 ) -> str:
     """Run a grid of limit orders across a price range. Spends real funds.
 
@@ -953,6 +955,8 @@ async def create_grid_executor(
         account_name=account_name,
         controller_id=controller_id,
         save_as_default=save_as_default,
+        spectra_proposal_id=spectra_proposal_id,
+        spectra_intent=spectra_intent,
     )
     return result.get("formatted_output", str(result))
 
@@ -975,6 +979,8 @@ async def create_dca_executor(
     account_name: str | None = None,
     controller_id: str | None = None,
     save_as_default: bool = False,
+    spectra_proposal_id: str | None = None,
+    spectra_intent: str | None = None,
 ) -> str:
     """Average into a position over a ladder of price levels. Spends real funds.
 
@@ -1039,6 +1045,8 @@ async def create_dca_executor(
         account_name=account_name,
         controller_id=controller_id,
         save_as_default=save_as_default,
+        spectra_proposal_id=spectra_proposal_id,
+        spectra_intent=spectra_intent,
     )
     return result.get("formatted_output", str(result))
 
