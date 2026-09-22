@@ -1,0 +1,627 @@
+from __future__ import annotations
+
+import sqlite3
+import time
+from decimal import Decimal
+from pathlib import Path
+
+from .models import (
+    CapitalDecision,
+    CapitalPolicy,
+    CapitalProposal,
+    CapitalSnapshot,
+    DecisionStatus,
+    IntentKind,
+)
+
+
+ZERO = Decimal("0")
+
+
+class CapitalGovernor:
+    """
+    Deterministic capital authorization boundary.
+
+    This component does not place orders. It decides whether capital
+    may be reserved for a proposal and records that decision atomically.
+    """
+
+    def __init__(self, db_path: str | Path, policy: CapitalPolicy):
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.policy = policy
+        self._validate_policy()
+        self._initialize()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(
+            self.db_path,
+            timeout=5,
+            isolation_level=None,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=FULL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        return conn
+
+    def _initialize(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS capital_reservations (
+                    proposal_id TEXT PRIMARY KEY,
+                    pair TEXT NOT NULL,
+                    intent TEXT NOT NULL,
+                    amount_quote TEXT NOT NULL,
+                    leverage TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    available_after_quote TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_capital_reservations_status_pair
+                ON capital_reservations(status, pair)
+                """
+            )
+
+    def _validate_policy(self) -> None:
+        p = self.policy
+
+        values = (
+            p.reserve_floor_quote,
+            p.max_total_committed_quote,
+            p.max_pair_quote,
+            p.max_position_quote,
+            p.max_recovery_quote,
+        )
+
+        if any(value < ZERO for value in values):
+            raise ValueError("capital policy limits cannot be negative")
+
+        if p.max_leverage <= ZERO:
+            raise ValueError("max_leverage must be positive")
+
+        if (
+            not isinstance(p.reservation_ttl_seconds, int)
+            or isinstance(p.reservation_ttl_seconds, bool)
+            or p.reservation_ttl_seconds <= 0
+        ):
+            raise ValueError(
+                "reservation_ttl_seconds must be a positive integer"
+            )
+
+    @staticmethod
+    def _sum_amounts(rows) -> Decimal:
+        return sum(
+            (Decimal(row["amount_quote"]) for row in rows),
+            ZERO,
+        )
+
+    def _reserved(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        pair: str | None = None,
+        intent: IntentKind | None = None,
+    ) -> Decimal:
+        sql = """
+            SELECT amount_quote
+            FROM capital_reservations
+            WHERE status = ?
+        """
+
+        params: list[str] = [DecisionStatus.RESERVED.value]
+
+        if pair is not None:
+            sql += " AND pair = ?"
+            params.append(pair)
+
+        if intent is not None:
+            sql += " AND intent = ?"
+            params.append(intent.value)
+
+        rows = conn.execute(sql, params).fetchall()
+        return self._sum_amounts(rows)
+
+    def _expire_stale(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        now: float | None = None,
+    ) -> int:
+        current_time = time.time() if now is None else now
+        cutoff = (
+            current_time
+            - self.policy.reservation_ttl_seconds
+        )
+
+        cursor = conn.execute(
+            """
+            UPDATE capital_reservations
+            SET
+                status = ?,
+                reason = ?,
+                updated_at = ?
+            WHERE status = ?
+              AND created_at <= ?
+            """,
+            (
+                DecisionStatus.EXPIRED.value,
+                "reservation lease expired",
+                current_time,
+                DecisionStatus.RESERVED.value,
+                cutoff,
+            ),
+        )
+
+        return cursor.rowcount
+
+    def _protected(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        pair: str | None = None,
+        intent: IntentKind | None = None,
+    ) -> Decimal:
+        sql = """
+            SELECT amount_quote
+            FROM capital_reservations
+            WHERE status IN (?, ?)
+        """
+
+        params: list[str] = [
+            DecisionStatus.RESERVED.value,
+            DecisionStatus.COMMITTED.value,
+        ]
+
+        if pair is not None:
+            sql += " AND pair = ?"
+            params.append(pair)
+
+        if intent is not None:
+            sql += " AND intent = ?"
+            params.append(intent.value)
+
+        rows = conn.execute(sql, params).fetchall()
+        return self._sum_amounts(rows)
+
+    @staticmethod
+    def _decision_from_row(row: sqlite3.Row) -> CapitalDecision:
+        active = row["status"] in {
+            DecisionStatus.RESERVED.value,
+            DecisionStatus.COMMITTED.value,
+        }
+
+        return CapitalDecision(
+            proposal_id=row["proposal_id"],
+            status=DecisionStatus(row["status"]),
+            reason=row["reason"],
+            reserved_quote=(
+                Decimal(row["amount_quote"])
+                if active
+                else ZERO
+            ),
+            available_after_quote=Decimal(
+                row["available_after_quote"]
+            ),
+        )
+
+    def reserve(
+        self,
+        proposal: CapitalProposal,
+        snapshot: CapitalSnapshot,
+    ) -> CapitalDecision:
+        pair = proposal.pair.strip().upper()
+
+        if not proposal.proposal_id.strip():
+            raise ValueError("proposal_id is required")
+
+        if not pair:
+            raise ValueError("pair is required")
+
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+
+            try:
+                self._expire_stale(conn)
+
+                existing = conn.execute(
+                    """
+                    SELECT *
+                    FROM capital_reservations
+                    WHERE proposal_id = ?
+                    """,
+                    (proposal.proposal_id,),
+                ).fetchone()
+
+                # Idempotency:
+                # the same proposal_id can never reserve twice.
+                if existing is not None:
+                    conn.commit()
+                    return self._decision_from_row(existing)
+
+                active_total = self._protected(conn)
+
+                active_pair = self._protected(
+                    conn,
+                    pair=pair,
+                )
+
+                active_recovery = self._protected(
+                    conn,
+                    intent=IntentKind.RECOVERY,
+                )
+
+                amount = proposal.amount_quote
+
+                available_after = (
+                    snapshot.free_quote
+                    - active_total
+                    - amount
+                )
+
+                reason = self._rejection_reason(
+                    proposal=proposal,
+                    snapshot=snapshot,
+                    active_total=active_total,
+                    active_pair=active_pair,
+                    active_recovery=active_recovery,
+                    available_after=available_after,
+                )
+
+                if reason:
+                    status = DecisionStatus.REJECTED
+                else:
+                    status = DecisionStatus.RESERVED
+                    reason = (
+                        "authorized within deterministic "
+                        "capital envelope"
+                    )
+
+                now = time.time()
+
+                conn.execute(
+                    """
+                    INSERT INTO capital_reservations (
+                        proposal_id,
+                        pair,
+                        intent,
+                        amount_quote,
+                        leverage,
+                        status,
+                        reason,
+                        available_after_quote,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        proposal.proposal_id,
+                        pair,
+                        proposal.intent.value,
+                        str(amount),
+                        str(proposal.leverage),
+                        status.value,
+                        reason,
+                        str(available_after),
+                        now,
+                        now,
+                    ),
+                )
+
+                conn.commit()
+
+                return CapitalDecision(
+                    proposal_id=proposal.proposal_id,
+                    status=status,
+                    reason=reason,
+                    reserved_quote=(
+                        amount
+                        if status == DecisionStatus.RESERVED
+                        else ZERO
+                    ),
+                    available_after_quote=available_after,
+                )
+
+            except Exception:
+                conn.rollback()
+                raise
+
+    def _rejection_reason(
+        self,
+        *,
+        proposal: CapitalProposal,
+        snapshot: CapitalSnapshot,
+        active_total: Decimal,
+        active_pair: Decimal,
+        active_recovery: Decimal,
+        available_after: Decimal,
+    ) -> str:
+        p = self.policy
+        amount = proposal.amount_quote
+
+        # Fail closed on invalid numeric state.
+        numeric_values = {
+            "amount_quote": amount,
+            "leverage": proposal.leverage,
+            "free_quote": snapshot.free_quote,
+            "committed_quote": snapshot.committed_quote,
+            "pair_exposure_quote": snapshot.pair_exposure_quote,
+            "position_exposure_quote": snapshot.position_exposure_quote,
+            "recovery_exposure_quote": snapshot.recovery_exposure_quote,
+            "active_total": active_total,
+            "active_pair": active_pair,
+            "active_recovery": active_recovery,
+            "available_after": available_after,
+        }
+
+        for name, value in numeric_values.items():
+            if not isinstance(value, Decimal):
+                return f"{name} must be Decimal"
+            if not value.is_finite():
+                return f"{name} must be finite"
+
+        if amount <= ZERO:
+            return "amount_quote must be positive"
+
+        if proposal.leverage <= ZERO:
+            return "leverage must be positive"
+
+        if proposal.leverage > p.max_leverage:
+            return (
+                f"leverage {proposal.leverage} exceeds "
+                f"max_leverage {p.max_leverage}"
+            )
+
+        if any(
+            value < ZERO
+            for value in (
+                snapshot.free_quote,
+                snapshot.committed_quote,
+                snapshot.pair_exposure_quote,
+                snapshot.position_exposure_quote,
+                snapshot.recovery_exposure_quote,
+            )
+        ):
+            return "capital snapshot contains negative exposure/balance"
+
+        # Absolute liquidity floor.
+        if available_after < p.reserve_floor_quote:
+            return (
+                f"reserve floor breach: "
+                f"available_after={available_after}, "
+                f"floor={p.reserve_floor_quote}"
+            )
+
+        # Global committed-capital ceiling.
+        total_after = (
+            snapshot.committed_quote
+            + active_total
+            + amount
+        )
+
+        if total_after > p.max_total_committed_quote:
+            return (
+                f"total capital cap exceeded: "
+                f"{total_after} > "
+                f"{p.max_total_committed_quote}"
+            )
+
+        # Per-pair concentration ceiling.
+        pair_after = (
+            snapshot.pair_exposure_quote
+            + active_pair
+            + amount
+        )
+
+        if pair_after > p.max_pair_quote:
+            return (
+                f"pair exposure cap exceeded: "
+                f"{pair_after} > "
+                f"{p.max_pair_quote}"
+            )
+
+        # Per-position ceiling.
+        position_after = (
+            snapshot.position_exposure_quote
+            + active_pair
+            + amount
+        )
+
+        if position_after > p.max_position_quote:
+            return (
+                f"position exposure cap exceeded: "
+                f"{position_after} > "
+                f"{p.max_position_quote}"
+            )
+
+        # Recovery capital is separately bounded.
+        if proposal.intent == IntentKind.RECOVERY:
+            recovery_after = (
+                snapshot.recovery_exposure_quote
+                + active_recovery
+                + amount
+            )
+
+            if recovery_after > p.max_recovery_quote:
+                return (
+                    f"recovery budget exceeded: "
+                    f"{recovery_after} > "
+                    f"{p.max_recovery_quote}"
+                )
+
+        return ""
+
+    def release(
+        self,
+        proposal_id: str,
+        reason: str = "released",
+    ) -> bool:
+        """
+        Release an existing RESERVED proposal.
+
+        Returns True only when an active reservation was actually released.
+        """
+        return self._transition(
+            proposal_id=proposal_id,
+            target=DecisionStatus.RELEASED,
+            reason=reason,
+        )
+
+    def commit(
+        self,
+        proposal_id: str,
+        reason: str = "committed",
+    ) -> bool:
+        """
+        Durably claim a RESERVED proposal for external execution.
+
+        COMMITTED must be recorded BEFORE any external execution call.
+        It remains protected until explicit reconciliation proves that
+        Hummingbot/exchange state has absorbed the capital.
+        """
+        return self._transition(
+            proposal_id=proposal_id,
+            target=DecisionStatus.COMMITTED,
+            reason=reason,
+        )
+
+    def _transition(
+        self,
+        *,
+        proposal_id: str,
+        target: DecisionStatus,
+        reason: str,
+    ) -> bool:
+        proposal_id = proposal_id.strip()
+
+        if not proposal_id:
+            raise ValueError("proposal_id is required")
+
+        if target not in {
+            DecisionStatus.COMMITTED,
+            DecisionStatus.RELEASED,
+        }:
+            raise ValueError(
+                f"unsupported reservation transition: {target}"
+            )
+
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+
+            try:
+                cursor = conn.execute(
+                    """
+                    UPDATE capital_reservations
+                    SET
+                        status = ?,
+                        reason = ?,
+                        updated_at = ?
+                    WHERE proposal_id = ?
+                      AND status = ?
+                    """,
+                    (
+                        target.value,
+                        reason,
+                        time.time(),
+                        proposal_id,
+                        DecisionStatus.RESERVED.value,
+                    ),
+                )
+
+                conn.commit()
+                return cursor.rowcount == 1
+
+            except Exception:
+                conn.rollback()
+                raise
+
+    def reconcile(
+        self,
+        proposal_id: str,
+        reason: str = "reconciled with execution state",
+    ) -> bool:
+        """
+        Mark COMMITTED capital as RECONCILED.
+
+        Call this only after deterministic evidence confirms that the
+        corresponding Hummingbot/exchange state now accounts for it.
+        """
+        proposal_id = proposal_id.strip()
+
+        if not proposal_id:
+            raise ValueError("proposal_id is required")
+
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+
+            try:
+                cursor = conn.execute(
+                    """
+                    UPDATE capital_reservations
+                    SET
+                        status = ?,
+                        reason = ?,
+                        updated_at = ?
+                    WHERE proposal_id = ?
+                      AND status = ?
+                    """,
+                    (
+                        DecisionStatus.RECONCILED.value,
+                        reason,
+                        time.time(),
+                        proposal_id,
+                        DecisionStatus.COMMITTED.value,
+                    ),
+                )
+
+                conn.commit()
+                return cursor.rowcount == 1
+
+            except Exception:
+                conn.rollback()
+                raise
+
+    def protected_quote(self) -> Decimal:
+        """
+        Capital still protected by local Spectra accounting.
+
+        Includes RESERVED and COMMITTED rows.
+        """
+        with self._connect() as conn:
+            self._expire_stale(conn)
+            return self._protected(conn)
+
+    def active_reserved_quote(self) -> Decimal:
+        """Total capital presently held by RESERVED proposals."""
+        with self._connect() as conn:
+            return self._reserved(conn)
+
+    def get_decision(
+        self,
+        proposal_id: str,
+    ) -> CapitalDecision | None:
+        """Read the current recorded state of one proposal."""
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT *
+                FROM capital_reservations
+                WHERE proposal_id = ?
+                """,
+                (proposal_id,),
+            ).fetchone()
+
+        if row is None:
+            return None
+
+        return self._decision_from_row(row)
