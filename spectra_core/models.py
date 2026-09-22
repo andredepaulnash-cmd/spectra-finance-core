@@ -65,6 +65,9 @@ class ExecutionProvenance:
     intent: IntentKind
     authorized_quote: Decimal
     leverage: Decimal
+    account_name: str | None = None
+    connector_name: str | None = None
+    controller_id: str | None = None
 
 
 @dataclass(frozen=True)

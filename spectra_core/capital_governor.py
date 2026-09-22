@@ -228,10 +228,31 @@ class CapitalGovernor:
                     intent TEXT NOT NULL,
                     authorized_quote TEXT NOT NULL,
                     leverage TEXT NOT NULL,
+                    account_name TEXT,
+                    connector_name TEXT,
+                    controller_id TEXT,
                     created_at REAL NOT NULL
                 )
                 """
             )
+
+            provenance_columns = {
+                row["name"]
+                for row in conn.execute(
+                    "PRAGMA table_info(execution_provenance)"
+                ).fetchall()
+            }
+
+            for column_name in (
+                "account_name",
+                "connector_name",
+                "controller_id",
+            ):
+                if column_name not in provenance_columns:
+                    conn.execute(
+                        "ALTER TABLE execution_provenance "
+                        f"ADD COLUMN {column_name} TEXT"
+                    )
 
             # Upgrade existing reconciled receipts deterministically. This is
             # provenance of authorization/executor ownership, not fill data.
@@ -1107,7 +1128,10 @@ class CapitalGovernor:
                     pair,
                     intent,
                     authorized_quote,
-                    leverage
+                    leverage,
+                    account_name,
+                    connector_name,
+                    controller_id
                 FROM execution_provenance
                 WHERE proposal_id = ?
                 """,
