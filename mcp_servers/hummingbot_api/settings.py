@@ -71,6 +71,10 @@ class Settings(BaseModel):
     server_name: str = Field(default="default")
     default_account: str = Field(default="master_account")
 
+    # Host-generated Condor agent identity for this MCP seat.
+    # Empty means this process was not spawned for a bound specialist.
+    agent_slug: str = Field(default="")
+
     # Which slice of the tool surface this process registers (FEAT-066). For an
     # ACP-driven seat the mounted surface IS the permission model, so this is a
     # security boundary, not a convenience: see ``server.TOOL_PROFILES``.
@@ -130,6 +134,7 @@ def get_settings() -> Settings:
             api_username=server_config.username,
             api_password=server_config.password,
             server_name=server_config.name,
+            agent_slug=os.getenv("CONDOR_AGENT_SLUG", ""),
             connection_timeout=float(os.getenv("HUMMINGBOT_TIMEOUT", "30.0")),
             max_retries=int(os.getenv("HUMMINGBOT_MAX_RETRIES", "3")),
             retry_delay=float(os.getenv("HUMMINGBOT_RETRY_DELAY", "2.0")),

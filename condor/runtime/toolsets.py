@@ -477,6 +477,8 @@ def build_mcp_servers_for_session(
         "env": _env_entries(
             HUMMINGBOT_API_USERNAME=server["username"],
             HUMMINGBOT_API_PASSWORD=server["password"],
+            # Host-generated seat identity. This is not a model/tool argument.
+            CONDOR_AGENT_SLUG=agent_slug or "",
         ),
     }
 

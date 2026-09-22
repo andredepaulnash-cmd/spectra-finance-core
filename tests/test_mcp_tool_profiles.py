@@ -371,6 +371,70 @@ def test_a_tick_session_mounts_the_narrow_surface_on_both_servers(monkeypatch):
         assert args[args.index("--profile") + 1] == "tick"
 
 
+
+
+def test_hummingbot_child_receives_host_agent_identity(monkeypatch):
+    """The spawner, not the model, tells mcp-hummingbot which Agent owns the seat."""
+    import condor.runtime.toolsets as toolsets
+    from config_manager import ServerPermission
+
+    class _CM:
+        def get_server(self, name):
+            return {"host": "h", "port": 1, "username": "u", "password": "p"}
+
+        def has_server_access(self, user_id, name, *args, **kwargs):
+            return True
+
+        def get_server_permission(self, user_id, name):
+            return ServerPermission.OWNER
+
+        def get_accessible_servers(self, user_id):
+            return ["local"]
+
+    monkeypatch.setattr(
+        "config_manager.get_config_manager", lambda: _CM(), raising=False
+    )
+    monkeypatch.setattr(
+        "config_manager.get_effective_server", lambda *a, **k: "local", raising=False
+    )
+
+    def hummingbot_env(agent_slug):
+        servers = toolsets.build_mcp_servers_for_session(
+            42, 42, agent_slug=agent_slug
+        )
+        hb = next(server for server in servers if server["name"] == "mcp-hummingbot")
+        return {entry["name"]: entry["value"] for entry in hb["env"]}
+
+    spectra_env = hummingbot_env("spectra")
+    assert spectra_env["CONDOR_AGENT_SLUG"] == "spectra"
+
+    unbound_env = hummingbot_env(None)
+    assert "CONDOR_AGENT_SLUG" not in unbound_env
+
+
+def test_hummingbot_settings_load_host_agent_identity(monkeypatch):
+    """mcp-hummingbot consumes the identity supplied by its Condor parent."""
+    from types import SimpleNamespace
+    from mcp_servers.hummingbot_api import settings as hb_settings
+
+    monkeypatch.setattr(
+        hb_settings,
+        "_load_server_config",
+        lambda: SimpleNamespace(
+            url="http://localhost:8000",
+            username="u",
+            password="p",
+            name="local",
+        ),
+    )
+
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    assert hb_settings.get_settings().agent_slug == "spectra"
+
+    monkeypatch.delenv("CONDOR_AGENT_SLUG", raising=False)
+    assert hb_settings.get_settings().agent_slug == ""
+
+
 # ── the admin ring is the server owner's (SEC-252) ───────────────────────────
 
 
