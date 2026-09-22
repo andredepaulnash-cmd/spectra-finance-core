@@ -6,7 +6,7 @@ from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 
-from .capital_governor import CapitalGovernor
+from .capital_governor import CapitalGovernor, validate_capital_policy
 from .models import BreakerMode, CapitalPolicy
 
 
@@ -48,11 +48,10 @@ def get_breaker_mode() -> BreakerMode:
         return BreakerMode.HALTED
 
 
-@lru_cache(maxsize=1)
-def get_capital_governor() -> CapitalGovernor:
+def load_capital_policy() -> CapitalPolicy:
+    """Load and validate Spectra's capital policy without mutating state."""
     state_dir = spectra_state_dir()
     policy_path = state_dir / "capital_policy.json"
-    db_path = state_dir / "capital.sqlite3"
 
     if not policy_path.is_file():
         raise RuntimeError(
@@ -95,33 +94,33 @@ def get_capital_governor() -> CapitalGovernor:
             )
 
         policy = CapitalPolicy(
-            reserve_floor_quote=Decimal(
-                str(raw["reserve_floor_quote"])
-            ),
+            reserve_floor_quote=Decimal(str(raw["reserve_floor_quote"])),
             max_total_committed_quote=Decimal(
                 str(raw["max_total_committed_quote"])
             ),
-            max_pair_quote=Decimal(
-                str(raw["max_pair_quote"])
-            ),
-            max_position_quote=Decimal(
-                str(raw["max_position_quote"])
-            ),
-            max_recovery_quote=Decimal(
-                str(raw["max_recovery_quote"])
-            ),
-            max_leverage=Decimal(
-                str(raw["max_leverage"])
-            ),
+            max_pair_quote=Decimal(str(raw["max_pair_quote"])),
+            max_position_quote=Decimal(str(raw["max_position_quote"])),
+            max_recovery_quote=Decimal(str(raw["max_recovery_quote"])),
+            max_leverage=Decimal(str(raw["max_leverage"])),
             reservation_ttl_seconds=ttl,
         )
 
-        return CapitalGovernor(db_path, policy)
+        validate_capital_policy(policy)
+        return policy
 
     except Exception as exc:
         raise RuntimeError(
             f"Spectra capital policy is invalid: {policy_path}: {exc}"
         ) from exc
+
+
+@lru_cache(maxsize=1)
+def get_capital_governor() -> CapitalGovernor:
+    state_dir = spectra_state_dir()
+    db_path = state_dir / "capital.sqlite3"
+    policy = load_capital_policy()
+
+    return CapitalGovernor(db_path, policy)
 
 
 def reset_runtime_cache() -> None:

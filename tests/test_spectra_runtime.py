@@ -8,6 +8,7 @@ from spectra_core.models import BreakerMode
 from spectra_core.runtime import (
     get_breaker_mode,
     get_capital_governor,
+    load_capital_policy,
     reset_runtime_cache,
 )
 
@@ -135,3 +136,57 @@ def test_missing_breaker_state_is_halted(
     )
 
     assert get_breaker_mode() == BreakerMode.HALTED
+
+
+
+def test_load_capital_policy_is_read_only(monkeypatch, tmp_path):
+    state_dir = tmp_path / "spectra-state"
+    state_dir.mkdir()
+
+    (state_dir / "capital_policy.json").write_text(
+        json.dumps(_valid_policy())
+    )
+
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(state_dir))
+    reset_runtime_cache()
+
+    db_path = state_dir / "capital.sqlite3"
+    assert not db_path.exists()
+
+    policy = load_capital_policy()
+
+    assert policy.reserve_floor_quote == Decimal("100")
+    assert policy.max_leverage == Decimal("1")
+    assert not db_path.exists()
+
+    reset_runtime_cache()
+
+
+def test_load_capital_policy_validates_without_creating_db(
+    monkeypatch,
+    tmp_path,
+):
+    state_dir = tmp_path / "spectra-state"
+    state_dir.mkdir()
+
+    raw = _valid_policy()
+    raw["max_leverage"] = "0"
+
+    (state_dir / "capital_policy.json").write_text(
+        json.dumps(raw)
+    )
+
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(state_dir))
+    reset_runtime_cache()
+
+    db_path = state_dir / "capital.sqlite3"
+
+    with pytest.raises(
+        RuntimeError,
+        match="max_leverage must be positive",
+    ):
+        load_capital_policy()
+
+    assert not db_path.exists()
+
+    reset_runtime_cache()

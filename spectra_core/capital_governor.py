@@ -18,6 +18,32 @@ from .models import (
 ZERO = Decimal("0")
 
 
+def validate_capital_policy(policy: CapitalPolicy) -> None:
+    """Validate capital limits without touching persistent state."""
+    values = (
+        policy.reserve_floor_quote,
+        policy.max_total_committed_quote,
+        policy.max_pair_quote,
+        policy.max_position_quote,
+        policy.max_recovery_quote,
+    )
+
+    if any(value < ZERO for value in values):
+        raise ValueError("capital policy limits cannot be negative")
+
+    if policy.max_leverage <= ZERO:
+        raise ValueError("max_leverage must be positive")
+
+    if (
+        not isinstance(policy.reservation_ttl_seconds, int)
+        or isinstance(policy.reservation_ttl_seconds, bool)
+        or policy.reservation_ttl_seconds <= 0
+    ):
+        raise ValueError(
+            "reservation_ttl_seconds must be a positive integer"
+        )
+
+
 class CapitalGovernor:
     """
     Deterministic capital authorization boundary.
@@ -83,30 +109,7 @@ class CapitalGovernor:
             )
 
     def _validate_policy(self) -> None:
-        p = self.policy
-
-        values = (
-            p.reserve_floor_quote,
-            p.max_total_committed_quote,
-            p.max_pair_quote,
-            p.max_position_quote,
-            p.max_recovery_quote,
-        )
-
-        if any(value < ZERO for value in values):
-            raise ValueError("capital policy limits cannot be negative")
-
-        if p.max_leverage <= ZERO:
-            raise ValueError("max_leverage must be positive")
-
-        if (
-            not isinstance(p.reservation_ttl_seconds, int)
-            or isinstance(p.reservation_ttl_seconds, bool)
-            or p.reservation_ttl_seconds <= 0
-        ):
-            raise ValueError(
-                "reservation_ttl_seconds must be a positive integer"
-            )
+        validate_capital_policy(self.policy)
 
     @staticmethod
     def _sum_amounts(rows) -> Decimal:
