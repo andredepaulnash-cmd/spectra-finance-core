@@ -461,6 +461,73 @@ class CapitalGovernor:
 
         return ""
 
+    def commit_if_matches(
+        self,
+        proposal: CapitalProposal,
+        reason: str = "committed for matched execution",
+    ) -> bool:
+        """Atomically verify and consume an exact RESERVED capital claim."""
+        proposal_id = proposal.proposal_id.strip()
+        pair = proposal.pair.strip().upper()
+
+        if not proposal_id:
+            raise ValueError("proposal_id is required")
+        if not pair:
+            raise ValueError("pair is required")
+
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                self._expire_stale(conn)
+
+                row = conn.execute(
+                    """
+                    SELECT *
+                    FROM capital_reservations
+                    WHERE proposal_id = ?
+                    """,
+                    (proposal_id,),
+                ).fetchone()
+
+                if row is None:
+                    conn.commit()
+                    return False
+
+                matches = (
+                    row["status"] == DecisionStatus.RESERVED.value
+                    and row["pair"] == pair
+                    and row["intent"] == proposal.intent.value
+                    and Decimal(row["amount_quote"]) == proposal.amount_quote
+                    and Decimal(row["leverage"]) == proposal.leverage
+                )
+
+                if not matches:
+                    conn.commit()
+                    return False
+
+                cursor = conn.execute(
+                    """
+                    UPDATE capital_reservations
+                    SET status = ?, reason = ?, updated_at = ?
+                    WHERE proposal_id = ?
+                      AND status = ?
+                    """,
+                    (
+                        DecisionStatus.COMMITTED.value,
+                        reason,
+                        time.time(),
+                        proposal_id,
+                        DecisionStatus.RESERVED.value,
+                    ),
+                )
+
+                conn.commit()
+                return cursor.rowcount == 1
+
+            except Exception:
+                conn.rollback()
+                raise
+
     def release(
         self,
         proposal_id: str,

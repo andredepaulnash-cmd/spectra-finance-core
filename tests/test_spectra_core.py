@@ -326,3 +326,105 @@ def test_committed_capital_stays_protected_until_reconciled(
     decision = g.get_decision("committed-old")
     assert decision is not None
     assert decision.status == DecisionStatus.RECONCILED
+
+
+def test_matching_claim_commits_atomically(tmp_path):
+    g = governor(tmp_path)
+    expected = proposal("claim-1", "50")
+
+    assert g.reserve(expected, base_snapshot()).status == DecisionStatus.RESERVED
+    assert g.commit_if_matches(expected) is True
+
+    decision = g.get_decision("claim-1")
+    assert decision is not None
+    assert decision.status == DecisionStatus.COMMITTED
+    assert decision.reserved_quote == D("50")
+    assert g.protected_quote() == D("50")
+
+
+def test_mismatched_claim_cannot_commit(tmp_path):
+    g = governor(tmp_path)
+
+    reserved = proposal("claim-2", "50", pair="BTC-USD")
+    assert g.reserve(reserved, base_snapshot()).status == DecisionStatus.RESERVED
+
+    mismatched = proposal("claim-2", "51", pair="BTC-USD")
+    assert g.commit_if_matches(mismatched) is False
+
+    decision = g.get_decision("claim-2")
+    assert decision is not None
+    assert decision.status == DecisionStatus.RESERVED
+
+
+def test_claim_matching_covers_pair_intent_and_leverage(tmp_path):
+    g = governor(tmp_path)
+
+    reserved = proposal(
+        "claim-3",
+        "50",
+        pair="BTC-USD",
+        intent=IntentKind.ENTRY,
+        leverage="1",
+    )
+    assert g.reserve(reserved, base_snapshot()).status == DecisionStatus.RESERVED
+
+    assert g.commit_if_matches(
+        proposal("claim-3", "50", pair="ETH-USD")
+    ) is False
+
+    assert g.commit_if_matches(
+        proposal("claim-3", "50", pair="BTC-USD", intent=IntentKind.PRESS)
+    ) is False
+
+    assert g.commit_if_matches(
+        proposal("claim-3", "50", pair="BTC-USD", leverage="2")
+    ) is False
+
+    assert g.get_decision("claim-3").status == DecisionStatus.RESERVED
+
+
+def test_committed_claim_cannot_be_replayed(tmp_path):
+    g = governor(tmp_path)
+    expected = proposal("claim-4", "50")
+
+    assert g.reserve(expected, base_snapshot()).status == DecisionStatus.RESERVED
+    assert g.commit_if_matches(expected) is True
+    assert g.commit_if_matches(expected) is False
+
+    assert g.get_decision("claim-4").status == DecisionStatus.COMMITTED
+
+
+def test_expired_claim_cannot_commit(tmp_path):
+    policy = CapitalPolicy(
+        reserve_floor_quote=D("0"),
+        max_total_committed_quote=D("500"),
+        max_pair_quote=D("500"),
+        max_position_quote=D("500"),
+        max_recovery_quote=D("500"),
+        max_leverage=D("1"),
+        reservation_ttl_seconds=1,
+    )
+
+    db = tmp_path / "expired-claim.sqlite3"
+    g = CapitalGovernor(db, policy)
+
+    expected = proposal("claim-expired", "50")
+
+    assert g.reserve(
+        expected,
+        CapitalSnapshot(free_quote=D("500")),
+    ).status == DecisionStatus.RESERVED
+
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            """
+            UPDATE capital_reservations
+            SET created_at = ?
+            WHERE proposal_id = ?
+            """,
+            (time.time() - 10, "claim-expired"),
+        )
+        conn.commit()
+
+    assert g.commit_if_matches(expected) is False
+    assert g.get_decision("claim-expired").status == DecisionStatus.EXPIRED
