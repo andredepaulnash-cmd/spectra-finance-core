@@ -48,6 +48,7 @@ async def build_kraken_capital_snapshot(
     *,
     account_name: str,
     trading_pair: str,
+    recovery_exposure_quote: Decimal,
     refresh: bool = True,
 ) -> CapitalSnapshot:
     """
@@ -65,11 +66,15 @@ async def build_kraken_capital_snapshot(
         USD value of the selected pair's base asset.
 
     recovery_exposure_quote:
-        Recovery provenance cannot be inferred from an exchange balance.
-        Spectra's recovery ledger supplies this later; zero is correct for the
-        initial non-recovery lane.
+        Recovery-attributed capital supplied by Spectra's provenance/accounting
+        ledger. This is a subset attribution, not additional economic exposure.
+        It must never be added to pair/position/global exchange exposure.
     """
     base, quote = _split_pair(trading_pair)
+    recovery_exposure = _decimal(
+        recovery_exposure_quote,
+        "recovery_exposure_quote",
+    )
 
     state = await client.portfolio.get_state(
         account_names=[account_name],
@@ -157,5 +162,5 @@ async def build_kraken_capital_snapshot(
         committed_quote=locked_quote + non_quote_value,
         pair_exposure_quote=pair_exposure,
         position_exposure_quote=pair_exposure,
-        recovery_exposure_quote=ZERO,
+        recovery_exposure_quote=recovery_exposure,
     )

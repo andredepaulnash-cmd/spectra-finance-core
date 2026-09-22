@@ -74,10 +74,15 @@ async def reserve_kraken_capital(
     amount = _positive_decimal(amount_quote, "amount_quote")
     intent_kind = _intent(intent)
 
+    capital_governor = governor or get_capital_governor()
+
     snapshot = await build_kraken_capital_snapshot(
         client,
         account_name=account,
         trading_pair=pair,
+        recovery_exposure_quote=(
+            capital_governor.current_recovery_exposure_quote()
+        ),
         refresh=refresh,
     )
 
@@ -89,7 +94,6 @@ async def reserve_kraken_capital(
         leverage=Decimal("1"),
     )
 
-    capital_governor = governor or get_capital_governor()
     decision = capital_governor.reserve(proposal, snapshot)
 
     return KrakenCapitalAuthorization(

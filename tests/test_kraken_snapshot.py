@@ -55,6 +55,7 @@ def test_snapshot_uses_available_usd_and_values_holdings():
             client,
             account_name="master_account",
             trading_pair="BTC-USD",
+            recovery_exposure_quote=D("0"),
         )
     )
 
@@ -89,6 +90,7 @@ def test_snapshot_fails_without_quote_balance():
                 client,
                 account_name="master_account",
                 trading_pair="BTC-USD",
+            recovery_exposure_quote=D("0"),
             )
         )
 
@@ -119,6 +121,7 @@ def test_snapshot_fails_when_nonquote_value_is_unknown():
                 client,
                 account_name="master_account",
                 trading_pair="BTC-USD",
+            recovery_exposure_quote=D("0"),
             )
         )
 
@@ -141,5 +144,43 @@ def test_snapshot_rejects_impossible_available_balance():
                 client,
                 account_name="master_account",
                 trading_pair="BTC-USD",
+            recovery_exposure_quote=D("0"),
             )
         )
+
+
+def test_recovery_attribution_does_not_inflate_economic_exposure():
+    client = Client({
+        "master_account": {
+            "kraken": [
+                {
+                    "token": "USD",
+                    "units": 500,
+                    "available_units": 500,
+                    "value": 500,
+                },
+                {
+                    "token": "BTC",
+                    "units": 0.001,
+                    "available_units": 0.001,
+                    "value": 100,
+                },
+            ]
+        }
+    })
+
+    snap = asyncio.run(
+        build_kraken_capital_snapshot(
+            client,
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            recovery_exposure_quote=D("35"),
+        )
+    )
+
+    # $35 is attribution within the existing $100 BTC exposure.
+    # It is not another $35 of economic exposure.
+    assert snap.committed_quote == D("100")
+    assert snap.pair_exposure_quote == D("100")
+    assert snap.position_exposure_quote == D("100")
+    assert snap.recovery_exposure_quote == D("35")

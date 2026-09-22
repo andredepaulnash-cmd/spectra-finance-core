@@ -1063,6 +1063,7 @@ async def _spectra_exchange_checks() -> list[Check]:
                 client,
                 account_name="master_account",
                 trading_pair="BTC-USD",
+                recovery_exposure_quote=Decimal("0"),
                 refresh=True,
             )
 
@@ -1073,7 +1074,8 @@ async def _spectra_exchange_checks() -> list[Check]:
                     (
                         f"free USD=${snapshot.free_quote}, "
                         f"pair exposure=${snapshot.pair_exposure_quote}, "
-                        f"global exposure=${snapshot.committed_quote}"
+                        f"global exposure=${snapshot.committed_quote}, "
+                        "recovery attribution=not included"
                     ),
                 )
             )

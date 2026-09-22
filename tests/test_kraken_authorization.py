@@ -139,3 +139,34 @@ def test_non_usd_quote_is_refused_before_account_read(tmp_path):
         )
 
     assert client.portfolio.calls == []
+
+
+def test_authorization_threads_governor_recovery_attribution(
+    monkeypatch,
+    tmp_path,
+):
+    g = governor(tmp_path)
+    client = usd_client(500)
+
+    monkeypatch.setattr(
+        g,
+        "current_recovery_exposure_quote",
+        lambda: D("35"),
+    )
+
+    auth = asyncio.run(
+        reserve_kraken_capital(
+            client,
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="50",
+            governor=g,
+        )
+    )
+
+    assert auth.snapshot.recovery_exposure_quote == D("35")
+    assert auth.snapshot.committed_quote == D("0")
+    assert auth.snapshot.pair_exposure_quote == D("0")
+    assert auth.snapshot.position_exposure_quote == D("0")
+    assert auth.decision.status == DecisionStatus.RESERVED
