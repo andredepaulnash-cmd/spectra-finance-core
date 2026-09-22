@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import json
+import math
 import sqlite3
 import time
 from decimal import Decimal
 from pathlib import Path
 
 from .executor_accounting import assess_recovery_exposure
+from .position_hold_accounting import (
+    PositionHoldAccounting,
+    position_hold_accounting_from_raw,
+)
 from .models import (
     CapitalDecision,
     CapitalPolicy,
@@ -163,6 +169,52 @@ class CapitalGovernor:
                 ON executor_accounting_observations(
                     executor_id,
                     observation_id
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS position_hold_snapshots (
+                    snapshot_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    account_name TEXT NOT NULL,
+                    connector_name TEXT NOT NULL,
+                    trading_pair TEXT NOT NULL,
+                    controller_id TEXT NOT NULL,
+                    observed_at REAL NOT NULL
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_position_hold_snapshots_scope
+                ON position_hold_snapshots(
+                    account_name,
+                    connector_name,
+                    trading_pair,
+                    controller_id,
+                    observed_at,
+                    snapshot_id
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS position_hold_snapshot_rows (
+                    snapshot_id INTEGER NOT NULL,
+                    hold_index INTEGER NOT NULL,
+                    buy_amount_base TEXT NOT NULL,
+                    buy_amount_quote TEXT NOT NULL,
+                    sell_amount_base TEXT NOT NULL,
+                    sell_amount_quote TEXT NOT NULL,
+                    realized_pnl_quote TEXT NOT NULL,
+                    cum_fees_quote TEXT NOT NULL,
+                    executor_ids_json TEXT NOT NULL,
+                    last_updated TEXT,
+                    PRIMARY KEY(snapshot_id, hold_index)
                 )
                 """
             )
@@ -1343,6 +1395,311 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
+
+    @staticmethod
+    def _position_hold_scope(
+        *,
+        account_name: str,
+        connector_name: str,
+        trading_pair: str,
+        controller_id: str,
+    ) -> tuple[str, str, str, str]:
+        values = {
+            "account_name": account_name,
+            "connector_name": connector_name,
+            "trading_pair": trading_pair,
+            "controller_id": controller_id,
+        }
+
+        normalized: dict[str, str] = {}
+
+        for field, value in values.items():
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{field} must be a non-empty string")
+            normalized[field] = value.strip()
+
+        normalized["trading_pair"] = normalized["trading_pair"].upper()
+
+        return (
+            normalized["account_name"],
+            normalized["connector_name"],
+            normalized["trading_pair"],
+            normalized["controller_id"],
+        )
+
+    def record_position_hold_snapshot(
+        self,
+        *,
+        account_name: str,
+        connector_name: str,
+        trading_pair: str,
+        controller_id: str,
+        holds: tuple[PositionHoldAccounting, ...],
+        observed_at: float | None = None,
+    ) -> int:
+        """Persist one successful exact-scope ACTIVE PositionHold fetch."""
+
+        scope = self._position_hold_scope(
+            account_name=account_name,
+            connector_name=connector_name,
+            trading_pair=trading_pair,
+            controller_id=controller_id,
+        )
+
+        if not isinstance(holds, tuple):
+            raise ValueError("holds must be a tuple")
+
+        if len(holds) > 1:
+            raise ValueError(
+                "exact PositionHold scope cannot contain multiple ACTIVE rows"
+            )
+
+        timestamp = time.time() if observed_at is None else observed_at
+
+        if (
+            isinstance(timestamp, bool)
+            or not isinstance(timestamp, (int, float))
+            or not math.isfinite(float(timestamp))
+            or float(timestamp) < 0
+        ):
+            raise ValueError(
+                "observed_at must be a finite non-negative timestamp"
+            )
+
+        timestamp = float(timestamp)
+
+        validated: list[PositionHoldAccounting] = []
+
+        for hold in holds:
+            if not isinstance(hold, PositionHoldAccounting):
+                raise ValueError(
+                    "holds must contain PositionHoldAccounting values"
+                )
+
+            raw = {
+                "account_name": hold.account_name,
+                "connector_name": hold.connector_name,
+                "trading_pair": hold.trading_pair,
+                "controller_id": hold.controller_id,
+                "status": hold.status,
+                "buy_amount_base": str(hold.buy_amount_base),
+                "buy_amount_quote": str(hold.buy_amount_quote),
+                "sell_amount_base": str(hold.sell_amount_base),
+                "sell_amount_quote": str(hold.sell_amount_quote),
+                "realized_pnl_quote": str(hold.realized_pnl_quote),
+                "cum_fees_quote": str(hold.cum_fees_quote),
+                "executor_ids": list(hold.executor_ids),
+                "last_updated": hold.last_updated,
+            }
+
+            validated.append(
+                position_hold_accounting_from_raw(
+                    raw,
+                    expected_account_name=scope[0],
+                    expected_connector_name=scope[1],
+                    expected_trading_pair=scope[2],
+                    expected_controller_id=scope[3],
+                )
+            )
+
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+
+            try:
+                cursor = conn.execute(
+                    """
+                    INSERT INTO position_hold_snapshots (
+                        account_name,
+                        connector_name,
+                        trading_pair,
+                        controller_id,
+                        observed_at
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (*scope, timestamp),
+                )
+
+                snapshot_id = int(cursor.lastrowid)
+
+                for hold_index, hold in enumerate(validated):
+                    conn.execute(
+                        """
+                        INSERT INTO position_hold_snapshot_rows (
+                            snapshot_id,
+                            hold_index,
+                            buy_amount_base,
+                            buy_amount_quote,
+                            sell_amount_base,
+                            sell_amount_quote,
+                            realized_pnl_quote,
+                            cum_fees_quote,
+                            executor_ids_json,
+                            last_updated
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            snapshot_id,
+                            hold_index,
+                            str(hold.buy_amount_base),
+                            str(hold.buy_amount_quote),
+                            str(hold.sell_amount_base),
+                            str(hold.sell_amount_quote),
+                            str(hold.realized_pnl_quote),
+                            str(hold.cum_fees_quote),
+                            json.dumps(
+                                list(hold.executor_ids),
+                                separators=(",", ":"),
+                            ),
+                            hold.last_updated,
+                        ),
+                    )
+
+                conn.commit()
+                return snapshot_id
+
+            except Exception:
+                conn.rollback()
+                raise
+
+    def _fresh_position_hold_snapshot(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        account_name: str,
+        connector_name: str,
+        trading_pair: str,
+        controller_id: str,
+        now: float | None = None,
+    ) -> tuple[PositionHoldAccounting, ...] | None:
+        """Return fresh validated evidence, preserving empty vs missing."""
+
+        scope = self._position_hold_scope(
+            account_name=account_name,
+            connector_name=connector_name,
+            trading_pair=trading_pair,
+            controller_id=controller_id,
+        )
+
+        current_time = time.time() if now is None else now
+
+        if (
+            isinstance(current_time, bool)
+            or not isinstance(current_time, (int, float))
+            or not math.isfinite(float(current_time))
+        ):
+            raise ValueError("now must be a finite timestamp")
+
+        current_time = float(current_time)
+
+        snapshot = conn.execute(
+            """
+            SELECT snapshot_id, observed_at
+            FROM position_hold_snapshots
+            WHERE account_name = ?
+              AND connector_name = ?
+              AND trading_pair = ?
+              AND controller_id = ?
+            ORDER BY observed_at DESC, snapshot_id DESC
+            LIMIT 1
+            """,
+            scope,
+        ).fetchone()
+
+        if snapshot is None:
+            return None
+
+        observed_at = float(snapshot["observed_at"])
+
+        if not math.isfinite(observed_at):
+            raise RuntimeError(
+                "persisted PositionHold snapshot timestamp is invalid"
+            )
+
+        age = current_time - observed_at
+
+        # Future-dated or stale evidence is never allowed to reduce exposure.
+        if (
+            age < 0
+            or age > self.policy.position_hold_snapshot_ttl_seconds
+        ):
+            return None
+
+        rows = conn.execute(
+            """
+            SELECT *
+            FROM position_hold_snapshot_rows
+            WHERE snapshot_id = ?
+            ORDER BY hold_index
+            """,
+            (snapshot["snapshot_id"],),
+        ).fetchall()
+
+        if len(rows) > 1:
+            raise RuntimeError(
+                "persisted exact PositionHold snapshot contains "
+                "multiple ACTIVE rows"
+            )
+
+        holds: list[PositionHoldAccounting] = []
+
+        for row in rows:
+            try:
+                executor_ids = json.loads(row["executor_ids_json"])
+            except Exception as exc:
+                raise RuntimeError(
+                    "persisted PositionHold executor_ids are invalid"
+                ) from exc
+
+            raw = {
+                "account_name": scope[0],
+                "connector_name": scope[1],
+                "trading_pair": scope[2],
+                "controller_id": scope[3],
+                "status": "ACTIVE",
+                "buy_amount_base": row["buy_amount_base"],
+                "buy_amount_quote": row["buy_amount_quote"],
+                "sell_amount_base": row["sell_amount_base"],
+                "sell_amount_quote": row["sell_amount_quote"],
+                "realized_pnl_quote": row["realized_pnl_quote"],
+                "cum_fees_quote": row["cum_fees_quote"],
+                "executor_ids": executor_ids,
+                "last_updated": row["last_updated"],
+            }
+
+            holds.append(
+                position_hold_accounting_from_raw(
+                    raw,
+                    expected_account_name=scope[0],
+                    expected_connector_name=scope[1],
+                    expected_trading_pair=scope[2],
+                    expected_controller_id=scope[3],
+                )
+            )
+
+        return tuple(holds)
+
+    def get_fresh_position_hold_snapshot(
+        self,
+        *,
+        account_name: str,
+        connector_name: str,
+        trading_pair: str,
+        controller_id: str,
+        now: float | None = None,
+    ) -> tuple[PositionHoldAccounting, ...] | None:
+        """Read the latest fresh exact-scope PositionHold snapshot."""
+
+        with self._connect() as conn:
+            return self._fresh_position_hold_snapshot(
+                conn,
+                account_name=account_name,
+                connector_name=connector_name,
+                trading_pair=trading_pair,
+                controller_id=controller_id,
+                now=now,
+            )
 
     def _current_recovery_exposure_quote(
         self,
