@@ -9,6 +9,7 @@ from spectra_core.models import (
     ExecutorAccountingObservation,
     IntentKind,
 )
+from spectra_core.position_hold_accounting import PositionHoldAccounting
 
 
 D = Decimal
@@ -205,3 +206,134 @@ def test_reserve_uses_atomic_reconciled_recovery_not_stale_snapshot(tmp_path):
     assert decision.status == DecisionStatus.REJECTED
     assert "recovery budget exceeded" in decision.reason
     assert "50 > 40" in decision.reason
+
+
+def test_exact_scoped_position_hold_reduces_recovery_to_residual_basis(tmp_path):
+    g = governor(tmp_path)
+
+    proposal = CapitalProposal(
+        proposal_id="recovery-scoped-hold",
+        pair="BTC-USD",
+        intent=IntentKind.RECOVERY,
+        amount_quote=D("25"),
+        leverage=D("1"),
+    )
+
+    assert g.reserve(
+        proposal,
+        CapitalSnapshot(
+            free_quote=D("1000"),
+            committed_quote=D("0"),
+            pair_exposure_quote=D("0"),
+            position_exposure_quote=D("0"),
+            recovery_exposure_quote=D("0"),
+        ),
+    ).status == DecisionStatus.RESERVED
+
+    assert g.commit(proposal.proposal_id)
+    assert g.reconcile_execution(
+        proposal_id=proposal.proposal_id,
+        executor_id="exec-scoped-hold",
+        account_name="master_account",
+        connector_name="Kraken",
+        controller_id="spectra",
+    )
+
+    provenance = g.get_execution_provenance(proposal.proposal_id)
+    assert provenance is not None
+    assert provenance.account_name == "master_account"
+    assert provenance.connector_name == "kraken"
+    assert provenance.controller_id == "spectra"
+
+    g.reconcile_executor_accounting(
+        ExecutorAccountingObservation(
+            executor_id="exec-scoped-hold",
+            executor_type="grid_executor",
+            status="TERMINATED",
+            close_type="POSITION_HOLD",
+            filled_amount_quote=D("12.50"),
+            cum_fees_quote=D("0.03"),
+            position_size_quote=D("9.75"),
+        )
+    )
+
+    g.record_position_hold_snapshot(
+        account_name="master_account",
+        connector_name="kraken",
+        trading_pair="BTC-USD",
+        controller_id="spectra",
+        holds=(
+            PositionHoldAccounting(
+                account_name="master_account",
+                connector_name="kraken",
+                trading_pair="BTC-USD",
+                controller_id="spectra",
+                status="ACTIVE",
+                buy_amount_base=D("0.0001"),
+                buy_amount_quote=D("7.50"),
+                sell_amount_base=D("0"),
+                sell_amount_quote=D("0"),
+                realized_pnl_quote=D("0"),
+                cum_fees_quote=D("0.03"),
+                executor_ids=("exec-scoped-hold",),
+            ),
+        ),
+    )
+
+    assert g.current_recovery_exposure_quote() == D("7.50")
+
+
+def test_null_scope_provenance_cannot_consume_position_hold_evidence(tmp_path):
+    g = governor(tmp_path)
+
+    bind_executor(
+        g,
+        proposal_id="recovery-legacy-scope",
+        executor_id="exec-legacy-scope",
+        amount="25",
+    )
+
+    g.reconcile_executor_accounting(
+        ExecutorAccountingObservation(
+            executor_id="exec-legacy-scope",
+            executor_type="grid_executor",
+            status="TERMINATED",
+            close_type="POSITION_HOLD",
+            filled_amount_quote=D("10"),
+            cum_fees_quote=D("0.02"),
+            position_size_quote=D("8"),
+        )
+    )
+
+    g.record_position_hold_snapshot(
+        account_name="master_account",
+        connector_name="kraken",
+        trading_pair="BTC-USD",
+        controller_id="spectra",
+        holds=(
+            PositionHoldAccounting(
+                account_name="master_account",
+                connector_name="kraken",
+                trading_pair="BTC-USD",
+                controller_id="spectra",
+                status="ACTIVE",
+                buy_amount_base=D("0.0001"),
+                buy_amount_quote=D("6"),
+                sell_amount_base=D("0"),
+                sell_amount_quote=D("0"),
+                realized_pnl_quote=D("0"),
+                cum_fees_quote=D("0.02"),
+                executor_ids=("exec-legacy-scope",),
+            ),
+        ),
+    )
+
+    provenance = g.get_execution_provenance("recovery-legacy-scope")
+    assert provenance is not None
+    assert provenance.account_name is None
+    assert provenance.connector_name is None
+    assert provenance.controller_id is None
+
+    # A historical/null-scope executor cannot borrow evidence from a snapshot
+    # that merely looks related. Without exact provenance, retain full auth.
+    assert g.current_recovery_exposure_quote() == D("25")
