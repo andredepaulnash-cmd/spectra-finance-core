@@ -205,3 +205,9 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
         g.get_execution_receipt(proposal.proposal_id)
         == "spectra-e2e-1"
     )
+
+    provenance = g.get_execution_provenance(proposal.proposal_id)
+    assert provenance is not None
+    assert provenance.account_name == "master_account"
+    assert provenance.connector_name == "kraken"
+    assert provenance.controller_id == "spectra"

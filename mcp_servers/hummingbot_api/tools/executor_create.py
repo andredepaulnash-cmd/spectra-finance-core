@@ -611,6 +611,11 @@ async def create_executor(
             reconciled = get_capital_governor().reconcile_execution(
                 proposal_id=str(spectra_proposal_id or ""),
                 executor_id=str(executor_id),
+                account_name=account,
+                connector_name=str(
+                    merged_config.get("connector_name") or ""
+                ),
+                controller_id=tag,
             )
         except Exception as exc:
             error = (

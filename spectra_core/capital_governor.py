@@ -7,7 +7,10 @@ import time
 from decimal import Decimal
 from pathlib import Path
 
-from .executor_accounting import assess_recovery_exposure
+from .executor_accounting import (
+    assess_recovery_exposure,
+    reconcile_recovery_exposure_with_position_holds,
+)
 from .position_hold_accounting import (
     PositionHoldAccounting,
     position_hold_accounting_from_raw,
@@ -891,6 +894,9 @@ class CapitalGovernor:
         *,
         proposal_id: str,
         executor_id: str,
+        account_name: str | None = None,
+        connector_name: str | None = None,
+        controller_id: str | None = None,
         reason: str = "reconciled with Hummingbot executor receipt",
     ) -> bool:
         """
@@ -907,6 +913,44 @@ class CapitalGovernor:
             raise ValueError("proposal_id is required")
         if not executor_id:
             raise ValueError("executor_id is required")
+
+        scope_inputs = {
+            "account_name": account_name,
+            "connector_name": connector_name,
+            "controller_id": controller_id,
+        }
+        supplied_scope = [
+            value is not None
+            for value in scope_inputs.values()
+        ]
+
+        if any(supplied_scope) and not all(supplied_scope):
+            raise ValueError(
+                "execution scope must include account_name, "
+                "connector_name, and controller_id together"
+            )
+
+        normalized_scope: tuple[str, str, str] | None = None
+
+        if all(supplied_scope):
+            normalized: dict[str, str] = {}
+
+            for field, value in scope_inputs.items():
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError(
+                        f"{field} must be a non-empty string"
+                    )
+                normalized[field] = value.strip()
+
+            normalized["connector_name"] = (
+                normalized["connector_name"].lower()
+            )
+
+            normalized_scope = (
+                normalized["account_name"],
+                normalized["connector_name"],
+                normalized["controller_id"],
+            )
 
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -962,7 +1006,10 @@ class CapitalGovernor:
                             pair,
                             intent,
                             authorized_quote,
-                            leverage
+                            leverage,
+                            account_name,
+                            connector_name,
+                            controller_id
                         FROM execution_provenance
                         WHERE proposal_id = ?
                         """,
@@ -995,6 +1042,19 @@ class CapitalGovernor:
                             "execution provenance conflicts with reservation "
                             f"for {proposal_id}"
                         )
+
+                    if normalized_scope is not None:
+                        persisted_scope = (
+                            provenance["account_name"],
+                            provenance["connector_name"],
+                            provenance["controller_id"],
+                        )
+
+                        if persisted_scope != normalized_scope:
+                            raise RuntimeError(
+                                "execution provenance scope conflicts "
+                                f"for {proposal_id}"
+                            )
 
                     conn.commit()
                     return True
@@ -1041,9 +1101,12 @@ class CapitalGovernor:
                         intent,
                         authorized_quote,
                         leverage,
+                        account_name,
+                        connector_name,
+                        controller_id,
                         created_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         proposal_id,
@@ -1052,6 +1115,21 @@ class CapitalGovernor:
                         reservation["intent"],
                         reservation["amount_quote"],
                         reservation["leverage"],
+                        (
+                            None
+                            if normalized_scope is None
+                            else normalized_scope[0]
+                        ),
+                        (
+                            None
+                            if normalized_scope is None
+                            else normalized_scope[1]
+                        ),
+                        (
+                            None
+                            if normalized_scope is None
+                            else normalized_scope[2]
+                        ),
                         now,
                     ),
                 )
@@ -1148,6 +1226,21 @@ class CapitalGovernor:
             intent=IntentKind(str(row["intent"])),
             authorized_quote=Decimal(str(row["authorized_quote"])),
             leverage=Decimal(str(row["leverage"])),
+            account_name=(
+                None
+                if row["account_name"] is None
+                else str(row["account_name"])
+            ),
+            connector_name=(
+                None
+                if row["connector_name"] is None
+                else str(row["connector_name"])
+            ),
+            controller_id=(
+                None
+                if row["controller_id"] is None
+                else str(row["controller_id"])
+            ),
         )
 
     @staticmethod
@@ -1739,6 +1832,9 @@ class CapitalGovernor:
                 p.intent,
                 p.authorized_quote,
                 p.leverage,
+                p.account_name,
+                p.connector_name,
+                p.controller_id,
 
                 o.observation_id,
                 o.executor_type AS obs_executor_type,
@@ -1772,6 +1868,21 @@ class CapitalGovernor:
                 intent=IntentKind(str(row["intent"])),
                 authorized_quote=Decimal(str(row["authorized_quote"])),
                 leverage=Decimal(str(row["leverage"])),
+                account_name=(
+                    None
+                    if row["account_name"] is None
+                    else str(row["account_name"])
+                ),
+                connector_name=(
+                    None
+                    if row["connector_name"] is None
+                    else str(row["connector_name"])
+                ),
+                controller_id=(
+                    None
+                    if row["controller_id"] is None
+                    else str(row["controller_id"])
+                ),
             )
 
             if row["observation_id"] is None:
@@ -1818,6 +1929,39 @@ class CapitalGovernor:
                 observation,
                 provenance,
             )
+
+            if assessment.requires_position_hold_reconciliation:
+                scope = (
+                    provenance.account_name,
+                    provenance.connector_name,
+                    provenance.controller_id,
+                )
+
+                # Historical provenance predates exact execution scope. It may
+                # never use a PositionHold snapshot to reduce exposure.
+                if any(value is None for value in scope):
+                    total += assessment.exposure_quote
+                    continue
+
+                holds = self._fresh_position_hold_snapshot(
+                    conn,
+                    account_name=provenance.account_name,
+                    connector_name=provenance.connector_name,
+                    trading_pair=provenance.pair,
+                    controller_id=provenance.controller_id,
+                )
+
+                # Missing/stale evidence and even a fresh empty exact scope
+                # remain fail-closed through the reconciliation helper.
+                if holds is not None:
+                    assessment = (
+                        reconcile_recovery_exposure_with_position_holds(
+                            observation,
+                            provenance,
+                            holds,
+                        )
+                    )
+
             total += assessment.exposure_quote
 
         return total
