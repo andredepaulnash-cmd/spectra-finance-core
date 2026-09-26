@@ -1,0 +1,53 @@
+name: Spectra Phase 1 CI
+
+on:
+  push:
+    branches:
+      - spectra-core-phase2
+      - "automation/**"
+      - "experiment/**"
+  pull_request:
+    branches:
+      - spectra-core-phase2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spectra-phase1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capital-core:
+    name: Capital Core / Execution Safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      UV_PYTHON: "3.13"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+
+      - name: Install locked dependencies
+        run: uv sync --dev --frozen
+
+      - name: Run Spectra Phase 1 focused tests
+        run: |
+          uv run pytest -q \
+            tests/test_spectra_core.py \
+            tests/test_spectra_kraken_execution_flow.py \
+            tests/test_spectra_executor_accounting_flow.py \
+            tests/test_position_hold_snapshot_ledger.py \
+            tests/test_recovery_exposure_governor.py
