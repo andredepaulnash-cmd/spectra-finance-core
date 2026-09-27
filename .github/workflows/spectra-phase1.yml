@@ -54,5 +54,5 @@ jobs:
             tests/test_position_hold_snapshot_ledger.py \
             tests/test_recovery_exposure_governor.py \
             tests/test_kraken_market_fabric.py \
-            tests/test_stack_lock_manifest.py \\
+            tests/test_stack_lock_manifest.py \
             tests/test_hummingbot_api_contract.py
