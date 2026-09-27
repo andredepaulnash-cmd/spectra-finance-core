@@ -298,6 +298,7 @@ class EconomicPositionLedger:
         proposal_id: str | None,
         executor_id: str | None,
         occurred_at: float,
+        proposal_quote_cap: Decimal | None = None,
     ) -> EconomicLot:
         lid = _text(lot_id, "lot_id")
         normalized_pair = _pair(pair)
@@ -398,6 +399,32 @@ class EconomicPositionLedger:
                         )
                     conn.rollback()
                     return self._lot_from_row(existing)
+
+                if proposal is not None and proposal_quote_cap is not None:
+                    cap = _decimal(
+                        proposal_quote_cap,
+                        "proposal_quote_cap",
+                        positive=True,
+                    )
+                    recorded_rows = conn.execute(
+                        """
+                        SELECT cost_basis_original_quote
+                        FROM economic_lots
+                        WHERE proposal_id = ?
+                        """,
+                        (proposal,),
+                    ).fetchall()
+                    recorded_basis = sum(
+                        (
+                            Decimal(str(row["cost_basis_original_quote"]))
+                            for row in recorded_rows
+                        ),
+                        ZERO,
+                    )
+                    if recorded_basis + basis > cap:
+                        raise ValueError(
+                            "economic lots exceed proposal authorized quote"
+                        )
 
                 conn.execute(
                     """
@@ -524,6 +551,43 @@ class EconomicPositionLedger:
             occurred_at=occurred_at,
         )
 
+    def record_entry_fill(
+        self,
+        *,
+        governor: CapitalGovernor,
+        position_id: str,
+        lot_id: str,
+        proposal_id: str,
+        base_amount: Decimal,
+        cost_basis_quote: Decimal,
+        entry_fees_quote: Decimal = Decimal("0"),
+        occurred_at: float,
+    ) -> EconomicLot:
+        proposal = _text(proposal_id, "proposal_id")
+        provenance = governor.get_execution_provenance(proposal)
+        if provenance is None:
+            raise ValueError("entry lot requires exact execution provenance")
+        if provenance.intent != IntentKind.ENTRY:
+            raise ValueError("entry lot provenance is not ENTRY intent")
+        receipt = governor.get_execution_receipt(proposal)
+        if receipt is None or receipt != provenance.executor_id:
+            raise ValueError("entry lot requires exact execution receipt")
+
+        return self._insert_lot(
+            lot_id=lot_id,
+            position_id=position_id,
+            pair=provenance.pair,
+            ownership=OwnershipBucket.ACTIVE_TRADE,
+            source=EconomicLotSource.BASE_ENTRY,
+            base_amount=base_amount,
+            cost_basis_quote=cost_basis_quote,
+            entry_fees_quote=entry_fees_quote,
+            proposal_id=proposal,
+            executor_id=provenance.executor_id,
+            occurred_at=occurred_at,
+            proposal_quote_cap=provenance.authorized_quote,
+        )
+
     def record_vcap_fill(
         self,
         *,
@@ -567,6 +631,7 @@ class EconomicPositionLedger:
             proposal_id=proposal,
             executor_id=provenance.executor_id,
             occurred_at=occurred_at,
+            proposal_quote_cap=provenance.authorized_quote,
         )
 
     def record_strategic_retained(
@@ -1015,6 +1080,50 @@ class EconomicPositionLedger:
             ),
             recovery_proposal_ids=recovery_ids,
         )
+
+    def active_lot_ids_for_provenance(
+        self,
+        *,
+        position_id: str,
+        proposal_id: str,
+        executor_id: str,
+    ) -> tuple[str, ...]:
+        pid = _text(position_id, "position_id")
+        proposal = _text(proposal_id, "proposal_id")
+        executor = _text(executor_id, "executor_id")
+        with self._connect() as conn:
+            position = self._position_row(conn, pid)
+            rows = conn.execute(
+                """
+                SELECT lot_id, pair, base_remaining
+                FROM economic_lots
+                WHERE position_id = ?
+                  AND ownership = ?
+                  AND proposal_id = ?
+                  AND executor_id = ?
+                ORDER BY created_at, lot_id
+                """,
+                (
+                    pid,
+                    OwnershipBucket.ACTIVE_TRADE.value,
+                    proposal,
+                    executor,
+                ),
+            ).fetchall()
+
+        if not rows:
+            return ()
+
+        pair = str(position["pair"])
+        result: list[str] = []
+        for row in rows:
+            if str(row["pair"]) != pair:
+                raise RuntimeError(
+                    "economic lot provenance crosses position pair"
+                )
+            if Decimal(str(row["base_remaining"])) > ZERO:
+                result.append(str(row["lot_id"]))
+        return tuple(result)
 
     def snapshot(self, position_id: str) -> EconomicPositionSnapshot:
         pid = _text(position_id, "position_id")
