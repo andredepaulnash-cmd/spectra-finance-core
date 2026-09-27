@@ -315,8 +315,8 @@ def _finite_decimal(
     value: Decimal,
     field: str,
     *,
-    positive: bool = false,
-    non_negative: bool = false,
+    positive: bool = False,
+    non_negative: bool = False,
 ) -> Decimal:
     if not isinstance(value, Decimal):
         raise TypeError(f"{field} must be Decimal")
