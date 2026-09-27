@@ -1128,6 +1128,40 @@ class EconomicPositionLedger:
                 result.append(str(row["lot_id"]))
         return tuple(result)
 
+    def list_active_position_ids(self) -> tuple[str, ...]:
+        """Return active economic positions in deterministic creation order."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT position_id
+                FROM economic_positions
+                WHERE status = ?
+                ORDER BY created_at, position_id
+                """,
+                (EconomicPositionStatus.ACTIVE.value,),
+            ).fetchall()
+        return tuple(str(row["position_id"]) for row in rows)
+
+    def active_proposal_ids(self, position_id: str) -> tuple[str, ...]:
+        """Return exact capital proposals still owning active trade inventory."""
+        pid = _text(position_id, "position_id")
+        with self._connect() as conn:
+            self._position_row(conn, pid)
+            rows = conn.execute(
+                """
+                SELECT proposal_id, MIN(created_at) AS first_seen
+                FROM economic_lots
+                WHERE position_id = ?
+                  AND ownership = ?
+                  AND proposal_id IS NOT NULL
+                  AND CAST(base_remaining AS REAL) > 0
+                GROUP BY proposal_id
+                ORDER BY first_seen, proposal_id
+                """,
+                (pid, OwnershipBucket.ACTIVE_TRADE.value),
+            ).fetchall()
+        return tuple(str(row["proposal_id"]) for row in rows)
+
     def snapshot(self, position_id: str) -> EconomicPositionSnapshot:
         pid = _text(position_id, "position_id")
         with self._connect() as conn:
