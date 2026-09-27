@@ -1,11 +1,11 @@
 name: Spectra Phase 1 CI
 
 on:
+  # Feature/experiment branches are validated once through their PR instead of
+  # paying for both a branch-push run and a pull-request run on the same SHA.
   push:
     branches:
       - spectra-core-phase2
-      - "automation/**"
-      - "experiment/**"
   pull_request:
     branches:
       - spectra-core-phase2
@@ -15,7 +15,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: spectra-phase1-${{ github.ref }}
+  # Keep only the newest validation for a given PR or branch.  This prevents
+  # stale runs from consuming hosted-runner minutes while newer code is waiting.
+  group: spectra-phase1-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
