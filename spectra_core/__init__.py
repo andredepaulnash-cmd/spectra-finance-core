@@ -19,6 +19,12 @@ from .recovery_fingerprint import (
     plan_vcap_recovery,
     shape_recovery_proposal,
 )
+from .vcap_tranches import (
+    VCAPTranche,
+    VCAPTranchePlan,
+    VCAPTranchePolicy,
+    plan_vcap_tranches,
+)
 
 __all__ = [
     "BreakerMode",
@@ -38,4 +44,8 @@ __all__ = [
     "assess_recovery_fingerprint",
     "plan_vcap_recovery",
     "shape_recovery_proposal",
+    "VCAPTranche",
+    "VCAPTranchePlan",
+    "VCAPTranchePolicy",
+    "plan_vcap_tranches",
 ]
