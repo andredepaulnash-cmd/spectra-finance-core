@@ -49,6 +49,26 @@ def _time(value: object, field: str) -> float:
 
 
 @dataclass(frozen=True)
+class VCAPRuntimePolicy:
+    market_max_age_seconds: float = 30.0
+    order_book_depth: int = 10
+
+    def __post_init__(self) -> None:
+        max_age = float(self.market_max_age_seconds)
+        if not isfinite(max_age) or max_age <= 0:
+            raise ValueError(
+                "market_max_age_seconds must be finite and positive"
+            )
+        if (
+            isinstance(self.order_book_depth, bool)
+            or not isinstance(self.order_book_depth, int)
+            or self.order_book_depth <= 0
+        ):
+            raise ValueError("order_book_depth must be a positive integer")
+        object.__setattr__(self, "market_max_age_seconds", max_age)
+
+
+@dataclass(frozen=True)
 class VCAPRuntimeCycle:
     cycle_id: str
     position_id: str
