@@ -58,4 +58,5 @@ jobs:
             tests/test_hummingbot_api_contract.py \
             tests/test_asset_fingerprint.py \
             tests/test_recovery_fingerprint.py \
-            tests/test_vcap_tranches.py
+            tests/test_vcap_tranches.py \
+            tests/test_vcap_execution_loop.py
