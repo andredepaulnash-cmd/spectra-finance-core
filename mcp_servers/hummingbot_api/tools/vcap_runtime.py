@@ -259,6 +259,10 @@ async def _resume_reconciliation(
                 cycle.position_id
             )
         if exit_manifest is None:
+            exit_manifest = exit_manifest_store.latest_for_position(
+                cycle.position_id
+            )
+        if exit_manifest is None:
             conflict = runtime_store.transition(
                 cycle.cycle_id,
                 phase=VCAPRuntimePhase.CONFLICT,
