@@ -192,13 +192,16 @@ class EconomicPositionLedger:
                         REFERENCES economic_positions(position_id)
                 );
 
-                CREATE UNIQUE INDEX IF NOT EXISTS
-                    economic_lots_proposal_unique
+                DROP INDEX IF EXISTS economic_lots_proposal_unique;
+                DROP INDEX IF EXISTS economic_lots_executor_unique;
+
+                CREATE INDEX IF NOT EXISTS
+                    economic_lots_proposal_idx
                 ON economic_lots(proposal_id)
                 WHERE proposal_id IS NOT NULL;
 
-                CREATE UNIQUE INDEX IF NOT EXISTS
-                    economic_lots_executor_unique
+                CREATE INDEX IF NOT EXISTS
+                    economic_lots_executor_idx
                 ON economic_lots(executor_id)
                 WHERE executor_id IS NOT NULL;
 
@@ -295,6 +298,7 @@ class EconomicPositionLedger:
         proposal_id: str | None,
         executor_id: str | None,
         occurred_at: float,
+        proposal_quote_cap: Decimal | None = None,
     ) -> EconomicLot:
         lid = _text(lot_id, "lot_id")
         normalized_pair = _pair(pair)
@@ -395,6 +399,32 @@ class EconomicPositionLedger:
                         )
                     conn.rollback()
                     return self._lot_from_row(existing)
+
+                if proposal is not None and proposal_quote_cap is not None:
+                    cap = _decimal(
+                        proposal_quote_cap,
+                        "proposal_quote_cap",
+                        positive=True,
+                    )
+                    recorded_rows = conn.execute(
+                        """
+                        SELECT cost_basis_original_quote
+                        FROM economic_lots
+                        WHERE proposal_id = ?
+                        """,
+                        (proposal,),
+                    ).fetchall()
+                    recorded_basis = sum(
+                        (
+                            Decimal(str(row["cost_basis_original_quote"]))
+                            for row in recorded_rows
+                        ),
+                        ZERO,
+                    )
+                    if recorded_basis + basis > cap:
+                        raise ValueError(
+                            "economic lots exceed proposal authorized quote"
+                        )
 
                 conn.execute(
                     """
@@ -521,6 +551,43 @@ class EconomicPositionLedger:
             occurred_at=occurred_at,
         )
 
+    def record_entry_fill(
+        self,
+        *,
+        governor: CapitalGovernor,
+        position_id: str,
+        lot_id: str,
+        proposal_id: str,
+        base_amount: Decimal,
+        cost_basis_quote: Decimal,
+        entry_fees_quote: Decimal = Decimal("0"),
+        occurred_at: float,
+    ) -> EconomicLot:
+        proposal = _text(proposal_id, "proposal_id")
+        provenance = governor.get_execution_provenance(proposal)
+        if provenance is None:
+            raise ValueError("entry lot requires exact execution provenance")
+        if provenance.intent != IntentKind.ENTRY:
+            raise ValueError("entry lot provenance is not ENTRY intent")
+        receipt = governor.get_execution_receipt(proposal)
+        if receipt is None or receipt != provenance.executor_id:
+            raise ValueError("entry lot requires exact execution receipt")
+
+        return self._insert_lot(
+            lot_id=lot_id,
+            position_id=position_id,
+            pair=provenance.pair,
+            ownership=OwnershipBucket.ACTIVE_TRADE,
+            source=EconomicLotSource.BASE_ENTRY,
+            base_amount=base_amount,
+            cost_basis_quote=cost_basis_quote,
+            entry_fees_quote=entry_fees_quote,
+            proposal_id=proposal,
+            executor_id=provenance.executor_id,
+            occurred_at=occurred_at,
+            proposal_quote_cap=provenance.authorized_quote,
+        )
+
     def record_vcap_fill(
         self,
         *,
@@ -564,6 +631,7 @@ class EconomicPositionLedger:
             proposal_id=proposal,
             executor_id=provenance.executor_id,
             occurred_at=occurred_at,
+            proposal_quote_cap=provenance.authorized_quote,
         )
 
     def record_strategic_retained(
@@ -680,6 +748,7 @@ class EconomicPositionLedger:
         gross_proceeds_quote: Decimal,
         exit_fee_quote: Decimal = Decimal("0"),
         occurred_at: float,
+        eligible_lot_ids: tuple[str, ...] | None = None,
     ) -> EconomicExitResult:
         eid = _text(event_id, "event_id")
         pid = _text(position_id, "position_id")
@@ -727,16 +796,49 @@ class EconomicPositionLedger:
                     (pid, OwnershipBucket.ACTIVE_TRADE.value),
                 ).fetchall()
 
-                lots = [
+                all_active_lots = [
                     self._lot_from_row(row)
                     for row in rows
                     if Decimal(str(row["base_remaining"])) > ZERO
                 ]
-                active_base = sum((lot.base_remaining for lot in lots), ZERO)
-                if sold > active_base:
-                    raise ValueError(
-                        "exit base exceeds ACTIVE_TRADE inventory"
+                total_active_base = sum(
+                    (lot.base_remaining for lot in all_active_lots),
+                    ZERO,
+                )
+
+                if eligible_lot_ids is None:
+                    lots = all_active_lots
+                else:
+                    if not eligible_lot_ids:
+                        raise ValueError(
+                            "eligible_lot_ids cannot be empty"
+                        )
+                    normalized_scope = tuple(
+                        _text(lot_id, "eligible_lot_id")
+                        for lot_id in eligible_lot_ids
                     )
+                    if len(set(normalized_scope)) != len(normalized_scope):
+                        raise ValueError("eligible_lot_ids cannot contain duplicates")
+                    by_id = {lot.lot_id: lot for lot in all_active_lots}
+                    missing = [
+                        lot_id
+                        for lot_id in normalized_scope
+                        if lot_id not in by_id
+                    ]
+                    if missing:
+                        raise ValueError(
+                            "exit scope contains inactive or foreign economic lots"
+                        )
+                    lots = [by_id[lot_id] for lot_id in normalized_scope]
+
+                eligible_base = sum((lot.base_remaining for lot in lots), ZERO)
+                if sold > eligible_base:
+                    message = (
+                        "exit base exceeds ACTIVE_TRADE inventory"
+                        if eligible_lot_ids is None
+                        else "exit base exceeds eligible ACTIVE_TRADE inventory"
+                    )
+                    raise ValueError(message)
 
                 allocated_basis = ZERO
                 allocated_entry_fees = ZERO
@@ -752,7 +854,7 @@ class EconomicPositionLedger:
                     else:
                         lot_sale = min(
                             lot.base_remaining,
-                            sold * lot.base_remaining / active_base,
+                            sold * lot.base_remaining / eligible_base,
                         )
 
                     lot_sale = min(lot_sale, lot.base_remaining)
@@ -809,7 +911,7 @@ class EconomicPositionLedger:
                     - allocated_entry_fees
                 )
 
-                active_after = active_base - sold
+                active_after = total_active_base - sold
                 closed = active_after == ZERO
 
                 conn.execute(
@@ -953,11 +1055,14 @@ class EconomicPositionLedger:
         )
 
         recovery_ids = tuple(
-            lot.proposal_id
-            for lot in active_lots
-            if (
-                lot.source == EconomicLotSource.VCAP_RECOVERY
-                and lot.proposal_id is not None
+            dict.fromkeys(
+                lot.proposal_id
+                for lot in active_lots
+                if (
+                    lot.source == EconomicLotSource.VCAP_RECOVERY
+                    and lot.proposal_id is not None
+                    and lot.base_remaining > ZERO
+                )
             )
         )
 
@@ -978,6 +1083,50 @@ class EconomicPositionLedger:
             ),
             recovery_proposal_ids=recovery_ids,
         )
+
+    def active_lot_ids_for_provenance(
+        self,
+        *,
+        position_id: str,
+        proposal_id: str,
+        executor_id: str,
+    ) -> tuple[str, ...]:
+        pid = _text(position_id, "position_id")
+        proposal = _text(proposal_id, "proposal_id")
+        executor = _text(executor_id, "executor_id")
+        with self._connect() as conn:
+            position = self._position_row(conn, pid)
+            rows = conn.execute(
+                """
+                SELECT lot_id, pair, base_remaining
+                FROM economic_lots
+                WHERE position_id = ?
+                  AND ownership = ?
+                  AND proposal_id = ?
+                  AND executor_id = ?
+                ORDER BY created_at, lot_id
+                """,
+                (
+                    pid,
+                    OwnershipBucket.ACTIVE_TRADE.value,
+                    proposal,
+                    executor,
+                ),
+            ).fetchall()
+
+        if not rows:
+            return ()
+
+        pair = str(position["pair"])
+        result: list[str] = []
+        for row in rows:
+            if str(row["pair"]) != pair:
+                raise RuntimeError(
+                    "economic lot provenance crosses position pair"
+                )
+            if Decimal(str(row["base_remaining"])) > ZERO:
+                result.append(str(row["lot_id"]))
+        return tuple(result)
 
     def snapshot(self, position_id: str) -> EconomicPositionSnapshot:
         pid = _text(position_id, "position_id")

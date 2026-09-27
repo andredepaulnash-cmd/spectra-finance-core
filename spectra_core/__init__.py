@@ -8,6 +8,15 @@ from .economic_position import (
     EconomicPositionStatus,
     OwnershipBucket,
 )
+from .fill_reconciliation import (
+    EconomicFillRole,
+    FillOwnershipBinding,
+    FillReconciliationResult,
+    FillReconciliationStatus,
+    LiveFillLedgerReconciler,
+    TradeFillEvidence,
+    trade_fill_evidence_from_raw,
+)
 from .models import (
     BreakerMode,
     CapitalDecision,
@@ -76,6 +85,13 @@ __all__ = [
     "EconomicPositionSnapshot",
     "EconomicPositionStatus",
     "OwnershipBucket",
+    "EconomicFillRole",
+    "FillOwnershipBinding",
+    "FillReconciliationResult",
+    "FillReconciliationStatus",
+    "LiveFillLedgerReconciler",
+    "TradeFillEvidence",
+    "trade_fill_evidence_from_raw",
     "CapitalDecision",
     "CapitalPolicy",
     "CapitalProposal",
