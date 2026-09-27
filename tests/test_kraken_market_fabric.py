@@ -213,7 +213,7 @@ async def test_collect_kraken_universe_requires_live_ticker_and_rule():
     assert snapshot.eligible_pairs == ("BTC-USD", "DOGE-USD")
     assert snapshot.updated_at == 501.0
     assert "ETH-USD" in snapshot.rejected
-    assert snapshot.rejected["ETH-USD"] == "order book requested for ineligible pair"
+    assert snapshot.rejected["ETH-USD"] == "missing Kraken trading rule"
     assert set(snapshot.books) == {"BTC-USD"}
     assert market_data.order_book_calls == [
         {
