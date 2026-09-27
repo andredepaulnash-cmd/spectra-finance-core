@@ -1084,6 +1084,33 @@ class EconomicPositionLedger:
             recovery_proposal_ids=recovery_ids,
         )
 
+    def list_active_lots(self, position_id: str) -> tuple[EconomicLot, ...]:
+        """Return every remaining ACTIVE_TRADE lot for one position.
+
+        Strategic-retained and unattributed inventory are deliberately absent
+        from this surface, so callers cannot accidentally construct an exit
+        manifest from aggregate same-asset wallet inventory.
+        """
+        pid = _text(position_id, "position_id")
+        with self._connect() as conn:
+            self._position_row(conn, pid)
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM economic_lots
+                WHERE position_id = ?
+                  AND ownership = ?
+                ORDER BY created_at, lot_id
+                """,
+                (pid, OwnershipBucket.ACTIVE_TRADE.value),
+            ).fetchall()
+
+        return tuple(
+            self._lot_from_row(row)
+            for row in rows
+            if Decimal(str(row["base_remaining"])) > ZERO
+        )
+
     def active_lot_ids_for_provenance(
         self,
         *,
