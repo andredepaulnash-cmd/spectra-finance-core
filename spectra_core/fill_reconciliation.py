@@ -149,8 +149,10 @@ def trade_fill_evidence_from_raw(raw: object) -> TradeFillEvidence:
 
     amount = _decimal(raw.get("amount"), "amount", positive=True)
     price = _decimal(raw.get("price"), "price", positive=True)
+    if "fee_paid" not in raw or raw.get("fee_paid") is None:
+        raise ValueError("trade fill is missing confirmed fee_paid")
     fee = _decimal(
-        raw.get("fee_paid", ZERO),
+        raw.get("fee_paid"),
         "fee_paid",
         non_negative=True,
     )
