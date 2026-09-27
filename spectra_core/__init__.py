@@ -17,6 +17,16 @@ from .fill_reconciliation import (
     TradeFillEvidence,
     trade_fill_evidence_from_raw,
 )
+from .executor_provenance_bridge import (
+    SPECTRA_HUMMINGBOT_API_REVISION,
+    ExecutorLedgerSyncReport,
+    ExecutorOrderEvidence,
+    ExecutorOrderSnapshot,
+    ExecutorTradeSnapshot,
+    executor_order_snapshot_from_raw,
+    executor_trade_snapshot_from_raw,
+    synchronize_executor_evidence,
+)
 from .models import (
     BreakerMode,
     CapitalDecision,
@@ -92,6 +102,14 @@ __all__ = [
     "LiveFillLedgerReconciler",
     "TradeFillEvidence",
     "trade_fill_evidence_from_raw",
+    "SPECTRA_HUMMINGBOT_API_REVISION",
+    "ExecutorLedgerSyncReport",
+    "ExecutorOrderEvidence",
+    "ExecutorOrderSnapshot",
+    "ExecutorTradeSnapshot",
+    "executor_order_snapshot_from_raw",
+    "executor_trade_snapshot_from_raw",
+    "synchronize_executor_evidence",
     "CapitalDecision",
     "CapitalPolicy",
     "CapitalProposal",
