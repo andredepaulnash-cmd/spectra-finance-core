@@ -151,6 +151,39 @@ def test_staleness_is_horizon_specific():
     assert not fp.windows[FingerprintHorizon.LONG].is_stale(now=now)
 
 
+def test_microstructure_freshness_does_not_fake_book_updates():
+    fp = AssetFingerprint.cold_start(
+        observation(timestamp=1_000, price=100)
+    )
+
+    fast = fp.windows[FingerprintHorizon.FAST]
+    assert fast.microstructure_last_timestamp == 1_000
+    assert not fast.microstructure_is_stale(now=1_020, max_age_seconds=30)
+
+    # A ticker-only observation updates price/volume but must not pretend the
+    # order book was refreshed.
+    fp = fp.update(
+        observation(
+            timestamp=1_060,
+            price=101,
+            spread_bps=None,
+            depth_quote=None,
+            depth_imbalance=None,
+            microprice_edge_bps=None,
+        )
+    )
+    fast = fp.windows[FingerprintHorizon.FAST]
+
+    assert fast.last_timestamp == 1_060
+    assert fast.microstructure_last_timestamp == 1_000
+    assert fast.microstructure_is_stale(now=1_060, max_age_seconds=30)
+
+    # The previous descriptive values remain available, but their source age is
+    # explicit so a strategy can refuse to use stale book state.
+    assert fast.ema_spread_bps == 5.0
+    assert fast.ema_depth_quote == 50_000
+
+
 def test_round_trip_preserves_behavioral_memory():
     fp = AssetFingerprint.cold_start(
         observation(timestamp=1_000, price=100)
