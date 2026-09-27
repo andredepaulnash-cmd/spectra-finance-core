@@ -301,6 +301,24 @@ class EconomicExitManifestStore:
             ).fetchone()
         return None if row is None else self._from_row(row)
 
+    def latest_for_position(
+        self,
+        position_id: str,
+    ) -> EconomicPositionExitManifest | None:
+        pid = _text(position_id, "position_id")
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT *
+                FROM economic_exit_manifests
+                WHERE position_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (pid,),
+            ).fetchone()
+        return None if row is None else self._from_row(row)
+
     def create(
         self,
         manifest: EconomicPositionExitManifest,
