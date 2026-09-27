@@ -68,4 +68,5 @@ jobs:
             tests/test_executor_provenance_bridge.py \
             tests/test_accounting_health_gate.py \
             tests/test_vcap_runtime_supervisor.py \
-            tests/test_unified_economic_exit.py
+            tests/test_unified_economic_exit.py \
+            tests/test_multi_position_runtime_scheduler.py
