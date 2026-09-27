@@ -392,7 +392,7 @@ class VCAPRuntimeStore:
                         (
                             None
                             if result_value is None
-                            else json.dumps(result_value, sort_keys=True)
+                            else json.dumps(result_value, sort_keys=True, default=str)
                         ),
                         timestamp,
                         completed_at,
