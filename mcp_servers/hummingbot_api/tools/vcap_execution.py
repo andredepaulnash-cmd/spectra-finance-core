@@ -66,7 +66,6 @@ async def execute_vcap_decision(
         amounts_quote=[float(proposal.amount_quote)],
         prices=[float(decision.current_price)],
         leverage=1,
-        mode="MAKER",
         level_id=f"vcap-{decision.sequence:04d}",
         account_name=account_name,
         controller_id=controller_id,
