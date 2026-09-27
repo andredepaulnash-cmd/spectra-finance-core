@@ -5,6 +5,8 @@ from typing import Any
 
 from spectra_core.accounting_health import AccountingHealthDecision
 from spectra_core.capital_governor import CapitalGovernor
+from spectra_core.economic_position import EconomicPositionLedger
+from spectra_core.kraken_market_fabric import KrakenTradingRule
 from spectra_core.vcap_lifecycle import (
     VCAPLifecycleAction,
     VCAPLifecycleDecision,
@@ -17,8 +19,8 @@ from spectra_core.vcap_state import VCAPLifecycleStatus
 from mcp_servers.hummingbot_api.tools.vcap_execution import (
     execute_vcap_decision,
 )
-from mcp_servers.hummingbot_api.tools.vcap_profit_exit import (
-    execute_vcap_profit_exit,
+from mcp_servers.hummingbot_api.tools.economic_exit import (
+    execute_economic_position_exit,
 )
 
 
@@ -30,6 +32,8 @@ async def execute_vcap_lifecycle_decision(
     store: VCAPStateStore,
     now: float,
     position_id: str | None = None,
+    ledger: EconomicPositionLedger | None = None,
+    trading_rule: KrakenTradingRule | None = None,
     accounting_health: AccountingHealthDecision | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
@@ -105,12 +109,7 @@ async def execute_vcap_lifecycle_decision(
         }
 
     if decision.action == VCAPLifecycleAction.EXIT:
-        missing = [
-            proposal_id
-            for proposal_id in decision.state.recovery_proposal_ids
-            if governor.get_execution_provenance(proposal_id) is None
-        ]
-        if missing:
+        if position_id is None or ledger is None or trading_rule is None:
             checkpoint = checkpoint_vcap_exit_result(
                 state=decision.state,
                 store=store,
@@ -120,32 +119,43 @@ async def execute_vcap_lifecycle_decision(
             return {
                 "action": decision.action.value,
                 "exit_requested": False,
+                "executed": False,
                 "lifecycle_status": checkpoint.status.value,
                 "error": (
-                    "VCAP exit ownership is incomplete; refusing external "
-                    "mutation until exact proposal provenance reconciles"
+                    "unified economic exit requires position_id, ledger, "
+                    "and current Kraken trading_rule"
                 ),
-                "missing_proposal_provenance": missing,
             }
 
-        result = await execute_vcap_profit_exit(
+        if decision.profit_decision is None:
+            raise ValueError("EXIT lifecycle decision is missing profit decision")
+
+        result = await execute_economic_position_exit(
             client,
             decision=decision.profit_decision,
             governor=governor,
-            proposal_ids=decision.state.recovery_proposal_ids,
+            ledger=ledger,
+            position_id=position_id,
+            trading_rule=trading_rule,
+            now=now,
         )
 
+        economically_complete = (
+            result.get("economic_exit_state") == "COMPLETED"
+            and bool(result.get("all_recovery_budget_released"))
+        )
         checkpoint = checkpoint_vcap_exit_result(
             state=decision.state,
             store=store,
-            recovery_budget_released=bool(
-                result.get("all_recovery_budget_released")
-            ),
+            recovery_budget_released=economically_complete,
             now=now,
         )
 
         return {
             "action": decision.action.value,
+            "exit_requested": bool(result.get("exit_requested")),
+            "executed": bool(result.get("exit_requested")),
+            "manifest_id": result.get("manifest_id"),
             "result": result,
             "lifecycle_status": checkpoint.status.value,
         }
