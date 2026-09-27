@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
+from spectra_core.accounting_health import AccountingHealthDecision
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.vcap_lifecycle import (
     VCAPLifecycleAction,
@@ -10,6 +12,7 @@ from spectra_core.vcap_lifecycle import (
     checkpoint_vcap_exit_result,
     checkpoint_vcap_tranche_execution,
 )
+from spectra_core.vcap_state import VCAPLifecycleStatus
 
 from mcp_servers.hummingbot_api.tools.vcap_execution import (
     execute_vcap_decision,
@@ -26,6 +29,8 @@ async def execute_vcap_lifecycle_decision(
     governor: CapitalGovernor,
     store: VCAPStateStore,
     now: float,
+    position_id: str | None = None,
+    accounting_health: AccountingHealthDecision | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
 ) -> dict[str, Any]:
@@ -34,6 +39,40 @@ async def execute_vcap_lifecycle_decision(
     Planning/checkpointing is done before this function is called. External
     mutation is therefore never invisible to the durable lifecycle state.
     """
+
+    mutating = decision.action in {
+        VCAPLifecycleAction.EXECUTE_TRANCHE,
+        VCAPLifecycleAction.EXIT,
+    }
+    if mutating:
+        blocked_reason: str | None = None
+        if accounting_health is None:
+            blocked_reason = "accounting_health_missing"
+        elif position_id is None:
+            blocked_reason = "economic_position_id_missing"
+        elif accounting_health.position_id != position_id:
+            blocked_reason = "accounting_health_position_mismatch"
+        elif not accounting_health.allows_live_mutation(now=now):
+            blocked_reason = (
+                f"accounting_health_{accounting_health.state.value.lower()}"
+            )
+
+        if blocked_reason is not None:
+            checkpoint = replace(
+                decision.state,
+                status=VCAPLifecycleStatus.HOLD,
+                updated_at=float(now),
+            )
+            store.save(checkpoint)
+            reasons = ["accounting_health_gate_blocked", blocked_reason]
+            if accounting_health is not None:
+                reasons.extend(accounting_health.reasons)
+            return {
+                "action": decision.action.value,
+                "executed": False,
+                "lifecycle_status": checkpoint.status.value,
+                "reasons": reasons,
+            }
 
     if decision.action == VCAPLifecycleAction.EXECUTE_TRANCHE:
         execution = decision.execution_decision
