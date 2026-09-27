@@ -22,6 +22,80 @@ from spectra_core.vcap_profit_exit import (
 )
 
 
+
+
+async def reconcile_economic_exit_owner_accounting(
+    client: Any,
+    *,
+    manifest,
+    governor: CapitalGovernor,
+) -> dict[str, Any]:
+    """Refresh terminal executor accounting for every manifest owner.
+
+    Exact SELL fills remain authoritative for economic inventory/P&L. This
+    companion observation only reconciles Governor executor accounting so
+    RECOVERY budget is not reported as reusable until its executor is flat.
+    """
+
+    rows: list[dict[str, Any]] = []
+    all_recovery_budget_released = True
+
+    for owner in manifest.owners:
+        row: dict[str, Any] = {
+            "proposal_id": owner.proposal_id,
+            "executor_id": owner.executor_id,
+            "intent": owner.intent.value,
+        }
+        try:
+            raw = await client.executors.get_executor(owner.executor_id)
+            observation = executor_accounting_observation_from_raw(
+                raw,
+                expected_executor_id=owner.executor_id,
+            )
+            delta = governor.reconcile_executor_accounting(observation)
+            row.update(
+                {
+                    "status": observation.status,
+                    "close_type": observation.close_type,
+                    "accounting_filled_delta_quote": str(
+                        delta.filled_delta_quote
+                    ),
+                    "accounting_fee_delta_quote": str(
+                        delta.fee_delta_quote
+                    ),
+                }
+            )
+            if owner.intent == IntentKind.RECOVERY:
+                provenance = governor.get_execution_provenance(
+                    owner.proposal_id
+                )
+                if provenance is None:
+                    raise RuntimeError(
+                        "recovery owner provenance disappeared"
+                    )
+                exposure = assess_recovery_exposure(
+                    observation,
+                    provenance,
+                )
+                released = exposure.exposure_quote == 0
+                all_recovery_budget_released = (
+                    all_recovery_budget_released and released
+                )
+                row["remaining_recovery_exposure_quote"] = str(
+                    exposure.exposure_quote
+                )
+                row["recovery_budget_released"] = released
+        except Exception as exc:
+            if owner.intent == IntentKind.RECOVERY:
+                all_recovery_budget_released = False
+            row["error"] = str(exc)
+        rows.append(row)
+
+    return {
+        "all_recovery_budget_released": all_recovery_budget_released,
+        "owners": rows,
+    }
+
 async def execute_economic_position_exit(
     client: Any,
     *,
