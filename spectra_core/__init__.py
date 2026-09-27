@@ -48,6 +48,13 @@ from .vcap_state import (
     VCAPStateStore,
     reconcile_vcap_restart,
 )
+from .vcap_lifecycle import (
+    VCAPLifecycleAction,
+    VCAPLifecycleDecision,
+    checkpoint_vcap_exit_result,
+    checkpoint_vcap_tranche_execution,
+    plan_vcap_lifecycle,
+)
 
 __all__ = [
     "BreakerMode",
@@ -88,4 +95,9 @@ __all__ = [
     "VCAPRestartDecision",
     "VCAPStateStore",
     "reconcile_vcap_restart",
+    "VCAPLifecycleAction",
+    "VCAPLifecycleDecision",
+    "checkpoint_vcap_exit_result",
+    "checkpoint_vcap_tranche_execution",
+    "plan_vcap_lifecycle",
 ]
