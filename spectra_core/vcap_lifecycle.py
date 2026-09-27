@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 from decimal import Decimal
 from enum import StrEnum
 
+from .accounting_health import AccountingHealthDecision
 from .asset_fingerprint import AssetFingerprint
 from .capital_governor import CapitalGovernor
 from .economic_position import (
@@ -109,6 +110,7 @@ def plan_vcap_lifecycle(
     recovery_policy: VCAPRecoveryPolicy | None = None,
     tranche_policy: VCAPTranchePolicy | None = None,
     profit_policy: VCAPProfitExitPolicy | None = None,
+    accounting_health: AccountingHealthDecision | None = None,
 ) -> VCAPLifecycleDecision:
     """Run one deterministic VCAP lifecycle planning cycle and checkpoint it.
 
@@ -368,6 +370,48 @@ def plan_vcap_lifecycle_from_ledger(
     account but are excluded by the ledger snapshot and cannot be commandeered
     by this controller.
     """
+
+    if accounting_health is None:
+        hold_state = replace(
+            state,
+            status=VCAPLifecycleStatus.HOLD,
+            updated_at=float(now),
+        )
+        store.save(hold_state)
+        return VCAPLifecycleDecision(
+            action=VCAPLifecycleAction.HOLD,
+            state=hold_state,
+            profit_decision=None,
+            execution_decision=None,
+            reasons=(
+                "accounting_health_gate_blocked",
+                "accounting_health_missing",
+            ),
+        )
+
+    if accounting_health.position_id != position_id:
+        raise ValueError(
+            "accounting health belongs to another economic position"
+        )
+
+    if not accounting_health.allows_live_mutation(now=now):
+        hold_state = replace(
+            state,
+            status=VCAPLifecycleStatus.HOLD,
+            updated_at=float(now),
+        )
+        store.save(hold_state)
+        return VCAPLifecycleDecision(
+            action=VCAPLifecycleAction.HOLD,
+            state=hold_state,
+            profit_decision=None,
+            execution_decision=None,
+            reasons=(
+                "accounting_health_gate_blocked",
+                f"accounting_health_{accounting_health.state.value.lower()}",
+                *accounting_health.reasons,
+            ),
+        )
 
     snapshot = ledger.snapshot(position_id)
     if snapshot.pair != state.pair:
