@@ -1149,18 +1149,26 @@ class EconomicPositionLedger:
             self._position_row(conn, pid)
             rows = conn.execute(
                 """
-                SELECT proposal_id, MIN(created_at) AS first_seen
+                SELECT proposal_id, base_remaining
                 FROM economic_lots
                 WHERE position_id = ?
                   AND ownership = ?
                   AND proposal_id IS NOT NULL
-                  AND CAST(base_remaining AS REAL) > 0
-                GROUP BY proposal_id
-                ORDER BY first_seen, proposal_id
+                ORDER BY created_at, lot_id
                 """,
                 (pid, OwnershipBucket.ACTIVE_TRADE.value),
             ).fetchall()
-        return tuple(str(row["proposal_id"]) for row in rows)
+
+        proposal_ids: list[str] = []
+        seen: set[str] = set()
+        for row in rows:
+            if Decimal(str(row["base_remaining"])) <= ZERO:
+                continue
+            proposal_id = str(row["proposal_id"])
+            if proposal_id not in seen:
+                seen.add(proposal_id)
+                proposal_ids.append(proposal_id)
+        return tuple(proposal_ids)
 
     def snapshot(self, position_id: str) -> EconomicPositionSnapshot:
         pid = _text(position_id, "position_id")
