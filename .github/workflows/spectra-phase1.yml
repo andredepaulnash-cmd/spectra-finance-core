@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  # Keep only the newest validation for a given PR or branch.  This prevents
+  # Keep only the newest validation for a given PR or branch. This prevents
   # stale runs from consuming hosted-runner minutes while newer code is waiting.
   group: spectra-phase1-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -52,4 +52,5 @@ jobs:
             tests/test_spectra_kraken_execution_flow.py \
             tests/test_spectra_executor_accounting_flow.py \
             tests/test_position_hold_snapshot_ledger.py \
-            tests/test_recovery_exposure_governor.py
+            tests/test_recovery_exposure_governor.py \
+            tests/test_kraken_market_fabric.py
