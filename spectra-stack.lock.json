@@ -11,7 +11,7 @@
     "spectra_hummingbot_api": {
       "repository": "andredepaulnash-cmd/spectra-hummingbot-api",
       "branch": "main",
-      "revision": "fb8651c05d0bf128e27c4ac2a70c51a8fb9d90c7",
+      "revision": "e656f3a1e2678a41b369baadb76c875f26aa24cc",
       "contracts": {
         "exact_position_hold_accounting": 1
       }
