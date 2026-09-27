@@ -425,7 +425,7 @@ def test_retired_lifecycle_is_terminal_and_does_not_replan(tmp_path):
     assert decision.profit_decision is None
 
 
-def test_exit_dispatcher_refuses_when_checkpointed_ownership_lacks_provenance(
+def test_exit_dispatcher_refuses_without_unified_economic_exit_context(
     tmp_path,
 ):
     import asyncio
@@ -483,6 +483,5 @@ def test_exit_dispatcher_refuses_when_checkpointed_ownership_lacks_provenance(
 
     assert result["exit_requested"] is False
     assert result["lifecycle_status"] == VCAPLifecycleStatus.HOLD.value
-    assert result["missing_proposal_provenance"] == [
-        "vcap-envelope-1:vcap:0001"
-    ]
+    assert result["executed"] is False
+    assert "unified economic exit requires" in result["error"]
