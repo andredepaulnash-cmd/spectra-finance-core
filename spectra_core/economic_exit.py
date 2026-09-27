@@ -102,6 +102,9 @@ class EconomicPositionExitManifest:
     target_active_base: Decimal
     target_cost_basis_quote: Decimal
     target_entry_fees_quote: Decimal
+    reference_price: Decimal
+    min_order_size: Decimal
+    min_notional_quote: Decimal
     realized_pnl_before_quote: Decimal
     strategic_retained_base_at_creation: Decimal
     unattributed_base_at_creation: Decimal
@@ -151,6 +154,9 @@ class EconomicExitManifestStore:
                     target_active_base TEXT NOT NULL,
                     target_cost_basis_quote TEXT NOT NULL,
                     target_entry_fees_quote TEXT NOT NULL,
+                    reference_price TEXT NOT NULL,
+                    min_order_size TEXT NOT NULL,
+                    min_notional_quote TEXT NOT NULL,
                     realized_pnl_before_quote TEXT NOT NULL,
                     strategic_retained_base_at_creation TEXT NOT NULL,
                     unattributed_base_at_creation TEXT NOT NULL,
@@ -243,6 +249,9 @@ class EconomicExitManifestStore:
             target_entry_fees_quote=Decimal(
                 str(row["target_entry_fees_quote"])
             ),
+            reference_price=Decimal(str(row["reference_price"])),
+            min_order_size=Decimal(str(row["min_order_size"])),
+            min_notional_quote=Decimal(str(row["min_notional_quote"])),
             realized_pnl_before_quote=Decimal(
                 str(row["realized_pnl_before_quote"])
             ),
@@ -345,6 +354,9 @@ class EconomicExitManifestStore:
                         target_active_base,
                         target_cost_basis_quote,
                         target_entry_fees_quote,
+                        reference_price,
+                        min_order_size,
+                        min_notional_quote,
                         realized_pnl_before_quote,
                         strategic_retained_base_at_creation,
                         unattributed_base_at_creation,
@@ -352,7 +364,7 @@ class EconomicExitManifestStore:
                         created_at,
                         completed_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
                     """,
                     (
                         manifest.manifest_id,
@@ -362,6 +374,9 @@ class EconomicExitManifestStore:
                         str(manifest.target_active_base),
                         str(manifest.target_cost_basis_quote),
                         str(manifest.target_entry_fees_quote),
+                        str(manifest.reference_price),
+                        str(manifest.min_order_size),
+                        str(manifest.min_notional_quote),
                         str(manifest.realized_pnl_before_quote),
                         str(manifest.strategic_retained_base_at_creation),
                         str(manifest.unattributed_base_at_creation),
@@ -653,6 +668,13 @@ def create_or_load_position_exit_manifest(
         target_active_base=target_base,
         target_cost_basis_quote=target_basis,
         target_entry_fees_quote=target_fees,
+        reference_price=_decimal(
+            current_price,
+            "current_price",
+            positive=True,
+        ),
+        min_order_size=trading_rule.min_order_size,
+        min_notional_quote=trading_rule.effective_min_quote,
         realized_pnl_before_quote=snapshot.realized_pnl_quote,
         strategic_retained_base_at_creation=(
             snapshot.strategic_retained_base_same_pair
@@ -693,16 +715,11 @@ def assess_position_exit_manifest(
     manifest: EconomicPositionExitManifest,
     *,
     ledger: EconomicPositionLedger,
-    trading_rule: KrakenTradingRule,
-    current_price: Decimal,
     store: EconomicExitManifestStore | None = None,
     now: float | None = None,
 ) -> EconomicExitProgress:
     validate_manifest_against_ledger(manifest, ledger=ledger)
     snapshot = ledger.snapshot(manifest.position_id)
-    price = _decimal(current_price, "current_price", positive=True)
-    if trading_rule.trading_pair.strip().upper() != manifest.pair:
-        raise ValueError("exit progress trading rule pair mismatch")
 
     realized = (
         snapshot.realized_pnl_quote
@@ -735,9 +752,11 @@ def assess_position_exit_manifest(
         )
 
     remaining = snapshot.active_base
-    min_base = trading_rule.min_order_size
-    min_quote = trading_rule.effective_min_quote
-    if remaining < min_base or remaining * price < min_quote:
+    if (
+        remaining < manifest.min_order_size
+        or remaining * manifest.reference_price
+        < manifest.min_notional_quote
+    ):
         return EconomicExitProgress(
             manifest_id=manifest.manifest_id,
             state=EconomicExitProgressState.DUST_BLOCKED,
