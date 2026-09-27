@@ -176,6 +176,7 @@ class BehaviorWindow:
     effective_samples: float = 0.0
     first_timestamp: float | None = None
     last_timestamp: float | None = None
+    microstructure_last_timestamp: float | None = None
 
     ema_return_bps: float | None = None
     ema_abs_return_bps: float | None = None
@@ -253,6 +254,23 @@ class BehaviorWindow:
             return True
         return now - self.last_timestamp > self.half_life_seconds * max_half_lives
 
+    def microstructure_is_stale(
+        self,
+        *,
+        now: float,
+        max_age_seconds: float = 30.0,
+    ) -> bool:
+        """True when book-derived memory has no recent source observation."""
+        now = _finite_float(now, "now", positive=True)
+        max_age_seconds = _finite_float(
+            max_age_seconds,
+            "max_age_seconds",
+            positive=True,
+        )
+        if self.microstructure_last_timestamp is None:
+            return True
+        return now - self.microstructure_last_timestamp > max_age_seconds
+
     def update(
         self,
         observation: AssetObservation,
@@ -280,6 +298,15 @@ class BehaviorWindow:
 
         squared_return = return_bps * return_bps if return_bps is not None else None
         abs_return = abs(return_bps) if return_bps is not None else None
+        has_microstructure = any(
+            value is not None
+            for value in (
+                observation.spread_bps,
+                observation.depth_quote,
+                observation.depth_imbalance,
+                observation.microprice_edge_bps,
+            )
+        )
 
         return replace(
             self,
@@ -291,6 +318,11 @@ class BehaviorWindow:
                 else self.first_timestamp
             ),
             last_timestamp=observation.timestamp,
+            microstructure_last_timestamp=(
+                observation.timestamp
+                if has_microstructure
+                else self.microstructure_last_timestamp
+            ),
             ema_return_bps=_ema(self.ema_return_bps, return_bps, alpha),
             ema_abs_return_bps=_ema(
                 self.ema_abs_return_bps,
@@ -342,6 +374,7 @@ class BehaviorWindow:
             "effective_samples": self.effective_samples,
             "first_timestamp": self.first_timestamp,
             "last_timestamp": self.last_timestamp,
+            "microstructure_last_timestamp": self.microstructure_last_timestamp,
             "ema_return_bps": self.ema_return_bps,
             "ema_abs_return_bps": self.ema_abs_return_bps,
             "ema_squared_return_bps2": self.ema_squared_return_bps2,
@@ -368,10 +401,14 @@ class BehaviorWindow:
                 f"configured {configured_half_life}"
             )
 
+        observations = int(raw.get("observations", 0))
+        if observations < 0:
+            raise ValueError("observations must be non-negative")
+
         return cls(
             horizon=horizon,
             half_life_seconds=half_life,
-            observations=int(raw.get("observations", 0)),
+            observations=observations,
             effective_samples=_finite_float(
                 raw.get("effective_samples", 0.0),
                 "effective_samples",
@@ -385,6 +422,11 @@ class BehaviorWindow:
             last_timestamp=_optional_finite(
                 raw.get("last_timestamp"),
                 "last_timestamp",
+                lower=0.0,
+            ),
+            microstructure_last_timestamp=_optional_finite(
+                raw.get("microstructure_last_timestamp"),
+                "microstructure_last_timestamp",
                 lower=0.0,
             ),
             ema_return_bps=_optional_finite(
