@@ -192,13 +192,16 @@ class EconomicPositionLedger:
                         REFERENCES economic_positions(position_id)
                 );
 
-                CREATE UNIQUE INDEX IF NOT EXISTS
-                    economic_lots_proposal_unique
+                DROP INDEX IF EXISTS economic_lots_proposal_unique;
+                DROP INDEX IF EXISTS economic_lots_executor_unique;
+
+                CREATE INDEX IF NOT EXISTS
+                    economic_lots_proposal_idx
                 ON economic_lots(proposal_id)
                 WHERE proposal_id IS NOT NULL;
 
-                CREATE UNIQUE INDEX IF NOT EXISTS
-                    economic_lots_executor_unique
+                CREATE INDEX IF NOT EXISTS
+                    economic_lots_executor_idx
                 ON economic_lots(executor_id)
                 WHERE executor_id IS NOT NULL;
 
@@ -680,6 +683,7 @@ class EconomicPositionLedger:
         gross_proceeds_quote: Decimal,
         exit_fee_quote: Decimal = Decimal("0"),
         occurred_at: float,
+        eligible_lot_ids: tuple[str, ...] | None = None,
     ) -> EconomicExitResult:
         eid = _text(event_id, "event_id")
         pid = _text(position_id, "position_id")
@@ -727,15 +731,45 @@ class EconomicPositionLedger:
                     (pid, OwnershipBucket.ACTIVE_TRADE.value),
                 ).fetchall()
 
-                lots = [
+                all_active_lots = [
                     self._lot_from_row(row)
                     for row in rows
                     if Decimal(str(row["base_remaining"])) > ZERO
                 ]
-                active_base = sum((lot.base_remaining for lot in lots), ZERO)
-                if sold > active_base:
+                total_active_base = sum(
+                    (lot.base_remaining for lot in all_active_lots),
+                    ZERO,
+                )
+
+                if eligible_lot_ids is None:
+                    lots = all_active_lots
+                else:
+                    if not eligible_lot_ids:
+                        raise ValueError(
+                            "eligible_lot_ids cannot be empty"
+                        )
+                    normalized_scope = tuple(
+                        _text(lot_id, "eligible_lot_id")
+                        for lot_id in eligible_lot_ids
+                    )
+                    if len(set(normalized_scope)) != len(normalized_scope):
+                        raise ValueError("eligible_lot_ids cannot contain duplicates")
+                    by_id = {lot.lot_id: lot for lot in all_active_lots}
+                    missing = [
+                        lot_id
+                        for lot_id in normalized_scope
+                        if lot_id not in by_id
+                    ]
+                    if missing:
+                        raise ValueError(
+                            "exit scope contains inactive or foreign economic lots"
+                        )
+                    lots = [by_id[lot_id] for lot_id in normalized_scope]
+
+                eligible_base = sum((lot.base_remaining for lot in lots), ZERO)
+                if sold > eligible_base:
                     raise ValueError(
-                        "exit base exceeds ACTIVE_TRADE inventory"
+                        "exit base exceeds eligible ACTIVE_TRADE inventory"
                     )
 
                 allocated_basis = ZERO
@@ -752,7 +786,7 @@ class EconomicPositionLedger:
                     else:
                         lot_sale = min(
                             lot.base_remaining,
-                            sold * lot.base_remaining / active_base,
+                            sold * lot.base_remaining / eligible_base,
                         )
 
                     lot_sale = min(lot_sale, lot.base_remaining)
@@ -809,7 +843,7 @@ class EconomicPositionLedger:
                     - allocated_entry_fees
                 )
 
-                active_after = active_base - sold
+                active_after = total_active_base - sold
                 closed = active_after == ZERO
 
                 conn.execute(
@@ -953,11 +987,14 @@ class EconomicPositionLedger:
         )
 
         recovery_ids = tuple(
-            lot.proposal_id
-            for lot in active_lots
-            if (
-                lot.source == EconomicLotSource.VCAP_RECOVERY
-                and lot.proposal_id is not None
+            dict.fromkeys(
+                lot.proposal_id
+                for lot in active_lots
+                if (
+                    lot.source == EconomicLotSource.VCAP_RECOVERY
+                    and lot.proposal_id is not None
+                    and lot.base_remaining > ZERO
+                )
             )
         )
 
