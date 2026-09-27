@@ -110,7 +110,6 @@ def plan_vcap_lifecycle(
     recovery_policy: VCAPRecoveryPolicy | None = None,
     tranche_policy: VCAPTranchePolicy | None = None,
     profit_policy: VCAPProfitExitPolicy | None = None,
-    accounting_health: AccountingHealthDecision | None = None,
 ) -> VCAPLifecycleDecision:
     """Run one deterministic VCAP lifecycle planning cycle and checkpoint it.
 
@@ -362,6 +361,7 @@ def plan_vcap_lifecycle_from_ledger(
     recovery_policy: VCAPRecoveryPolicy | None = None,
     tranche_policy: VCAPTranchePolicy | None = None,
     profit_policy: VCAPProfitExitPolicy | None = None,
+    accounting_health: AccountingHealthDecision | None = None,
 ) -> VCAPLifecycleDecision:
     """Plan one VCAP cycle from authoritative economic-position ownership.
 
