@@ -64,6 +64,22 @@ class EconomicExitManifestStatus(StrEnum):
     COMPLETED = "COMPLETED"
 
 
+class EconomicExitProgressState(StrEnum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    DUST_BLOCKED = "DUST_BLOCKED"
+
+
+@dataclass(frozen=True)
+class EconomicExitProgress:
+    manifest_id: str
+    state: EconomicExitProgressState
+    remaining_active_base: Decimal
+    realized_pnl_quote: Decimal
+    strategic_retained_base: Decimal
+    reasons: tuple[str, ...]
+
+
 @dataclass(frozen=True)
 class EconomicExitOwner:
     proposal_id: str
@@ -522,6 +538,13 @@ def validate_manifest_against_ledger(
     snapshot = ledger.snapshot(manifest.position_id)
     if snapshot.pair != manifest.pair:
         raise RuntimeError("economic exit manifest pair changed")
+    if (
+        snapshot.strategic_retained_base_same_pair
+        < manifest.strategic_retained_base_at_creation
+    ):
+        raise RuntimeError(
+            "strategic retained inventory decreased during economic exit"
+        )
 
     allowed_lot_ids = set(manifest.lot_ids)
     current_lots = ledger.list_active_lots(manifest.position_id)
@@ -663,4 +686,75 @@ def realized_pnl_for_manifest(
     return (
         ledger.snapshot(manifest.position_id).realized_pnl_quote
         - manifest.realized_pnl_before_quote
+    )
+
+
+def assess_position_exit_manifest(
+    manifest: EconomicPositionExitManifest,
+    *,
+    ledger: EconomicPositionLedger,
+    trading_rule: KrakenTradingRule,
+    current_price: Decimal,
+    store: EconomicExitManifestStore | None = None,
+    now: float | None = None,
+) -> EconomicExitProgress:
+    validate_manifest_against_ledger(manifest, ledger=ledger)
+    snapshot = ledger.snapshot(manifest.position_id)
+    price = _decimal(current_price, "current_price", positive=True)
+    if trading_rule.trading_pair.strip().upper() != manifest.pair:
+        raise ValueError("exit progress trading rule pair mismatch")
+
+    realized = (
+        snapshot.realized_pnl_quote
+        - manifest.realized_pnl_before_quote
+    )
+    retained = snapshot.strategic_retained_base_same_pair
+
+    if snapshot.active_base == ZERO:
+        if snapshot.status != EconomicPositionStatus.CLOSED:
+            raise RuntimeError(
+                "zero active base did not close economic position"
+            )
+        if store is not None:
+            if now is None:
+                raise ValueError("now is required to complete exit manifest")
+            store.mark_completed(
+                manifest.manifest_id,
+                completed_at=_time(now, "now"),
+            )
+        return EconomicExitProgress(
+            manifest_id=manifest.manifest_id,
+            state=EconomicExitProgressState.COMPLETED,
+            remaining_active_base=ZERO,
+            realized_pnl_quote=realized,
+            strategic_retained_base=retained,
+            reasons=(
+                "economic_position_active_trade_flat",
+                "strategic_retained_inventory_untouched",
+            ),
+        )
+
+    remaining = snapshot.active_base
+    min_base = trading_rule.min_order_size
+    min_quote = trading_rule.effective_min_quote
+    if remaining < min_base or remaining * price < min_quote:
+        return EconomicExitProgress(
+            manifest_id=manifest.manifest_id,
+            state=EconomicExitProgressState.DUST_BLOCKED,
+            remaining_active_base=remaining,
+            realized_pnl_quote=realized,
+            strategic_retained_base=retained,
+            reasons=(
+                "remaining_active_trade_below_exchange_minimum",
+                "retained_inventory_cannot_satisfy_exit_deficit",
+            ),
+        )
+
+    return EconomicExitProgress(
+        manifest_id=manifest.manifest_id,
+        state=EconomicExitProgressState.PENDING,
+        remaining_active_base=remaining,
+        realized_pnl_quote=realized,
+        strategic_retained_base=retained,
+        reasons=("economic_position_exit_still_reconciling",),
     )
