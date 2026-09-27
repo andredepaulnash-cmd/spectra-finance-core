@@ -40,6 +40,14 @@ from .vcap_profit_exit import (
     VCAPProfitState,
     plan_vcap_profit_exit,
 )
+from .vcap_state import (
+    VCAPLifecycleState,
+    VCAPLifecycleStatus,
+    VCAPRestartAction,
+    VCAPRestartDecision,
+    VCAPStateStore,
+    reconcile_vcap_restart,
+)
 
 __all__ = [
     "BreakerMode",
@@ -74,4 +82,10 @@ __all__ = [
     "VCAPProfitExitPolicy",
     "VCAPProfitState",
     "plan_vcap_profit_exit",
+    "VCAPLifecycleState",
+    "VCAPLifecycleStatus",
+    "VCAPRestartAction",
+    "VCAPRestartDecision",
+    "VCAPStateStore",
+    "reconcile_vcap_restart",
 ]
