@@ -32,6 +32,14 @@ from .vcap_execution import (
     replan_vcap_sequence,
     vcap_tranche_proposal_id,
 )
+from .vcap_profit_exit import (
+    VCAPExitCostModel,
+    VCAPProfitExitAction,
+    VCAPProfitExitDecision,
+    VCAPProfitExitPolicy,
+    VCAPProfitState,
+    plan_vcap_profit_exit,
+)
 
 __all__ = [
     "BreakerMode",
@@ -60,4 +68,10 @@ __all__ = [
     "carve_next_vcap_tranche",
     "replan_vcap_sequence",
     "vcap_tranche_proposal_id",
+    "VCAPExitCostModel",
+    "VCAPProfitExitAction",
+    "VCAPProfitExitDecision",
+    "VCAPProfitExitPolicy",
+    "VCAPProfitState",
+    "plan_vcap_profit_exit",
 ]
