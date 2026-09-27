@@ -53,4 +53,5 @@ jobs:
             tests/test_spectra_executor_accounting_flow.py \
             tests/test_position_hold_snapshot_ledger.py \
             tests/test_recovery_exposure_governor.py \
-            tests/test_kraken_market_fabric.py
+            tests/test_kraken_market_fabric.py \
+            tests/test_stack_lock_manifest.py
