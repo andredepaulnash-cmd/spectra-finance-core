@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -485,7 +486,10 @@ def bind_and_apply_sell(
             "price": price,
             "fee_paid": "0",
             "fee_currency": None,
-            "timestamp": occurred_at,
+            "timestamp": datetime.fromtimestamp(
+                occurred_at,
+                tz=timezone.utc,
+            ).isoformat(),
         }
     )
 
