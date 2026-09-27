@@ -59,4 +59,5 @@ jobs:
             tests/test_asset_fingerprint.py \
             tests/test_recovery_fingerprint.py \
             tests/test_vcap_tranches.py \
-            tests/test_vcap_execution_loop.py
+            tests/test_vcap_execution_loop.py \
+            tests/test_vcap_profit_exit.py
