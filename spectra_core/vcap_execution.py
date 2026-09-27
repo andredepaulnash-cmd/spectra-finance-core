@@ -121,6 +121,8 @@ def replan_vcap_sequence(
         "remaining_authorized_quote",
     )
     current_price = _positive_decimal(current_price, "current_price")
+    if position.current_price != current_price:
+        raise ValueError("current_price does not match position snapshot")
     leverage = _positive_decimal(leverage, "leverage")
 
     try:
