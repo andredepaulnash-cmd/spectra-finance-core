@@ -260,15 +260,37 @@ async def _resume_reconciliation(
         recovery_proposal_ids=state.recovery_proposal_ids,
         mutation_proposal_id=cycle.mutation_proposal_id,
     )
-    health = await _refresh_accounting(
-        client,
-        position_id=cycle.position_id,
-        proposal_ids=scope,
-        governor=governor,
-        ledger=ledger,
-        supervisor=accounting_supervisor,
-        now=now,
-    )
+    try:
+        health = await _refresh_accounting(
+            client,
+            position_id=cycle.position_id,
+            proposal_ids=scope,
+            governor=governor,
+            ledger=ledger,
+            supervisor=accounting_supervisor,
+            now=now,
+        )
+    except Exception as exc:
+        waiting = runtime_store.transition(
+            cycle.cycle_id,
+            phase=VCAPRuntimePhase.AWAITING_RECONCILIATION,
+            now=now,
+            expected_phases=(
+                VCAPRuntimePhase.MUTATION_DISPATCHING,
+                VCAPRuntimePhase.MUTATION_DISPATCHED,
+                VCAPRuntimePhase.AWAITING_RECONCILIATION,
+            ),
+            decision_reasons=(
+                *cycle.decision_reasons,
+                "post_mutation_accounting_refresh_failed",
+            ),
+            last_error=str(exc),
+        )
+        return _runtime_result(
+            waiting,
+            executed=True,
+            reasons=waiting.decision_reasons,
+        )
 
     if health.state == AccountingHealthState.CONFLICT:
         conflict = runtime_store.transition(
@@ -450,15 +472,30 @@ async def run_vcap_runtime_cycle(
         ledger=ledger,
         recovery_proposal_ids=state.recovery_proposal_ids,
     )
-    health = await _refresh_accounting(
-        client,
-        position_id=position_id,
-        proposal_ids=proposal_scope,
-        governor=governor,
-        ledger=ledger,
-        supervisor=accounting_supervisor,
-        now=now,
-    )
+    try:
+        health = await _refresh_accounting(
+            client,
+            position_id=position_id,
+            proposal_ids=proposal_scope,
+            governor=governor,
+            ledger=ledger,
+            supervisor=accounting_supervisor,
+            now=now,
+        )
+    except Exception as exc:
+        hold = runtime_store.transition(
+            cycle.cycle_id,
+            phase=VCAPRuntimePhase.HOLD,
+            now=now,
+            expected_phases=_PREPLAN_PHASES,
+            decision_reasons=("accounting_precheck_failed",),
+            last_error=str(exc),
+        )
+        return _runtime_result(
+            hold,
+            executed=False,
+            reasons=hold.decision_reasons,
+        )
 
     if health.state != AccountingHealthState.HEALTHY:
         phase = (
@@ -612,15 +649,31 @@ async def run_vcap_runtime_cycle(
         ledger=ledger,
         recovery_proposal_ids=preexec_recovery_ids,
     )
-    preexec_health = await _refresh_accounting(
-        client,
-        position_id=position_id,
-        proposal_ids=preexec_scope,
-        governor=governor,
-        ledger=ledger,
-        supervisor=accounting_supervisor,
-        now=now,
-    )
+    try:
+        preexec_health = await _refresh_accounting(
+            client,
+            position_id=position_id,
+            proposal_ids=preexec_scope,
+            governor=governor,
+            ledger=ledger,
+            supervisor=accounting_supervisor,
+            now=now,
+        )
+    except Exception as exc:
+        hold = runtime_store.transition(
+            cycle.cycle_id,
+            phase=VCAPRuntimePhase.HOLD,
+            now=now,
+            expected_phases=(VCAPRuntimePhase.PLANNED,),
+            decision_reasons=("preexecution_accounting_refresh_failed",),
+            last_error=str(exc),
+        )
+        return _runtime_result(
+            hold,
+            action=decision.action.value,
+            executed=False,
+            reasons=hold.decision_reasons,
+        )
     if preexec_health.state != AccountingHealthState.HEALTHY:
         phase = (
             VCAPRuntimePhase.CONFLICT
