@@ -1128,6 +1128,48 @@ class EconomicPositionLedger:
                 result.append(str(row["lot_id"]))
         return tuple(result)
 
+    def list_active_position_ids(self) -> tuple[str, ...]:
+        """Return active economic positions in deterministic creation order."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT position_id
+                FROM economic_positions
+                WHERE status = ?
+                ORDER BY created_at, position_id
+                """,
+                (EconomicPositionStatus.ACTIVE.value,),
+            ).fetchall()
+        return tuple(str(row["position_id"]) for row in rows)
+
+    def active_proposal_ids(self, position_id: str) -> tuple[str, ...]:
+        """Return exact capital proposals still owning active trade inventory."""
+        pid = _text(position_id, "position_id")
+        with self._connect() as conn:
+            self._position_row(conn, pid)
+            rows = conn.execute(
+                """
+                SELECT proposal_id, base_remaining
+                FROM economic_lots
+                WHERE position_id = ?
+                  AND ownership = ?
+                  AND proposal_id IS NOT NULL
+                ORDER BY created_at, lot_id
+                """,
+                (pid, OwnershipBucket.ACTIVE_TRADE.value),
+            ).fetchall()
+
+        proposal_ids: list[str] = []
+        seen: set[str] = set()
+        for row in rows:
+            if Decimal(str(row["base_remaining"])) <= ZERO:
+                continue
+            proposal_id = str(row["proposal_id"])
+            if proposal_id not in seen:
+                seen.add(proposal_id)
+                proposal_ids.append(proposal_id)
+        return tuple(proposal_ids)
+
     def snapshot(self, position_id: str) -> EconomicPositionSnapshot:
         pid = _text(position_id, "position_id")
         with self._connect() as conn:

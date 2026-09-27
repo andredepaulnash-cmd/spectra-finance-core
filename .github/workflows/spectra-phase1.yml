@@ -65,4 +65,5 @@ jobs:
             tests/test_vcap_lifecycle_controller.py \
             tests/test_economic_position_ledger.py \
             tests/test_live_fill_reconciliation.py \
-            tests/test_executor_provenance_bridge.py
+            tests/test_executor_provenance_bridge.py \
+            tests/test_accounting_health_gate.py

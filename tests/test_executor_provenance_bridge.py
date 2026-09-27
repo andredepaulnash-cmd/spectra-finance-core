@@ -417,7 +417,7 @@ def test_backend_failure_cannot_half_bind_or_mutate_ledger(tmp_path):
 
     with pytest.raises(
         RuntimeError,
-        match="trade provenance backend unavailable",
+        match="executor trade provenance unavailable",
     ):
         asyncio.run(
             synchronize_executor_economic_ledger(

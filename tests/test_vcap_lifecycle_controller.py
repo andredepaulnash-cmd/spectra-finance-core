@@ -3,6 +3,10 @@ from decimal import Decimal
 from mcp_servers.hummingbot_api.tools.vcap_lifecycle import (
     execute_vcap_lifecycle_decision,
 )
+from spectra_core.accounting_health import (
+    AccountingHealthDecision,
+    AccountingHealthState,
+)
 from spectra_core.asset_fingerprint import AssetFingerprint, AssetObservation
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.kraken_market_fabric import KrakenTradingRule
@@ -32,6 +36,26 @@ from spectra_core.vcap_state import (
 
 
 D = Decimal
+
+
+def healthy_accounting(position_id, now):
+    return AccountingHealthDecision(
+        position_id=position_id,
+        state=AccountingHealthState.HEALTHY,
+        assessed_at=float(now),
+        last_attempt_at=float(now),
+        last_success_at=float(now),
+        max_age_seconds=30.0,
+        proposal_count=1,
+        fully_reconciled_proposals=1,
+        known_orders=1,
+        bound_orders=1,
+        confirmed_fills=1,
+        ledgered_fills=1,
+        unresolved_order_ids=(),
+        unresolved_trade_ids=(),
+        reasons=("all_executor_accounting_fully_reconciled",),
+    )
 
 
 def observation(timestamp, price):
@@ -449,6 +473,11 @@ def test_exit_dispatcher_refuses_when_checkpointed_ownership_lacks_provenance(
             governor=governor(tmp_path),
             store=store,
             now=fp.last_seen_at + 1,
+            position_id="position-1",
+            accounting_health=healthy_accounting(
+                "position-1",
+                fp.last_seen_at + 1,
+            ),
         )
     )
 

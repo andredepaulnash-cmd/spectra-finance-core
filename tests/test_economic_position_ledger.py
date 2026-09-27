@@ -2,6 +2,10 @@ from decimal import Decimal
 
 import pytest
 
+from spectra_core.accounting_health import (
+    AccountingHealthDecision,
+    AccountingHealthState,
+)
 from spectra_core.asset_fingerprint import AssetFingerprint, AssetObservation
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.economic_position import (
@@ -26,6 +30,26 @@ from spectra_core.vcap_state import (
 
 
 D = Decimal
+
+
+def healthy_accounting(position_id, now):
+    return AccountingHealthDecision(
+        position_id=position_id,
+        state=AccountingHealthState.HEALTHY,
+        assessed_at=float(now),
+        last_attempt_at=float(now),
+        last_success_at=float(now),
+        max_age_seconds=30.0,
+        proposal_count=1,
+        fully_reconciled_proposals=1,
+        known_orders=1,
+        bound_orders=1,
+        confirmed_fills=1,
+        ledgered_fills=1,
+        unresolved_order_ids=(),
+        unresolved_trade_ids=(),
+        reasons=("all_executor_accounting_fully_reconciled",),
+    )
 
 
 def governor(tmp_path):
@@ -516,6 +540,10 @@ def test_unified_lifecycle_geometry_comes_from_whole_active_trade_ledger(
         expected_exit_fee_bps=D("20"),
         slippage_allowance_bps=D("10"),
         now=fp.last_seen_at,
+        accounting_health=healthy_accounting(
+            "btc-economic-1",
+            fp.last_seen_at,
+        ),
     )
 
     # Stale geometry in VCAPLifecycleState is replaced by the complete
