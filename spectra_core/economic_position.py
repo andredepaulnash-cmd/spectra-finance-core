@@ -542,6 +542,15 @@ class EconomicPositionLedger:
         receipt = governor.get_execution_receipt(proposal)
         if receipt is None or receipt != provenance.executor_id:
             raise ValueError("VCAP lot requires exact execution receipt")
+        basis = _decimal(
+            cost_basis_quote,
+            "cost_basis_quote",
+            positive=True,
+        )
+        if basis > provenance.authorized_quote:
+            raise ValueError(
+                "VCAP lot cost basis exceeds authorized recovery quote"
+            )
 
         return self._insert_lot(
             lot_id=lot_id,
