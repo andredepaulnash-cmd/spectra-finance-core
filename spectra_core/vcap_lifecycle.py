@@ -6,6 +6,10 @@ from enum import StrEnum
 
 from .asset_fingerprint import AssetFingerprint
 from .capital_governor import CapitalGovernor
+from .economic_position import (
+    EconomicPositionLedger,
+    EconomicPositionStatus,
+)
 from .kraken_market_fabric import KrakenTradingRule
 from .recovery_fingerprint import (
     RecoveryFingerprintPolicy,
@@ -335,3 +339,63 @@ def checkpoint_vcap_exit_result(
     )
     store.save(hold)
     return hold
+
+
+
+def plan_vcap_lifecycle_from_ledger(
+    *,
+    position_id: str,
+    ledger: EconomicPositionLedger,
+    state: VCAPLifecycleState,
+    store: VCAPStateStore,
+    fingerprint: AssetFingerprint,
+    trading_rule: KrakenTradingRule,
+    current_price: Decimal,
+    seed_quote: Decimal,
+    expected_exit_fee_bps: Decimal,
+    slippage_allowance_bps: Decimal,
+    now: float,
+    leverage: Decimal = Decimal("1"),
+    fingerprint_policy: RecoveryFingerprintPolicy | None = None,
+    recovery_policy: VCAPRecoveryPolicy | None = None,
+    tranche_policy: VCAPTranchePolicy | None = None,
+    profit_policy: VCAPProfitExitPolicy | None = None,
+) -> VCAPLifecycleDecision:
+    """Plan one VCAP cycle from authoritative economic-position ownership.
+
+    Only ACTIVE_TRADE lots participate in recovery and profit geometry.
+    STRATEGIC_RETAINED and UNATTRIBUTED inventory may share the same asset and
+    account but are excluded by the ledger snapshot and cannot be commandeered
+    by this controller.
+    """
+
+    snapshot = ledger.snapshot(position_id)
+    if snapshot.pair != state.pair:
+        raise ValueError(
+            "economic position pair does not match VCAP lifecycle state"
+        )
+    if snapshot.status != EconomicPositionStatus.ACTIVE:
+        raise ValueError("economic position is not active")
+
+    position = snapshot.to_vcap_position(current_price=current_price)
+    costs = VCAPExitCostModel(
+        accrued_fees_quote=snapshot.active_entry_fees_quote,
+        expected_exit_fee_bps=expected_exit_fee_bps,
+        slippage_allowance_bps=slippage_allowance_bps,
+    )
+
+    return plan_vcap_lifecycle(
+        state=state,
+        store=store,
+        position=position,
+        fingerprint=fingerprint,
+        trading_rule=trading_rule,
+        seed_quote=seed_quote,
+        costs=costs,
+        now=now,
+        leverage=leverage,
+        fingerprint_policy=fingerprint_policy,
+        recovery_policy=recovery_policy,
+        tranche_policy=tranche_policy,
+        profit_policy=profit_policy,
+    )
