@@ -6,8 +6,12 @@ from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 
+from .accounting_health import AccountingHealthSupervisor
 from .capital_governor import CapitalGovernor, validate_capital_policy
+from .economic_position import EconomicPositionLedger
 from .models import BreakerMode, CapitalPolicy
+from .vcap_runtime import VCAPRuntimeStore
+from .vcap_state import VCAPStateStore
 
 
 def spectra_state_dir() -> Path:
@@ -123,6 +127,31 @@ def load_capital_policy() -> CapitalPolicy:
 
 
 @lru_cache(maxsize=1)
+def get_economic_position_ledger() -> EconomicPositionLedger:
+    return EconomicPositionLedger(
+        spectra_state_dir() / "economic_positions.sqlite3"
+    )
+
+
+@lru_cache(maxsize=1)
+def get_accounting_health_supervisor() -> AccountingHealthSupervisor:
+    # Health watermarks intentionally live beside the economic ledger tables.
+    return AccountingHealthSupervisor(
+        spectra_state_dir() / "economic_positions.sqlite3"
+    )
+
+
+@lru_cache(maxsize=1)
+def get_vcap_state_store() -> VCAPStateStore:
+    return VCAPStateStore(spectra_state_dir() / "vcap_state.sqlite3")
+
+
+@lru_cache(maxsize=1)
+def get_vcap_runtime_store() -> VCAPRuntimeStore:
+    return VCAPRuntimeStore(spectra_state_dir() / "vcap_runtime.sqlite3")
+
+
+@lru_cache(maxsize=1)
 def get_capital_governor() -> CapitalGovernor:
     state_dir = spectra_state_dir()
     db_path = state_dir / "capital.sqlite3"
@@ -133,3 +162,7 @@ def get_capital_governor() -> CapitalGovernor:
 
 def reset_runtime_cache() -> None:
     get_capital_governor.cache_clear()
+    get_economic_position_ledger.cache_clear()
+    get_accounting_health_supervisor.cache_clear()
+    get_vcap_state_store.cache_clear()
+    get_vcap_runtime_store.cache_clear()

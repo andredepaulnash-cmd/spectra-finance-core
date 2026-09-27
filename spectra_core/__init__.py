@@ -90,6 +90,12 @@ from .vcap_lifecycle import (
     plan_vcap_lifecycle,
     plan_vcap_lifecycle_from_ledger,
 )
+from .vcap_runtime import (
+    VCAPRuntimeCycle,
+    VCAPRuntimePhase,
+    VCAPRuntimePolicy,
+    VCAPRuntimeStore,
+)
 
 __all__ = [
     "AccountingHealthDecision",
@@ -162,4 +168,8 @@ __all__ = [
     "checkpoint_vcap_tranche_execution",
     "plan_vcap_lifecycle",
     "plan_vcap_lifecycle_from_ledger",
+    "VCAPRuntimeCycle",
+    "VCAPRuntimePhase",
+    "VCAPRuntimePolicy",
+    "VCAPRuntimeStore",
 ]
