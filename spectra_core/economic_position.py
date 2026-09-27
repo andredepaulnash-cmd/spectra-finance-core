@@ -81,6 +81,9 @@ class EconomicLot:
     pair: str
     ownership: OwnershipBucket
     source: EconomicLotSource
+    base_original: Decimal
+    cost_basis_original_quote: Decimal
+    entry_fees_original_quote: Decimal
     base_remaining: Decimal
     cost_basis_remaining_quote: Decimal
     entry_fees_remaining_quote: Decimal
@@ -175,6 +178,9 @@ class EconomicPositionLedger:
                     pair TEXT NOT NULL,
                     ownership TEXT NOT NULL,
                     source TEXT NOT NULL,
+                    base_original TEXT NOT NULL,
+                    cost_basis_original_quote TEXT NOT NULL,
+                    entry_fees_original_quote TEXT NOT NULL,
                     base_remaining TEXT NOT NULL,
                     cost_basis_remaining_quote TEXT NOT NULL,
                     entry_fees_remaining_quote TEXT NOT NULL,
@@ -206,6 +212,8 @@ class EconomicPositionLedger:
                     allocated_cost_basis_quote TEXT NOT NULL,
                     allocated_entry_fees_quote TEXT NOT NULL,
                     realized_pnl_quote TEXT NOT NULL,
+                    active_base_remaining TEXT NOT NULL,
+                    position_closed INTEGER NOT NULL,
                     occurred_at REAL NOT NULL,
                     FOREIGN KEY(position_id)
                         REFERENCES economic_positions(position_id)
@@ -375,9 +383,9 @@ class EconomicPositionLedger:
                         str(existing["pair"]),
                         str(existing["ownership"]),
                         str(existing["source"]),
-                        str(existing["base_remaining"]),
-                        str(existing["cost_basis_remaining_quote"]),
-                        str(existing["entry_fees_remaining_quote"]),
+                        str(existing["base_original"]),
+                        str(existing["cost_basis_original_quote"]),
+                        str(existing["entry_fees_original_quote"]),
                         existing["proposal_id"],
                         existing["executor_id"],
                     )
@@ -396,6 +404,9 @@ class EconomicPositionLedger:
                         pair,
                         ownership,
                         source,
+                        base_original,
+                        cost_basis_original_quote,
+                        entry_fees_original_quote,
                         base_remaining,
                         cost_basis_remaining_quote,
                         entry_fees_remaining_quote,
@@ -404,7 +415,7 @@ class EconomicPositionLedger:
                         created_at,
                         updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         lid,
@@ -412,6 +423,9 @@ class EconomicPositionLedger:
                         normalized_pair,
                         ownership.value,
                         source.value,
+                        str(base),
+                        str(basis),
+                        str(fees),
                         str(base),
                         str(basis),
                         str(fees),
@@ -447,6 +461,13 @@ class EconomicPositionLedger:
             pair=str(row["pair"]),
             ownership=OwnershipBucket(str(row["ownership"])),
             source=EconomicLotSource(str(row["source"])),
+            base_original=Decimal(str(row["base_original"])),
+            cost_basis_original_quote=Decimal(
+                str(row["cost_basis_original_quote"])
+            ),
+            entry_fees_original_quote=Decimal(
+                str(row["entry_fees_original_quote"])
+            ),
             base_remaining=Decimal(str(row["base_remaining"])),
             cost_basis_remaining_quote=Decimal(
                 str(row["cost_basis_remaining_quote"])
@@ -635,10 +656,10 @@ class EconomicPositionLedger:
                 str(row["allocated_entry_fees_quote"])
             ),
             realized_pnl_quote=Decimal(str(row["realized_pnl_quote"])),
-            active_base_remaining=snapshot.active_base,
-            position_closed=(
-                snapshot.status == EconomicPositionStatus.CLOSED
+            active_base_remaining=Decimal(
+                str(row["active_base_remaining"])
             ),
+            position_closed=bool(row["position_closed"]),
         )
 
     def record_partial_exit(
@@ -692,13 +713,16 @@ class EconomicPositionLedger:
                     FROM economic_lots
                     WHERE position_id = ?
                       AND ownership = ?
-                      AND CAST(base_remaining AS REAL) > 0
                     ORDER BY created_at, lot_id
                     """,
                     (pid, OwnershipBucket.ACTIVE_TRADE.value),
                 ).fetchall()
 
-                lots = [self._lot_from_row(row) for row in rows]
+                lots = [
+                    self._lot_from_row(row)
+                    for row in rows
+                    if Decimal(str(row["base_remaining"])) > ZERO
+                ]
                 active_base = sum((lot.base_remaining for lot in lots), ZERO)
                 if sold > active_base:
                     raise ValueError(
@@ -791,9 +815,11 @@ class EconomicPositionLedger:
                         allocated_cost_basis_quote,
                         allocated_entry_fees_quote,
                         realized_pnl_quote,
+                        active_base_remaining,
+                        position_closed,
                         occurred_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         eid,
@@ -805,6 +831,8 @@ class EconomicPositionLedger:
                         str(allocated_basis),
                         str(allocated_entry_fees),
                         str(realized),
+                        str(active_after),
+                        1 if closed else 0,
                         timestamp,
                     ),
                 )
