@@ -10,6 +10,7 @@ from .accounting_health import AccountingHealthSupervisor
 from .capital_governor import CapitalGovernor, validate_capital_policy
 from .economic_position import EconomicPositionLedger
 from .models import BreakerMode, CapitalPolicy
+from .runtime_scheduler import RuntimeSchedulerStore
 from .vcap_runtime import VCAPRuntimeStore
 from .vcap_state import VCAPStateStore
 
@@ -152,6 +153,13 @@ def get_vcap_runtime_store() -> VCAPRuntimeStore:
 
 
 @lru_cache(maxsize=1)
+def get_runtime_scheduler_store() -> RuntimeSchedulerStore:
+    return RuntimeSchedulerStore(
+        spectra_state_dir() / "runtime_scheduler.sqlite3"
+    )
+
+
+@lru_cache(maxsize=1)
 def get_capital_governor() -> CapitalGovernor:
     state_dir = spectra_state_dir()
     db_path = state_dir / "capital.sqlite3"
@@ -166,3 +174,4 @@ def reset_runtime_cache() -> None:
     get_accounting_health_supervisor.cache_clear()
     get_vcap_state_store.cache_clear()
     get_vcap_runtime_store.cache_clear()
+    get_runtime_scheduler_store.cache_clear()
