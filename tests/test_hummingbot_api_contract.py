@@ -13,8 +13,10 @@ def test_locked_hummingbot_api_exact_position_hold_contract():
     lock = json.loads(LOCK.read_text())
     api = lock["components"]["spectra_hummingbot_api"]
 
-    assert api["revision"] == "e656f3a1e2678a41b369baadb76c875f26aa24cc"
+    assert api["revision"] == "84426ffbf9ba09522b4444664f9770236205ae29"
     assert api["contracts"]["exact_position_hold_accounting"] == 1
+    assert api["contracts"]["executor_order_provenance"] == 1
+    assert api["contracts"]["executor_trade_provenance"] == 1
 
     # This row mirrors the exact PositionHold accounting payload proven in the
     # locked API revision's regression test. Core must continue accepting this
