@@ -8,6 +8,13 @@ from .models import (
     DecisionStatus,
     IntentKind,
 )
+from .recovery_fingerprint import (
+    RecoveryFingerprintDecision,
+    RecoveryFingerprintMode,
+    RecoveryFingerprintPolicy,
+    assess_recovery_fingerprint,
+    shape_recovery_proposal,
+)
 
 __all__ = [
     "BreakerMode",
@@ -18,4 +25,9 @@ __all__ = [
     "CapitalSnapshot",
     "DecisionStatus",
     "IntentKind",
+    "RecoveryFingerprintDecision",
+    "RecoveryFingerprintMode",
+    "RecoveryFingerprintPolicy",
+    "assess_recovery_fingerprint",
+    "shape_recovery_proposal",
 ]
