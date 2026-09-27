@@ -316,17 +316,6 @@ class LiveFillLedgerReconciler:
         if snapshot.pair != normalized_pair:
             raise ValueError("fill binding pair does not match economic position")
 
-        if role == EconomicFillRole.POSITION_EXIT:
-            owned = self.ledger.active_lot_ids_for_provenance(
-                position_id=position,
-                proposal_id=proposal,
-                executor_id=provenance.executor_id,
-            )
-            if not owned:
-                raise ValueError(
-                    "exit binding source owns no active economic lots"
-                )
-
         binding = FillOwnershipBinding(
             order_id=order,
             position_id=position,
@@ -339,6 +328,9 @@ class LiveFillLedgerReconciler:
             created_at=timestamp,
         )
 
+        # Exact replay must remain valid after a SELL has already consumed the
+        # source lots. Otherwise a restart after a complete exit could reject
+        # its own previously-proven binding because ACTIVE_TRADE is now flat.
         with self._connect() as conn:
             existing = conn.execute(
                 """
@@ -357,6 +349,18 @@ class LiveFillLedgerReconciler:
                     )
                 return current
 
+        if role == EconomicFillRole.POSITION_EXIT:
+            owned = self.ledger.active_lot_ids_for_provenance(
+                position_id=position,
+                proposal_id=proposal,
+                executor_id=provenance.executor_id,
+            )
+            if not owned:
+                raise ValueError(
+                    "exit binding source owns no active economic lots"
+                )
+
+        with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO economic_fill_bindings (

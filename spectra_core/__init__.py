@@ -5,6 +5,19 @@ from .accounting_health import (
     AccountingHealthSupervisor,
 )
 from .capital_governor import CapitalGovernor
+from .economic_exit import (
+    EconomicExitManifestStatus,
+    EconomicExitOwner,
+    EconomicExitProgress,
+    EconomicExitProgressState,
+    EconomicExitManifestStore,
+    EconomicPositionExitManifest,
+    assess_position_exit_manifest,
+    create_or_load_position_exit_manifest,
+    realized_pnl_for_manifest,
+    remaining_manifest_base,
+    validate_manifest_against_ledger,
+)
 from .economic_position import (
     EconomicExitResult,
     EconomicLot,
@@ -104,6 +117,17 @@ __all__ = [
     "AccountingHealthSupervisor",
     "BreakerMode",
     "CapitalGovernor",
+    "EconomicExitManifestStatus",
+    "EconomicExitOwner",
+    "EconomicExitProgress",
+    "EconomicExitProgressState",
+    "EconomicExitManifestStore",
+    "EconomicPositionExitManifest",
+    "assess_position_exit_manifest",
+    "create_or_load_position_exit_manifest",
+    "realized_pnl_for_manifest",
+    "remaining_manifest_base",
+    "validate_manifest_against_ledger",
     "EconomicExitResult",
     "EconomicLot",
     "EconomicLotSource",
