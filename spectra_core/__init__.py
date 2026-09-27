@@ -25,6 +25,13 @@ from .vcap_tranches import (
     VCAPTranchePolicy,
     plan_vcap_tranches,
 )
+from .vcap_execution import (
+    VCAPExecutionDecision,
+    VCAPLoopAction,
+    carve_next_vcap_tranche,
+    replan_vcap_sequence,
+    vcap_tranche_proposal_id,
+)
 
 __all__ = [
     "BreakerMode",
@@ -48,4 +55,9 @@ __all__ = [
     "VCAPTranchePlan",
     "VCAPTranchePolicy",
     "plan_vcap_tranches",
+    "VCAPExecutionDecision",
+    "VCAPLoopAction",
+    "carve_next_vcap_tranche",
+    "replan_vcap_sequence",
+    "vcap_tranche_proposal_id",
 ]

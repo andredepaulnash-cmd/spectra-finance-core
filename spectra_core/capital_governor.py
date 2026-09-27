@@ -759,6 +759,179 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
+    def carve_reserved_recovery_tranche(
+        self,
+        *,
+        envelope_proposal_id: str,
+        tranche_proposal: CapitalProposal,
+    ) -> bool:
+        """Atomically carve one exact RECOVERY tranche from a RESERVED envelope.
+
+        The protected total is unchanged: the parent envelope shrinks by the
+        tranche amount while a child RESERVED proposal of exactly that amount is
+        created. Exact replay of the same child proposal is idempotent. Any
+        conflicting replay fails closed.
+        """
+        envelope_id = envelope_proposal_id.strip()
+        child_id = tranche_proposal.proposal_id.strip()
+        pair = tranche_proposal.pair.strip().upper()
+
+        if not envelope_id:
+            raise ValueError("envelope_proposal_id is required")
+        if not child_id:
+            raise ValueError("tranche proposal_id is required")
+        if envelope_id == child_id:
+            raise ValueError("tranche proposal_id must differ from envelope")
+        if not pair:
+            raise ValueError("tranche pair is required")
+        if tranche_proposal.intent != IntentKind.RECOVERY:
+            raise ValueError("VCAP tranche must use RECOVERY intent")
+        if not isinstance(tranche_proposal.amount_quote, Decimal):
+            raise TypeError("tranche amount_quote must be Decimal")
+        if (
+            not tranche_proposal.amount_quote.is_finite()
+            or tranche_proposal.amount_quote <= ZERO
+        ):
+            raise ValueError("tranche amount_quote must be finite and positive")
+        if not isinstance(tranche_proposal.leverage, Decimal):
+            raise TypeError("tranche leverage must be Decimal")
+        if (
+            not tranche_proposal.leverage.is_finite()
+            or tranche_proposal.leverage <= ZERO
+        ):
+            raise ValueError("tranche leverage must be finite and positive")
+
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                self._expire_stale(conn)
+
+                child = conn.execute(
+                    """
+                    SELECT *
+                    FROM capital_reservations
+                    WHERE proposal_id = ?
+                    """,
+                    (child_id,),
+                ).fetchone()
+
+                if child is not None:
+                    exact_replay = (
+                        child["pair"] == pair
+                        and child["intent"] == IntentKind.RECOVERY.value
+                        and Decimal(child["amount_quote"])
+                        == tranche_proposal.amount_quote
+                        and Decimal(child["leverage"])
+                        == tranche_proposal.leverage
+                    )
+                    conn.commit()
+                    return exact_replay
+
+                parent = conn.execute(
+                    """
+                    SELECT *
+                    FROM capital_reservations
+                    WHERE proposal_id = ?
+                    """,
+                    (envelope_id,),
+                ).fetchone()
+
+                if parent is None:
+                    conn.commit()
+                    return False
+
+                parent_amount = Decimal(parent["amount_quote"])
+                matches = (
+                    parent["status"] == DecisionStatus.RESERVED.value
+                    and parent["intent"] == IntentKind.RECOVERY.value
+                    and parent["pair"] == pair
+                    and Decimal(parent["leverage"])
+                    == tranche_proposal.leverage
+                    and parent_amount >= tranche_proposal.amount_quote
+                )
+                if not matches:
+                    conn.commit()
+                    return False
+
+                remaining = parent_amount - tranche_proposal.amount_quote
+                now = time.time()
+
+                conn.execute(
+                    """
+                    INSERT INTO capital_reservations (
+                        proposal_id,
+                        pair,
+                        intent,
+                        amount_quote,
+                        leverage,
+                        status,
+                        reason,
+                        available_after_quote,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        child_id,
+                        pair,
+                        IntentKind.RECOVERY.value,
+                        str(tranche_proposal.amount_quote),
+                        str(tranche_proposal.leverage),
+                        DecisionStatus.RESERVED.value,
+                        "VCAP tranche carved from reserved recovery envelope",
+                        parent["available_after_quote"],
+                        now,
+                        now,
+                    ),
+                )
+
+                if remaining > ZERO:
+                    conn.execute(
+                        """
+                        UPDATE capital_reservations
+                        SET
+                            amount_quote = ?,
+                            reason = ?,
+                            updated_at = ?
+                        WHERE proposal_id = ?
+                          AND status = ?
+                        """,
+                        (
+                            str(remaining),
+                            "VCAP recovery envelope partially carved",
+                            now,
+                            envelope_id,
+                            DecisionStatus.RESERVED.value,
+                        ),
+                    )
+                else:
+                    conn.execute(
+                        """
+                        UPDATE capital_reservations
+                        SET
+                            status = ?,
+                            reason = ?,
+                            updated_at = ?
+                        WHERE proposal_id = ?
+                          AND status = ?
+                        """,
+                        (
+                            DecisionStatus.RELEASED.value,
+                            "VCAP recovery envelope fully carved",
+                            now,
+                            envelope_id,
+                            DecisionStatus.RESERVED.value,
+                        ),
+                    )
+
+                conn.commit()
+                return True
+
+            except Exception:
+                conn.rollback()
+                raise
+
     def release(
         self,
         proposal_id: str,
