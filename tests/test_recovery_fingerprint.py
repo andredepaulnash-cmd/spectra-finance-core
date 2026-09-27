@@ -7,7 +7,10 @@ from spectra_core.models import CapitalProposal, IntentKind
 from spectra_core.recovery_fingerprint import (
     RecoveryFingerprintMode,
     RecoveryFingerprintPolicy,
+    VCAPPositionState,
+    VCAPRecoveryPolicy,
     assess_recovery_fingerprint,
+    plan_vcap_recovery,
     shape_recovery_proposal,
 )
 
@@ -225,4 +228,124 @@ def test_future_fingerprint_evidence_is_rejected():
         assess_recovery_fingerprint(
             fp,
             now=fp.last_seen_at - 1,
+        )
+
+
+
+def position(
+    *,
+    base: str = "10",
+    cost: str = "1100",
+    price: str = "100",
+    pair: str = "BTC-USD",
+) -> VCAPPositionState:
+    return VCAPPositionState(
+        pair=pair,
+        position_base=D(base),
+        cost_basis_quote=D(cost),
+        current_price=D(price),
+    )
+
+
+def test_vcap_strong_reversal_can_expand_seed_request():
+    fp = build_fingerprint(alternating=True)
+
+    plan = plan_vcap_recovery(
+        recovery_proposal("100"),
+        fp,
+        position(),
+        now=fp.last_seen_at,
+    )
+
+    assert plan.behavior.mean_reversion_score is not None
+    assert plan.behavior.mean_reversion_score > 0
+    assert plan.aggressive
+    assert plan.expanded
+    assert D("100") < plan.planned_amount_quote <= D("400")
+    assert plan.proposal is not None
+    assert plan.proposal.amount_quote == plan.planned_amount_quote
+    assert plan.after_rebound_bps < plan.before_rebound_bps
+    assert plan.rebound_improvement_bps > 0
+    assert "aggressive_reversal_weight" in plan.reasons
+    assert "capital_request_expanded" in plan.reasons
+
+
+def test_vcap_persistent_momentum_does_not_expand_seed():
+    fp = build_fingerprint(alternating=False)
+
+    plan = plan_vcap_recovery(
+        recovery_proposal("100"),
+        fp,
+        position(),
+        now=fp.last_seen_at,
+    )
+
+    assert not plan.aggressive
+    assert not plan.expanded
+    assert plan.planned_amount_quote <= D("100")
+    assert "aggressive_signal_unavailable" in plan.reasons
+
+
+def test_vcap_geometry_measures_break_even_weight():
+    fp = build_fingerprint(alternating=True)
+
+    plan = plan_vcap_recovery(
+        recovery_proposal("100"),
+        fp,
+        position(),
+        now=fp.last_seen_at,
+    )
+
+    assert plan.before_rebound_bps == D("1000")
+    assert plan.target_patch_quote == D("1000")
+    assert plan.after_rebound_bps < D("1000")
+    assert (
+        plan.capital_weight_ratio
+        == plan.planned_amount_quote / D("1100")
+    )
+
+
+def test_vcap_does_not_expand_when_position_is_inside_target():
+    fp = build_fingerprint(alternating=True)
+
+    plan = plan_vcap_recovery(
+        recovery_proposal("100"),
+        fp,
+        position(cost="1040"),
+        now=fp.last_seen_at,
+    )
+
+    assert plan.before_rebound_bps == D("400")
+    assert plan.target_patch_quote == D("0")
+    assert not plan.expanded
+    assert plan.planned_amount_quote <= D("100")
+    assert "already_inside_recovery_target" in plan.reasons
+
+
+def test_vcap_position_weight_cap_limits_aggression():
+    fp = build_fingerprint(alternating=True)
+
+    plan = plan_vcap_recovery(
+        recovery_proposal("100"),
+        fp,
+        position(),
+        now=fp.last_seen_at,
+        vcap_policy=VCAPRecoveryPolicy(
+            max_patch_to_position_ratio=D("0.10"),
+        ),
+    )
+
+    assert plan.planned_amount_quote <= D("110")
+    assert plan.capital_weight_ratio <= D("0.10")
+
+
+def test_vcap_pair_mismatch_fails_closed():
+    fp = build_fingerprint(alternating=True)
+
+    with pytest.raises(ValueError, match="does not match position"):
+        plan_vcap_recovery(
+            recovery_proposal("100"),
+            fp,
+            position(pair="ETH-USD"),
+            now=fp.last_seen_at,
         )
