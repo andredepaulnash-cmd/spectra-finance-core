@@ -833,9 +833,12 @@ class EconomicPositionLedger:
 
                 eligible_base = sum((lot.base_remaining for lot in lots), ZERO)
                 if sold > eligible_base:
-                    raise ValueError(
-                        "exit base exceeds eligible ACTIVE_TRADE inventory"
+                    message = (
+                        "exit base exceeds ACTIVE_TRADE inventory"
+                        if eligible_lot_ids is None
+                        else "exit base exceeds eligible ACTIVE_TRADE inventory"
                     )
+                    raise ValueError(message)
 
                 allocated_basis = ZERO
                 allocated_entry_fees = ZERO
