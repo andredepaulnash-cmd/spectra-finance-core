@@ -602,11 +602,15 @@ async def run_vcap_runtime_cycle(
             reasons=("vcap_lifecycle_state_missing_before_execution",),
         )
 
+    preexec_recovery_ids = tuple(
+        proposal_id
+        for proposal_id in current_state.recovery_proposal_ids
+        if proposal_id != mutation_proposal_id
+    )
     preexec_scope = _proposal_scope(
         position_id=position_id,
         ledger=ledger,
-        recovery_proposal_ids=current_state.recovery_proposal_ids,
-        mutation_proposal_id=mutation_proposal_id,
+        recovery_proposal_ids=preexec_recovery_ids,
     )
     preexec_health = await _refresh_accounting(
         client,
