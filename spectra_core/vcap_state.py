@@ -172,6 +172,7 @@ class VCAPStateStore:
                     position_base TEXT NOT NULL,
                     cost_basis_quote TEXT NOT NULL,
                     last_known_price TEXT NOT NULL,
+                    profit_updated_at REAL,
                     profit_floor_reached_at REAL,
                     peak_net_profit_bps TEXT,
                     peak_at REAL,
@@ -196,13 +197,14 @@ class VCAPStateStore:
                     position_base,
                     cost_basis_quote,
                     last_known_price,
+                    profit_updated_at,
                     profit_floor_reached_at,
                     peak_net_profit_bps,
                     peak_at,
                     status,
                     updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(envelope_proposal_id) DO UPDATE SET
                     schema_version = excluded.schema_version,
                     pair = excluded.pair,
@@ -212,6 +214,7 @@ class VCAPStateStore:
                     position_base = excluded.position_base,
                     cost_basis_quote = excluded.cost_basis_quote,
                     last_known_price = excluded.last_known_price,
+                    profit_updated_at = excluded.profit_updated_at,
                     profit_floor_reached_at = excluded.profit_floor_reached_at,
                     peak_net_profit_bps = excluded.peak_net_profit_bps,
                     peak_at = excluded.peak_at,
@@ -228,6 +231,7 @@ class VCAPStateStore:
                     str(state.position_base),
                     str(state.cost_basis_quote),
                     str(state.last_known_price),
+                    None if profit is None else profit.updated_at,
                     None if profit is None else profit.profit_floor_reached_at,
                     None if profit is None else str(profit.peak_net_profit_bps),
                     None if profit is None else profit.peak_at,
@@ -267,7 +271,7 @@ class VCAPStateStore:
             if row["peak_net_profit_bps"] is None:
                 raise ValueError("corrupt VCAP profit state")
             profit_state = VCAPProfitState(
-                updated_at=float(row["updated_at"]),
+                updated_at=float(row["profit_updated_at"]),
                 profit_floor_reached_at=row["profit_floor_reached_at"],
                 peak_net_profit_bps=Decimal(row["peak_net_profit_bps"]),
                 peak_at=row["peak_at"],
