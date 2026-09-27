@@ -12,6 +12,11 @@ from spectra_core.asset_fingerprint import (
     observation_from_kraken_universe,
 )
 from spectra_core.capital_governor import CapitalGovernor
+from spectra_core.economic_exit import (
+    EconomicExitManifestStore,
+    EconomicExitProgressState,
+    assess_position_exit_manifest,
+)
 from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.kraken_market_fabric import (
     KrakenTradingRule,
@@ -24,6 +29,7 @@ from spectra_core.recovery_fingerprint import (
 from spectra_core.vcap_lifecycle import (
     VCAPLifecycleAction,
     VCAPLifecycleDecision,
+    checkpoint_vcap_exit_result,
     plan_vcap_lifecycle_from_ledger,
 )
 from spectra_core.vcap_profit_exit import VCAPProfitExitPolicy
@@ -38,6 +44,9 @@ from spectra_core.vcap_tranches import VCAPTranchePolicy
 
 from mcp_servers.hummingbot_api.tools.accounting_health import (
     synchronize_position_accounting_health,
+)
+from mcp_servers.hummingbot_api.tools.economic_exit import (
+    reconcile_economic_exit_owner_accounting,
 )
 from mcp_servers.hummingbot_api.tools.vcap_lifecycle import (
     execute_vcap_lifecycle_decision,
@@ -188,10 +197,7 @@ def _mutation_key(decision: VCAPLifecycleDecision) -> tuple[str, str | None]:
         return f"TRANCHE:{proposal_id}", proposal_id
 
     if decision.action == VCAPLifecycleAction.EXIT:
-        proposal_ids = decision.state.recovery_proposal_ids
-        if not proposal_ids:
-            raise RuntimeError("exit decision has no RECOVERY ownership")
-        return "EXIT:" + ",".join(proposal_ids), None
+        return f"EXIT:{decision.state.envelope_proposal_id}", None
 
     raise ValueError("lifecycle decision is not capital-mutating")
 
@@ -203,26 +209,6 @@ def _tranche_fill_confirmed(
     ledger: EconomicPositionLedger,
 ) -> bool:
     return proposal_id in ledger.active_proposal_ids(position_id)
-
-
-def _exit_reconciled(
-    *,
-    position_id: str,
-    proposal_ids: Iterable[str],
-    governor: CapitalGovernor,
-    ledger: EconomicPositionLedger,
-) -> bool:
-    for proposal_id in _dedupe(proposal_ids):
-        provenance = governor.get_execution_provenance(proposal_id)
-        if provenance is None:
-            return False
-        if ledger.active_lot_ids_for_provenance(
-            position_id=position_id,
-            proposal_id=proposal_id,
-            executor_id=provenance.executor_id,
-        ):
-            return False
-    return True
 
 
 async def _resume_reconciliation(
@@ -254,10 +240,49 @@ async def _resume_reconciliation(
             reasons=("vcap_lifecycle_state_missing",),
         )
 
+    exit_manifest = None
+    exit_manifest_store = None
+    if cycle.planned_action == VCAPLifecycleAction.EXIT.value:
+        exit_manifest_store = EconomicExitManifestStore(ledger.path)
+        manifest_id = None
+        if isinstance(cycle.execution_result, dict):
+            raw_manifest_id = cycle.execution_result.get("manifest_id")
+            if isinstance(raw_manifest_id, str) and raw_manifest_id.strip():
+                manifest_id = raw_manifest_id.strip()
+        exit_manifest = (
+            None
+            if manifest_id is None
+            else exit_manifest_store.load(manifest_id)
+        )
+        if exit_manifest is None:
+            exit_manifest = exit_manifest_store.open_for_position(
+                cycle.position_id
+            )
+        if exit_manifest is None:
+            conflict = runtime_store.transition(
+                cycle.cycle_id,
+                phase=VCAPRuntimePhase.CONFLICT,
+                now=now,
+                expected_phases=(
+                    VCAPRuntimePhase.MUTATION_DISPATCHING,
+                    VCAPRuntimePhase.MUTATION_DISPATCHED,
+                    VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                ),
+                last_error="economic exit manifest is missing after dispatch",
+                decision_reasons=("economic_exit_manifest_missing",),
+            )
+            return _runtime_result(
+                conflict,
+                reasons=conflict.decision_reasons,
+            )
+        scoped_ids = exit_manifest.proposal_ids
+    else:
+        scoped_ids = state.recovery_proposal_ids
+
     scope = _proposal_scope(
         position_id=cycle.position_id,
         ledger=ledger,
-        recovery_proposal_ids=state.recovery_proposal_ids,
+        recovery_proposal_ids=scoped_ids,
         mutation_proposal_id=cycle.mutation_proposal_id,
     )
     try:
@@ -324,12 +349,59 @@ async def _resume_reconciliation(
                 )
             )
         elif cycle.planned_action == VCAPLifecycleAction.EXIT.value:
-            reconciled = _exit_reconciled(
-                position_id=cycle.position_id,
-                proposal_ids=state.recovery_proposal_ids,
+            if exit_manifest is None or exit_manifest_store is None:
+                raise RuntimeError("economic exit manifest was not loaded")
+
+            owner_accounting = await reconcile_economic_exit_owner_accounting(
+                client,
+                manifest=exit_manifest,
                 governor=governor,
-                ledger=ledger,
             )
+            progress = assess_position_exit_manifest(
+                exit_manifest,
+                ledger=ledger,
+                store=exit_manifest_store,
+                now=now,
+            )
+
+            if progress.state == EconomicExitProgressState.DUST_BLOCKED:
+                hold = runtime_store.transition(
+                    cycle.cycle_id,
+                    phase=VCAPRuntimePhase.HOLD,
+                    now=now,
+                    expected_phases=(
+                        VCAPRuntimePhase.MUTATION_DISPATCHING,
+                        VCAPRuntimePhase.MUTATION_DISPATCHED,
+                        VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                    ),
+                    decision_reasons=(
+                        *health.reasons,
+                        *progress.reasons,
+                    ),
+                    last_error="economic exit is blocked by exchange dust",
+                )
+                return _runtime_result(
+                    hold,
+                    accounting_state=health.state.value,
+                    executed=True,
+                    reasons=hold.decision_reasons,
+                )
+
+            if (
+                progress.state == EconomicExitProgressState.COMPLETED
+                and bool(
+                    owner_accounting.get(
+                        "all_recovery_budget_released"
+                    )
+                )
+            ):
+                checkpoint_vcap_exit_result(
+                    state=state,
+                    store=lifecycle_store,
+                    recovery_budget_released=True,
+                    now=now,
+                )
+                reconciled = True
 
     if reconciled:
         completed = runtime_store.transition(
@@ -714,6 +786,8 @@ async def run_vcap_runtime_cycle(
             store=lifecycle_store,
             now=now,
             position_id=position_id,
+            ledger=ledger,
+            trading_rule=trading_rule,
             accounting_health=preexec_health,
             account_name=account_name,
             controller_id=controller_id,
