@@ -41,10 +41,17 @@ class Quote:
     min_base: Decimal
     min_quote: Decimal
     step_base: Decimal
+    quote_volume_24h: Decimal | None = None
 
     def __post_init__(self):
         if type(self.timestamp) is not int or self.timestamp < 0:
             raise ValueError("timestamp must be a nonnegative integer")
+        if self.quote_volume_24h is not None:
+            object.__setattr__(
+                self,
+                "quote_volume_24h",
+                number(self.quote_volume_24h, "quote_volume_24h"),
+            )
         pair = self.pair.strip().upper()
         if len(pair.split("-")) != 2 or not all(pair.split("-")):
             raise ValueError("pair must be BASE-QUOTE")
@@ -480,6 +487,9 @@ def load_csv(path: str | Path) -> tuple[tuple[Quote, ...], ...]:
             quote = Quote(
                 int(row["timestamp"]),
                 row["pair"],
+                quote_volume_24h=(
+                    D(row["quote_volume_24h"]) if row.get("quote_volume_24h") else None
+                ),
                 **{
                     field: D(row[field])
                     for field in (
