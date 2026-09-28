@@ -72,4 +72,5 @@ jobs:
             tests/test_multi_position_runtime_scheduler.py \
             tests/test_partial_recovery_recycling.py \
             tests/test_strategy_laboratory.py \
-            tests/test_strategy_replay.py
+            tests/test_strategy_replay.py \
+            tests/test_strategy_replay_vcap.py
