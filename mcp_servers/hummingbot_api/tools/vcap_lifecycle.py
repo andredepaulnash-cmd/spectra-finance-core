@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from decimal import Decimal
 from typing import Any
 
 from spectra_core.accounting_health import AccountingHealthDecision
@@ -22,6 +23,9 @@ from mcp_servers.hummingbot_api.tools.vcap_execution import (
 from mcp_servers.hummingbot_api.tools.economic_exit import (
     execute_economic_position_exit,
 )
+from mcp_servers.hummingbot_api.tools.partial_recycle import (
+    execute_partial_recycle,
+)
 
 
 async def execute_vcap_lifecycle_decision(
@@ -34,6 +38,7 @@ async def execute_vcap_lifecycle_decision(
     position_id: str | None = None,
     ledger: EconomicPositionLedger | None = None,
     trading_rule: KrakenTradingRule | None = None,
+    current_price: Decimal | None = None,
     accounting_health: AccountingHealthDecision | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
@@ -46,6 +51,7 @@ async def execute_vcap_lifecycle_decision(
 
     mutating = decision.action in {
         VCAPLifecycleAction.EXECUTE_TRANCHE,
+        VCAPLifecycleAction.PARTIAL_RECYCLE,
         VCAPLifecycleAction.EXIT,
     }
     if mutating:
@@ -106,6 +112,53 @@ async def execute_vcap_lifecycle_decision(
             "remaining_authorized_quote": str(
                 checkpoint.remaining_authorized_quote
             ),
+        }
+
+    if decision.action == VCAPLifecycleAction.PARTIAL_RECYCLE:
+        if (
+            position_id is None
+            or ledger is None
+            or trading_rule is None
+            or current_price is None
+        ):
+            checkpoint = replace(
+                decision.state,
+                status=VCAPLifecycleStatus.HOLD,
+                updated_at=float(now),
+            )
+            store.save(checkpoint)
+            return {
+                "action": decision.action.value,
+                "executed": False,
+                "lifecycle_status": checkpoint.status.value,
+                "error": (
+                    "partial recycle requires position_id, ledger, "
+                    "current trading_rule, and current_price"
+                ),
+            }
+        if decision.partial_recycle_decision is None:
+            raise ValueError(
+                "PARTIAL_RECYCLE lifecycle decision is missing recycle decision"
+            )
+
+        result = await execute_partial_recycle(
+            client,
+            decision=decision.partial_recycle_decision,
+            governor=governor,
+            ledger=ledger,
+            trading_rule=trading_rule,
+            current_price=current_price,
+            now=now,
+            account_name=account_name,
+            controller_id=controller_id,
+        )
+        return {
+            "action": decision.action.value,
+            "executed": bool(result.get("executed")),
+            "manifest_id": result.get("manifest_id"),
+            "sell_executor_id": result.get("sell_executor_id"),
+            "result": result,
+            "lifecycle_status": decision.state.status.value,
         }
 
     if decision.action == VCAPLifecycleAction.EXIT:

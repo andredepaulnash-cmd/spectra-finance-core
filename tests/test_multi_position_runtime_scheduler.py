@@ -52,7 +52,7 @@ def setup_fleet(tmp_path, count=3):
     for index in range(1, count + 1):
         position_id = f"position-{index}"
         envelope = f"envelope-{index}"
-        pair = "XRP-USD" if index <= 2 else "ETH-USD"
+        pair = f"ASSET{index}-USD"
         ledger.open_position(
             position_id=position_id,
             pair=pair,
@@ -98,7 +98,7 @@ def policy(max_positions=2):
     )
 
 
-def test_binding_is_exact_and_same_pair_does_not_allow_envelope_reuse(tmp_path):
+def test_binding_is_exact_and_cross_asset_envelope_reuse_is_rejected(tmp_path):
     ledger, lifecycle, _, scheduler, _, bindings = setup_fleet(tmp_path, 2)
 
     first = scheduler.bind_position(
@@ -108,9 +108,9 @@ def test_binding_is_exact_and_same_pair_does_not_allow_envelope_reuse(tmp_path):
         lifecycle_store=lifecycle,
         now=2_000,
     )
-    assert first.pair == "XRP-USD"
+    assert first.pair == "ASSET1-USD"
 
-    with pytest.raises(RuntimeError, match="already bound"):
+    with pytest.raises(ValueError, match="pair do not match"):
         scheduler.bind_position(
             position_id="position-2",
             envelope_proposal_id=bindings["position-1"],

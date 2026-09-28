@@ -18,6 +18,10 @@ from spectra_core.economic_exit import (
     assess_position_exit_manifest,
 )
 from spectra_core.economic_position import EconomicPositionLedger
+from spectra_core.partial_recycle import (
+    PartialRecycleStore,
+    assess_partial_recycle_manifest,
+)
 from spectra_core.kraken_market_fabric import (
     KrakenTradingRule,
     collect_kraken_universe,
@@ -47,6 +51,9 @@ from mcp_servers.hummingbot_api.tools.accounting_health import (
 )
 from mcp_servers.hummingbot_api.tools.economic_exit import (
     reconcile_economic_exit_owner_accounting,
+)
+from mcp_servers.hummingbot_api.tools.partial_recycle import (
+    synchronize_partial_recycle_executor,
 )
 from mcp_servers.hummingbot_api.tools.vcap_lifecycle import (
     execute_vcap_lifecycle_decision,
@@ -196,6 +203,12 @@ def _mutation_key(decision: VCAPLifecycleDecision) -> tuple[str, str | None]:
         proposal_id = execution.next_proposal.proposal_id
         return f"TRANCHE:{proposal_id}", proposal_id
 
+    if decision.action == VCAPLifecycleAction.PARTIAL_RECYCLE:
+        partial = decision.partial_recycle_decision
+        if partial is None or partial.manifest is None:
+            raise RuntimeError("partial recycle decision has no exact manifest")
+        return f"PARTIAL_RECYCLE:{partial.manifest.manifest_id}", None
+
     if decision.action == VCAPLifecycleAction.EXIT:
         return f"EXIT:{decision.state.envelope_proposal_id}", None
 
@@ -242,6 +255,8 @@ async def _resume_reconciliation(
 
     exit_manifest = None
     exit_manifest_store = None
+    partial_manifest = None
+    partial_store = None
     if cycle.planned_action == VCAPLifecycleAction.EXIT.value:
         exit_manifest_store = EconomicExitManifestStore(ledger.path)
         manifest_id = None
@@ -280,6 +295,42 @@ async def _resume_reconciliation(
                 reasons=conflict.decision_reasons,
             )
         scoped_ids = exit_manifest.proposal_ids
+    elif cycle.planned_action == VCAPLifecycleAction.PARTIAL_RECYCLE.value:
+        partial_store = PartialRecycleStore(ledger.path)
+        manifest_id = None
+        if isinstance(cycle.execution_result, dict):
+            raw_manifest_id = cycle.execution_result.get("manifest_id")
+            if isinstance(raw_manifest_id, str) and raw_manifest_id.strip():
+                manifest_id = raw_manifest_id.strip()
+        partial_manifest = (
+            None
+            if manifest_id is None
+            else partial_store.load(manifest_id)
+        )
+        if partial_manifest is None:
+            partial_manifest = partial_store.open_for_position(
+                cycle.position_id
+            )
+        if partial_manifest is None:
+            conflict = runtime_store.transition(
+                cycle.cycle_id,
+                phase=VCAPRuntimePhase.CONFLICT,
+                now=now,
+                expected_phases=(
+                    VCAPRuntimePhase.MUTATION_DISPATCHING,
+                    VCAPRuntimePhase.MUTATION_DISPATCHED,
+                    VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                ),
+                last_error="partial recycle manifest is missing after dispatch",
+                decision_reasons=("partial_recycle_manifest_missing",),
+            )
+            return _runtime_result(
+                conflict,
+                reasons=conflict.decision_reasons,
+            )
+        scoped_ids = _dedupe(
+            (*state.recovery_proposal_ids, *partial_manifest.proposal_ids)
+        )
     else:
         scoped_ids = state.recovery_proposal_ids
 
@@ -406,6 +457,49 @@ async def _resume_reconciliation(
                     now=now,
                 )
                 reconciled = True
+        elif cycle.planned_action == VCAPLifecycleAction.PARTIAL_RECYCLE.value:
+            if partial_manifest is None or partial_store is None:
+                raise RuntimeError("partial recycle manifest was not loaded")
+            try:
+                await synchronize_partial_recycle_executor(
+                    client,
+                    manifest=partial_manifest,
+                    governor=governor,
+                    ledger=ledger,
+                    store=partial_store,
+                    now=now,
+                )
+            except Exception as exc:
+                waiting = runtime_store.transition(
+                    cycle.cycle_id,
+                    phase=VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                    now=now,
+                    expected_phases=(
+                        VCAPRuntimePhase.MUTATION_DISPATCHING,
+                        VCAPRuntimePhase.MUTATION_DISPATCHED,
+                        VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                    ),
+                    decision_reasons=(
+                        *health.reasons,
+                        "partial_recycle_evidence_not_yet_available",
+                    ),
+                    last_error=str(exc),
+                )
+                return _runtime_result(
+                    waiting,
+                    accounting_state=health.state.value,
+                    executed=True,
+                    reasons=waiting.decision_reasons,
+                )
+
+            progress = assess_partial_recycle_manifest(
+                partial_manifest,
+                ledger=ledger,
+                governor=governor,
+                store=partial_store,
+                now=now,
+            )
+            reconciled = progress.completed
 
     if reconciled:
         completed = runtime_store.transition(
@@ -652,6 +746,7 @@ async def run_vcap_runtime_cycle(
         recovery_policy=recovery_policy,
         tranche_policy=tranche_policy,
         profit_policy=profit_policy,
+        governor=governor,
         accounting_health=health,
     )
 
@@ -659,6 +754,7 @@ async def run_vcap_runtime_cycle(
     mutation_proposal_id = None
     if decision.action in {
         VCAPLifecycleAction.EXECUTE_TRANCHE,
+        VCAPLifecycleAction.PARTIAL_RECYCLE,
         VCAPLifecycleAction.EXIT,
     }:
         mutation_key, mutation_proposal_id = _mutation_key(decision)
@@ -676,6 +772,7 @@ async def run_vcap_runtime_cycle(
 
     if decision.action not in {
         VCAPLifecycleAction.EXECUTE_TRANCHE,
+        VCAPLifecycleAction.PARTIAL_RECYCLE,
         VCAPLifecycleAction.EXIT,
     }:
         terminal_phase = (
@@ -792,6 +889,7 @@ async def run_vcap_runtime_cycle(
             position_id=position_id,
             ledger=ledger,
             trading_rule=trading_rule,
+            current_price=current_price,
             accounting_health=preexec_health,
             account_name=account_name,
             controller_id=controller_id,
@@ -836,6 +934,29 @@ async def run_vcap_runtime_cycle(
                 decision_reasons=(
                     *decision.reasons,
                     "capital_mutation_not_executed",
+                ),
+            )
+            return _runtime_result(
+                hold,
+                accounting_state=preexec_health.state.value,
+                action=decision.action.value,
+                executed=False,
+                reasons=hold.decision_reasons,
+            )
+    elif decision.action == VCAPLifecycleAction.PARTIAL_RECYCLE:
+        if dispatch.get("executed") is False:
+            hold = runtime_store.transition(
+                cycle.cycle_id,
+                phase=VCAPRuntimePhase.HOLD,
+                now=now,
+                expected_phases=(VCAPRuntimePhase.MUTATION_DISPATCHED,),
+                last_error=str(
+                    dispatch.get("error")
+                    or "partial recycle was not dispatched"
+                ),
+                decision_reasons=(
+                    *decision.reasons,
+                    "partial_recycle_not_executed",
                 ),
             )
             return _runtime_result(

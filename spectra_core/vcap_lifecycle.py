@@ -12,6 +12,12 @@ from .economic_position import (
     EconomicPositionStatus,
 )
 from .kraken_market_fabric import KrakenTradingRule
+from .partial_recycle import (
+    PartialRecycleAction,
+    PartialRecycleDecision,
+    PartialRecyclePolicy,
+    plan_partial_recycle,
+)
 from .recovery_fingerprint import (
     RecoveryFingerprintPolicy,
     VCAPPositionState,
@@ -44,6 +50,7 @@ class VCAPLifecycleAction(StrEnum):
     EXECUTE_TRANCHE = "EXECUTE_TRANCHE"
     HOLD = "HOLD"
     PROTECT_PROFIT = "PROTECT_PROFIT"
+    PARTIAL_RECYCLE = "PARTIAL_RECYCLE"
     EXIT = "EXIT"
     COMPLETE = "COMPLETE"
 
@@ -55,6 +62,7 @@ class VCAPLifecycleDecision:
     profit_decision: VCAPProfitExitDecision | None
     execution_decision: VCAPExecutionDecision | None
     reasons: tuple[str, ...]
+    partial_recycle_decision: PartialRecycleDecision | None = None
 
 
 def _checkpoint_state(
@@ -361,6 +369,8 @@ def plan_vcap_lifecycle_from_ledger(
     recovery_policy: VCAPRecoveryPolicy | None = None,
     tranche_policy: VCAPTranchePolicy | None = None,
     profit_policy: VCAPProfitExitPolicy | None = None,
+    partial_recycle_policy: PartialRecyclePolicy | None = None,
+    governor: CapitalGovernor | None = None,
     accounting_health: AccountingHealthDecision | None = None,
 ) -> VCAPLifecycleDecision:
     """Plan one VCAP cycle from authoritative economic-position ownership.
@@ -427,6 +437,53 @@ def plan_vcap_lifecycle_from_ledger(
         expected_exit_fee_bps=expected_exit_fee_bps,
         slippage_allowance_bps=slippage_allowance_bps,
     )
+
+    # Whole-position profit protection remains higher priority than parcel
+    # harvesting. Only when the economic position itself is below that exit
+    # path do we consider monetizing independently profitable RECOVERY owners.
+    profit = plan_vcap_profit_exit(
+        position,
+        costs=costs,
+        now=now,
+        fingerprint=fingerprint,
+        previous_state=state.profit_state,
+        policy=profit_policy,
+    )
+    if (
+        governor is not None
+        and profit.action not in {
+            VCAPProfitExitAction.EXIT,
+            VCAPProfitExitAction.EXTEND,
+        }
+    ):
+        partial = plan_partial_recycle(
+            ledger=ledger,
+            governor=governor,
+            position_id=position_id,
+            trading_rule=trading_rule,
+            current_price=current_price,
+            expected_exit_fee_bps=expected_exit_fee_bps,
+            slippage_allowance_bps=slippage_allowance_bps,
+            now=now,
+            policy=partial_recycle_policy,
+        )
+        if partial.action == PartialRecycleAction.RECYCLE:
+            checkpoint = _checkpoint_state(
+                state,
+                position=position,
+                now=now,
+                profit_decision=profit,
+                status=VCAPLifecycleStatus.ACTIVE,
+            )
+            store.save(checkpoint)
+            return VCAPLifecycleDecision(
+                action=VCAPLifecycleAction.PARTIAL_RECYCLE,
+                state=checkpoint,
+                profit_decision=profit,
+                execution_decision=None,
+                reasons=tuple(profit.reasons) + tuple(partial.reasons),
+                partial_recycle_decision=partial,
+            )
 
     return plan_vcap_lifecycle(
         state=state,
