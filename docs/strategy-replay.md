@@ -100,8 +100,77 @@ and shared-cash limits, exchange constraints, latency, lookahead checks, and a
 seeded synthetic stress path. Synthetic tests validate mechanics, not returns.
 
 Before using results to choose a production strategy, supply versioned historical
-quotes and point-in-time venue rules, implement a separately tested adapter to
-production planning logic, and run the preregistered train/holdout campaign with
+quotes and point-in-time venue rules, extend planner integration to full production lifecycle
+parity, and run the preregistered train/holdout campaign with
 its full trial ledger and cost sensitivity. The runner itself does not perform
 parameter selection, walk-forward training, historical-data downloading, maker
 queue simulation, delisting valuation, or live shadow/canary promotion.
+
+## Production-planner adapter and audited campaigns
+
+`ProductionPlannerAdapter` calls the existing `AssetFingerprint`,
+`plan_vcap_recovery`, `plan_vcap_tranches` and `plan_vcap_profit_exit` code. Create
+one adapter per replay; reusing one across runs fails. It feeds only observations
+seen so far into fingerprints, preserves profit-lock state between observations,
+and resets profit state when inventory geometry changes. Entry tickets and a 3%
+drawdown trigger remain explicit research assumptions. Every proposed recovery
+uses at most the first sellable tranche, replanning on subsequent observations.
+Fee-inclusive replay basis is supplied once, without adding entry fees again.
+
+This is production **planner** integration, not complete production execution
+parity. Production Governor reservations, lifecycle checkpoints, restart recovery,
+partial-recycle manifests and live exchange dispatch are not invoked. The
+adapter uses full-position profit exits; partial recycling remains a separate
+research baseline. The simulator retains its own cash/cap enforcement.
+
+For the adapter, add `quote_volume_24h` to every CSV row and use positive Unix
+timestamps. Missing volume is rejected rather than replaced with fabricated
+observations. Existing baseline-only CSV files still work without this column.
+
+An audited campaign accepts an additional manifest:
+
+```json
+{
+  "kind": "recorded",
+  "sha256": "REPLACE_WITH_SHA256_OF_EXACT_CSV_BYTES",
+  "source": "Description of the source capture and its version",
+  "venue": "Venue identifier",
+  "rules_source": "Source of venue rules effective at each timestamp",
+  "volume_source": "Source of rolling 24-hour quote volume",
+  "depth_definition": "Quantity available on the execution side; describe any conservative aggregation",
+  "protocol_id": "Your fixed experiment protocol identifier",
+  "point_in_time_rules": true,
+  "max_gap_seconds": 60,
+  "start_timestamp": 1700000000,
+  "end_timestamp": 1700003600
+}
+```
+
+The example is a schema, not an included historical dataset. Set `kind` to
+`synthetic` or `estimated` when appropriate. Hash validation proves file identity,
+not source authenticity: provenance is explicitly caller-declared. Audit rejects
+hash/coverage mismatches, missing declarations/volume, temporal errors and gaps
+above the declared limit. Never label candle-derived invented depth as recorded.
+
+```bash
+uv run python -m spectra_core.strategy_dataset quotes.csv \
+  --manifest manifest.json --train-end 1700001800 --test-start 1700001920 \
+  --fee-bps 40 --cash 200 --ledger trials.sqlite3 --output campaign.json
+```
+
+This runs five baselines plus the production-planner adapter on each of two
+nonoverlapping segments, with fresh cash, inventory and fingerprints per segment.
+Both need at least two frames. The split is explicit and does not tune parameters:
+`development` and `evaluation` are fixed-policy comparisons. The excluded interval
+is a user-chosen gap; it is not automatic label-horizon purging. It is not proof of
+an untouched holdout or an extensive walk-forward campaign.
+
+Reports include dataset provenance, engine hash, parameters, split, metrics and
+planner decisions. Trial identities include the data, engine, configuration,
+manifest and split. Identical reruns are idempotent; changed fees or parameters
+are separate ledger trials. Failed replay attempts are also recorded before the
+exception is raised. Synthetic/estimated runs always receive `ADVERSARIAL` stage,
+including their evaluation segment. Recorded runs use `HISTORICAL` and
+`OUT_OF_SAMPLE` labels for the declared intervals; those labels do not verify
+that a researcher has never examined the data before. There is no promotion or
+live-trading action in this command.
