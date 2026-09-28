@@ -74,4 +74,6 @@ jobs:
             tests/test_strategy_laboratory.py \
             tests/test_strategy_replay.py \
             tests/test_strategy_replay_vcap.py \
-            tests/test_kraken_tardis_import.py
+            tests/test_kraken_tardis_import.py \
+            tests/test_binance_kline_import.py \
+            tests/test_rotating_fleet.py

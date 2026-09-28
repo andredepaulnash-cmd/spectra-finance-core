@@ -216,3 +216,12 @@ Tardis documents no-key first-day-of-month access. Free samples are useful for
 pipeline and cost-sensitivity checks; one asset/day cannot establish a robust
 trading edge. Acquisition provenance should retain the exact request parameters,
 all raw slices and file hashes. This importer is for v2 messages, not legacy v1.
+
+## Shared rotating altcoin fleet
+
+The quote runner above evaluates fixed synchronized universes.  The separate
+[`rotating-fleet-replay.md`](rotating-fleet-replay.md) protocol covers the
+shared-account 50-position strategy: unique base-asset identities, exact
+sell-to-replacement links, recovery capital, and causal movement ranking across
+a larger inactive replacement universe.  Its bar-data execution assumptions are
+explicitly estimated and must not be confused with this recorded quote importer.
