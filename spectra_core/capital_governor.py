@@ -2181,7 +2181,14 @@ class CapitalGovernor:
             )
 
             if row["observation_id"] is None:
-                total += provenance.authorized_quote
+                released = self._recovery_recycle_release_quote(
+                    conn,
+                    provenance.proposal_id,
+                )
+                total += max(
+                    provenance.authorized_quote - released,
+                    ZERO,
+                )
                 continue
 
             observation = ExecutorAccountingObservation(
@@ -2235,7 +2242,14 @@ class CapitalGovernor:
                 # Historical provenance predates exact execution scope. It may
                 # never use a PositionHold snapshot to reduce exposure.
                 if any(value is None for value in scope):
-                    total += assessment.exposure_quote
+                    released = self._recovery_recycle_release_quote(
+                        conn,
+                        provenance.proposal_id,
+                    )
+                    total += max(
+                        assessment.exposure_quote - released,
+                        ZERO,
+                    )
                     continue
 
                 holds = self._fresh_position_hold_snapshot(
