@@ -174,3 +174,45 @@ including their evaluation segment. Recorded runs use `HISTORICAL` and
 `OUT_OF_SAMPLE` labels for the declared intervals; those labels do not verify
 that a researcher has never examined the data before. There is no promotion or
 live-trading action in this command.
+
+## Recorded Kraken / Tardis import
+
+`python -m spectra_core.kraken_tardis_import` converts archived Kraken WebSocket
+v2 ticker and instrument messages from Tardis `/data-feeds/kraken`. Pass raw
+NDJSON or gzip files in chronological capture order. There are no network calls
+in the importer. Each raw line is the Tardis local capture timestamp, a space,
+and an exchange-native JSON message; empty lines are disconnect markers.
+
+```bash
+uv run python -m spectra_core.kraken_tardis_import raw/*.ndjson.gz \
+  --symbol BTC/USD --interval-seconds 60 \
+  --output quotes.csv --manifest manifest.json
+```
+
+The importer uses the first ticker observed at least the configured interval
+since the previous output. Capture timestamps are rounded **up** to integer
+seconds, so records are not made available before arrival. No quotes are carried
+forward. Instrument snapshots and updates supply `qty_min`, `cost_min` and
+`qty_increment` as known at that time; disconnects clear these rules until new
+evidence arrives. Quotes seen before rules are counted and excluded. Non-online
+pair status forces simulated available depth to zero.
+
+Depth is the smaller of the reported best bid and best ask quantities, compatible
+with the runner's symmetric-depth model. It is top-level size, not aggregate L2
+liquidity or a promise of executable size. Quote volume is derived from recorded
+24-hour base volume times recorded 24-hour VWAP, preserving reported precision.
+The output records source-file hashes, import counts, time bounds and maximum
+observed gap. The existing dataset auditor rejects gaps above five sampling
+intervals instead of silently relaxing the limit.
+
+Primary source specifications:
+
+- https://docs.tardis.dev/historical-data-details/kraken
+- https://docs.tardis.dev/api/http-api-reference
+- https://docs.kraken.com/exchange/api-reference/spot-websocket-v2/ticker
+- https://docs.kraken.com/exchange/api-reference/spot-websocket-v2/instrument
+
+Tardis documents no-key first-day-of-month access. Free samples are useful for
+pipeline and cost-sensitivity checks; one asset/day cannot establish a robust
+trading edge. Acquisition provenance should retain the exact request parameters,
+all raw slices and file hashes. This importer is for v2 messages, not legacy v1.
