@@ -28,6 +28,23 @@ def _pair(value: str) -> str:
     return pair
 
 
+_BASE_ASSET_ALIASES = {
+    "XBT": "BTC",
+    "XXBT": "BTC",
+    "XDG": "DOGE",
+    "XXDG": "DOGE",
+    "XETH": "ETH",
+    "XXRP": "XRP",
+}
+
+
+def normalized_base_asset(pair: str) -> str:
+    """Return the canonical base asset used for one-position-per-asset locking."""
+    normalized = _pair(pair)
+    base, _ = normalized.rsplit("-", 1)
+    return _BASE_ASSET_ALIASES.get(base, base)
+
+
 def _decimal(
     value: Decimal,
     field: str,
@@ -167,6 +184,7 @@ class EconomicPositionLedger:
                 CREATE TABLE IF NOT EXISTS economic_positions (
                     position_id TEXT PRIMARY KEY,
                     pair TEXT NOT NULL,
+                    base_asset TEXT NOT NULL,
                     status TEXT NOT NULL,
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
@@ -224,6 +242,58 @@ class EconomicPositionLedger:
                 """
             )
 
+            columns = {
+                str(row["name"])
+                for row in conn.execute(
+                    "PRAGMA table_info(economic_positions)"
+                ).fetchall()
+            }
+            if "base_asset" not in columns:
+                conn.execute(
+                    "ALTER TABLE economic_positions ADD COLUMN base_asset TEXT"
+                )
+                legacy_rows = conn.execute(
+                    "SELECT position_id, pair FROM economic_positions"
+                ).fetchall()
+                for row in legacy_rows:
+                    conn.execute(
+                        """
+                        UPDATE economic_positions
+                        SET base_asset = ?
+                        WHERE position_id = ?
+                        """,
+                        (
+                            normalized_base_asset(str(row["pair"])),
+                            str(row["position_id"]),
+                        ),
+                    )
+
+            duplicates = conn.execute(
+                """
+                SELECT base_asset, COUNT(*) AS count
+                FROM economic_positions
+                WHERE status = ?
+                GROUP BY base_asset
+                HAVING COUNT(*) > 1
+                """,
+                (EconomicPositionStatus.ACTIVE.value,),
+            ).fetchall()
+            if duplicates:
+                assets = ", ".join(str(row["base_asset"]) for row in duplicates)
+                raise RuntimeError(
+                    "legacy ledger contains multiple ACTIVE positions for "
+                    f"the same base asset: {assets}"
+                )
+
+            conn.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS
+                    economic_positions_active_base_unique
+                ON economic_positions(base_asset)
+                WHERE status = 'ACTIVE'
+                """
+            )
+
     def open_position(
         self,
         *,
@@ -233,39 +303,71 @@ class EconomicPositionLedger:
     ) -> None:
         pid = _text(position_id, "position_id")
         normalized_pair = _pair(pair)
+        base_asset = normalized_base_asset(normalized_pair)
         timestamp = _time(created_at, "created_at")
 
         with self._connect() as conn:
-            existing = conn.execute(
-                """
-                SELECT pair
-                FROM economic_positions
-                WHERE position_id = ?
-                """,
-                (pid,),
-            ).fetchone()
-            if existing is not None:
-                if str(existing["pair"]) != normalized_pair:
-                    raise RuntimeError(
-                        "economic position replay conflicts with existing pair"
-                    )
-                return
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                existing = conn.execute(
+                    """
+                    SELECT pair, base_asset
+                    FROM economic_positions
+                    WHERE position_id = ?
+                    """,
+                    (pid,),
+                ).fetchone()
+                if existing is not None:
+                    if (
+                        str(existing["pair"]) != normalized_pair
+                        or str(existing["base_asset"]) != base_asset
+                    ):
+                        raise RuntimeError(
+                            "economic position replay conflicts with existing pair"
+                        )
+                    conn.rollback()
+                    return
 
-            conn.execute(
-                """
-                INSERT INTO economic_positions (
-                    position_id, pair, status, created_at, updated_at
+                active_same_asset = conn.execute(
+                    """
+                    SELECT position_id, pair
+                    FROM economic_positions
+                    WHERE base_asset = ? AND status = ?
+                    LIMIT 1
+                    """,
+                    (
+                        base_asset,
+                        EconomicPositionStatus.ACTIVE.value,
+                    ),
+                ).fetchone()
+                if active_same_asset is not None:
+                    raise ValueError(
+                        f"{base_asset} already has ACTIVE economic position "
+                        f"{active_same_asset['position_id']} "
+                        f"({active_same_asset['pair']})"
+                    )
+
+                conn.execute(
+                    """
+                    INSERT INTO economic_positions (
+                        position_id, pair, base_asset, status,
+                        created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        pid,
+                        normalized_pair,
+                        base_asset,
+                        EconomicPositionStatus.ACTIVE.value,
+                        timestamp,
+                        timestamp,
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (
-                    pid,
-                    normalized_pair,
-                    EconomicPositionStatus.ACTIVE.value,
-                    timestamp,
-                    timestamp,
-                ),
-            )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
 
     def _position_row(
         self,
