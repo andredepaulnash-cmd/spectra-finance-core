@@ -224,6 +224,25 @@ class CapitalGovernor:
 
             conn.execute(
                 """
+                CREATE TABLE IF NOT EXISTS recovery_recycle_releases (
+                    release_id TEXT PRIMARY KEY,
+                    proposal_id TEXT NOT NULL,
+                    amount_quote TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_recovery_recycle_release_proposal
+                ON recovery_recycle_releases(proposal_id)
+                """
+            )
+
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS execution_provenance (
                     proposal_id TEXT PRIMARY KEY,
                     executor_id TEXT NOT NULL UNIQUE,
@@ -1991,6 +2010,109 @@ class CapitalGovernor:
                 now=now,
             )
 
+    def _recovery_recycle_release_quote(
+        self,
+        conn: sqlite3.Connection,
+        proposal_id: str,
+    ) -> Decimal:
+        rows = conn.execute(
+            """
+            SELECT amount_quote
+            FROM recovery_recycle_releases
+            WHERE proposal_id = ?
+            """,
+            (proposal_id,),
+        ).fetchall()
+        return sum(
+            (Decimal(str(row["amount_quote"])) for row in rows),
+            ZERO,
+        )
+
+    def record_recovery_recycle_release(
+        self,
+        *,
+        release_id: str,
+        proposal_id: str,
+        amount_quote: Decimal,
+    ) -> Decimal:
+        """Release only proven RECOVERY basis monetized by partial recycling.
+
+        This does not mark an executor flat. It reduces the Governor's recovery
+        exposure by exact cost basis that the economic ledger has already
+        consumed through confirmed SELL fills.
+        """
+
+        rid = str(release_id).strip()
+        pid = str(proposal_id).strip()
+        if not rid or not pid:
+            raise ValueError("release_id and proposal_id are required")
+        self._validate_accounting_decimal(
+            amount_quote,
+            name="amount_quote",
+        )
+        if amount_quote <= ZERO:
+            raise ValueError("amount_quote must be positive")
+
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                provenance = conn.execute(
+                    """
+                    SELECT intent, authorized_quote
+                    FROM execution_provenance
+                    WHERE proposal_id = ?
+                    """,
+                    (pid,),
+                ).fetchone()
+                if provenance is None:
+                    raise ValueError(
+                        "recycle release requires exact execution provenance"
+                    )
+                if str(provenance["intent"]) != IntentKind.RECOVERY.value:
+                    raise ValueError(
+                        "only RECOVERY capital may receive recycle release"
+                    )
+
+                existing = conn.execute(
+                    """
+                    SELECT proposal_id, amount_quote
+                    FROM recovery_recycle_releases
+                    WHERE release_id = ?
+                    """,
+                    (rid,),
+                ).fetchone()
+                if existing is not None:
+                    if (
+                        str(existing["proposal_id"]) != pid
+                        or Decimal(str(existing["amount_quote"])) != amount_quote
+                    ):
+                        raise RuntimeError(
+                            "recovery recycle release replay conflicts"
+                        )
+                    conn.commit()
+                    return self._recovery_recycle_release_quote(conn, pid)
+
+                released = self._recovery_recycle_release_quote(conn, pid)
+                authorized = Decimal(str(provenance["authorized_quote"]))
+                if released + amount_quote > authorized:
+                    raise ValueError(
+                        "recycle release exceeds authorized recovery capital"
+                    )
+
+                conn.execute(
+                    """
+                    INSERT INTO recovery_recycle_releases (
+                        release_id, proposal_id, amount_quote, created_at
+                    ) VALUES (?, ?, ?, ?)
+                    """,
+                    (rid, pid, str(amount_quote), time.time()),
+                )
+                conn.commit()
+                return released + amount_quote
+            except Exception:
+                conn.rollback()
+                raise
+
     def _current_recovery_exposure_quote(
         self,
         conn: sqlite3.Connection,
@@ -2135,7 +2257,11 @@ class CapitalGovernor:
                         )
                     )
 
-            total += assessment.exposure_quote
+            released = self._recovery_recycle_release_quote(
+                conn,
+                provenance.proposal_id,
+            )
+            total += max(assessment.exposure_quote - released, ZERO)
 
         return total
 
