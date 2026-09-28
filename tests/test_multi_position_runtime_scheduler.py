@@ -98,7 +98,7 @@ def policy(max_positions=2):
     )
 
 
-def test_binding_is_exact_and_envelope_cannot_be_reused_across_assets(tmp_path):
+def test_binding_is_exact_and_cross_asset_envelope_reuse_is_rejected(tmp_path):
     ledger, lifecycle, _, scheduler, _, bindings = setup_fleet(tmp_path, 2)
 
     first = scheduler.bind_position(
@@ -110,7 +110,7 @@ def test_binding_is_exact_and_envelope_cannot_be_reused_across_assets(tmp_path):
     )
     assert first.pair == "ASSET1-USD"
 
-    with pytest.raises(RuntimeError, match="already bound"):
+    with pytest.raises(ValueError, match="pair do not match"):
         scheduler.bind_position(
             position_id="position-2",
             envelope_proposal_id=bindings["position-1"],
