@@ -71,6 +71,7 @@ jobs:
             tests/test_unified_economic_exit.py \
             tests/test_multi_position_runtime_scheduler.py \
             tests/test_partial_recovery_recycling.py \
+            tests/test_protected_recovery_exit.py \
             tests/test_strategy_laboratory.py \
             tests/test_strategy_replay.py \
             tests/test_strategy_replay_vcap.py \
