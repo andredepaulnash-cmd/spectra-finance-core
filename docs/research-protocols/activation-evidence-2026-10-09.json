@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "as_of_utc": "2026-10-09",
+  "purpose": "Pinned prior evidence and immutable comparison control; no production promotion",
+  "repository": {
+    "full_name": "andredepaulnash-cmd/spectra-finance-core",
+    "branch": "spectra-core-phase2",
+    "commit_sha": "6e894fa9c2b55384d0f6120f41ca91892e1fe207",
+    "tree_sha": "af3b20918fd7733d865cecfb313ecd71e873b3c7",
+    "source_checked_via": "GitHub connector branch and recursive tree reads"
+  },
+  "control": {
+    "id": "hard_100_park",
+    "source_location": "External archived research runner; not production-equivalent",
+    "initial_cash": "2000",
+    "whole_net_profit_floor_bps": 100,
+    "partial_net_profit_floor_bps": 100,
+    "partial_proceeds": "PARK",
+    "whole_proceeds": "ORDINARY",
+    "pssm": false,
+    "dtss": false,
+    "dtssr": false,
+    "june_equity": "1898.277183091943957381228996",
+    "june_cash": "1702.856656155282386623051379",
+    "june_parked_cash": "1701.314697008937781013999490",
+    "june_deployable_cash": "1.541959146344605609051889",
+    "max_observed_drawdown_percent": "9.8381869489"
+  },
+  "inputs": {
+    "prepared_ohlcv_sha256": "dde300cb04c5f8c85aafba3924f74e70df1477ce26ca4c1597d295202d047938",
+    "prepared_metadata_sha256": "cdcdc4ebc93150d6fa8f54fc9304edc8deb113633c0161ada4ccd412a12c68b8",
+    "prepared_shape": [
+      78624,
+      619,
+      6
+    ],
+    "source_archives": [
+      {
+        "name": "Spectra_Exact_Baseline_Reproduction_Validated_2026-10-08.zip",
+        "sha256": "440080615478a7d4974f347f6e9efda7efceb557adc20d92db75677f8f88459d"
+      },
+      {
+        "name": "Spectra_Primary_Matrix_Checkpoint_2026-10-08.zip",
+        "sha256": "a0aa9a88160f6f5879b743e2f8ea70ecaa04d15b08fbd45a7a829f83538db03a"
+      },
+      {
+        "name": "Spectra_Final_N_Research_Supplement_2026-10-08.zip",
+        "sha256": "77b0c8fff4fe39fbbd640832d50dcccee414455c5c4089c407762ff9362a4fb9"
+      }
+    ]
+  },
+  "diagnostic_evidence": {
+    "name": "Spectra_Activation_Diagnostic_Evidence_2026-10-09.zip",
+    "bytes": 431830,
+    "sha256": "79287402a3f211427706a837998496b534c9d033e5deb27a7372bf6d42be7feb",
+    "inner_manifest": "deliverables/Diagnostic_Evidence_Manifest.json",
+    "verified_scope": {
+      "resumed_frames": 8640,
+      "archived_fills": 29,
+      "fill_counts": {
+        "EXIT": 13,
+        "ENTRY": 12,
+        "RECOVERY": 3,
+        "PARTIAL_RECYCLE": 1
+      },
+      "archived_account_samples": 720,
+      "account_field_comparisons": 2880,
+      "policy_changed": false,
+      "adaptive_profitability_demonstrated": false,
+      "production_restart_api_validated": false,
+      "original_continuous_digest_equivalence": false
+    }
+  },
+  "future_experiment": {
+    "parameters": "Must be frozen separately in executable parked-cash protocol",
+    "changes_to_keep_separate": [
+      "cash authority routing",
+      "signal qualification",
+      "valuation freshness policy"
+    ],
+    "success": "Actual funded fills, valid exact ownership and improved total equity with acceptable drawdown; synthetic integrity tests establish mechanics only"
+  }
+}
