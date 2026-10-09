@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "runner_sha256": "4d1a36c1ced979d128acd589150d0702924527491dfd3bbd29b6935a88fd710d",
+  "checks": {
+    "off_window_coverage_8640": true,
+    "position_max_report_matches_csv": true,
+    "position_mean_report_matches_csv": true,
+    "known_sample_dataclass_field_valid": true,
+    "frozen_adapter_unchanged": true,
+    "frozen_protocol_unchanged": true
+  },
+  "off_rows": 8640,
+  "maximum_positions": 37,
+  "mean_positions": "36.81828703703703703703703704",
+  "scope": "Independent saved OFF occupancy aggregation and observer/source review; not another strategy execution",
+  "runtime_diff_review": "Financial/source identity and cap stay every frame; exact owned-lot checks stay first frame, every fill batch, daily, terminal. Reporting reads result.rejections and observer position accumulators. Native selector and economic adapter unchanged.",
+  "failure_export_limit": "Validated snapshot export may raise again when the original failure is financial corruption; observed timeout export is supported. No resumable checkpoint claim."
+}

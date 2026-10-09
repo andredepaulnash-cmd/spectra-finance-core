@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "experiment": "bounded parked-cash purpose and priority comparison",
+  "research_only": true,
+  "frozen_before_arm_results": true,
+  "baseline": "hard_100_park",
+  "start_utc": "2026-07-01T00:00:00+00:00",
+  "end_exclusive_utc": "2026-07-31T00:00:00+00:00",
+  "frames": 8640,
+  "initial_capital": "2000",
+  "restored_equity": "1898.277183091943957381228996",
+  "boundary_checkpoint_sha256": "727b663e91021bb09e063fea916b89972d5bd7d685062bacdec0f925381a2e1c",
+  "native_strategy_sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
+  "tape_sha256": "dde300cb04c5f8c85aafba3924f74e70df1477ce26ca4c1597d295202d047938",
+  "arms": [
+    {"name": "OFF", "allowed_purposes": [], "outstanding_cap_quote": "0"},
+    {"name": "ENTRY_ONLY", "allowed_purposes": ["ENTRY"], "outstanding_cap_quote": "100"},
+    {"name": "RECOVERY_ONLY", "allowed_purposes": ["RECOVERY"], "outstanding_cap_quote": "100"},
+    {"name": "BOTH", "allowed_purposes": ["RECOVERY", "ENTRY"], "outstanding_cap_quote": "100"},
+    {"name": "BOTH_TIGHT", "allowed_purposes": ["RECOVERY", "ENTRY"], "outstanding_cap_quote": "50"}
+  ],
+  "cash_policy": {
+    "cap_definition": "Sum of exact P-funded acquisition basis in surviving lots plus pending P claims. Settlement retires acquisition basis exactly once; returns require fresh authorization.",
+    "ordinary_cash_first": true,
+    "reserve_fraction": "0.25",
+    "pair_basis_cap_fraction": "0.05",
+    "maximum_distinct_assets": 50,
+    "ordinary_entry_all_in": "10.25",
+    "partial_proceeds": "All net partial proceeds return to PARK exactly once, as in native control.",
+    "whole_proceeds": "Exact P-funded ownership fraction returns to PARK; ordinary-funded remainder rotates as in native control.",
+    "priority": "Original EXIT then PARTIAL_RECYCLE then RECOVERY then ENTRY. Native recovery planning priority is preserved; no new adaptive ranking is implied.",
+    "no_credit_or_new_deposits": true
+  },
+  "unchanged": {
+    "whole_target_bps": "100",
+    "partial_target_bps": "100",
+    "hard_execution_floor_bps": "100",
+    "fee_bps_per_side": "40",
+    "slippage_bps": "5",
+    "generic_minimum_quote": "5",
+    "volume_participation_fraction": "0.01",
+    "recovery_trigger_fraction": "0.03",
+    "recovery_seed_quote": "40",
+    "entry_selection": "Original causal movement and recorded-volume ranking; not a predictive winner selector.",
+    "recovery_selection": "Original fingerprint/recovery/tranche planners; no new ladder or signal overlay.",
+    "pssm_dtss_dtssr": "OFF"
+  },
+  "execution": {
+    "mechanical_activation_before_matrix": true,
+    "maximum_simulation_seconds_per_arm": 420,
+    "checkpoint_restore_separate_from_simulation_budget": true,
+    "stops": ["Any accounting or ownership failure", "OFF fails archive match", "No authentic parked-funded buy in enabled activation window", "Execution time budget reached"],
+    "result_selection": "Compare complete window marked equity, change in open P&L, cash, source utilization, drawdown, and fees. Do not select by realized profit alone.",
+    "no_post_outcome_tuning": true
+  },
+  "limits": [
+    "This July continuation is a bounded mechanism and policy comparison, not a new January-June backtest.",
+    "The period and original native baseline were previously inspected; this is not an untouched performance holdout.",
+    "No new freshness/history gate, predictive winner model, live execution or thirty-second execution guarantee is tested.",
+    "A good result warrants longer validation; it does not approve deployment or guarantee profitability."
+  ]
+}

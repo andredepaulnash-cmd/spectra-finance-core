@@ -1,0 +1,35 @@
+name: Offline Research Integrity
+
+on:
+  pull_request:
+    branches: [spectra-core-phase2]
+    paths:
+      - research/**
+      - docs/research-workflow.md
+      - docs/research-protocols/**
+      - .github/workflows/research-integrity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-integrity:
+    name: Standard-library evidence tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Run eight required archive-integrity tests
+        run: |
+          python -m unittest discover -s research/tests \
+            -p 'test_verify_diagnostic_evidence.py' -v
+      - name: Report separate native integration archive requirement
+        # No archive or NumPy dependency is installed in this stdlib-only job.
+        # Discovery must explicitly SKIP, rather than imply 16 passing checks.
+        run: |
+          python -m unittest discover -s research/parked_cash/tests \
+            -p 'test_release_adapter_native.py' -v

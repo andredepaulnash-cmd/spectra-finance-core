@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "test_count": 16,
+  "failures": [],
+  "errors": [],
+  "source_sha256": "b9e7fcd4c0f3ebff508da90e87c7ee1ba19abacb7d6796da3166bf32d8b4cbfb",
+  "test_sha256": "444bf41f8bcc99d90c22ab926c5af4c43248ab8a6ff07acda1bb2e0f6c6a6d5c",
+  "scope": "Independent constructed-money mechanics on authentic native immutable economic lots, native buy/full-exit/partial methods; no historical strategy performance claim",
+  "historical_profitability_proven": false,
+  "full_off_historical_equivalence_proven": false,
+  "original_test_sha256": "3adc22d016f20f29e5f9ca403b0bdf028d683fb9c1793a5d7d5d0a2e071a210b",
+  "original_independent_receipt_sha256": "e9dd5ef33d5aa9cde600941cfdd621429bbfd9cbe5a89931a513da97edcab5b2",
+  "original_independent_receipt_source_sha256": "b9e7fcd4c0f3ebff508da90e87c7ee1ba19abacb7d6796da3166bf32d8b4cbfb",
+  "wrapper_sha256": "1df12d02dc1ff459d027e172e22f826e6a9b0e7610dcccd1ca14c3bd8a72bb45",
+  "port_scope": "Only external input selection, optional archive guard and receipt destination changed; all 16 mechanics test bodies unchanged",
+  "absence_behavior_verified": "unittest discovery reports explicit archive-required SKIP before NumPy import",
+  "unchanged_copied_source_sha256": {
+    "release_adapter.py": "b9e7fcd4c0f3ebff508da90e87c7ee1ba19abacb7d6796da3166bf32d8b4cbfb",
+    "run_comparison.py": "e0270ebd2c7e0bf71d187d4a253b22a20f95b5112ecd7ef901a941fb2d266b86",
+    "run_enabled_matrix.py": "c47d591101fe88b2794dfe8d7fbda18e0aa59587119d6dab36bc83f8c5919558",
+    "protocol.json": "c187a8f4793c016b82ab39d6e2c5bbaba9fd9f45543036a49be796b85eabc09b",
+    "audit_release_runs.py": "3228aef24df9490e37004b623b500f69b7da7da3d320cde50310ce8d474a4102"
+  },
+  "copied_source_hash_scope": "Hashes recorded at native mechanics test execution; runner later received a separately documented observation-only revision.",
+  "later_runner_observation_revision_sha256": "4d1a36c1ced979d128acd589150d0702924527491dfd3bbd29b6935a88fd710d"
+}
