@@ -45,6 +45,64 @@ def sha(path):
     return h.hexdigest()
 
 
+def preserve_failure_evidence(output, error, *, arm, completed_frames,
+                              simulation_seconds, latest, dataset, receipt,
+                              sample_file):
+    """Save the original failure before optional, fallible evidence exports.
+
+    This helper does not expire claims, validate a full result or change money.
+    Export failures are diagnostics beside the original simulation failure.
+    The caller must re-raise its original exception with a bare ``raise``.
+    """
+    failure_path = output / "failure_receipt.json"
+    payload = dict(status="FAIL", arm=arm, exception=type(error).__name__,
+        reason=str(error), completed_frames=completed_frames,
+        simulation_seconds=simulation_seconds, no_performance_claim=True,
+        evidence_export_errors=[])
+
+    def write_receipt():
+        # An interrupted amendment must not truncate the first valid receipt.
+        staging = failure_path.with_suffix(".pending")
+        dump(staging, payload)
+        staging.replace(failure_path)
+
+    def capture(label, operation):
+        try:
+            operation()
+            return True
+        except Exception as export_error:
+            payload["evidence_export_errors"].append(dict(
+                export=label, exception=type(export_error).__name__,
+                reason=str(export_error)))
+            return False
+
+    # The original failure is durable before CSV closure or ownership checks.
+    receipt_written = capture("failure_receipt_initial", write_receipt)
+    capture("account_csv_close", sample_file.close)
+    if receipt_written and latest is not None:
+        capture("partial_new_fills", lambda: dump(output / "partial_new_fills.json",
+            [asdict(fill) for fill in latest["fills"][receipt["original_fill_count"]:]]))
+        capture("partial_release_events", lambda: dump(
+            output / "partial_release_events.json", dataset.release.events))
+        capture("partial_active_lots", lambda: dump(output / "partial_active_lots.json",
+            [asdict(lot) for lot in dataset.ledger.lots.values() if lot.base_remaining > ZERO]))
+        capture("partial_positions", lambda: dump(output / "partial_positions.json",
+            [asdict(position) for position in latest["positions"].values()]))
+        capture("partial_release", lambda: dump(output / "partial_release.json",
+            dataset.release.audit_snapshot()))
+    capture("failure_receipt_update", write_receipt)
+    if payload["evidence_export_errors"]:
+        # A filesystem error can prevent saving the amended receipt. Report it
+        # without replacing the original exception, even if stderr also fails.
+        try:
+            print(json.dumps(dict(event="FAILURE_EVIDENCE_EXPORT_ERRORS",
+                original_exception=payload["exception"],
+                errors=payload["evidence_export_errors"])), file=sys.stderr)
+        except Exception:
+            pass
+    return payload
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--arm", choices=["OFF", "ENTRY_ONLY", "RECOVERY_ONLY", "BOTH", "BOTH_TIGHT"], required=True)
@@ -175,21 +233,10 @@ def main():
     try:
         result = simulator.run(dataset)
     except Exception as error:
-        sample_file.close()
-        # Preserve actual fills and source ownership even on a bounded stop.
-        # This is an evidence snapshot, not a resumable production checkpoint.
-        if latest is not None:
-            dump(args.output / "partial_new_fills.json", [asdict(fill)
-                for fill in latest["fills"][receipt["original_fill_count"]:]])
-            dump(args.output / "partial_release_events.json", dataset.release.events)
-            dump(args.output / "partial_active_lots.json", [asdict(lot)
-                for lot in dataset.ledger.lots.values() if lot.base_remaining > ZERO])
-            dump(args.output / "partial_positions.json", [asdict(position)
-                for position in latest["positions"].values()])
-            dump(args.output / "partial_release.json", dataset.release.audit_snapshot())
-        dump(args.output / "failure_receipt.json", dict(status="FAIL", arm=args.arm,
-            exception=type(error).__name__, reason=str(error), completed_frames=observed["frames"],
-            simulation_seconds=time.monotonic()-execution_start, no_performance_claim=True))
+        preserve_failure_evidence(args.output, error, arm=args.arm,
+            completed_frames=observed["frames"],
+            simulation_seconds=time.monotonic()-execution_start,
+            latest=latest, dataset=dataset, receipt=receipt, sample_file=sample_file)
         raise
     sample_file.close()
     # Save the native result independently before formatting any report.

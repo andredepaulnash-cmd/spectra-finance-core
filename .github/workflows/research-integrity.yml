@@ -33,3 +33,7 @@ jobs:
         run: |
           python -m unittest discover -s research/parked_cash/tests \
             -p 'test_release_adapter_native.py' -v
+      - name: Run six failure-evidence injection tests
+        run: |
+          python -m unittest discover -s research/tests \
+            -p 'test_failure_evidence.py' -v

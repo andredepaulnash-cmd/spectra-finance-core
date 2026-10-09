@@ -5,14 +5,17 @@ fund selected native buy purposes. It has no production auto-import, exchange
 client, credential handling or live order endpoint. Nothing in `spectra_core` or
 the production entry point imports this folder.
 
-`release_adapter.py`, `run_comparison.py`, `run_enabled_matrix.py`, and
-`protocol.json` are unchanged copies of the frozen local experiment. The saved
-output auditor is also copied unchanged. The native integration test changes
-only external input paths and its separate receipt destination.
+`release_adapter.py` is unchanged from the frozen financial experiment. The
+protocol and matrix driver include the separately recorded 600-second operational
+budget. The saved-output auditor is copied unchanged. The native integration test
+changes only external input paths and its separate receipt destination.
 
 The runner includes the separately documented
 [observation-only revision](../../docs/research-results/parked-cash-runtime-observation-2026-10-09.md).
-Its funding adapter and protocol retain their original pins.
+The historical runner remains pinned at `4d1a36c1...`. The repository runner has
+a later logging-only follow-up: it writes the original failure receipt before
+optional exports, records export errors and re-raises the original simulation
+exception. This follow-up was not used for those historical executions.
 
 ## Policy
 
@@ -76,7 +79,7 @@ python research/parked_cash/run_comparison.py \
   --prepared /archive/prepared \
   --protocol research/parked_cash/protocol.json \
   --output /results/parked-cash/OFF \
-  --seconds 420
+  --seconds 600
 ```
 
 Every output directory must be new. The archived OFF control must pass before
@@ -93,9 +96,12 @@ python research/parked_cash/run_enabled_matrix.py \
 
 The matrix uses its sibling frozen protocol and stops on failed execution,
 invalid accounting or missing actual parked-funded activation. The per-arm
-simulation budget is 420 seconds; input verification and checkpoint restoration
-are measured separately. The selected July window was already inspected and is
-not an untouched performance holdout.
+simulation budget is 600 seconds, passed explicitly by the matrix driver; input
+verification and checkpoint restoration are measured separately. Prior
+420-second attempts stopped at 6,355 and 8,542 of 8,640 frames. They remain
+separate incomplete attempts, rather than completed monthly comparisons. The
+budget revision changes no financial settings. The selected July window was
+already inspected and is not an untouched performance holdout.
 
 Audit completed saved outputs without executing or rehydrating the strategy:
 
@@ -111,13 +117,34 @@ Repeat `--run` for each completed arm. The auditor uses only the Python standard
 library and reconstructs exact source ownership, cash, claims and final account
 rows from saved evidence. It does not perform a second historical replay.
 
+Reconstruct the report and compact evidence pack from an externally restored
+workflow collection:
+
+```bash
+python research/parked_cash/build_deliverables.py \
+  --root /archive/workflow-20261009 \
+  --results results-runtime-v3 \
+  --output /results/rebuilt-deliverables
+```
+
+All three arguments are mandatory. Relative `--results` paths resolve under the
+external `--root`; use an absolute `--output` for a separate destination. The
+collection must retain completed arm outputs, independent reviews, both preserved
+incomplete attempts and the original experiment protocol/source receipts. This
+folder alone does not contain those inputs. The helper checks completion and
+packages saved evidence; it never executes a strategy. Use `--allow-incomplete`
+only when intentionally producing a labelled checkpoint.
+
 ## Tests and CI
 
-The mandatory research-integrity CI runs eight standard-library archive tests:
+The mandatory research-integrity CI runs eight standard-library archive tests
+and six failure-evidence injection tests:
 
 ```bash
 python -m unittest discover -s research/tests \
   -p 'test_verify_diagnostic_evidence.py' -v
+python -m unittest discover -s research/tests \
+  -p 'test_failure_evidence.py' -v
 ```
 
 The separate optional integration suite contains 16 constructed-money mechanics

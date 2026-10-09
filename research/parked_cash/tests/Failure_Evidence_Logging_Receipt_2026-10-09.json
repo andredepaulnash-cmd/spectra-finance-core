@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "required_integrity_tests": 8,
+  "failure_injection_tests": 6,
+  "stdlib_tests_total": 14,
+  "failure_checks": [
+    "corrupt snapshot cannot mask original exception or initial receipt",
+    "failed payload export permits remaining exports",
+    "failed CSV close preserves original exception",
+    "unwritable receipt preserves original exception",
+    "failed receipt amendment preserves original saved receipt",
+    "actual runner uses bare re-raise without expiring claims"
+  ],
+  "patch_parent_commit": "54bea18a0ffa2427a20a531473f55efe04533329",
+  "historically_executed_runner_sha256": "4d1a36c1ced979d128acd589150d0702924527491dfd3bbd29b6935a88fd710d",
+  "future_repository_logging_runner_sha256": "495d4b590d99bcb3151db3f6d9dc30c1f0213392d4ff2146821bfd4ad1896f43",
+  "failure_test_source_sha256": "539e23d0125d54ae847539f43880918278fa6ff43ad3fe1b5c99f5f5c1dbadb4",
+  "financial_adapter_sha256": "b9e7fcd4c0f3ebff508da90e87c7ee1ba19abacb7d6796da3166bf32d8b4cbfb",
+  "600_second_protocol_sha256": "3939a3740d697f6c7c587ffd392eef8a2eaf12ec398b516bdc9f9e0c12aa0e2f",
+  "explicit_budget_matrix_driver_sha256": "31ec5a4ef269bca17e8fbc9930047f4c6d1fe7caf7fe2d284a55ae21636849c0",
+  "scope": "Standard-library bounded failure injection and source checks only; no market data, strategy replay or live trading",
+  "active_experiment_source_changed": false,
+  "financial_rules_changed": false,
+  "historical_results_attributed_to_future_logging_patch": false
+}

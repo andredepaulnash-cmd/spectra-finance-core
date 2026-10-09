@@ -1,0 +1,243 @@
+{
+  "schema": 1,
+  "research_only": true,
+  "period": {
+    "start_utc": "2026-07-01T00:00:00+00:00",
+    "end_exclusive_utc": "2026-07-31T00:00:00+00:00"
+  },
+  "initial_original_capital": "2000",
+  "restored_equity": "1898.277183091943957381228996",
+  "arms": [
+    {
+      "arm": "OFF",
+      "initial_equity": "1898.277183091943957381228996",
+      "ending_equity": "1903.422133191665374991595013",
+      "marked_gain": "5.144950099721417610366017",
+      "new_realized_profit": "8.858839954797079040732558875",
+      "change_in_open_pnl": "-3.7138898550756614303665414",
+      "remaining_open_pnl": "-307.4638537303527849864945784",
+      "ending_cash": "1707.659514487834020320225698",
+      "parked_cash": "1707.659514487833998378453361",
+      "ordinary_cash": "2.1941772337E-14",
+      "marked_inventory": "195.7626187038313546713693151",
+      "fees": "1.167992259576086762388264836",
+      "ending_positions": 36,
+      "maximum_positions": 37,
+      "mean_positions": 36.81828703703704,
+      "window_max_drawdown_fraction": "0.01568994216287309361059687536",
+      "fill_counts": {
+        "EXIT": 13,
+        "ENTRY": 12,
+        "RECOVERY": 3,
+        "PARTIAL_RECYCLE": 1
+      },
+      "activated": false,
+      "complete_frames": 8640,
+      "outstanding_cap": "0",
+      "gain_versus_OFF": "0E-24",
+      "parked_funded_buy_counts": {
+        "parked_funded_ENTRY_fills": 0,
+        "parked_funded_RECOVERY_fills": 0
+      },
+      "parked_cumulative_spend": "0",
+      "peak_parked_basis_plus_claims": "0",
+      "result_sha256": "d8448c4fbe3a7a36a156ff53f0ba7982f415d730c2dbea9e9d6a96cdfd3eb98d"
+    },
+    {
+      "arm": "ENTRY_ONLY",
+      "initial_equity": "1898.277183091943957381228996",
+      "ending_equity": "1897.657266796770587983553742",
+      "marked_gain": "-0.619916295173369397675254",
+      "new_realized_profit": "31.82777839393205756615282006",
+      "change_in_open_pnl": "-32.4476946891054269638280735",
+      "remaining_open_pnl": "-336.1976585643825505199561105",
+      "ending_cash": "1626.669706867764701626728359",
+      "parked_cash": "1626.669706867764701626728359",
+      "ordinary_cash": "0E-24",
+      "marked_inventory": "270.9875599290058863568253830",
+      "fees": "6.954262301309747873520549808",
+      "ending_positions": 47,
+      "maximum_positions": 47,
+      "mean_positions": 46.411689814814814,
+      "window_max_drawdown_fraction": "0.01974456141925546131152297776",
+      "fill_counts": {
+        "ENTRY": 88,
+        "EXIT": 78,
+        "RECOVERY": 1
+      },
+      "activated": true,
+      "complete_frames": 8640,
+      "outstanding_cap": "100",
+      "gain_versus_OFF": "-5.764866394894787008041271",
+      "parked_funded_buy_counts": {
+        "parked_funded_ENTRY_fills": 83,
+        "parked_funded_RECOVERY_fills": 0
+      },
+      "parked_cumulative_spend": "827.0856867645584423269457490",
+      "peak_parked_basis_plus_claims": "99.56429644409453066283515000",
+      "result_sha256": "9a1020fffc95e87473dccb304741b614edb42257dfd8577646a18dba5bb41550"
+    },
+    {
+      "arm": "RECOVERY_ONLY",
+      "initial_equity": "1898.277183091943957381228996",
+      "ending_equity": "1894.336642266872863268321846",
+      "marked_gain": "-3.940540825071094112907150",
+      "new_realized_profit": "20.70208623433517390480241083",
+      "change_in_open_pnl": "-24.6426270594062680177095597",
+      "remaining_open_pnl": "-328.3925909346833915738375967",
+      "ending_cash": "1616.988293957860007558418831",
+      "parked_cash": "1616.988293957859961757187805",
+      "ordinary_cash": "4.5801231026E-14",
+      "marked_inventory": "277.3483483090128557099030154",
+      "fees": "6.265595161798278546710695255",
+      "ending_positions": 36,
+      "maximum_positions": 37,
+      "mean_positions": 36.81828703703704,
+      "window_max_drawdown_fraction": "0.02496816591956193046093977226",
+      "fill_counts": {
+        "RECOVERY": 112,
+        "PARTIAL_RECYCLE": 62,
+        "EXIT": 13,
+        "ENTRY": 12
+      },
+      "activated": true,
+      "complete_frames": 8640,
+      "outstanding_cap": "100",
+      "gain_versus_OFF": "-9.085490924792511723273167",
+      "parked_funded_buy_counts": {
+        "parked_funded_ENTRY_fills": 0,
+        "parked_funded_RECOVERY_fills": 109
+      },
+      "parked_cumulative_spend": "682.7071202780165069226208917",
+      "peak_parked_basis_plus_claims": "99.99999999999999999976147265",
+      "result_sha256": "f51dc7ddfa6695e8c9f97d22ab1827c1a5d92c730fd20f1711576421a8a049aa"
+    },
+    {
+      "arm": "BOTH",
+      "initial_equity": "1898.277183091943957381228996",
+      "ending_equity": "1898.712842748764725971159847",
+      "marked_gain": "0.435659656820768589930851",
+      "new_realized_profit": "24.15379717834164080241281448",
+      "change_in_open_pnl": "-23.7181375215208722124819634",
+      "remaining_open_pnl": "-327.4681013967979957686100004",
+      "ending_cash": "1626.719684859171796497993556",
+      "parked_cash": "1626.719684859171796497993555",
+      "ordinary_cash": "1E-24",
+      "marked_inventory": "271.9931578895929294731662908",
+      "fees": "6.186422761075024191602387864",
+      "ending_positions": 37,
+      "maximum_positions": 39,
+      "mean_positions": 38.01122685185185,
+      "window_max_drawdown_fraction": "0.02456409694479940115844203004",
+      "fill_counts": {
+        "RECOVERY": 86,
+        "ENTRY": 28,
+        "EXIT": 28,
+        "PARTIAL_RECYCLE": 47
+      },
+      "activated": true,
+      "complete_frames": 8640,
+      "outstanding_cap": "100",
+      "gain_versus_OFF": "-4.709290442900649020435166",
+      "parked_funded_buy_counts": {
+        "parked_funded_ENTRY_fills": 16,
+        "parked_funded_RECOVERY_fills": 84
+      },
+      "parked_cumulative_spend": "667.9255702999525951938951426",
+      "peak_parked_basis_plus_claims": "99.99999999999999999999638958",
+      "result_sha256": "b98269839ce4bd3e9c854b3df3cc12f6e6d5bf4b1d4027942530d7835d66fff5"
+    },
+    {
+      "arm": "BOTH_TIGHT",
+      "initial_equity": "1898.277183091943957381228996",
+      "ending_equity": "1899.220604305314320631700946",
+      "marked_gain": "0.943421213370363250471950",
+      "new_realized_profit": "14.99729184201826521414629235",
+      "change_in_open_pnl": "-14.0538706286479019636743390",
+      "remaining_open_pnl": "-317.8038345039250255198023760",
+      "ending_cash": "1659.060245564094529195886311",
+      "parked_cash": "1659.060245564094491948175027",
+      "ordinary_cash": "3.7247711284E-14",
+      "marked_inventory": "240.1603587412197914358146351",
+      "fees": "4.241371604296112754077338823",
+      "ending_positions": 36,
+      "maximum_positions": 37,
+      "mean_positions": 36.81828703703704,
+      "window_max_drawdown_fraction": "0.02038183703606655623337062741",
+      "fill_counts": {
+        "RECOVERY": 68,
+        "PARTIAL_RECYCLE": 42,
+        "EXIT": 13,
+        "ENTRY": 12
+      },
+      "activated": true,
+      "complete_frames": 8640,
+      "outstanding_cap": "50",
+      "gain_versus_OFF": "-4.201528886351054359894067",
+      "parked_funded_buy_counts": {
+        "parked_funded_ENTRY_fills": 0,
+        "parked_funded_RECOVERY_fills": 65
+      },
+      "parked_cumulative_spend": "408.5631043310310487595081901",
+      "peak_parked_basis_plus_claims": "49.99999999999999999977626862",
+      "result_sha256": "24db60ee7d5270bf587807ac26de70ac6f8c4e82bf04946108b2bba50c1b21d4"
+    }
+  ],
+  "verdict": "No enabled parked-cash routing arm beat OFF in this window.",
+  "independent_receipt_sha256": "a340218e56ddd6ed6b0df3caa2d1f693ad89abcd94b45483d92a34895896c11a",
+  "data_sha256": "dde300cb04c5f8c85aafba3924f74e70df1477ce26ca4c1597d295202d047938",
+  "checkpoint_sha256": "727b663e91021bb09e063fea916b89972d5bd7d685062bacdec0f925381a2e1c",
+  "native_source_sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
+  "historical_runner_sha256": "4d1a36c1ced979d128acd589150d0702924527491dfd3bbd29b6935a88fd710d",
+  "execution_budget_seconds": 600,
+  "production_ready": false,
+  "limits": [
+    "Selected previously inspected July continuation, not a new six-month replay or untouched holdout.",
+    "PSSM/DTSS/DTSSR off. Original native movement/volume selection remains; no new predictive winner model.",
+    "Modeled recorded-candle execution and generic constraints, not actual venue fills or production restart semantics.",
+    "BOTH_TIGHT funded recovery only from PARK because native recovery-first priority consumed its shared cap; its ordinary-funded entries still traded."
+  ],
+  "terminal_mark_audit_sha256": "cd2a1f4f657e73b64f27226801a94a21834dc45a99bbcbd604b4c0bfebf7cdd9",
+  "historical_stale_marks": [
+    {
+      "arm": "OFF",
+      "passed": true,
+      "independently_marked_inventory": "195.7626187038313546713693149815715",
+      "stale_marked_inventory_over_300s": "91.7488342363060529355526834836500",
+      "stale_asset_count": 18,
+      "scope": "Actual last historical close valuation only. Stale observed marks remain disclosed; this is not a current executable venue liquidation valuation."
+    },
+    {
+      "arm": "ENTRY_ONLY",
+      "passed": true,
+      "independently_marked_inventory": "270.9875599290058863568253829137023",
+      "stale_marked_inventory_over_300s": "128.5311130587822074031115206596380",
+      "stale_asset_count": 23,
+      "scope": "Actual last historical close valuation only. Stale observed marks remain disclosed; this is not a current executable venue liquidation valuation."
+    },
+    {
+      "arm": "RECOVERY_ONLY",
+      "passed": true,
+      "independently_marked_inventory": "277.3483483090128557099030153595165",
+      "stale_marked_inventory_over_300s": "107.9929350730313789402184460642160",
+      "stale_asset_count": 18,
+      "scope": "Actual last historical close valuation only. Stale observed marks remain disclosed; this is not a current executable venue liquidation valuation."
+    },
+    {
+      "arm": "BOTH",
+      "passed": true,
+      "independently_marked_inventory": "271.9931578895929294731662907992945",
+      "stale_marked_inventory_over_300s": "102.5871752963393537438007042979640",
+      "stale_asset_count": 18,
+      "scope": "Actual last historical close valuation only. Stale observed marks remain disclosed; this is not a current executable venue liquidation valuation."
+    },
+    {
+      "arm": "BOTH_TIGHT",
+      "passed": true,
+      "independently_marked_inventory": "240.1603587412197914358146351123735",
+      "stale_marked_inventory_over_300s": "100.6467950538549346512827676891120",
+      "stale_asset_count": 18,
+      "scope": "Actual last historical close valuation only. Stale observed marks remain disclosed; this is not a current executable venue liquidation valuation."
+    }
+  ]
+}

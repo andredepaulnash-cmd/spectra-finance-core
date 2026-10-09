@@ -24,6 +24,7 @@ def main():
         raise ArithmeticError("The unchanged control has not passed its archived comparison")
     pins = {name: hashlib.sha256((HERE/name).read_bytes()).hexdigest()
         for name in ("protocol.json", "release_adapter.py", "run_comparison.py")}
+    protocol = json.loads((HERE / "protocol.json").read_text())
     records = []
     def save():
         (args.results / "matrix_receipt.json").write_text(json.dumps(
@@ -39,7 +40,8 @@ def main():
         command = [sys.executable, str(HERE/"run_comparison.py"), "--arm", arm]
         for name in ("wrapper", "hydration", "checkpoint", "prepared"):
             command.extend(["--"+name, str(getattr(args, name).resolve())])
-        command.extend(["--output", str((args.results/arm).resolve())])
+        command.extend(["--output", str((args.results/arm).resolve()),
+            "--seconds", str(protocol["execution"]["maximum_simulation_seconds_per_arm"])])
         with (args.results/(arm+".log")).open("w") as output:
             process = subprocess.run(command, stdout=output, stderr=subprocess.STDOUT)
         record.update(end_wall_time=time.time(), returncode=process.returncode)

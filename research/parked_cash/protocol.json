@@ -13,11 +13,41 @@
   "native_strategy_sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
   "tape_sha256": "dde300cb04c5f8c85aafba3924f74e70df1477ce26ca4c1597d295202d047938",
   "arms": [
-    {"name": "OFF", "allowed_purposes": [], "outstanding_cap_quote": "0"},
-    {"name": "ENTRY_ONLY", "allowed_purposes": ["ENTRY"], "outstanding_cap_quote": "100"},
-    {"name": "RECOVERY_ONLY", "allowed_purposes": ["RECOVERY"], "outstanding_cap_quote": "100"},
-    {"name": "BOTH", "allowed_purposes": ["RECOVERY", "ENTRY"], "outstanding_cap_quote": "100"},
-    {"name": "BOTH_TIGHT", "allowed_purposes": ["RECOVERY", "ENTRY"], "outstanding_cap_quote": "50"}
+    {
+      "name": "OFF",
+      "allowed_purposes": [],
+      "outstanding_cap_quote": "0"
+    },
+    {
+      "name": "ENTRY_ONLY",
+      "allowed_purposes": [
+        "ENTRY"
+      ],
+      "outstanding_cap_quote": "100"
+    },
+    {
+      "name": "RECOVERY_ONLY",
+      "allowed_purposes": [
+        "RECOVERY"
+      ],
+      "outstanding_cap_quote": "100"
+    },
+    {
+      "name": "BOTH",
+      "allowed_purposes": [
+        "RECOVERY",
+        "ENTRY"
+      ],
+      "outstanding_cap_quote": "100"
+    },
+    {
+      "name": "BOTH_TIGHT",
+      "allowed_purposes": [
+        "RECOVERY",
+        "ENTRY"
+      ],
+      "outstanding_cap_quote": "50"
+    }
   ],
   "cash_policy": {
     "cap_definition": "Sum of exact P-funded acquisition basis in surviving lots plus pending P claims. Settlement retires acquisition basis exactly once; returns require fresh authorization.",
@@ -47,9 +77,14 @@
   },
   "execution": {
     "mechanical_activation_before_matrix": true,
-    "maximum_simulation_seconds_per_arm": 420,
+    "maximum_simulation_seconds_per_arm": 600,
     "checkpoint_restore_separate_from_simulation_budget": true,
-    "stops": ["Any accounting or ownership failure", "OFF fails archive match", "No authentic parked-funded buy in enabled activation window", "Execution time budget reached"],
+    "stops": [
+      "Any accounting or ownership failure",
+      "OFF fails archive match",
+      "No authentic parked-funded buy in enabled activation window",
+      "Execution time budget reached"
+    ],
     "result_selection": "Compare complete window marked equity, change in open P&L, cash, source utilization, drawdown, and fees. Do not select by realized profit alone.",
     "no_post_outcome_tuning": true
   },

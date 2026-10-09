@@ -130,3 +130,7 @@ After profitable redeployment survives extended validation, produce a separate
 production implementation delta. Profit-protected exit semantics, durable
 accounting, point-in-time exchange constraints and restart/idempotency behavior
 still need their own evidence. A research commit does not establish those claims.
+
+## Completed parked-cash pilot
+
+The five fixed July continuations completed and passed independent audits. PARK beat all four enabled cash-routing policies. The mechanics are preserved as offline research; no policy is promoted. See [the completed comparison](research-results/parked-cash-july-2026-10-09.md) for figures, limits and the next controlled decision.
