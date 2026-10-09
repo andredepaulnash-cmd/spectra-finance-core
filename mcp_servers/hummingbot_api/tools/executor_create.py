@@ -398,6 +398,8 @@ def _authorize_spectra_execution(
     config: dict[str, Any],
     proposal_id: str | None,
     intent: str | None,
+    *,
+    account_name: str | None = None,
 ) -> str | None:
     """Commit the exact Spectra capital claim before any external mutation."""
     if settings.agent_slug != "spectra":
@@ -412,10 +414,7 @@ def _authorize_spectra_execution(
         )
 
     if breaker_mode == BreakerMode.HALTED:
-        return (
-            "Spectra breaker is HALTED; execution refused before "
-            "capital commit"
-        )
+        return "Spectra breaker is HALTED; execution refused before " "capital commit"
 
     if breaker_mode not in {
         BreakerMode.NORMAL,
@@ -491,6 +490,9 @@ def _authorize_spectra_execution(
         intent=intent_kind,
         amount_quote=amount_quote,
         leverage=leverage,
+        account_name=account_name,
+        connector_name=connector,
+        quote_asset=(pair.strip().upper().rsplit("-", 1)[1] if "-" in pair else None),
     )
 
     try:
@@ -527,11 +529,7 @@ async def create_executor(
     (``validate_executor_config``) existed only because the config was an opaque dict.
     """
     account = account_name or "master_account"
-    tag = (
-        "spectra"
-        if settings.agent_slug == "spectra"
-        else (controller_id or "main")
-    )
+    tag = "spectra" if settings.agent_slug == "spectra" else (controller_id or "main")
 
     merged_config = executor_preferences.merge_with_defaults(executor_type, config)
     merged_config["type"] = executor_type
@@ -565,9 +563,12 @@ async def create_executor(
         merged_config,
         spectra_proposal_id,
         spectra_intent,
+        account_name=account,
     )
     if spectra_error:
-        logger.warning("create_%s refused by Spectra Core: %s", executor_type, spectra_error)
+        logger.warning(
+            "create_%s refused by Spectra Core: %s", executor_type, spectra_error
+        )
         return {
             "action": "create",
             "executor_type": executor_type,
@@ -612,9 +613,7 @@ async def create_executor(
                 proposal_id=str(spectra_proposal_id or ""),
                 executor_id=str(executor_id),
                 account_name=account,
-                connector_name=str(
-                    merged_config.get("connector_name") or ""
-                ),
+                connector_name=str(merged_config.get("connector_name") or ""),
                 controller_id=tag,
             )
         except Exception as exc:

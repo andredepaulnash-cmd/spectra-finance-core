@@ -120,6 +120,7 @@ class PartialRecycleManifest:
     # but never issue a new unprotected sale from it.
     target_net_profit_bps: Decimal | None = None
     protected_limit_price: Decimal | None = None
+    cash_proceeds_route: str | None = None
 
     @property
     def lot_ids(self) -> tuple[str, ...]:
@@ -205,7 +206,11 @@ class PartialRecycleStore:
                 str(row["name"])
                 for row in conn.execute("PRAGMA table_info(partial_recycle_manifests)")
             }
-            for column in ("target_net_profit_bps", "protected_limit_price"):
+            for column in (
+                "target_net_profit_bps",
+                "protected_limit_price",
+                "cash_proceeds_route",
+            ):
                 if column not in columns:
                     conn.execute(
                         f"ALTER TABLE partial_recycle_manifests ADD COLUMN {column} TEXT"
@@ -308,6 +313,7 @@ class PartialRecycleStore:
                 if row["protected_limit_price"] is None
                 else Decimal(str(row["protected_limit_price"]))
             ),
+            cash_proceeds_route=row["cash_proceeds_route"],
         )
 
     def load(self, manifest_id: str) -> PartialRecycleManifest | None:
@@ -384,8 +390,8 @@ class PartialRecycleStore:
                         expected_exit_cost_bps, estimated_net_pnl_quote,
                         estimated_net_return_bps, sell_executor_id,
                         created_at, completed_at,
-                        target_net_profit_bps, protected_limit_price
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+                        target_net_profit_bps, protected_limit_price, cash_proceeds_route
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)
                     """,
                     (
                         manifest.manifest_id,
@@ -414,6 +420,7 @@ class PartialRecycleStore:
                             if manifest.protected_limit_price is None
                             else str(manifest.protected_limit_price)
                         ),
+                        manifest.cash_proceeds_route,
                     ),
                 )
                 conn.commit()
@@ -773,6 +780,8 @@ def validate_partial_recycle_manifest(
             "partial recycle immutable manifest differs from durable state"
         )
     protected = manifest.protected_limit_price is not None
+    if manifest.cash_proceeds_route not in {None, "PARK"}:
+        raise RuntimeError("partial recycle cash route must preserve PARK purpose")
     if protected != (manifest.target_net_profit_bps is not None):
         raise RuntimeError("partial recycle profit protection is incomplete")
     if protected:
@@ -799,7 +808,10 @@ def validate_partial_recycle_manifest(
                     "partial recycle limit violates the configured profit floor"
                 )
     snapshot = ledger.snapshot(manifest.position_id)
-    if snapshot.status != EconomicPositionStatus.ACTIVE:
+    if snapshot.status != EconomicPositionStatus.ACTIVE and not (
+        snapshot.status == EconomicPositionStatus.CLOSED
+        and snapshot.active_base == ZERO
+    ):
         raise RuntimeError("partial recycle position is no longer active")
     if snapshot.pair != manifest.pair:
         raise RuntimeError("partial recycle manifest pair changed")
@@ -1119,6 +1131,7 @@ def plan_partial_recycle(
         completed_at=None,
         target_net_profit_bps=recycle_policy.target_net_profit_bps,
         protected_limit_price=protected_price,
+        cash_proceeds_route="PARK",
     )
     created = manifest_store.create(manifest)
     validate_partial_recycle_manifest(

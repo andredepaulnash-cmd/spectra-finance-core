@@ -117,6 +117,7 @@ class EconomicPositionExitManifest:
     expected_exit_cost_bps: Decimal | None = None
     protected_limit_price: Decimal | None = None
     sell_executor_id: str | None = None
+    cash_proceeds_route: str | None = None
 
     @property
     def proposal_ids(self) -> tuple[str, ...]:
@@ -181,6 +182,7 @@ class EconomicExitManifestStore:
                 "expected_exit_cost_bps",
                 "protected_limit_price",
                 "sell_executor_id",
+                "cash_proceeds_route",
             ):
                 if column not in columns:
                     conn.execute(
@@ -307,6 +309,7 @@ class EconomicExitManifestStore:
                 else Decimal(row["protected_limit_price"])
             ),
             sell_executor_id=row["sell_executor_id"],
+            cash_proceeds_route=row["cash_proceeds_route"],
         )
 
     def load(self, manifest_id: str) -> EconomicPositionExitManifest | None:
@@ -433,9 +436,9 @@ class EconomicExitManifestStore:
                         created_at,
                         completed_at,
                         target_net_profit_bps, expected_exit_cost_bps,
-                        protected_limit_price, sell_executor_id
+                        protected_limit_price, sell_executor_id, cash_proceeds_route
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
                     """,
                     (
                         manifest.manifest_id,
@@ -469,6 +472,7 @@ class EconomicExitManifestStore:
                             else str(manifest.protected_limit_price)
                         ),
                         manifest.sell_executor_id,
+                        manifest.cash_proceeds_route,
                     ),
                 )
                 conn.commit()
@@ -807,6 +811,8 @@ def validate_manifest_against_ledger(
     *,
     ledger: EconomicPositionLedger,
 ) -> None:
+    if manifest.cash_proceeds_route not in {None, "PRODUCTIVE"}:
+        raise RuntimeError("whole exit cash route must preserve PRODUCTIVE purpose")
     durable = EconomicExitManifestStore(ledger.path).load(manifest.manifest_id)
     if durable is None or durable != replace(
         manifest, status=durable.status, completed_at=durable.completed_at
@@ -1007,6 +1013,7 @@ def create_or_load_position_exit_manifest(
             if not protected
             else "spectra-whole-exit-" + identity.rsplit(":", 1)[-1]
         ),
+        cash_proceeds_route="PRODUCTIVE" if protected else None,
     )
     created = manifest_store.create(manifest)
     validate_manifest_against_ledger(created, ledger=ledger)

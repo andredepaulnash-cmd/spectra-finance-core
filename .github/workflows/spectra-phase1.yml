@@ -73,6 +73,9 @@ jobs:
             tests/test_partial_recovery_recycling.py \
             tests/test_protected_recovery_exit.py \
             tests/test_protected_whole_exit.py \
+            tests/test_parked_cash_authority.py \
+            tests/test_cash_scope_adapters.py \
+            tests/test_cash_runtime_resume.py \
             tests/test_strategy_laboratory.py \
             tests/test_strategy_replay.py \
             tests/test_strategy_replay_vcap.py \

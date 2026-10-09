@@ -5,7 +5,6 @@ from typing import Any
 
 from .models import CapitalSnapshot
 
-
 ZERO = Decimal("0")
 
 
@@ -70,6 +69,9 @@ async def build_kraken_capital_snapshot(
         ledger. This is a subset attribution, not additional economic exposure.
         It must never be added to pair/position/global exchange exposure.
     """
+    account_name = account_name.strip()
+    if not account_name:
+        raise ValueError("account_name is required")
     base, quote = _split_pair(trading_pair)
     recovery_exposure = _decimal(
         recovery_exposure_quote,
@@ -93,9 +95,7 @@ async def build_kraken_capital_snapshot(
 
     balances = account.get("kraken")
     if not isinstance(balances, list):
-        raise RuntimeError(
-            f"Kraken balances are missing for account {account_name!r}"
-        )
+        raise RuntimeError(f"Kraken balances are missing for account {account_name!r}")
 
     free_quote = ZERO
     locked_quote = ZERO
@@ -105,18 +105,12 @@ async def build_kraken_capital_snapshot(
 
     for index, row in enumerate(balances):
         if not isinstance(row, dict):
-            raise RuntimeError(
-                f"Kraken balance row {index} is not a mapping"
-            )
+            raise RuntimeError(f"Kraken balance row {index} is not a mapping")
 
-        token = str(
-            row.get("token", row.get("asset", ""))
-        ).strip().upper()
+        token = str(row.get("token", row.get("asset", ""))).strip().upper()
 
         if not token:
-            raise RuntimeError(
-                f"Kraken balance row {index} has no token/asset"
-            )
+            raise RuntimeError(f"Kraken balance row {index} has no token/asset")
 
         units = _decimal(
             row.get("units", 0),
@@ -128,9 +122,7 @@ async def build_kraken_capital_snapshot(
         )
 
         if available > units:
-            raise RuntimeError(
-                f"Kraken {token} available_units exceeds total units"
-            )
+            raise RuntimeError(f"Kraken {token} available_units exceeds total units")
 
         if token == quote:
             saw_quote = True
@@ -142,9 +134,7 @@ async def build_kraken_capital_snapshot(
             continue
 
         if row.get("value") is None:
-            raise RuntimeError(
-                f"Kraken {token} has non-zero units but no USD value"
-            )
+            raise RuntimeError(f"Kraken {token} has non-zero units but no USD value")
 
         value = _decimal(row["value"], f"{token}.value")
         non_quote_value += value
@@ -153,9 +143,7 @@ async def build_kraken_capital_snapshot(
             pair_exposure += value
 
     if not saw_quote:
-        raise RuntimeError(
-            f"Kraken portfolio has no {quote} balance row"
-        )
+        raise RuntimeError(f"Kraken portfolio has no {quote} balance row")
 
     return CapitalSnapshot(
         free_quote=free_quote,
@@ -163,4 +151,7 @@ async def build_kraken_capital_snapshot(
         pair_exposure_quote=pair_exposure,
         position_exposure_quote=pair_exposure,
         recovery_exposure_quote=recovery_exposure,
+        account_name=account_name,
+        connector_name="kraken",
+        quote_asset=quote,
     )

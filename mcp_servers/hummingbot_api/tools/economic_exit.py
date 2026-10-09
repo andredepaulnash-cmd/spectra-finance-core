@@ -4,6 +4,12 @@ import sqlite3
 from decimal import Decimal, localcontext
 from typing import Any
 
+from mcp_servers.hummingbot_api.tools.cash_accounting import (
+    bind_sale_cash_authority,
+    finalize_sale_cash_fill,
+    prepare_sale_cash_fill,
+    require_clear_cash_authority,
+)
 from mcp_servers.hummingbot_api.tools.executor_provenance import (
     fetch_executor_order_snapshot,
     fetch_executor_trade_snapshot,
@@ -284,6 +290,26 @@ async def synchronize_economic_position_exit(
             executor_id=manifest.sell_executor_id,
             now=now,
         )
+    cash_events = {}
+    for fill in trades.trades:
+        order = known_orders.get(fill.order_id)
+        if order is None or fill.side != "SELL" or order.side != "SELL":
+            raise RuntimeError("whole cash receipt lacks exact SELL evidence")
+        if (fill.pair, fill.account_name, fill.connector_name) != (
+            manifest.pair,
+            account,
+            connector,
+        ):
+            raise RuntimeError("whole cash receipt crosses immutable execution scope")
+        _reject_cross_journal_trade(ledger, fill.trade_id)
+        cash_events[fill.trade_id] = prepare_sale_cash_fill(
+            governor=governor,
+            manifest=manifest,
+            fill=fill,
+            sale_purpose="WHOLE_EXIT",
+            geometry=_sell_geometry(fill),
+        )
+    cash_results = []
     applied = replayed = 0
     for fill in trades.trades:
         order = known_orders.get(fill.order_id)
@@ -327,6 +353,7 @@ async def synchronize_economic_position_exit(
             price=fill.price,
             occurred_at=fill.occurred_at,
         )
+        cash_results.append((fill, result, cash_events[fill.trade_id]))
         with localcontext() as context:
             context.prec = 80
             invested = (
@@ -352,6 +379,17 @@ async def synchronize_economic_position_exit(
     progress = assess_position_exit_manifest(
         manifest, ledger=ledger, store=store, now=now
     )
+    for fill, result, cash_event_id in cash_results:
+        finalize_sale_cash_fill(
+            governor=governor,
+            ledger=ledger,
+            manifest=manifest,
+            fill=fill,
+            result=result,
+            cash_event_id=cash_event_id,
+            sale_purpose="WHOLE_EXIT",
+        )
+    require_clear_cash_authority(governor)
     return {
         "manifest_id": manifest.manifest_id,
         "sell_executor_id": manifest.sell_executor_id,
@@ -575,6 +613,15 @@ async def dispatch_protected_economic_exit(
     validate_manifest_against_ledger(manifest, ledger=ledger)
     if ledger.snapshot(manifest.position_id).active_base != manifest.target_active_base:
         raise RuntimeError("economic exit inventory changed before first submission")
+    bind_sale_cash_authority(
+        governor=governor,
+        manifest=manifest,
+        account_name=account_name,
+        connector_name="kraken",
+        sale_purpose="WHOLE_EXIT",
+        for_dispatch=True,
+    )
+    require_clear_cash_authority(governor)
     if not store.claim_dispatch(manifest_id=manifest.manifest_id, now=now):
         raise RuntimeError(
             "economic exit dispatch already claimed; reconciliation required"

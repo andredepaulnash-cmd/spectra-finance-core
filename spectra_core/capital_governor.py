@@ -7,6 +7,7 @@ import time
 from decimal import Decimal
 from pathlib import Path
 
+from . import cash_authority as cash
 from .decimal_math import exact_decimal_difference, exact_decimal_sum
 from .executor_accounting import (
     assess_recovery_exposure,
@@ -95,8 +96,8 @@ class CapitalGovernor:
 
     def _initialize(self) -> None:
         with self._connect() as conn:
-            conn.execute(
-                """
+            cash.initialize(conn)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS capital_reservations (
                     proposal_id TEXT PRIMARY KEY,
                     pair TEXT NOT NULL,
@@ -109,29 +110,36 @@ class CapitalGovernor:
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_capital_reservations_status_pair
                 ON capital_reservations(status, pair)
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            reservation_columns = {
+                row["name"]
+                for row in conn.execute(
+                    "PRAGMA table_info(capital_reservations)"
+                ).fetchall()
+            }
+            for column_name in ("account_name", "connector_name", "quote_asset"):
+                if column_name not in reservation_columns:
+                    conn.execute(
+                        "ALTER TABLE capital_reservations "
+                        f"ADD COLUMN {column_name} TEXT"
+                    )
+
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS execution_receipts (
                     proposal_id TEXT PRIMARY KEY,
                     executor_id TEXT NOT NULL UNIQUE,
                     created_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS executor_accounting_observations (
                     observation_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     proposal_id TEXT NOT NULL,
@@ -150,8 +158,7 @@ class CapitalGovernor:
                     realized_pnl_quote TEXT,
                     observed_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
             accounting_columns = {
                 row["name"]
@@ -165,19 +172,16 @@ class CapitalGovernor:
                     "ADD COLUMN executor_type TEXT"
                 )
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_executor_accounting_executor
                 ON executor_accounting_observations(
                     executor_id,
                     observation_id
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS position_hold_snapshots (
                     snapshot_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     account_name TEXT NOT NULL,
@@ -186,11 +190,9 @@ class CapitalGovernor:
                     controller_id TEXT NOT NULL,
                     observed_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_position_hold_snapshots_scope
                 ON position_hold_snapshots(
@@ -201,11 +203,9 @@ class CapitalGovernor:
                     observed_at,
                     snapshot_id
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS position_hold_snapshot_rows (
                     snapshot_id INTEGER NOT NULL,
                     hold_index INTEGER NOT NULL,
@@ -219,30 +219,24 @@ class CapitalGovernor:
                     last_updated TEXT,
                     PRIMARY KEY(snapshot_id, hold_index)
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS recovery_recycle_releases (
                     release_id TEXT PRIMARY KEY,
                     proposal_id TEXT NOT NULL,
                     amount_quote TEXT NOT NULL,
                     created_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_recovery_recycle_release_proposal
                 ON recovery_recycle_releases(proposal_id)
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS execution_provenance (
                     proposal_id TEXT PRIMARY KEY,
                     executor_id TEXT NOT NULL UNIQUE,
@@ -255,8 +249,7 @@ class CapitalGovernor:
                     controller_id TEXT,
                     created_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
             provenance_columns = {
                 row["name"]
@@ -334,15 +327,540 @@ class CapitalGovernor:
                     f"reservation: {conflict['proposal_id']}"
                 )
 
+    def cash_authority_snapshot(self) -> cash.CashAuthoritySnapshot | None:
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            return cash.snapshot(conn)
+
+    def cash_authority_enabled(self) -> bool:
+        return self.cash_authority_snapshot() is not None
+
+    def activate_cash_authority(
+        self,
+        *,
+        account_name: str,
+        connector_name: str,
+        quote_asset: str,
+        opening_productive_quote: Decimal,
+        activation_id: str,
+        activated_at: float,
+        opening_parked_quote: Decimal = ZERO,
+        entry_fee_buffer_bps: Decimal = ZERO,
+    ) -> bool:
+        """Explicit reviewed opening cash; venue balance never activates this."""
+        account, connector, quote = cash.scope(
+            account_name, connector_name, quote_asset
+        )
+        activation = cash.text(activation_id, "activation_id")
+        productive = cash.decimal(opening_productive_quote, "opening_productive_quote")
+        parked = cash.decimal(opening_parked_quote, "opening_parked_quote")
+        fee_buffer = cash.decimal(entry_fee_buffer_bps, "entry_fee_buffer_bps")
+        if fee_buffer >= Decimal("10000"):
+            raise ValueError("entry_fee_buffer_bps must be less than 10000")
+        at = cash.timestamp(activated_at, "activated_at")
+        payload = cash.payload_json(
+            dict(
+                activation_id=activation,
+                account_name=account,
+                connector_name=connector,
+                quote_asset=quote,
+                opening_productive_quote=productive,
+                opening_parked_quote=parked,
+                activated_at=at,
+                entry_fee_buffer_bps=fee_buffer,
+            )
+        )
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                bound = cash.binding(conn)
+                if bound is not None:
+                    if bound["payload_json"] == payload:
+                        conn.commit()
+                        return True
+                    cash.record_conflict(
+                        conn, "activation", "conflicting cash authority activation"
+                    )
+                    conn.commit()
+                    return False
+                self._expire_stale(conn)
+                if self._protected(conn) > ZERO:
+                    raise RuntimeError(
+                        "cash activation requires no unresolved RESERVED/COMMITTED claims"
+                    )
+                for row in conn.execute(
+                    "SELECT account_name, connector_name, pair FROM execution_provenance"
+                ).fetchall():
+                    if (
+                        row["account_name"] != account
+                        or row["connector_name"] != connector
+                        or str(row["pair"]).rsplit("-", 1)[-1] != quote
+                    ):
+                        raise RuntimeError(
+                            "cash activation requires reviewed, matching scoped execution provenance"
+                        )
+                conn.execute(
+                    """INSERT INTO cash_authority(singleton, activation_id,
+                    account_name, connector_name, quote_asset, opening_productive_quote,
+                    opening_parked_quote, activated_at, entry_fee_buffer_bps, payload_json)
+                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        activation,
+                        account,
+                        connector,
+                        quote,
+                        str(productive),
+                        str(parked),
+                        at,
+                        str(fee_buffer),
+                        payload,
+                    ),
+                )
+                conn.commit()
+                return True
+            except Exception:
+                conn.rollback()
+                raise
+
+    def record_cash_conflict(self, event_id: str, reason: str) -> None:
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            cash.record_conflict(conn, event_id, reason)
+            conn.commit()
+
+    def bind_cash_sale(
+        self,
+        *,
+        manifest_id: str,
+        sell_executor_id: str,
+        pair: str,
+        sale_purpose: cash.CashSalePurpose | str,
+        account_name: str,
+        connector_name: str,
+        quote_asset: str,
+    ) -> bool:
+        manifest = cash.text(manifest_id, "manifest_id")
+        executor = cash.text(sell_executor_id, "sell_executor_id")
+        normalized_pair = cash.text(pair, "pair").upper()
+        purpose = cash.CashSalePurpose(sale_purpose).value
+        account, connector, quote = cash.scope(
+            account_name, connector_name, quote_asset
+        )
+        payload = cash.payload_json(
+            dict(
+                manifest_id=manifest,
+                sell_executor_id=executor,
+                pair=normalized_pair,
+                sale_purpose=purpose,
+                account_name=account,
+                connector_name=connector,
+                quote_asset=quote,
+            )
+        )
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                bound = cash.binding(conn)
+                if bound is None:
+                    conn.commit()
+                    return False
+                try:
+                    cash.validate_scope(
+                        bound, account, connector, quote, pair=normalized_pair
+                    )
+                except ValueError as exc:
+                    cash.record_conflict(conn, "sale-scope:" + manifest, str(exc))
+                    conn.commit()
+                    return False
+                rows = conn.execute(
+                    "SELECT payload_json FROM cash_sale_bindings WHERE manifest_id=? OR sell_executor_id=?",
+                    (manifest, executor),
+                ).fetchall()
+                if rows:
+                    if len(rows) == 1 and rows[0]["payload_json"] == payload:
+                        conn.commit()
+                        return True
+                    cash.record_conflict(
+                        conn,
+                        "sale-binding:" + manifest,
+                        "conflicting immutable cash sale binding",
+                    )
+                    conn.commit()
+                    return False
+                conn.execute(
+                    "INSERT INTO cash_sale_bindings VALUES (?, ?, ?, ?, ?)",
+                    (manifest, executor, normalized_pair, purpose, payload),
+                )
+                conn.commit()
+                return True
+            except Exception:
+                conn.rollback()
+                raise
+
+    def begin_cash_fill(
+        self,
+        *,
+        event_id: str,
+        manifest_id: str,
+        trade_id: str,
+        order_id: str,
+        executor_id: str,
+        sale_purpose: cash.CashSalePurpose | str,
+        pair: str,
+        account_name: str,
+        connector_name: str,
+        gross_proceeds_quote: Decimal,
+        exit_fee_quote: Decimal,
+        base_sold: Decimal,
+        price: Decimal,
+        fee_currency: str | None,
+        fee_paid: Decimal,
+        occurred_at: float,
+        quote_asset: str | None = None,
+    ) -> bool:
+        event = cash.text(event_id, "event_id")
+        manifest = cash.text(manifest_id, "manifest_id")
+        trade = cash.text(trade_id, "trade_id")
+        order = cash.text(order_id, "order_id")
+        executor = cash.text(executor_id, "executor_id")
+        normalized_pair = cash.text(pair, "pair").upper()
+        purpose = cash.CashSalePurpose(sale_purpose).value
+        account, connector, quote = cash.scope(
+            account_name,
+            connector_name,
+            quote_asset or normalized_pair.rsplit("-", 1)[-1],
+        )
+        gross = cash.decimal(
+            gross_proceeds_quote, "gross_proceeds_quote", positive=True
+        )
+        fee = cash.decimal(exit_fee_quote, "exit_fee_quote")
+        base = cash.decimal(base_sold, "base_sold", positive=True)
+        unit_price = cash.decimal(price, "price", positive=True)
+        paid = cash.decimal(fee_paid, "fee_paid")
+        currency = (
+            None
+            if fee_currency is None
+            else cash.text(fee_currency, "fee_currency").upper()
+        )
+        at = cash.timestamp(occurred_at, "occurred_at")
+        net = exact_decimal_difference(gross, fee)
+        if net < ZERO:
+            raise ValueError("sale net proceeds cannot be negative")
+        payload = cash.payload_json(
+            dict(
+                event_id=event,
+                manifest_id=manifest,
+                trade_id=trade,
+                order_id=order,
+                executor_id=executor,
+                sale_purpose=purpose,
+                pair=normalized_pair,
+                account_name=account,
+                connector_name=connector,
+                quote_asset=quote,
+                gross_proceeds_quote=gross,
+                exit_fee_quote=fee,
+                base_sold=base,
+                price=unit_price,
+                fee_currency=currency,
+                fee_paid=paid,
+                occurred_at=at,
+            )
+        )
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                bound = cash.binding(conn)
+                if bound is None:
+                    conn.commit()
+                    return False
+                try:
+                    cash.validate_scope(
+                        bound, account, connector, quote, pair=normalized_pair
+                    )
+                except ValueError as exc:
+                    cash.record_conflict(conn, "fill-scope:" + event, str(exc))
+                    conn.commit()
+                    return False
+                # Opening cash already includes historical settlement. Never
+                # invent a fresh receipt from pre-activation trade history.
+                if at <= float(bound["activated_at"]):
+                    conn.commit()
+                    return False
+                if (
+                    paid > ZERO
+                    and currency not in {quote, normalized_pair.rsplit("-", 1)[0]}
+                ) or fee != (paid if currency == quote else ZERO):
+                    cash.record_conflict(
+                        conn,
+                        "sale-fee:" + event,
+                        "SELL fee currency/debit has no exact cash interpretation",
+                    )
+                    conn.commit()
+                    return False
+                sale = conn.execute(
+                    "SELECT * FROM cash_sale_bindings WHERE manifest_id=?", (manifest,)
+                ).fetchone()
+                if sale is None or (
+                    sale["sell_executor_id"],
+                    sale["pair"],
+                    sale["sale_purpose"],
+                ) != (executor, normalized_pair, purpose):
+                    cash.record_conflict(
+                        conn,
+                        "fill-binding:" + event,
+                        "cash fill has no matching immutable sale purpose binding",
+                    )
+                    conn.commit()
+                    return False
+                existing = conn.execute(
+                    "SELECT payload_json FROM cash_sale_fills WHERE event_id=? OR trade_id=?",
+                    (event, trade),
+                ).fetchall()
+                if existing:
+                    if len(existing) == 1 and existing[0]["payload_json"] == payload:
+                        conn.commit()
+                        return True
+                    cash.record_conflict(
+                        conn, "fill-replay:" + event, "conflicting cash fill replay"
+                    )
+                    conn.commit()
+                    return False
+                if (
+                    conn.execute(
+                        "SELECT 1 FROM cash_buy_fills WHERE trade_id=?", (trade,)
+                    ).fetchone()
+                    is not None
+                ):
+                    cash.record_conflict(
+                        conn,
+                        "fill-direction:" + event,
+                        "trade identity is already owned by a BUY receipt",
+                    )
+                    conn.commit()
+                    return False
+                conn.execute(
+                    "INSERT INTO cash_sale_fills VALUES (?, ?, ?, ?, ?, 'PENDING', NULL, ?)",
+                    (event, trade, manifest, str(net), purpose, payload),
+                )
+                conn.commit()
+                return True
+            except Exception:
+                conn.rollback()
+                raise
+
+    def settle_cash_fill(self, event_id: str, *, settlement_evidence: str) -> bool:
+        event = cash.text(event_id, "event_id")
+        evidence = cash.evidence_hash(settlement_evidence)
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                if cash.binding(conn) is None:
+                    conn.commit()
+                    return False
+                row = conn.execute(
+                    "SELECT status, settlement_evidence FROM cash_sale_fills WHERE event_id=?",
+                    (event,),
+                ).fetchone()
+                if row is None:
+                    cash.record_conflict(
+                        conn,
+                        "settlement-missing:" + event,
+                        "cash settlement has no pending fill",
+                    )
+                    conn.commit()
+                    return False
+                if row["status"] == "SETTLED":
+                    exact = row["settlement_evidence"] == evidence
+                    if not exact:
+                        cash.record_conflict(
+                            conn,
+                            "settlement-conflict:" + event,
+                            "conflicting cash settlement evidence",
+                        )
+                    conn.commit()
+                    return exact
+                conn.execute(
+                    "UPDATE cash_sale_fills SET status='SETTLED', settlement_evidence=? WHERE event_id=? AND status='PENDING'",
+                    (evidence, event),
+                )
+                conn.commit()
+                return True
+            except Exception:
+                conn.rollback()
+                raise
+
+    def record_cash_buy_fill(
+        self,
+        *,
+        trade_id: str,
+        order_id: str,
+        proposal_id: str,
+        executor_id: str,
+        pair: str,
+        account_name: str,
+        connector_name: str,
+        gross_spent_quote: Decimal,
+        base_acquired: Decimal,
+        price: Decimal,
+        fee_paid: Decimal,
+        fee_currency: str | None,
+        occurred_at: float,
+        quote_asset: str | None = None,
+    ) -> bool:
+        trade = cash.text(trade_id, "trade_id")
+        order = cash.text(order_id, "order_id")
+        proposal = cash.text(proposal_id, "proposal_id")
+        executor = cash.text(executor_id, "executor_id")
+        normalized_pair = cash.text(pair, "pair").upper()
+        account, connector, quote = cash.scope(
+            account_name,
+            connector_name,
+            quote_asset or normalized_pair.rsplit("-", 1)[-1],
+        )
+        gross = cash.decimal(gross_spent_quote, "gross_spent_quote", positive=True)
+        base = cash.decimal(base_acquired, "base_acquired", positive=True)
+        unit_price = cash.decimal(price, "price", positive=True)
+        paid = cash.decimal(fee_paid, "fee_paid")
+        currency = (
+            None
+            if fee_currency is None
+            else cash.text(fee_currency, "fee_currency").upper()
+        )
+        at = cash.timestamp(occurred_at, "occurred_at")
+        spent = exact_decimal_sum((gross, paid if currency == quote else ZERO))
+        payload = cash.payload_json(
+            dict(
+                trade_id=trade,
+                order_id=order,
+                proposal_id=proposal,
+                executor_id=executor,
+                pair=normalized_pair,
+                account_name=account,
+                connector_name=connector,
+                quote_asset=quote,
+                gross_spent_quote=gross,
+                base_acquired=base,
+                price=unit_price,
+                fee_paid=paid,
+                fee_currency=currency,
+                occurred_at=at,
+            )
+        )
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                bound = cash.binding(conn)
+                if bound is None:
+                    conn.commit()
+                    return False
+                try:
+                    cash.validate_scope(
+                        bound, account, connector, quote, pair=normalized_pair
+                    )
+                except ValueError as exc:
+                    cash.record_conflict(conn, "buy-scope:" + trade, str(exc))
+                    conn.commit()
+                    return False
+                if at <= float(bound["activated_at"]):
+                    conn.commit()
+                    return False
+                if paid > ZERO and currency not in {
+                    quote,
+                    normalized_pair.rsplit("-", 1)[0],
+                }:
+                    cash.record_conflict(
+                        conn,
+                        "buy-fee:" + trade,
+                        "BUY fee currency has no exact cash interpretation",
+                    )
+                    conn.commit()
+                    return False
+                existing = conn.execute(
+                    "SELECT payload_json FROM cash_buy_fills WHERE trade_id=?", (trade,)
+                ).fetchone()
+                if existing is not None:
+                    exact = existing["payload_json"] == payload
+                    if not exact:
+                        cash.record_conflict(
+                            conn, "buy-replay:" + trade, "conflicting cash BUY replay"
+                        )
+                    conn.commit()
+                    return exact
+                if (
+                    conn.execute(
+                        "SELECT 1 FROM cash_sale_fills WHERE trade_id=?", (trade,)
+                    ).fetchone()
+                    is not None
+                ):
+                    cash.record_conflict(
+                        conn,
+                        "buy-direction:" + trade,
+                        "trade identity is already owned by a SELL receipt",
+                    )
+                    conn.commit()
+                    return False
+                provenance = conn.execute(
+                    "SELECT * FROM execution_provenance WHERE proposal_id=?",
+                    (proposal,),
+                ).fetchone()
+                burn = conn.execute(
+                    "SELECT * FROM cash_buy_burns WHERE proposal_id=?", (proposal,)
+                ).fetchone()
+                if (
+                    provenance is None
+                    or burn is None
+                    or (
+                        provenance["executor_id"],
+                        provenance["pair"],
+                        provenance["account_name"],
+                        provenance["connector_name"],
+                    )
+                    != (executor, normalized_pair, account, connector)
+                ):
+                    cash.record_conflict(
+                        conn,
+                        "buy-provenance:" + trade,
+                        "cash BUY has no matching committed authorization",
+                    )
+                    conn.commit()
+                    return False
+                conn.execute(
+                    "INSERT INTO cash_buy_fills VALUES (?, ?, ?, ?)",
+                    (trade, proposal, str(spent), payload),
+                )
+                total = exact_decimal_sum(
+                    Decimal(row["spent_quote"])
+                    for row in conn.execute(
+                        "SELECT spent_quote FROM cash_buy_fills WHERE proposal_id=?",
+                        (proposal,),
+                    ).fetchall()
+                )
+                excess = max(
+                    exact_decimal_difference(total, Decimal(burn["amount_quote"])), ZERO
+                )
+                if excess > Decimal(burn["excess_quote"]):
+                    conn.execute(
+                        "UPDATE cash_buy_burns SET excess_quote=? WHERE proposal_id=?",
+                        (str(excess), proposal),
+                    )
+                    cash.record_conflict(
+                        conn,
+                        "buy-excess:" + proposal,
+                        "actual BUY cash debit exceeds committed authorization",
+                    )
+                conn.commit()
+                return True
+            except Exception:
+                conn.rollback()
+                raise
+
     def _validate_policy(self) -> None:
         validate_capital_policy(self.policy)
 
     @staticmethod
     def _sum_amounts(rows) -> Decimal:
-        return sum(
-            (Decimal(row["amount_quote"]) for row in rows),
-            ZERO,
-        )
+        return exact_decimal_sum(Decimal(row["amount_quote"]) for row in rows)
 
     def _reserved(
         self,
@@ -369,6 +887,26 @@ class CapitalGovernor:
 
         rows = conn.execute(sql, params).fetchall()
         return self._sum_amounts(rows)
+
+    def _cash_claims(
+        self, conn: sqlite3.Connection, *, reserved_only: bool = False
+    ) -> Decimal:
+        bound = cash.binding(conn)
+        if bound is None:
+            return self._reserved(conn) if reserved_only else self._protected(conn)
+        statuses = [DecisionStatus.RESERVED.value]
+        if not reserved_only:
+            statuses.append(DecisionStatus.COMMITTED.value)
+        placeholders = ",".join("?" for _ in statuses)
+        rows = conn.execute(
+            f"SELECT amount_quote FROM capital_reservations WHERE status IN ({placeholders})",
+            statuses,
+        ).fetchall()
+        fee_buffer = Decimal(bound["entry_fee_buffer_bps"])
+        return exact_decimal_sum(
+            cash.authorized_cash(Decimal(row["amount_quote"]), fee_buffer)
+            for row in rows
+        )
 
     def _expire_stale(
         self,
@@ -472,6 +1010,31 @@ class CapitalGovernor:
             try:
                 self._expire_stale(conn)
 
+                bound = cash.binding(conn)
+                if bound is not None:
+                    try:
+                        cash.validate_scope(
+                            bound,
+                            proposal.account_name,
+                            proposal.connector_name,
+                            proposal.quote_asset,
+                            pair=pair,
+                        )
+                        cash.validate_scope(
+                            bound,
+                            snapshot.account_name,
+                            snapshot.connector_name,
+                            snapshot.quote_asset,
+                        )
+                        cash.decimal(snapshot.free_quote, "free_quote")
+                    except ValueError:
+                        pass
+                    else:
+                        conn.execute(
+                            "UPDATE cash_authority SET last_venue_free_quote=? WHERE singleton=1",
+                            (str(snapshot.free_quote),),
+                        )
+
                 existing = conn.execute(
                     """
                     SELECT *
@@ -484,6 +1047,26 @@ class CapitalGovernor:
                 # Idempotency:
                 # the same proposal_id can never reserve twice.
                 if existing is not None:
+                    if cash.binding(conn) is not None:
+                        mismatch = cash.authority_rejection(conn, proposal, snapshot)
+                        exact = (
+                            existing["pair"] == pair
+                            and existing["intent"] == proposal.intent.value
+                            and Decimal(existing["amount_quote"])
+                            == proposal.amount_quote
+                            and Decimal(existing["leverage"]) == proposal.leverage
+                            and not cash.reservation_scope_rejection(conn, existing)
+                        )
+                        if mismatch or not exact:
+                            conn.commit()
+                            return CapitalDecision(
+                                proposal.proposal_id,
+                                DecisionStatus.REJECTED,
+                                mismatch
+                                or "conflicting scoped capital reservation replay",
+                                ZERO,
+                                ZERO,
+                            )
                     conn.commit()
                     return self._decision_from_row(existing)
 
@@ -503,17 +1086,45 @@ class CapitalGovernor:
                 # transaction as RESERVED/COMMITTED claims. Otherwise a
                 # COMMITTED -> RECONCILED handoff could briefly disappear
                 # from both buckets between two separate reads.
-                reconciled_recovery = (
-                    self._current_recovery_exposure_quote(conn)
-                )
+                reconciled_recovery = self._current_recovery_exposure_quote(conn)
 
                 amount = proposal.amount_quote
 
-                available_after = (
-                    snapshot.free_quote
-                    - active_total
-                    - amount
-                )
+                available_after = snapshot.free_quote - active_total - amount
+
+                authority_reason = cash.authority_rejection(conn, proposal, snapshot)
+                authority = cash.snapshot(conn)
+                if authority is not None:
+                    authorized_amount = cash.authorized_cash(
+                        amount, authority.entry_fee_buffer_bps
+                    )
+                    # The existing reserve floor measures physical quote
+                    # liquidity. PARK can satisfy that floor, but can never
+                    # become productive authority or fund a BUY itself.
+                    available_after = exact_decimal_sum(
+                        (
+                            snapshot.free_quote,
+                            self._cash_claims(conn).copy_negate(),
+                            authorized_amount.copy_negate(),
+                        )
+                    )
+                    productive_after = exact_decimal_sum(
+                        (
+                            authority.productive_quote,
+                            self._cash_claims(conn, reserved_only=True).copy_negate(),
+                            authorized_amount.copy_negate(),
+                        )
+                    )
+                    if not authority_reason and productive_after < ZERO:
+                        authority_reason = "productive cash authority exceeded"
+                    if (
+                        not authority_reason
+                        and exact_decimal_difference(
+                            available_after, authority.parked_quote
+                        )
+                        < ZERO
+                    ):
+                        authority_reason = "BUY would consume protected PARK cash"
 
                 reason = self._rejection_reason(
                     proposal=proposal,
@@ -524,15 +1135,13 @@ class CapitalGovernor:
                     reconciled_recovery=reconciled_recovery,
                     available_after=available_after,
                 )
+                reason = authority_reason or reason
 
                 if reason:
                     status = DecisionStatus.REJECTED
                 else:
                     status = DecisionStatus.RESERVED
-                    reason = (
-                        "authorized within deterministic "
-                        "capital envelope"
-                    )
+                    reason = "authorized within deterministic " "capital envelope"
 
                 now = time.time()
 
@@ -549,8 +1158,9 @@ class CapitalGovernor:
                         available_after_quote,
                         created_at,
                         updated_at
+                        , account_name, connector_name, quote_asset
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         proposal.proposal_id,
@@ -563,6 +1173,21 @@ class CapitalGovernor:
                         str(available_after),
                         now,
                         now,
+                        (
+                            None
+                            if not isinstance(proposal.account_name, str)
+                            else proposal.account_name.strip()
+                        ),
+                        (
+                            None
+                            if not isinstance(proposal.connector_name, str)
+                            else proposal.connector_name.strip().lower()
+                        ),
+                        (
+                            None
+                            if not isinstance(proposal.quote_asset, str)
+                            else proposal.quote_asset.strip().upper()
+                        ),
                     ),
                 )
 
@@ -573,9 +1198,7 @@ class CapitalGovernor:
                     status=status,
                     reason=reason,
                     reserved_quote=(
-                        amount
-                        if status == DecisionStatus.RESERVED
-                        else ZERO
+                        amount if status == DecisionStatus.RESERVED else ZERO
                     ),
                     available_after_quote=available_after,
                 )
@@ -743,6 +1366,12 @@ class CapitalGovernor:
                     conn.commit()
                     return False
 
+                if cash.authority_rejection(
+                    conn, proposal
+                ) or cash.reservation_scope_rejection(conn, row):
+                    conn.commit()
+                    return False
+
                 matches = (
                     row["status"] == DecisionStatus.RESERVED.value
                     and row["pair"] == pair
@@ -750,8 +1379,28 @@ class CapitalGovernor:
                     and Decimal(row["amount_quote"]) == proposal.amount_quote
                     and Decimal(row["leverage"]) == proposal.leverage
                 )
+                if cash.binding(conn) is not None:
+                    matches = matches and (
+                        (row["account_name"], row["connector_name"], row["quote_asset"])
+                        == cash.scope(
+                            proposal.account_name,
+                            proposal.connector_name,
+                            proposal.quote_asset,
+                        )
+                    )
 
                 if not matches:
+                    conn.commit()
+                    return False
+
+                if not cash.burn(
+                    conn,
+                    proposal_id,
+                    proposal.amount_quote,
+                    reserved_cash_quote=self._cash_claims(conn, reserved_only=True),
+                    protected_cash_quote=self._cash_claims(conn),
+                    reserve_floor_quote=self.policy.reserve_floor_quote,
+                ):
                     conn.commit()
                     return False
 
@@ -825,6 +1474,19 @@ class CapitalGovernor:
             try:
                 self._expire_stale(conn)
 
+                if cash.authority_rejection(conn, tranche_proposal):
+                    conn.commit()
+                    return False
+
+                if not cash.spend_headroom(
+                    conn,
+                    reserved_cash_quote=self._cash_claims(conn, reserved_only=True),
+                    protected_cash_quote=self._cash_claims(conn),
+                    reserve_floor_quote=self.policy.reserve_floor_quote,
+                ):
+                    conn.commit()
+                    return False
+
                 child = conn.execute(
                     """
                     SELECT *
@@ -840,9 +1502,25 @@ class CapitalGovernor:
                         and child["intent"] == IntentKind.RECOVERY.value
                         and Decimal(child["amount_quote"])
                         == tranche_proposal.amount_quote
-                        and Decimal(child["leverage"])
-                        == tranche_proposal.leverage
+                        and Decimal(child["leverage"]) == tranche_proposal.leverage
                     )
+                    if cash.binding(conn) is not None:
+                        exact_replay = (
+                            exact_replay
+                            and not cash.reservation_scope_rejection(conn, child)
+                            and (
+                                (
+                                    child["account_name"],
+                                    child["connector_name"],
+                                    child["quote_asset"],
+                                )
+                                == cash.scope(
+                                    tranche_proposal.account_name,
+                                    tranche_proposal.connector_name,
+                                    tranche_proposal.quote_asset,
+                                )
+                            )
+                        )
                     conn.commit()
                     return exact_replay
 
@@ -859,20 +1537,25 @@ class CapitalGovernor:
                     conn.commit()
                     return False
 
+                if cash.reservation_scope_rejection(conn, parent):
+                    conn.commit()
+                    return False
+
                 parent_amount = Decimal(parent["amount_quote"])
                 matches = (
                     parent["status"] == DecisionStatus.RESERVED.value
                     and parent["intent"] == IntentKind.RECOVERY.value
                     and parent["pair"] == pair
-                    and Decimal(parent["leverage"])
-                    == tranche_proposal.leverage
+                    and Decimal(parent["leverage"]) == tranche_proposal.leverage
                     and parent_amount >= tranche_proposal.amount_quote
                 )
                 if not matches:
                     conn.commit()
                     return False
 
-                remaining = parent_amount - tranche_proposal.amount_quote
+                remaining = exact_decimal_difference(
+                    parent_amount, tranche_proposal.amount_quote
+                )
                 now = time.time()
 
                 conn.execute(
@@ -888,8 +1571,9 @@ class CapitalGovernor:
                         available_after_quote,
                         created_at,
                         updated_at
+                        , account_name, connector_name, quote_asset
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         child_id,
@@ -902,6 +1586,21 @@ class CapitalGovernor:
                         parent["available_after_quote"],
                         now,
                         now,
+                        (
+                            None
+                            if not isinstance(tranche_proposal.account_name, str)
+                            else tranche_proposal.account_name.strip()
+                        ),
+                        (
+                            None
+                            if not isinstance(tranche_proposal.connector_name, str)
+                            else tranche_proposal.connector_name.strip().lower()
+                        ),
+                        (
+                            None
+                            if not isinstance(tranche_proposal.quote_asset, str)
+                            else tranche_proposal.quote_asset.strip().upper()
+                        ),
                     ),
                 )
 
@@ -1001,14 +1700,38 @@ class CapitalGovernor:
             DecisionStatus.COMMITTED,
             DecisionStatus.RELEASED,
         }:
-            raise ValueError(
-                f"unsupported reservation transition: {target}"
-            )
+            raise ValueError(f"unsupported reservation transition: {target}")
 
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
 
             try:
+                if (
+                    target == DecisionStatus.COMMITTED
+                    and cash.binding(conn) is not None
+                ):
+                    self._expire_stale(conn)
+                    row = conn.execute(
+                        "SELECT * FROM capital_reservations WHERE proposal_id=?",
+                        (proposal_id,),
+                    ).fetchone()
+                    if (
+                        row is None
+                        or row["status"] != DecisionStatus.RESERVED.value
+                        or cash.reservation_scope_rejection(conn, row)
+                    ):
+                        conn.commit()
+                        return False
+                    if not cash.burn(
+                        conn,
+                        proposal_id,
+                        Decimal(row["amount_quote"]),
+                        reserved_cash_quote=self._cash_claims(conn, reserved_only=True),
+                        protected_cash_quote=self._cash_claims(conn),
+                        reserve_floor_quote=self.policy.reserve_floor_quote,
+                    ):
+                        conn.commit()
+                        return False
                 cursor = conn.execute(
                     """
                     UPDATE capital_reservations
@@ -1111,10 +1834,7 @@ class CapitalGovernor:
             "connector_name": connector_name,
             "controller_id": controller_id,
         }
-        supplied_scope = [
-            value is not None
-            for value in scope_inputs.values()
-        ]
+        supplied_scope = [value is not None for value in scope_inputs.values()]
 
         if any(supplied_scope) and not all(supplied_scope):
             raise ValueError(
@@ -1129,14 +1849,10 @@ class CapitalGovernor:
 
             for field, value in scope_inputs.items():
                 if not isinstance(value, str) or not value.strip():
-                    raise ValueError(
-                        f"{field} must be a non-empty string"
-                    )
+                    raise ValueError(f"{field} must be a non-empty string")
                 normalized[field] = value.strip()
 
-            normalized["connector_name"] = (
-                normalized["connector_name"].lower()
-            )
+            normalized["connector_name"] = normalized["connector_name"].lower()
 
             normalized_scope = (
                 normalized["account_name"],
@@ -1155,7 +1871,10 @@ class CapitalGovernor:
                         pair,
                         intent,
                         amount_quote,
-                        leverage
+                        leverage,
+                        account_name,
+                        connector_name,
+                        quote_asset
                     FROM capital_reservations
                     WHERE proposal_id = ?
                     """,
@@ -1165,6 +1884,44 @@ class CapitalGovernor:
                 if reservation is None:
                     conn.rollback()
                     return False
+
+                cash_bound = cash.binding(conn)
+                if cash_bound is not None:
+                    if normalized_scope is None:
+                        conn.commit()
+                        return False
+                    try:
+                        cash.validate_scope(
+                            cash_bound,
+                            normalized_scope[0],
+                            normalized_scope[1],
+                            reservation["pair"].rsplit("-", 1)[-1],
+                            pair=reservation["pair"],
+                        )
+                    except ValueError:
+                        conn.commit()
+                        return False
+                    if reservation["status"] == DecisionStatus.COMMITTED.value:
+                        try:
+                            cash.validate_scope(
+                                cash_bound,
+                                reservation["account_name"],
+                                reservation["connector_name"],
+                                reservation["quote_asset"],
+                                pair=reservation["pair"],
+                            )
+                        except ValueError:
+                            conn.commit()
+                            return False
+                        if (
+                            conn.execute(
+                                "SELECT 1 FROM cash_buy_burns WHERE proposal_id=?",
+                                (proposal_id,),
+                            ).fetchone()
+                            is None
+                        ):
+                            conn.commit()
+                            return False
 
                 receipt = conn.execute(
                     """
@@ -1307,21 +2064,9 @@ class CapitalGovernor:
                         reservation["intent"],
                         reservation["amount_quote"],
                         reservation["leverage"],
-                        (
-                            None
-                            if normalized_scope is None
-                            else normalized_scope[0]
-                        ),
-                        (
-                            None
-                            if normalized_scope is None
-                            else normalized_scope[1]
-                        ),
-                        (
-                            None
-                            if normalized_scope is None
-                            else normalized_scope[2]
-                        ),
+                        (None if normalized_scope is None else normalized_scope[0]),
+                        (None if normalized_scope is None else normalized_scope[1]),
+                        (None if normalized_scope is None else normalized_scope[2]),
                         now,
                     ),
                 )

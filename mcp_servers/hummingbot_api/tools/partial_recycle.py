@@ -3,11 +3,18 @@ from __future__ import annotations
 from decimal import Decimal, localcontext
 from typing import Any
 
+from mcp_servers.hummingbot_api.tools.cash_accounting import (
+    bind_sale_cash_authority,
+    finalize_sale_cash_fill,
+    prepare_sale_cash_fill,
+    require_clear_cash_authority,
+)
 from mcp_servers.hummingbot_api.tools.executor_provenance import (
     fetch_executor_order_snapshot,
     fetch_executor_trade_snapshot,
 )
 from spectra_core.capital_governor import CapitalGovernor
+from spectra_core.decimal_math import exact_decimal_sum
 from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.executor_accounting import (
     executor_accounting_observation_from_raw,
@@ -212,6 +219,25 @@ async def synchronize_partial_recycle_executor(
             manifest_id=manifest.manifest_id, conflict=conflict, now=now
         )
 
+    cash_events = {}
+    for fill in trades.trades:
+        order = known_orders.get(fill.order_id)
+        if order is None or fill.side != "SELL" or order.side != "SELL":
+            raise RuntimeError("partial cash receipt lacks exact SELL evidence")
+        if (fill.pair, fill.account_name, fill.connector_name) != (
+            manifest.pair,
+            account_name,
+            connector_name,
+        ):
+            raise RuntimeError("partial cash receipt crosses immutable execution scope")
+        cash_events[fill.trade_id] = prepare_sale_cash_fill(
+            governor=governor,
+            manifest=manifest,
+            fill=fill,
+            sale_purpose="RECOVERY_PARTIAL",
+            geometry=_sell_geometry(fill),
+        )
+    cash_results = []
     applied = 0
     replayed = 0
     for fill in trades.trades:
@@ -248,10 +274,32 @@ async def synchronize_partial_recycle_executor(
             eligible_lot_ids=manifest.lot_ids,
         )
 
-        for proposal_id, released_basis in _release_basis_by_owner(
-            manifest,
-            result.allocated_cost_basis_quote,
-        ):
+        authority = governor.cash_authority_snapshot()
+        if authority is not None and fill.occurred_at > authority.activated_at:
+            allocation = dict(ledger.exit_basis_by_lot(result.event_id))
+            if (
+                exact_decimal_sum(allocation.values())
+                != result.allocated_cost_basis_quote
+            ):
+                raise RuntimeError(
+                    "partial cash release lacks exact lot basis allocations"
+                )
+            release_rows = tuple(
+                (
+                    owner.proposal_id,
+                    exact_decimal_sum(
+                        allocation.get(lot_id, ZERO) for lot_id in owner.lot_ids
+                    ),
+                )
+                for owner in manifest.owners
+            )
+        else:
+            release_rows = _release_basis_by_owner(
+                manifest, result.allocated_cost_basis_quote
+            )
+        for proposal_id, released_basis in release_rows:
+            if released_basis <= ZERO:
+                continue
             governor.record_recovery_recycle_release(
                 release_id=(
                     f"{manifest.manifest_id}:{fill.trade_id}:" f"{proposal_id}"
@@ -271,6 +319,7 @@ async def synchronize_partial_recycle_executor(
             realized_pnl_quote=result.realized_pnl_quote,
             occurred_at=fill.occurred_at,
         )
+        cash_results.append((fill, result, cash_events[fill.trade_id]))
         # Confirmed money and inventory are recorded even if the venue violates
         # protection. Never hide a real loss to preserve a successful-exit claim.
         if manifest.protected_limit_price is not None:
@@ -309,6 +358,17 @@ async def synchronize_partial_recycle_executor(
         store=store,
         now=now,
     )
+    for fill, result, cash_event_id in cash_results:
+        finalize_sale_cash_fill(
+            governor=governor,
+            ledger=ledger,
+            manifest=manifest,
+            fill=fill,
+            result=result,
+            cash_event_id=cash_event_id,
+            sale_purpose="RECOVERY_PARTIAL",
+        )
+    require_clear_cash_authority(governor)
     return {
         "manifest_id": manifest.manifest_id,
         "sell_executor_id": manifest.sell_executor_id,
@@ -466,6 +526,15 @@ async def execute_partial_recycle(
             "reasons": list(passive_reasons),
         }
 
+    bind_sale_cash_authority(
+        governor=governor,
+        manifest=manifest,
+        account_name=owner_account,
+        connector_name=owner_connector,
+        sale_purpose="RECOVERY_PARTIAL",
+        for_dispatch=True,
+    )
+    require_clear_cash_authority(governor)
     if store.claim_dispatch(manifest_id=manifest.manifest_id, now=now):
         result = await client.executors.create_executor(
             executor_config={

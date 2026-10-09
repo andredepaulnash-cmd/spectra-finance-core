@@ -298,10 +298,17 @@ async def _resume_reconciliation(
             raw_manifest_id = cycle.execution_result.get("manifest_id")
             if isinstance(raw_manifest_id, str) and raw_manifest_id.strip():
                 manifest_id = raw_manifest_id.strip()
+        # Dispatch may crash after completing inventory reconciliation but
+        # before recording execution_result or settling the cash journal.
+        # The pre-dispatch mutation key still identifies that exact manifest.
+        if manifest_id is None and isinstance(cycle.mutation_key, str):
+            prefix = "PARTIAL_RECYCLE:"
+            if cycle.mutation_key.startswith(prefix):
+                manifest_id = cycle.mutation_key[len(prefix) :]
         partial_manifest = (
             None if manifest_id is None else partial_store.load(manifest_id)
         )
-        if partial_manifest is None:
+        if partial_manifest is None and manifest_id is None:
             partial_manifest = partial_store.open_for_position(cycle.position_id)
         if partial_manifest is None:
             conflict = runtime_store.transition(
