@@ -8,7 +8,6 @@ from math import isfinite
 from .asset_fingerprint import AssetFingerprint, FingerprintHorizon
 from .recovery_fingerprint import VCAPPositionState
 
-
 ZERO = Decimal("0")
 ONE = Decimal("1")
 BPS = Decimal("10000")
@@ -149,6 +148,10 @@ class VCAPProfitExitDecision:
     state: VCAPProfitState
     suggested_trailing_delta_bps: Decimal
     reasons: tuple[str, ...]
+    # Explicit execution contract. None identifies a legacy/manual decision
+    # that can be observed but must not silently acquire a new profit policy.
+    target_net_profit_bps: Decimal | None = None
+    expected_exit_cost_bps: Decimal | None = None
 
     @property
     def profit_floor_reached(self) -> bool:
@@ -283,12 +286,8 @@ def plan_vcap_profit_exit(
     prior_floor_at = (
         None if previous_state is None else previous_state.profit_floor_reached_at
     )
-    prior_peak = (
-        ZERO if previous_state is None else previous_state.peak_net_profit_bps
-    )
-    prior_peak_at = (
-        None if previous_state is None else previous_state.peak_at
-    )
+    prior_peak = ZERO if previous_state is None else previous_state.peak_net_profit_bps
+    prior_peak_at = None if previous_state is None else previous_state.peak_at
 
     target_reached_now = net_profit_bps >= policy.target_net_profit_bps
     floor_at = prior_floor_at
@@ -330,6 +329,8 @@ def plan_vcap_profit_exit(
             state=state,
             suggested_trailing_delta_bps=policy.suggested_trailing_delta_bps,
             reasons=tuple(reasons),
+            target_net_profit_bps=policy.target_net_profit_bps,
+            expected_exit_cost_bps=costs.expected_exit_cost_bps,
         )
 
     # If the target was previously reached but has already slipped below it,
@@ -350,6 +351,8 @@ def plan_vcap_profit_exit(
             state=state,
             suggested_trailing_delta_bps=policy.suggested_trailing_delta_bps,
             reasons=tuple(reasons),
+            target_net_profit_bps=policy.target_net_profit_bps,
+            expected_exit_cost_bps=costs.expected_exit_cost_bps,
         )
 
     giveback = max(ZERO, peak - net_profit_bps)
@@ -373,11 +376,11 @@ def plan_vcap_profit_exit(
             state=state,
             suggested_trailing_delta_bps=policy.suggested_trailing_delta_bps,
             reasons=tuple(reasons),
+            target_net_profit_bps=policy.target_net_profit_bps,
+            expected_exit_cost_bps=costs.expected_exit_cost_bps,
         )
 
-    seconds_since_progress = (
-        0.0 if peak_at is None else max(0.0, now_value - peak_at)
-    )
+    seconds_since_progress = 0.0 if peak_at is None else max(0.0, now_value - peak_at)
     if seconds_since_progress >= policy.stagnation_seconds:
         reasons.extend(
             (
@@ -398,6 +401,8 @@ def plan_vcap_profit_exit(
             state=state,
             suggested_trailing_delta_bps=policy.suggested_trailing_delta_bps,
             reasons=tuple(reasons),
+            target_net_profit_bps=policy.target_net_profit_bps,
+            expected_exit_cost_bps=costs.expected_exit_cost_bps,
         )
 
     reasons.append("net_profit_floor_protected")
@@ -419,4 +424,6 @@ def plan_vcap_profit_exit(
         state=state,
         suggested_trailing_delta_bps=policy.suggested_trailing_delta_bps,
         reasons=tuple(reasons),
+        target_net_profit_bps=policy.target_net_profit_bps,
+        expected_exit_cost_bps=costs.expected_exit_cost_bps,
     )

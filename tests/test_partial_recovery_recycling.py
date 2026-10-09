@@ -28,7 +28,6 @@ from spectra_core.partial_recycle import (
     plan_partial_recycle,
 )
 
-
 D = Decimal
 
 
@@ -341,7 +340,9 @@ class FakeExecutors:
                 "net_pnl_quote": "0",
                 "custom_info": {"realized_pnl_quote": "0"},
             }
-        raise RuntimeError("executor not found")
+        error = RuntimeError("executor not found")
+        error.status = 404
+        raise error
 
     async def create_executor(
         self,
@@ -350,9 +351,7 @@ class FakeExecutors:
         account_name,
         controller_id,
     ):
-        self.created.append(
-            (executor_config, account_name, controller_id)
-        )
+        self.created.append((executor_config, account_name, controller_id))
         self.recycle_executor_id = executor_config["id"]
         return {
             "executor_id": executor_config["id"],
@@ -416,10 +415,10 @@ def test_confirmed_partial_recycle_realizes_profit_releases_basis_and_keeps_posi
     order = ExecutorOrderEvidence(
         executor_id=manifest.sell_executor_id,
         order_id="recycle-sell-order",
-        order_type="MARKET",
+        order_type="LIMIT",
         side="SELL",
         amount=D("10"),
-        price=None,
+        price=manifest.protected_limit_price,
         status="FILLED",
         filled_amount=D("10"),
         average_fill_price=D("0.50"),
