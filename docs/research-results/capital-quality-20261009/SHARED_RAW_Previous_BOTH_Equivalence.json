@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "exact_byte_matches": {
+    "window_accounts.csv": true,
+    "new_fills.json": true,
+    "terminal_active_lots.json": true,
+    "terminal_positions.json": true
+  }
+}

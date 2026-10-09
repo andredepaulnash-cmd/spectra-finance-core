@@ -1,0 +1,116 @@
+{
+  "engineering_validation_passed": true,
+  "financial_candidate_accepted": false,
+  "constructed_causal_gate_tests": 17,
+  "constructed_purpose_quality_mechanics_tests": 12,
+  "total_completed_account_rows": 34560,
+  "total_account_field_comparisons": 241920,
+  "total_actual_modeled_fills": 918,
+  "total_unique_raw_tape_gate_decisions": 270169,
+  "total_actual_parked_claim_gate_links": 530,
+  "factorial_ending_equity_contrasts": {
+    "SPLIT_RAW_minus_SHARED_RAW": "-5.133224275795908251209736",
+    "SPLIT_QUALITY_minus_SHARED_QUALITY": "9.329179084046296282415153",
+    "SHARED_QUALITY_minus_SHARED_RAW": "-15.631248059017773032628913",
+    "SPLIT_QUALITY_minus_SPLIT_RAW": "-1.168844699175568499004024",
+    "interaction": "14.462403359842204533624889"
+  },
+  "per_arm": [
+    {
+      "arm": "SHARED_RAW",
+      "ending_equity": "1898.712842748764725971159847",
+      "equity_delta_vs_PARK": "-4.709290442900649020435166",
+      "realized_delta_vs_PARK": "15.294957223544561761680255605",
+      "open_pnl_delta_vs_PARK": "-20.0042476664452107821154220",
+      "july_drawdown": "0.02456409694479940115844203004",
+      "fees": "6.186422761075024191602387864",
+      "stale_marked_inventory_over_300s": "102.5871752963393537438007042979640",
+      "meets_predeclared_candidate_criteria": false,
+      "criteria": {
+        "complete_window": true,
+        "actual_parked_fills_required": true,
+        "higher_marked_equity_than_PARK": false,
+        "no_higher_window_drawdown_than_PARK": false,
+        "no_worse_terminal_open_pnl_than_PARK": false
+      },
+      "P_source_by_kind": {
+        "ENTRY": "5.297395277314976098836088959292362880724672247368310664",
+        "RECOVERY": "-10.3426947504639579686643691268671178740574218788181714378849"
+      }
+    },
+    {
+      "arm": "SPLIT_RAW",
+      "ending_equity": "1893.579618472968817719950111",
+      "equity_delta_vs_PARK": "-9.842514718696557271644902",
+      "realized_delta_vs_PARK": "16.199117543041017198885935975",
+      "open_pnl_delta_vs_PARK": "-26.0416322617375744705308353",
+      "july_drawdown": "0.02466648539999106481517475942",
+      "fees": "6.822272126248064801827187412",
+      "stale_marked_inventory_over_300s": "112.8669556489996313439000639593630",
+      "meets_predeclared_candidate_criteria": false,
+      "criteria": {
+        "complete_window": true,
+        "actual_parked_fills_required": true,
+        "higher_marked_equity_than_PARK": false,
+        "no_higher_window_drawdown_than_PARK": false,
+        "no_worse_terminal_open_pnl_than_PARK": false
+      },
+      "P_source_by_kind": {
+        "ENTRY": "-4.66521423735354966611639263648791794230391980049634802087805",
+        "RECOVERY": "-2.6357420487198835186448153287266"
+      }
+    },
+    {
+      "arm": "SHARED_QUALITY",
+      "ending_equity": "1883.081594689746952938530934",
+      "equity_delta_vs_PARK": "-20.340538501918422053064079",
+      "realized_delta_vs_PARK": "19.447383525253467577907228715",
+      "open_pnl_delta_vs_PARK": "-39.7879220271718896309713069",
+      "july_drawdown": "0.02829657261508313127438545424",
+      "fees": "8.026805966926421843449939969",
+      "stale_marked_inventory_over_300s": "94.7548980733745379126380031106370",
+      "meets_predeclared_candidate_criteria": false,
+      "criteria": {
+        "complete_window": true,
+        "actual_parked_fills_required": true,
+        "higher_marked_equity_than_PARK": false,
+        "no_higher_window_drawdown_than_PARK": false,
+        "no_worse_terminal_open_pnl_than_PARK": false
+      },
+      "P_source_by_kind": {
+        "ENTRY": "-3.20027407825732853003612091950430467978921606790635336741464",
+        "RECOVERY": "-17.4008023105640657160128962303285"
+      }
+    },
+    {
+      "arm": "SPLIT_QUALITY",
+      "ending_equity": "1892.410773773793249220946087",
+      "equity_delta_vs_PARK": "-11.011359417872125770648926",
+      "realized_delta_vs_PARK": "23.512405532432250563037599655",
+      "open_pnl_delta_vs_PARK": "-34.5237649503043763336865222",
+      "july_drawdown": "0.02874952079562559875284690879",
+      "fees": "9.683478594732109805485005699",
+      "stale_marked_inventory_over_300s": "100.2160674098470767692189924561600",
+      "meets_predeclared_candidate_criteria": false,
+      "criteria": {
+        "complete_window": true,
+        "actual_parked_fills_required": true,
+        "higher_marked_equity_than_PARK": false,
+        "no_higher_window_drawdown_than_PARK": false,
+        "no_worse_terminal_open_pnl_than_PARK": false
+      },
+      "P_source_by_kind": {
+        "ENTRY": "-3.63112977982985337810879708893386413293809182633939632841072",
+        "RECOVERY": "-6.99908197563578547708304713586646501069006734773619801396333"
+      }
+    }
+  ],
+  "conclusion": "All four completed arms activated authentic modeled parked-source funding and passed independent financial/source/purpose/gate audits. None beats PARK equity, drawdown or terminal open P&L. The exploratory trend/rebound gates do not establish an improved policy in this already viewed July window.",
+  "limits": [
+    "No production promotion, live trading or full January-June rerun.",
+    "July is not an untouched performance holdout.",
+    "Source P&L allocation is not the causal account effect of its sleeve.",
+    "Stale last-observed marks are disclosed historical accounting values, not executable venue liquidation prices.",
+    "No thresholds or coin lists were revised after outcomes."
+  ]
+}

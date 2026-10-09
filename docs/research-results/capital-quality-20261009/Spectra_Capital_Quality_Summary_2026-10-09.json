@@ -1,0 +1,301 @@
+{
+  "created_utc": "2026-10-09T16:00:36.096087+00:00",
+  "scope": "Previously viewed July 1-30 continuation, 8640 completed five-minute frames per arm; not an untouched holdout or new January-June replay.",
+  "original_initial_capital": "2000",
+  "restored_June_checkpoint_equity": "1898.277183091943957381228996",
+  "financial_candidate_accepted": false,
+  "engineering_validation_passed": true,
+  "rows": [
+    {
+      "arm": "PARK",
+      "ending_equity": "1903.422133191665374991595013",
+      "new_realized_profit": "8.858839954797079040732558875",
+      "remaining_open_pnl": "-307.4638537303527849864945784",
+      "fees": "1.167992259576086762388264836",
+      "window_max_drawdown_fraction": "0.01568994216287309361059687536",
+      "ending_cash": "1707.659514487834020320225698",
+      "parked_cash": "1707.659514487833998378453361",
+      "ordinary_cash": "2.1941772337E-14",
+      "equity_delta_vs_PARK": "0",
+      "actual_P_fills": 0
+    },
+    {
+      "arm": "SHARED_RAW",
+      "ending_equity": "1898.712842748764725971159847",
+      "new_realized_profit": "24.15379717834164080241281448",
+      "remaining_open_pnl": "-327.4681013967979957686100004",
+      "fees": "6.186422761075024191602387864",
+      "window_max_drawdown_fraction": "0.02456409694479940115844203004",
+      "ending_cash": "1626.719684859171796497993556",
+      "parked_cash": "1626.719684859171796497993555",
+      "ordinary_cash": "1E-24",
+      "equity_delta_vs_PARK": "-4.709290442900649020435166",
+      "actual_P_fills": 100,
+      "P_spent_by_purpose": {
+        "ENTRY": "163.999999999999999999999992",
+        "RECOVERY": "503.9255702999525951938951506"
+      },
+      "P_terminal_basis_by_purpose": {
+        "ENTRY": "10.249999999999999999999999",
+        "RECOVERY": "89.74999999999992143947486175"
+      },
+      "P_source_marked_pnl_by_purpose": {
+        "ENTRY": "5.297395277314976098836088959292362880724672247368310664",
+        "RECOVERY": "-10.3426947504639579686643691268671178740574218788181714378849"
+      },
+      "stale_marked_inventory_over_300s": "102.5871752963393537438007042979640",
+      "meets_predeclared_candidate_criteria": false
+    },
+    {
+      "arm": "SPLIT_RAW",
+      "ending_equity": "1893.579618472968817719950111",
+      "new_realized_profit": "25.05795749783809623961849485",
+      "remaining_open_pnl": "-333.5054859920903594570254137",
+      "fees": "6.822272126248064801827187412",
+      "window_max_drawdown_fraction": "0.02466648539999106481517475942",
+      "ending_cash": "1620.384933695815207744742791",
+      "parked_cash": "1620.384933695815206226940280",
+      "ordinary_cash": "1.517802511E-15",
+      "equity_delta_vs_PARK": "-9.842514718696557271644902",
+      "actual_P_fills": 99,
+      "P_spent_by_purpose": {
+        "ENTRY": "258.468107763293598586982279",
+        "RECOVERY": "455.8495368077582312553731536"
+      },
+      "P_terminal_basis_by_purpose": {
+        "ENTRY": "46.88827133399151356497728800",
+        "RECOVERY": "49.999999999999984086646440"
+      },
+      "P_source_marked_pnl_by_purpose": {
+        "ENTRY": "-4.66521423735354966611639263648791794230391980049634802087805",
+        "RECOVERY": "-2.6357420487198835186448153287266"
+      },
+      "stale_marked_inventory_over_300s": "112.8669556489996313439000639593630",
+      "meets_predeclared_candidate_criteria": false
+    },
+    {
+      "arm": "SHARED_QUALITY",
+      "ending_equity": "1883.081594689746952938530934",
+      "new_realized_profit": "28.30622348005054661863978759",
+      "remaining_open_pnl": "-347.2517757575246746174658853",
+      "fees": "8.026805966926421843449939969",
+      "window_max_drawdown_fraction": "0.02829657261508313127438545424",
+      "ending_cash": "1624.592431203575373999617935",
+      "parked_cash": "1624.592431203575352085444468",
+      "ordinary_cash": "2.1914173467E-14",
+      "equity_delta_vs_PARK": "-20.340538501918422053064079",
+      "actual_P_fills": 127,
+      "P_spent_by_purpose": {
+        "ENTRY": "354.050648637659492675587532",
+        "RECOVERY": "540.2218143251500042977738204"
+      },
+      "P_terminal_basis_by_purpose": {
+        "ENTRY": "20.49999999999999999999999900",
+        "RECOVERY": "79.49999999999997911916777077"
+      },
+      "P_source_marked_pnl_by_purpose": {
+        "ENTRY": "-3.20027407825732853003612091950430467978921606790635336741464",
+        "RECOVERY": "-17.4008023105640657160128962303285"
+      },
+      "stale_marked_inventory_over_300s": "94.7548980733745379126380031106370",
+      "meets_predeclared_candidate_criteria": false
+    },
+    {
+      "arm": "SPLIT_QUALITY",
+      "ending_equity": "1892.410773773793249220946087",
+      "new_realized_profit": "32.37124548722932960377015853",
+      "remaining_open_pnl": "-341.9876186806571613201811006",
+      "fees": "9.683478594732109805485005699",
+      "window_max_drawdown_fraction": "0.02874952079562559875284690879",
+      "ending_cash": "1631.463879166610847944256013",
+      "parked_cash": "1631.463879166610804739620504",
+      "ordinary_cash": "4.3204635509E-14",
+      "equity_delta_vs_PARK": "-11.011359417872125770648926",
+      "actual_P_fills": 137,
+      "P_spent_by_purpose": {
+        "ENTRY": "631.443145754623152470604489",
+        "RECOVERY": "448.2109289994312277456582525"
+      },
+      "P_terminal_basis_by_purpose": {
+        "ENTRY": "48.93139250358667157446124200",
+        "RECOVERY": "49.99999999999997148990140147"
+      },
+      "P_source_marked_pnl_by_purpose": {
+        "ENTRY": "-3.63112977982985337810879708893386413293809182633939632841072",
+        "RECOVERY": "-6.99908197563578547708304713586646501069006734773619801396333"
+      },
+      "stale_marked_inventory_over_300s": "100.2160674098470767692189924561600",
+      "meets_predeclared_candidate_criteria": false
+    }
+  ],
+  "validation": {
+    "engineering_validation_passed": true,
+    "financial_candidate_accepted": false,
+    "constructed_causal_gate_tests": 17,
+    "constructed_purpose_quality_mechanics_tests": 12,
+    "total_completed_account_rows": 34560,
+    "total_account_field_comparisons": 241920,
+    "total_actual_modeled_fills": 918,
+    "total_unique_raw_tape_gate_decisions": 270169,
+    "total_actual_parked_claim_gate_links": 530,
+    "factorial_ending_equity_contrasts": {
+      "SPLIT_RAW_minus_SHARED_RAW": "-5.133224275795908251209736",
+      "SPLIT_QUALITY_minus_SHARED_QUALITY": "9.329179084046296282415153",
+      "SHARED_QUALITY_minus_SHARED_RAW": "-15.631248059017773032628913",
+      "SPLIT_QUALITY_minus_SPLIT_RAW": "-1.168844699175568499004024",
+      "interaction": "14.462403359842204533624889"
+    },
+    "per_arm": [
+      {
+        "arm": "SHARED_RAW",
+        "ending_equity": "1898.712842748764725971159847",
+        "equity_delta_vs_PARK": "-4.709290442900649020435166",
+        "realized_delta_vs_PARK": "15.294957223544561761680255605",
+        "open_pnl_delta_vs_PARK": "-20.0042476664452107821154220",
+        "july_drawdown": "0.02456409694479940115844203004",
+        "fees": "6.186422761075024191602387864",
+        "stale_marked_inventory_over_300s": "102.5871752963393537438007042979640",
+        "meets_predeclared_candidate_criteria": false,
+        "criteria": {
+          "complete_window": true,
+          "actual_parked_fills_required": true,
+          "higher_marked_equity_than_PARK": false,
+          "no_higher_window_drawdown_than_PARK": false,
+          "no_worse_terminal_open_pnl_than_PARK": false
+        },
+        "P_source_by_kind": {
+          "ENTRY": "5.297395277314976098836088959292362880724672247368310664",
+          "RECOVERY": "-10.3426947504639579686643691268671178740574218788181714378849"
+        }
+      },
+      {
+        "arm": "SPLIT_RAW",
+        "ending_equity": "1893.579618472968817719950111",
+        "equity_delta_vs_PARK": "-9.842514718696557271644902",
+        "realized_delta_vs_PARK": "16.199117543041017198885935975",
+        "open_pnl_delta_vs_PARK": "-26.0416322617375744705308353",
+        "july_drawdown": "0.02466648539999106481517475942",
+        "fees": "6.822272126248064801827187412",
+        "stale_marked_inventory_over_300s": "112.8669556489996313439000639593630",
+        "meets_predeclared_candidate_criteria": false,
+        "criteria": {
+          "complete_window": true,
+          "actual_parked_fills_required": true,
+          "higher_marked_equity_than_PARK": false,
+          "no_higher_window_drawdown_than_PARK": false,
+          "no_worse_terminal_open_pnl_than_PARK": false
+        },
+        "P_source_by_kind": {
+          "ENTRY": "-4.66521423735354966611639263648791794230391980049634802087805",
+          "RECOVERY": "-2.6357420487198835186448153287266"
+        }
+      },
+      {
+        "arm": "SHARED_QUALITY",
+        "ending_equity": "1883.081594689746952938530934",
+        "equity_delta_vs_PARK": "-20.340538501918422053064079",
+        "realized_delta_vs_PARK": "19.447383525253467577907228715",
+        "open_pnl_delta_vs_PARK": "-39.7879220271718896309713069",
+        "july_drawdown": "0.02829657261508313127438545424",
+        "fees": "8.026805966926421843449939969",
+        "stale_marked_inventory_over_300s": "94.7548980733745379126380031106370",
+        "meets_predeclared_candidate_criteria": false,
+        "criteria": {
+          "complete_window": true,
+          "actual_parked_fills_required": true,
+          "higher_marked_equity_than_PARK": false,
+          "no_higher_window_drawdown_than_PARK": false,
+          "no_worse_terminal_open_pnl_than_PARK": false
+        },
+        "P_source_by_kind": {
+          "ENTRY": "-3.20027407825732853003612091950430467978921606790635336741464",
+          "RECOVERY": "-17.4008023105640657160128962303285"
+        }
+      },
+      {
+        "arm": "SPLIT_QUALITY",
+        "ending_equity": "1892.410773773793249220946087",
+        "equity_delta_vs_PARK": "-11.011359417872125770648926",
+        "realized_delta_vs_PARK": "23.512405532432250563037599655",
+        "open_pnl_delta_vs_PARK": "-34.5237649503043763336865222",
+        "july_drawdown": "0.02874952079562559875284690879",
+        "fees": "9.683478594732109805485005699",
+        "stale_marked_inventory_over_300s": "100.2160674098470767692189924561600",
+        "meets_predeclared_candidate_criteria": false,
+        "criteria": {
+          "complete_window": true,
+          "actual_parked_fills_required": true,
+          "higher_marked_equity_than_PARK": false,
+          "no_higher_window_drawdown_than_PARK": false,
+          "no_worse_terminal_open_pnl_than_PARK": false
+        },
+        "P_source_by_kind": {
+          "ENTRY": "-3.63112977982985337810879708893386413293809182633939632841072",
+          "RECOVERY": "-6.99908197563578547708304713586646501069006734773619801396333"
+        }
+      }
+    ],
+    "conclusion": "All four completed arms activated authentic modeled parked-source funding and passed independent financial/source/purpose/gate audits. None beats PARK equity, drawdown or terminal open P&L. The exploratory trend/rebound gates do not establish an improved policy in this already viewed July window.",
+    "limits": [
+      "No production promotion, live trading or full January-June rerun.",
+      "July is not an untouched performance holdout.",
+      "Source P&L allocation is not the causal account effect of its sleeve.",
+      "Stale last-observed marks are disclosed historical accounting values, not executable venue liquidation prices.",
+      "No thresholds or coin lists were revised after outcomes."
+    ]
+  },
+  "factorial_contrasts": {
+    "SPLIT_RAW_minus_SHARED_RAW": "-5.133224275795908251209736",
+    "SPLIT_QUALITY_minus_SHARED_QUALITY": "9.329179084046296282415153",
+    "SHARED_QUALITY_minus_SHARED_RAW": "-15.631248059017773032628913",
+    "SPLIT_QUALITY_minus_SPLIT_RAW": "-1.168844699175568499004024",
+    "interaction": "14.462403359842204533624889"
+  },
+  "repository": {
+    "source_commit": "9d1461a7fc65d7107e42453c8547fcc63237b167",
+    "source_tree": "446ccb54f3206302496742703bfe5ef1ea31469f",
+    "holdout_protocol_sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+    "holdout_freeze_utc": "2026-10-09T15:36:31.317254Z",
+    "first_eligible_bar_utc": "2026-10-09T15:40:00Z",
+    "end_utc": "2026-11-09T00:00:00Z",
+    "daily_collection_scheduled": true,
+    "automation_schedule": "BEGIN:VEVENT\nDTSTART;TZID=America/New_York:20261010T080000\nRRULE:FREQ=DAILY;UNTIL=20261109T180000\nEND:VEVENT",
+    "capture_run_id": 37953555217,
+    "production_activated": false,
+    "merged": false
+  },
+  "holdout_capture": {
+    "raw_prices_inspected": false,
+    "sha256": "cffcb939af41a05a043adce5d6deec7affdad8c328b20ac12c3d0554b328a2bf",
+    "size_bytes": 4311026,
+    "members": 641,
+    "github_run_id": 37953555217,
+    "github_artifact_id": 11626993757,
+    "workflow_conclusion": "success",
+    "operational_metadata": {
+      "status.json": {
+        "attempt_status_counts": {
+          "SUCCESS": 635
+        },
+        "attempted_pairs": 633,
+        "capture_started": true,
+        "complete_universe_attempt": true,
+        "evaluation_requires_first_observed_universe_gate": true,
+        "failures_this_invocation": 0,
+        "financial_outcomes_printed": false,
+        "protocol_sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+        "requests_this_invocation": 635,
+        "schema": "spectra-prospective-holdout-v1",
+        "sqlite_sha256": "0674848f69212efb12dd61e9f89a0ebf39edf5a4319766b7cbd5b8158f186d9e",
+        "stored_bar_count": 580,
+        "stored_pair_count": 426,
+        "strategy_evaluated": false,
+        "universe_pairs": 633,
+        "universe_snapshot_received_utc": "2026-10-09T15:41:12.687657Z",
+        "universe_snapshot_sha256": "6c83236e79520e723b9670698a572f814dad5a5d8343b2c020bd74727a086aa2",
+        "written_utc": "2026-10-09T15:52:48.993031Z"
+      }
+    }
+  },
+  "recommendation": "Keep PARK as the reference. Diagnose entry-time behavior of the unsuccessful source-funded asset/lots from saved journals before proposing another frozen matrix. Do not increase release caps or promote the tested gates. Maintain the frozen prospective holdout without tuning or scoring before November 9; build and independently audit its fresh-account replay adapter before scoring."
+}

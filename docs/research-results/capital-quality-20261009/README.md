@@ -1,0 +1,9 @@
+# Capital quality factorial — completed 2026-10-09
+
+All four July continuations completed and passed the independent accounting/source/causal audits. None beat PARK equity, drawdown or terminal open P&L. See Report.txt, exact summary, factorial verdict and matrix/source receipts here. Complete saved journals and per-asset source attribution are preserved in the hash-verified evidence archive described by Evidence_Package_Receipt.json; large canonical tapes and account checkpoint inputs remain pinned external data.
+
+October 15 remains the release target. The frozen prospective research comparison ending November 9 does not freeze production development or impose a November 9 launch gate. It prevents tuning those research arms on the capture period. All five fixed policies will be scored only after its end and after independently validating the fresh-account replay adapter, which is not yet built.
+
+The first cloud capture completed successfully with 635 successful public requests, zero request failures, cloud raw-integrity PASS, and a locally verified sealed ZIP. Price values were not inspected or used for tuning. Daily capture is scheduled through the final November 9 overlap. The first sealed capture is also included in the evidence archive. The initial source snapshot includes discovery records; only the frozen eligible universe may be used for strategy scoring.
+
+Keep PARK as the research control. Do not promote the failed gates or increase capital-release authority from these results. Investigate saved unsuccessful purchases using information available at acquisition before proposing another fixed experiment. Release-critical protected exits, cash ownership, exchange minimum/dust handling and restart/finality work can continue independently; live profitability and production execution are not established by these modeled fills.

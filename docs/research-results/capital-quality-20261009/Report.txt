@@ -1,0 +1,81 @@
+SPECTRA FINANCE — CAPITAL QUALITY EXPERIMENT — 2026-10-09
+
+DECISION: No new candidate passed the frozen economic criteria.
+Engineering passed. Parked money funded authentic modeled buys, but each tested policy finished with less marked equity, more July drawdown, and worse remaining open P&L than PARK.
+
+WHAT WAS COMPLETED
+Four completed matched July continuation runs, strict ENTRY/RECOVERY source accounting, causal trend/rebound qualification, independent fill/lot/cash/tape audits, a frozen prospective holdout, and the first successful cloud data capture. Research code is saved in draft PR #26; production remains at PR #25.
+
+WINDOW AND MONEY
+July 1 through July 30, 2026 UTC; July 31 excluded. Each arm processed 8,640 actual five-minute frames. All restore the same exact June checkpoint, worth $1,898.277183091943957381228996, inherited from the original $2,000 account.
+This is an already inspected development period, not a fresh six-month rerun or untouched performance test. PARK uses the previously saved independently audited control path.
+
+MATCHED RESULTS (cash plus honestly marked retained inventory)
+Arm             Ending equity   vs PARK   July max DD   New realized   Open P&L    Fees
+PARK            $    1903.42      0.00       1.569%  $      8.86  $ -307.46  $ 1.17
+SHARED_RAW      $    1898.71     -4.71       2.456%  $     24.15  $ -327.47  $ 6.19
+SPLIT_RAW       $    1893.58     -9.84       2.467%  $     25.06  $ -333.51  $ 6.82
+SHARED_QUALITY  $    1883.08    -20.34       2.830%  $     28.31  $ -347.25  $ 8.03
+SPLIT_QUALITY   $    1892.41    -11.01       2.875%  $     32.37  $ -341.99  $ 9.68
+
+SHARED_RAW: $100 maximum outstanding parked-funded acquisition basis plus pending claims, shared by ENTRY and RECOVERY; no new gate.
+SPLIT_RAW: strict $50 ENTRY / $50 RECOVERY authority; no cross-borrowing; no new gate.
+SHARED_QUALITY and SPLIT_QUALITY: the same respective budgets, plus the frozen causal gates described below.
+This $100 is outstanding authority, not a cumulative-spending limit. Successfully retired basis can be authorized again. Original reserve, pair cap, fees, exit floor and planners still apply.
+
+QUALIFICATION THAT WAS ACTUALLY TESTED
+ENTRY: current observed completed close is above exact observed 1-hour and 24-hour anchors.
+RECOVERY: six contiguous actual five-minute bars; current close exceeds the close 15 minutes ago, and the last three bars' minimum low exceeds the preceding three bars' minimum low.
+Every referenced row must have six finite OHLCVT fields and four positive OHLC prices. Missing actual anchors deny only the parked supplement. No forward filling or future execution-bar inspection. Conditional replacements use their original submission cutoff. Native causal movement/volume ranking remains unchanged.
+These are exploratory rules, not trained AI or a proven predictive winner model. Exact wording corrections are preserved in protocol-clarifications.json; financial policies and source pins stayed frozen throughout the runs.
+
+WHY MORE TRADING DID NOT WIN
+SPLIT_QUALITY realized $32.37 during July versus PARK's $8.86. Its extra $23.51 realized profit was outweighed by $34.52 worse terminal open P&L, leaving $11.01 less account value. The failure is not that cash could not move; the bought inventory did not justify the new risk.
+The total account comparison includes inherited inventory and changes to ordinary-funded decisions. P-source attribution below isolates exact lot ownership for description; it is not the causal account effect of one sleeve.
+
+PARKED-FUNDED SOURCE UTILIZATION AND MARKED P&L
+Arm             Actual P buys    Cumulative P spent   P Entry P&L    P Recovery P&L
+SHARED_RAW                100    $          667.93   $      5.30   $       -10.34
+SPLIT_RAW                  99    $          714.32   $     -4.67   $        -2.64
+SHARED_QUALITY            127    $          894.27   $     -3.20   $       -17.40
+SPLIT_QUALITY             137    $         1079.65   $     -3.63   $        -7.00
+
+FACTORIAL COMPARISONS (ending marked equity)
+SPLIT_RAW_minus_SHARED_RAW: $-5.13
+SPLIT_QUALITY_minus_SHARED_QUALITY: $9.33
+SHARED_QUALITY_minus_SHARED_RAW: $-15.63
+SPLIT_QUALITY_minus_SPLIT_RAW: $-1.17
+interaction: $14.46
+Splitting mitigated the shared gate's damage, but neither gated policy beat PARK. No threshold was relaxed and no terminal winner/loser list became an entry allowlist after seeing these outcomes.
+
+INDEPENDENT VALIDATION
+17 causal gate tests and 12 independent purpose/quality mechanics tests passed.
+All 34,560 account rows / 241,920 accounting-field comparisons, 918 modeled fills, 270,169 raw-tape gate decisions, and 530 actual parked-claim qualification links passed.
+Checks cover nonnegative cash/quantity, reserve and source caps, original lot purpose, exact disposal, cash and basis conservation, fees, genuine next-open tape/quantity/capacity/minimum checks, hard profitable exit floors, independent every-row July drawdown, and terminal marks.
+SHARED_RAW exactly reproduced the previously audited BOTH control's account/fill/terminal exports. This catches accidental changes beyond the intended factors.
+Engineering PASS is distinct from candidate rejection: every experimental arm failed all three financial criteria (equity, drawdown, open P&L).
+
+MARK AND EXECUTION LIMITATIONS
+Retained inventory uses each asset's last actual historical close. The audit separately discloses marks older than 300 seconds; experimental arms contain $94.75–$112.87 of such marked inventory at the endpoint. Missing observations were not fabricated. These values are historical accounting marks, not current executable liquidation quotes.
+Modeled fills include the unchanged 40-bps fee per side, 5-bps adverse slippage, $5 generic quote minimum, and recorded-volume participation rule. They do not establish venue fills, order-book capacity, asset-specific exchange minimums, a 30-second live refill guarantee, or production-safe protected exit execution.
+PSSM, DTSS and DTSSR remain OFF. No new DCA ladder, source-cap increase, ML/RL training, deposits, withdrawals or live trading was introduced.
+
+PROSPECTIVE HOLDOUT — ACTIVATED
+Frozen UTC: 2026-10-09T15:36:31.317254Z; first fully eligible bar: 2026-10-09T15:40:00Z; endpoint exclusive: 2026-11-09T00:00:00Z.
+The part of October 9 before the freeze is not claimed as untouched. Fixed 619-identity universe, raw public Kraken data, separated warmup, bounded capture and overlap, recorded gaps/failures, and no selection/performance evaluation before the endpoint.
+All five policies (OFF plus these four) are frozen for matched fresh $2,000 accounts. Their fresh-account simulation adapter is not yet implemented; it must be independently audited before scoring. No July winner is chosen to replace the frozen matrix.
+The first cloud capture completed successfully: run 37953555217, artifact 11626993757. Raw data integrity passed in the cloud; the downloaded sealed archive passed ZIP CRC. Its raw prices were not inspected or used for strategy tuning.
+Daily capture is scheduled from October 10 through November 9, including the final overlap needed after the endpoint. GitHub artifact retention is 90 days; the first sealed capture is also preserved with this evidence. Future capture failures must be reported rather than filled with synthetic observations.
+Frozen holdout protocol SHA256: ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134
+First sealed capture SHA256: cffcb939af41a05a043adce5d6deec7affdad8c328b20ac12c3d0554b328a2bf
+
+REPOSITORY AND RELEASE BOUNDARY
+Draft PR: https://github.com/andredepaulnash-cmd/spectra-finance-core/pull/26
+Frozen research source commit: 9d1461a7fc65d7107e42453c8547fcc63237b167
+All three source-commit GitHub checks passed. Production branch spectra-core-phase2 remains at 6e894fa9c2b55384d0f6120f41ca91892e1fe207 (PR #25). No merge or production activation is authorized by these results.
+
+SUGGESTION
+Keep PARK as the reference. Diagnose entry-time behavior of the unsuccessful source-funded asset/lots from saved journals before proposing another frozen matrix. Do not increase release caps or promote the tested gates. Maintain the frozen prospective holdout without tuning or scoring before November 9; build and independently audit its fresh-account replay adapter before scoring.
+Before another simulation, inspect the already saved unsuccessful source-funded lots: when they were bought, what causal liquidity/trend/recovery evidence existed then, and how losses accumulated. Preserve exact accounting and protected-execution work; do not blacklist assets from hindsight or infer live profitability from closed-trade wins.
+
+The evidence package contains saved financial journals, causal gate decisions, independent receipts and source pins. It excludes the large original historical tape and private credentials. The separately sealed holdout archive is opaque prospective data, not evaluated performance.

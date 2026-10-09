@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "tests": 17,
+  "feature_sha256": "22ea19d66d675b8ea338441b627a82834921e85c57eb2aea88c9a1ca985f48b8",
+  "failures": [],
+  "errors": [],
+  "scope": "Constructed exact-time causal gates; no historical strategy replay, fitted model or profitability claim."
+}

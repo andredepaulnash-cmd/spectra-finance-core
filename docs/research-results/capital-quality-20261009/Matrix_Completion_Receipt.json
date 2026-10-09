@@ -1,0 +1,73 @@
+{
+  "research_only": true,
+  "frozen_source_pins": {
+    "protocol.json": "13685c9ce1fe7da0a2a721bb5648be2cb162ac455bfe76426d0625fae4b3c581",
+    "quality_gate.py": "22ea19d66d675b8ea338441b627a82834921e85c57eb2aea88c9a1ca985f48b8",
+    "release_adapter.py": "c2af1ca19feb0877d4d693e2ad195fe11b7eb010982388f60960bda2b2707952",
+    "run_comparison.py": "7d89135cf9e009ecd28d6097ff08ac4b195c56b66cc00837e03fdcc327c37f37",
+    "run_matrix.py": "05b568a001c7dcac797f5055b32fedf5b86fbbf98ea3e76ee40f2174d4468049",
+    "base_adapter": "b9e7fcd4c0f3ebff508da90e87c7ee1ba19abacb7d6796da3166bf32d8b4cbfb"
+  },
+  "records": [
+    {
+      "arm": "SHARED_RAW",
+      "status": "COMPLETED",
+      "start_wall_time": 1791559443.7841592,
+      "end_wall_time": 1791559874.6969483,
+      "returncode": 0,
+      "ending_equity": "1898.712842748764725971159847",
+      "fills": {
+        "RECOVERY": 86,
+        "ENTRY": 28,
+        "EXIT": 28,
+        "PARTIAL_RECYCLE": 47
+      },
+      "activated": true
+    },
+    {
+      "arm": "SPLIT_RAW",
+      "status": "COMPLETED",
+      "start_wall_time": 1791559875.216148,
+      "end_wall_time": 1791560181.1439445,
+      "returncode": 0,
+      "ending_equity": "1893.579618472968817719950111",
+      "fills": {
+        "RECOVERY": 74,
+        "ENTRY": 42,
+        "EXIT": 37,
+        "PARTIAL_RECYCLE": 48
+      },
+      "activated": true
+    },
+    {
+      "arm": "SHARED_QUALITY",
+      "status": "COMPLETED",
+      "start_wall_time": 1791560181.1565988,
+      "end_wall_time": 1791560686.0873935,
+      "returncode": 0,
+      "ending_equity": "1883.081594689746952938530934",
+      "fills": {
+        "RECOVERY": 95,
+        "ENTRY": 47,
+        "EXIT": 46,
+        "PARTIAL_RECYCLE": 66
+      },
+      "activated": true
+    },
+    {
+      "arm": "SPLIT_QUALITY",
+      "status": "COMPLETED",
+      "start_wall_time": 1791560686.11475,
+      "end_wall_time": 1791561050.7860513,
+      "returncode": 0,
+      "ending_equity": "1892.410773773793249220946087",
+      "fills": {
+        "RECOVERY": 75,
+        "ENTRY": 76,
+        "EXIT": 72,
+        "PARTIAL_RECYCLE": 51
+      },
+      "activated": true
+    }
+  ]
+}

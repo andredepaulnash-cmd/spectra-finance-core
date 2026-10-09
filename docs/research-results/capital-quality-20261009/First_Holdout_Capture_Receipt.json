@@ -1,0 +1,33 @@
+{
+  "raw_prices_inspected": false,
+  "sha256": "cffcb939af41a05a043adce5d6deec7affdad8c328b20ac12c3d0554b328a2bf",
+  "size_bytes": 4311026,
+  "members": 641,
+  "operational_metadata": {
+    "status.json": {
+      "attempt_status_counts": {
+        "SUCCESS": 635
+      },
+      "attempted_pairs": 633,
+      "capture_started": true,
+      "complete_universe_attempt": true,
+      "evaluation_requires_first_observed_universe_gate": true,
+      "failures_this_invocation": 0,
+      "financial_outcomes_printed": false,
+      "protocol_sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+      "requests_this_invocation": 635,
+      "schema": "spectra-prospective-holdout-v1",
+      "sqlite_sha256": "0674848f69212efb12dd61e9f89a0ebf39edf5a4319766b7cbd5b8158f186d9e",
+      "stored_bar_count": 580,
+      "stored_pair_count": 426,
+      "strategy_evaluated": false,
+      "universe_pairs": 633,
+      "universe_snapshot_received_utc": "2026-10-09T15:41:12.687657Z",
+      "universe_snapshot_sha256": "6c83236e79520e723b9670698a572f814dad5a5d8343b2c020bd74727a086aa2",
+      "written_utc": "2026-10-09T15:52:48.993031Z"
+    }
+  },
+  "github_run_id": 37953555217,
+  "github_artifact_id": 11626993757,
+  "workflow_conclusion": "success"
+}

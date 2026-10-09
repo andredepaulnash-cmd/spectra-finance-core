@@ -1,0 +1,84 @@
+{
+  "schema": "spectra-quality-auditor-portability-v1",
+  "generated_utc": "2026-10-09T16:01:06.074240+00:00",
+  "research_only": true,
+  "strategy_replay_performed": false,
+  "holdout_scored": false,
+  "financial_policy_source_changed": false,
+  "adaptations": [
+    "Repo-relative imports to frozen capital_quality and parked_cash sources/auditors.",
+    "Optional explicit auditor/base-adapter CLI paths; canonical prepared tape and saved output directories remain required CLI inputs.",
+    "SPECTRA_NATIVE_WRAPPER required for native integration; missing archive raises an explicit SkipTest.",
+    "Ported test receipts use distinct names, preserving original receipts."
+  ],
+  "files": [
+    {
+      "file": "audit_quality_runs.py",
+      "original_sha256": "9fdfa5bce2fde36882a020cca1c87e3fad5b858bff2e12f1d559b0184bb8c895",
+      "portable_sha256": "153a300c4659d50fa3389b799035e63f729d7c2cc4faef8738cf22003a3ee116",
+      "unchanged": false
+    },
+    {
+      "file": "attribute_quality_outputs.py",
+      "original_sha256": "73c818c24d1009d2dcffd2af6baf1836deb6c88ddd528e188dffae57e1711028",
+      "portable_sha256": "a123df8c837048c98cfc6379354a2a8f13aa513a73cef67b93b0310bbd659ef2",
+      "unchanged": false
+    },
+    {
+      "file": "test_causal_quality_gate.py",
+      "original_sha256": "04d76d6230944f6f2b23869e5fe23b08e8f4c41b24f241d4b54cfc749f969525",
+      "portable_sha256": "7b5fd445e77eef2e40242916689fdbfc66f32d4fc940aeacc22c0aadd67b4099",
+      "unchanged": false
+    },
+    {
+      "file": "test_quality_source_mechanics.py",
+      "original_sha256": "3d10c988b5983489ec58908979c3f7c032c8ebe0652dd3abc68f2bdde2e40757",
+      "portable_sha256": "bc4c4b87efcc50b671b34a36820b90339db9441081bd610016c32b4119ea8fbe",
+      "unchanged": false
+    },
+    {
+      "file": "attribute_source_capital.py",
+      "original_sha256": "77de8027618242250de73c265c7610d141a37a98c8db4c806ee4500337fbac60",
+      "portable_sha256": "77de8027618242250de73c265c7610d141a37a98c8db4c806ee4500337fbac60",
+      "unchanged": true
+    },
+    {
+      "file": "audit_terminal_marks.py",
+      "original_sha256": "7d7e83503a3d640d54865655d6f340430b3ac76a901d54b68f34ef0fc6fdae43",
+      "portable_sha256": "7d7e83503a3d640d54865655d6f340430b3ac76a901d54b68f34ef0fc6fdae43",
+      "unchanged": true
+    },
+    {
+      "file": "financial_source_auditor.py",
+      "original_sha256": "b5d94b755039df3d3021b34189ab31ec5745cc8c50461c9f06bb3383ae24e33a",
+      "portable_sha256": "b5d94b755039df3d3021b34189ab31ec5745cc8c50461c9f06bb3383ae24e33a",
+      "unchanged": true
+    }
+  ],
+  "checks": {
+    "causal_boundary_tests": 17,
+    "native_constructed_source_purpose_tests": 12,
+    "causal_tests_passed": true,
+    "native_tests_passed": true,
+    "portable_saved_output_audit_arm": "SHARED_RAW",
+    "portable_saved_output_audit_account_rows": 8640,
+    "portable_saved_output_audit_passed": true,
+    "cli_help_parsed": true,
+    "portable_saved_attribution_passed": true,
+    "ported_attribution_equals_original": true,
+    "latest_explicit_financial_oracle_receipt_equals_original": true,
+    "default_portable_output_equals_latest_original": true,
+    "default_portable_attribution_equals_original": true
+  },
+  "native_wrapper_sha256": "1df12d02dc1ff459d027e172e22f826e6a9b0e7610dcccd1ca14c3bd8a72bb45",
+  "frozen_holdout_protocol_sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+  "default_auditor_version_difference": {
+    "existing_git_default": "research/parked_cash/audit_release_runs.py",
+    "latest_external": "workflow-20261009/independent_review/audit_release_runs.py",
+    "default_complete_window_audit_passed": true,
+    "reported_difference": "Latest oracle adds partial-prefix capability and pending-claim identity/completeness metadata; original and default checked financial values/counts match. No default file changed by port.",
+    "latest_source_sha256": "b5d94b755039df3d3021b34189ab31ec5745cc8c50461c9f06bb3383ae24e33a",
+    "resolution": "Latest oracle copied unchanged as capital_quality/audit/financial_source_auditor.py and selected by default. Prior parked_cash auditor is unchanged."
+  },
+  "default_financial_auditor": "research/capital_quality/audit/financial_source_auditor.py"
+}

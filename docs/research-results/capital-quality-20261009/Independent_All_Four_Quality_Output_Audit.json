@@ -1,0 +1,298 @@
+{
+  "passed": true,
+  "arms": [
+    {
+      "passed": true,
+      "arm": "SHARED_RAW",
+      "base_financial_ownership_and_authentic_fill_audit": {
+        "passed": true,
+        "arm": "SHARED_RAW",
+        "actual_fills": 189,
+        "partial_only": false,
+        "complete_window": true,
+        "requested_window_frames": 8640,
+        "pending_contingent_ids": [],
+        "saved_result_json_present": true,
+        "checks": {
+          "claim_source_identity": 620,
+          "source_cap_event_checks": 2094,
+          "zero_fill_claim_release": 1285,
+          "actual_buy_source_identity": 114,
+          "actual_sale_exact_ownership": 75,
+          "genuine_execution_bar_price_fee_quantity_capacity_minimum": 189,
+          "genuine_tape_validation_is_modeled_not_venue_execution": true,
+          "independent_terminal_parents": 37,
+          "independent_account_rows": 8640,
+          "account_field_comparisons": 60480
+        },
+        "independently_reconstructed_cap_peak": "99.999999999999999999996389576",
+        "owned_parked_basis": "99.999999999999921439474860752",
+        "source_spent_by_purpose": {
+          "RECOVERY": "503.925570299952595193895150718",
+          "ENTRY": "163.99999999999999999999999200"
+        },
+        "surviving_source_basis_by_purpose": {
+          "ENTRY": "10.249999999999999999999999",
+          "RECOVERY": "89.749999999999921439474861752"
+        },
+        "scope": "Independent saved-output source/lot/cash reconstruction; no second strategy execution or live validation. Partial mode checks observed prefix only and makes no completed-window performance claim."
+      },
+      "independent_purpose_budget_audit": {
+        "passed": true,
+        "checks": {
+          "every_event_strict_purpose_and_shared_caps": 2094,
+          "sale_lot_original_purpose": 97
+        },
+        "strict_caps": {},
+        "independently_reconstructed_peak_by_purpose": {
+          "ENTRY": "20.50",
+          "RECOVERY": "89.749999999999999999382658342"
+        },
+        "spent_by_purpose": {
+          "ENTRY": "163.99999999999999999999999200",
+          "RECOVERY": "503.925570299952595193895150718"
+        },
+        "retired_by_purpose": {
+          "ENTRY": "153.74999999999999999999999300",
+          "RECOVERY": "414.175570299952673754420288966"
+        },
+        "surviving_basis_by_purpose": {
+          "ENTRY": "10.24999999999999999999999900",
+          "RECOVERY": "89.749999999999921439474861752"
+        }
+      },
+      "independent_actual_raw_tape_gate_audit": {
+        "passed": true,
+        "independently_checked_unique_raw_tape_decisions": 0,
+        "actual_parked_claim_gate_links": 0,
+        "reason_counts": {},
+        "scope": "Completed decision OHLC only. Actual fills remain estimated next-open fills; no venue execution or predictive-edge claim."
+      }
+    },
+    {
+      "passed": true,
+      "arm": "SPLIT_RAW",
+      "base_financial_ownership_and_authentic_fill_audit": {
+        "passed": true,
+        "arm": "SPLIT_RAW",
+        "actual_fills": 201,
+        "partial_only": false,
+        "complete_window": true,
+        "requested_window_frames": 8640,
+        "pending_contingent_ids": [],
+        "saved_result_json_present": true,
+        "checks": {
+          "claim_source_identity": 478,
+          "source_cap_event_checks": 1720,
+          "zero_fill_claim_release": 1041,
+          "actual_buy_source_identity": 116,
+          "actual_sale_exact_ownership": 85,
+          "genuine_execution_bar_price_fee_quantity_capacity_minimum": 201,
+          "genuine_tape_validation_is_modeled_not_venue_execution": true,
+          "independent_terminal_parents": 42,
+          "independent_account_rows": 8640,
+          "account_field_comparisons": 60480
+        },
+        "independently_reconstructed_cap_peak": "99.62096989315570314598286100",
+        "owned_parked_basis": "96.88827133399149765162372800",
+        "source_spent_by_purpose": {
+          "RECOVERY": "455.849536807758231255373153622",
+          "ENTRY": "258.46810776329359858698227900"
+        },
+        "surviving_source_basis_by_purpose": {
+          "ENTRY": "46.88827133399151356497728800",
+          "RECOVERY": "49.999999999999984086646440"
+        },
+        "scope": "Independent saved-output source/lot/cash reconstruction; no second strategy execution or live validation. Partial mode checks observed prefix only and makes no completed-window performance claim."
+      },
+      "independent_purpose_budget_audit": {
+        "passed": true,
+        "checks": {
+          "every_event_strict_purpose_and_shared_caps": 1720,
+          "sale_lot_original_purpose": 102
+        },
+        "strict_caps": {
+          "ENTRY": "50",
+          "RECOVERY": "50"
+        },
+        "independently_reconstructed_peak_by_purpose": {
+          "ENTRY": "49.62096989315571905933642100",
+          "RECOVERY": "49.999999999999999999910871888"
+        },
+        "spent_by_purpose": {
+          "ENTRY": "258.46810776329359858698227900",
+          "RECOVERY": "455.849536807758231255373153622"
+        },
+        "retired_by_purpose": {
+          "ENTRY": "211.57983642930208502200499100",
+          "RECOVERY": "405.849536807758247168726713622"
+        },
+        "surviving_basis_by_purpose": {
+          "ENTRY": "46.88827133399151356497728800",
+          "RECOVERY": "49.999999999999984086646440000"
+        }
+      },
+      "independent_actual_raw_tape_gate_audit": {
+        "passed": true,
+        "independently_checked_unique_raw_tape_decisions": 0,
+        "actual_parked_claim_gate_links": 0,
+        "reason_counts": {},
+        "scope": "Completed decision OHLC only. Actual fills remain estimated next-open fills; no venue execution or predictive-edge claim."
+      }
+    },
+    {
+      "passed": true,
+      "arm": "SHARED_QUALITY",
+      "base_financial_ownership_and_authentic_fill_audit": {
+        "passed": true,
+        "arm": "SHARED_QUALITY",
+        "actual_fills": 254,
+        "partial_only": false,
+        "complete_window": true,
+        "requested_window_frames": 8640,
+        "pending_contingent_ids": [],
+        "saved_result_json_present": true,
+        "checks": {
+          "claim_source_identity": 339,
+          "source_cap_event_checks": 1084,
+          "zero_fill_claim_release": 491,
+          "actual_buy_source_identity": 142,
+          "actual_sale_exact_ownership": 112,
+          "genuine_execution_bar_price_fee_quantity_capacity_minimum": 254,
+          "genuine_tape_validation_is_modeled_not_venue_execution": true,
+          "independent_terminal_parents": 38,
+          "independent_account_rows": 8640,
+          "account_field_comparisons": 60480
+        },
+        "independently_reconstructed_cap_peak": "99.999999999999999999822778748",
+        "owned_parked_basis": "99.999999999999979119167769768",
+        "source_spent_by_purpose": {
+          "RECOVERY": "540.221814325150004297773820256",
+          "ENTRY": "354.05064863765949267558753200"
+        },
+        "surviving_source_basis_by_purpose": {
+          "ENTRY": "20.49999999999999999999999900",
+          "RECOVERY": "79.499999999999979119167770768"
+        },
+        "scope": "Independent saved-output source/lot/cash reconstruction; no second strategy execution or live validation. Partial mode checks observed prefix only and makes no completed-window performance claim."
+      },
+      "independent_purpose_budget_audit": {
+        "passed": true,
+        "checks": {
+          "every_event_strict_purpose_and_shared_caps": 1084,
+          "sale_lot_original_purpose": 124
+        },
+        "strict_caps": {},
+        "independently_reconstructed_peak_by_purpose": {
+          "ENTRY": "71.75",
+          "RECOVERY": "79.499999999999999998947243168"
+        },
+        "spent_by_purpose": {
+          "ENTRY": "354.05064863765949267558753200",
+          "RECOVERY": "540.221814325150004297773820256"
+        },
+        "retired_by_purpose": {
+          "ENTRY": "333.55064863765949267558753300",
+          "RECOVERY": "460.721814325150025178606049488"
+        },
+        "surviving_basis_by_purpose": {
+          "ENTRY": "20.49999999999999999999999900",
+          "RECOVERY": "79.499999999999979119167770768"
+        }
+      },
+      "independent_actual_raw_tape_gate_audit": {
+        "passed": true,
+        "independently_checked_unique_raw_tape_decisions": 125388,
+        "actual_parked_claim_gate_links": 266,
+        "reason_counts": {
+          "ENTRY:missing_actual_anchor_or_candle": 291,
+          "ENTRY:nonpositive_entry_trend": 271,
+          "ENTRY:positive_1h_and_24h": 101,
+          "RECOVERY:missing_actual_anchor_or_candle": 71039,
+          "RECOVERY:rebound_and_higher_low": 17847,
+          "RECOVERY:unconfirmed_recovery": 35839
+        },
+        "scope": "Completed decision OHLC only. Actual fills remain estimated next-open fills; no venue execution or predictive-edge claim."
+      }
+    },
+    {
+      "passed": true,
+      "arm": "SPLIT_QUALITY",
+      "base_financial_ownership_and_authentic_fill_audit": {
+        "passed": true,
+        "arm": "SPLIT_QUALITY",
+        "actual_fills": 274,
+        "partial_only": false,
+        "complete_window": true,
+        "requested_window_frames": 8640,
+        "pending_contingent_ids": [],
+        "saved_result_json_present": true,
+        "checks": {
+          "claim_source_identity": 332,
+          "source_cap_event_checks": 1527,
+          "zero_fill_claim_release": 921,
+          "actual_buy_source_identity": 151,
+          "actual_sale_exact_ownership": 123,
+          "genuine_execution_bar_price_fee_quantity_capacity_minimum": 274,
+          "genuine_tape_validation_is_modeled_not_venue_execution": true,
+          "independent_terminal_parents": 41,
+          "independent_account_rows": 8640,
+          "account_field_comparisons": 60480
+        },
+        "independently_reconstructed_cap_peak": "99.68527415171074656754601400",
+        "owned_parked_basis": "98.931392503586643064362643470",
+        "source_spent_by_purpose": {
+          "RECOVERY": "448.210928999431227745658252470",
+          "ENTRY": "631.44314575462315247060448900"
+        },
+        "surviving_source_basis_by_purpose": {
+          "ENTRY": "48.93139250358667157446124200",
+          "RECOVERY": "49.999999999999971489901401470"
+        },
+        "scope": "Independent saved-output source/lot/cash reconstruction; no second strategy execution or live validation. Partial mode checks observed prefix only and makes no completed-window performance claim."
+      },
+      "independent_purpose_budget_audit": {
+        "passed": true,
+        "checks": {
+          "every_event_strict_purpose_and_shared_caps": 1527,
+          "sale_lot_original_purpose": 137
+        },
+        "strict_caps": {
+          "ENTRY": "50",
+          "RECOVERY": "50"
+        },
+        "independently_reconstructed_peak_by_purpose": {
+          "ENTRY": "49.70804085365539439094811200",
+          "RECOVERY": "49.999999999999999998984721044"
+        },
+        "spent_by_purpose": {
+          "ENTRY": "631.44314575462315247060448900",
+          "RECOVERY": "448.210928999431227745658252470"
+        },
+        "retired_by_purpose": {
+          "ENTRY": "582.51175325103648089614324700",
+          "RECOVERY": "398.2109289994312562557568510"
+        },
+        "surviving_basis_by_purpose": {
+          "ENTRY": "48.93139250358667157446124200",
+          "RECOVERY": "49.999999999999971489901401470"
+        }
+      },
+      "independent_actual_raw_tape_gate_audit": {
+        "passed": true,
+        "independently_checked_unique_raw_tape_decisions": 144781,
+        "actual_parked_claim_gate_links": 264,
+        "reason_counts": {
+          "ENTRY:missing_actual_anchor_or_candle": 554,
+          "ENTRY:nonpositive_entry_trend": 405,
+          "ENTRY:positive_1h_and_24h": 221,
+          "RECOVERY:missing_actual_anchor_or_candle": 78049,
+          "RECOVERY:rebound_and_higher_low": 21752,
+          "RECOVERY:unconfirmed_recovery": 43800
+        },
+        "scope": "Completed decision OHLC only. Actual fills remain estimated next-open fills; no venue execution or predictive-edge claim."
+      }
+    }
+  ],
+  "scope": "Saved-output reconstruction only; no checkpoint hydration or strategy replay."
+}

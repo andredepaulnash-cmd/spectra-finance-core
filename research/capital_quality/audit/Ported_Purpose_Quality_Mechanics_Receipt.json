@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "tests": 12,
+  "adapter_sha256": "c2af1ca19feb0877d4d693e2ad195fe11b7eb010982388f60960bda2b2707952",
+  "base_adapter_sha256": "b9e7fcd4c0f3ebff508da90e87c7ee1ba19abacb7d6796da3166bf32d8b4cbfb",
+  "failures": [],
+  "errors": [],
+  "scope": "Independent constructed money checks through authentic native ownership hooks; no strategy replay or profitability claim."
+}
