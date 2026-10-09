@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-09T15:25:01.594988+00:00",
+  "financial_code_changed": false,
+  "frozen_matrix_protocol_sha256": "13685c9ce1fe7da0a2a721bb5648be2cb162ac455bfe76426d0625fae4b3c581",
+  "before_qualified_arm_outcomes": true,
+  "clarifications": [
+    "The inherited prior-protocol limit saying no new history/freshness gate does not apply to quality arms. The new quality_policy introduces candidate-local exact actual-candle anchors; no whole-wallet freshness gate is introduced.",
+    "Actual gate validity requires all six referenced OHLCVT fields finite and all four OHLC prices strictly positive. This documents existing executed quality_gate.py code; no predicate or parameter changed.",
+    "ENTRY compares positive actual closes at i, i-12 and i-288. RECOVERY requires i-5 through i actual candles; close i>close i-3 and min(low i-2:i)>min(low i-5:i-3)."
+  ],
+  "canonical_rule_source": "quality_gate.py SHA256 22ea19d66d675b8ea338441b627a82834921e85c57eb2aea88c9a1ca985f48b8"
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "spectra-public-kraken-access-probe-v1",
+  "started_utc": "2026-10-09T15:18:59.686446+00:00",
+  "url": "https://api.kraken.com/0/public/Time",
+  "method": "GET",
+  "timeout_seconds": 10,
+  "strategy_outcome_read": false,
+  "capture_started": false,
+  "http_status": 200,
+  "response_sha256": "7e1285d2741618ca908a7ee5883e331d869c0e3e1cfa6ec732eb545dbea5fdfc",
+  "response_bytes": 87,
+  "public_time_payload": {
+    "error": [],
+    "result": {
+      "unixtime": 1791559146,
+      "rfc1123": "Fri, 09 Oct 26 15:19:06 +0000"
+    }
+  },
+  "access": "PUBLIC_TIME_RESPONSE_RECEIVED",
+  "finished_utc": "2026-10-09T15:19:06.864668+00:00"
+}

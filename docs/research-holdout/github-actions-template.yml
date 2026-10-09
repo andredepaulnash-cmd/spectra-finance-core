@@ -1,0 +1,58 @@
+name: Research public holdout capture
+
+on:
+  push:
+    branches:
+      - research/parked-cash-workflow-20261009
+    paths:
+      - 'research/holdout/requests/*.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-public-holdout-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    if: github.repository == 'andredepaulnash-cmd/spectra-finance-core'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout the exact requested source revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify collector mechanics without network
+        run: python3 -m unittest discover -s research/holdout/tests -p 'test_*.py' -q
+      - name: Validate the frozen dated public request
+        run: >-
+          python3 research/holdout/prepare_request.py
+          --requests research/holdout/requests
+          --protocol research/holdout/frozen-protocol.json
+          --output capture
+      - name: Capture bounded public pages only
+        run: >-
+          python3 research/holdout/collect_public_ohlc.py poll
+          --protocol research/holdout/frozen-protocol.json
+          --output capture
+          --source-root .
+          --max-requests 800
+          --max-seconds 1200
+      - name: Verify raw capture integrity
+        if: always()
+        run: |
+          if test -f capture/status.json; then
+            python3 research/holdout/collect_public_ohlc.py verify --output capture
+          fi
+      - name: Preserve raw pages and failed or incomplete receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: holdout-raw-${{ github.run_id }}-${{ github.run_attempt }}
+          path: capture/
+          if-no-files-found: warn
+          retention-days: 90
+          compression-level: 0

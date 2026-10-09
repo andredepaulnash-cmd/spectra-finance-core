@@ -1,0 +1,20 @@
+{
+  "schema": "spectra-prospective-collector-validation-v1",
+  "verified_utc": "2026-10-09T15:37:14.005934Z",
+  "tests_run": 27,
+  "failures": 0,
+  "errors": 0,
+  "mocked_tests_only": true,
+  "market_capture_started": false,
+  "freeze_bytes_verified": true,
+  "source_pins_verified": true,
+  "protocol_sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+  "collector_sha256": "2e6393f0a6692200b573a680fd813e23a8c6de7010b5156e907f25a79e804248",
+  "start_utc": "2026-10-09T15:36:31.317254Z",
+  "first_eligible_bar_utc": "2026-10-09T15:40:00Z",
+  "end_utc": "2026-11-09T00:00:00Z",
+  "financial_spec_sha256": "b46fdc4ed83729848e35ed7bb0a720c99a441802e65b6f63e704da65b83e4bf5",
+  "fresh_holdout_replay_adapter_built": false,
+  "public_time_probe_result": "HTTP200 at2026-10-09T15:19:06Z; not a market capture",
+  "workflow_sha256": "ccc029fd83d01d5aa65c44ec5003ae5106bca2555fb208480b9f0a83293e3568"
+}

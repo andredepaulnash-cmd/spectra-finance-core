@@ -1,0 +1,31 @@
+{
+  "schema": "spectra-prospective-holdout-v1",
+  "status": "DRAFT_NOT_STARTED",
+  "start_utc": null,
+  "end_utc": "2026-11-09T00:00:00Z",
+  "evaluation_after_utc": "2026-11-09T00:00:00Z",
+  "candidates": [],
+  "collector": null,
+  "collection": {
+    "interval_minutes": 5,
+    "lookback_hours": 48,
+    "pace_seconds": 1.1,
+    "max_requests": 800,
+    "max_seconds": 1200,
+    "universe": "fresh_currency_usd_each_capture"
+  },
+  "sealed_rules": {
+    "no_outcome_analysis_before_end": true,
+    "no_strategy_tuning_using_holdout": true,
+    "no_account_or_order_endpoints": true,
+    "only_bars_starting_at_or_after_actual_freeze": true,
+    "exclude_current_uncommitted_last_row": true,
+    "gaps_are_not_filled": true,
+    "new_listings_enter_no_earlier_than_first_observed_snapshot": true,
+    "sparse_missing_bars_do_not_prove_provider_failure": true,
+    "historical_warmup_must_be_external_and_separately_labelled": true,
+    "raw_response_pages_are_sealed_provenance_not_an_evaluation_tape": true,
+    "only_frozen_619_universe_evaluated": true,
+    "extra_pairs_quarantined_from_matrix": true
+  }
+}

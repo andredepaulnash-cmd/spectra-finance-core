@@ -1,0 +1,902 @@
+{
+  "schema": "spectra-frozen-native-source-manifest-v1",
+  "native_generated_strategy_sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
+  "restoration_manifest_sha256": "5f20dce9fcc23e0f401497af6f3cf34d16d990a7bc829e51a332d244e4e25692",
+  "external_archives": [
+    {
+      "filename": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "bytes": 94355244,
+      "sha256": "40da454aa23378be529a1ec45849fd4a2a6b30bc818b49d6a3a6a3391484f43d"
+    },
+    {
+      "filename": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "bytes": 221830107,
+      "sha256": "95186ab94e48b46872b9903d5f834e3cc8efa99319f355f29b4ebd3cdad9eefb"
+    }
+  ],
+  "archived_python_members": [
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "audit/compare_regression.py",
+      "bytes": 6243,
+      "sha256": "27d9ab21c3907611acadbd3161a3a53cc43f0b8fced8935f762c905f8372b422"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "audit/controls/audit_checkpoint.py",
+      "bytes": 21152,
+      "sha256": "32ddc2281a00a18c42d0a6de6b131d0ff78280fc2e071baabd84ca0b28c2013f"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "audit/controls/checkpoint_independent_review.py",
+      "bytes": 5859,
+      "sha256": "4e78f61fa383b61b4e9c0820112ddbfee17ca5204a37198b74485c25e605956d"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "audit/controls/compare_durable_rerun.py",
+      "bytes": 4445,
+      "sha256": "339751ce055741506bc94ba91956beda3436b3eb238175a0762a280d560a2347"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "build_report.py",
+      "bytes": 10578,
+      "sha256": "e54d13590f2f898590e5a36f6690c516d4ad015893d08db643a87ed4ae209be1"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "continuation/audit/hard_signal_audit.py",
+      "bytes": 22709,
+      "sha256": "337cbb16541144218d2b37d99d5e1cf6b98dd24142fd6bf975d74b96057616e9"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "continuation/audit/validate_case.py",
+      "bytes": 26317,
+      "sha256": "2574d005e365138fc144a74d29c01887c89203d0df3e0e9518b9998be87c1e77"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "continuation/audit/validate_lots.py",
+      "bytes": 27060,
+      "sha256": "5c61239cabfffed00305956fff53013caf4a2e3bf67776722f51578872f7f376"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "continuation/continuation_wrapper.py",
+      "bytes": 23451,
+      "sha256": "8bf74e53a15f3bde2115e35c69314f7a222297fde7fc0b5c72e6d232e387a298"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "continuation/install_control_audits.py",
+      "bytes": 8026,
+      "sha256": "42616410f4076870ec354bece1738e274a6f0039a4203bfb7628fc44397f6d67"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "continuation-v2/continuation_wrapper.py",
+      "bytes": 27279,
+      "sha256": "ae153964705ee6f54347ce7a6628a70c673fe1e4b6d03ad5b4e46192048f6caf"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "controls/hard_100_no_partial/generated_continuous_body.py",
+      "bytes": 30532,
+      "sha256": "e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "controls/hard_100_no_partial/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "controls/hard_100_no_partial/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "controls/hard_100_no_partial_durable/generated_continuous_body.py",
+      "bytes": 30532,
+      "sha256": "e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "controls/hard_100_no_partial_durable/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "controls/hard_100_no_partial_durable/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "controls/hard_174_park/generated_continuous_body.py",
+      "bytes": 30532,
+      "sha256": "e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "controls/hard_174_park/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "controls/hard_174_park/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "make_chart.py",
+      "bytes": 2057,
+      "sha256": "5889e07b6ea8889910bb23bc1a633c090741bd5ea3198287fb16214a41b28eba"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "market-data/collect_public_trades_5m.py",
+      "bytes": 11056,
+      "sha256": "9f167e57a366705cce36e381e968fe1bc62b58bb230aaa877f99b17fc8d6d7b6"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "package_evidence.py",
+      "bytes": 3656,
+      "sha256": "d601f3279d60f6043ad0faa0457f7cf9f1e30f69b94cbbb88850dc7c23f0161c"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "runs/hard_100_park/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "runs/hard_100_park/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "snapshot-audit/audit_current_lots.py",
+      "bytes": 18540,
+      "sha256": "90c479031d1dba37652c6f746994886d0968ef52e777e7063e46f0c723a7d1a5"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "snapshot-audit/priority_starvation_diagnostic.py",
+      "bytes": 16150,
+      "sha256": "c6592091ac451856902c861dae799a270a9a6d4a6ab76f0dd7a85cad70a657d2"
+    },
+    {
+      "archive": "Spectra_Danger_Room_Verified_Evidence_2026-10-06.zip",
+      "member": "snapshot-audit/verify_same_time_hold_marks.py",
+      "bytes": 5794,
+      "sha256": "6696696430f4ba7fe3b9c49da7410c042b8b94c356003ed3d77b5432802a70ca"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "continuation-data-probes-20261006/bounded_probe.py",
+      "bytes": 2719,
+      "sha256": "7d1927dc90fb5033f3ffc30f3264bc8fe420c0652108b0324dfedaa9cd06041d"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "continuation-data-probes-20261006/collect_parallel_public_trades_5m.py",
+      "bytes": 20407,
+      "sha256": "1f42ea5c33c3b4b7be29c9ce2dc5511015900b1ee0c87c86bcbd92bbbf8b6d71"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "continuation-data-probes-20261006/final_bounded_probes.py",
+      "bytes": 2623,
+      "sha256": "ca931ea753e1e6a80fb5703d483f4061776ad223e50885b52fec0c4ca10224ff"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "continuation-data-probes-20261006/historical-provider-probes/tardis_metadata_probe.py",
+      "bytes": 1907,
+      "sha256": "63ec86a49c13fff719a148a29f8e1662fcaa1c5c6507241c73a6d5cddbbc2407"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "continuation-data-probes-20261006/historical-provider-probes/tardis_sample_probes.py",
+      "bytes": 2214,
+      "sha256": "1349ae073eb6d5ecea03b16e86770aaa087f88806c5a46015fbdb295fc2a5f9f"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "continuation-data-probes-20261006/october_probe.py",
+      "bytes": 1703,
+      "sha256": "9bf055302306ad7139c9b64e5d76d7925e29ab80d9977cff113d9647109b504c"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "continuation-data-probes-20261006/time_sales_zip_probe.py",
+      "bytes": 2885,
+      "sha256": "b6fe312b9231b4b856ed8b64bc79fbd4d417d9b3b2790fc424c0441f18a91ad6"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "continuation-data-probes-20261006/validate_parallel_collector.py",
+      "bytes": 7638,
+      "sha256": "dd3cda8b323d707b4da0e9444d6c041767c530961169627c9089e41b1e7f240f"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "continuation-data-probes-20261006/zip_range_probe.py",
+      "bytes": 3443,
+      "sha256": "a5f88e4d18ffc687f32b5cb64f96ae945b77daf45501a1f51c50f68d85188e37"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/continuation-v2/continuation_wrapper.py",
+      "bytes": 27279,
+      "sha256": "ae153964705ee6f54347ce7a6628a70c673fe1e4b6d03ad5b4e46192048f6caf"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/continuation-v3/continuation_wrapper.py",
+      "bytes": 28165,
+      "sha256": "1df12d02dc1ff459d027e172e22f826e6a9b0e7610dcccd1ca14c3bd8a72bb45"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit-v3/audit_continuation.py",
+      "bytes": 16941,
+      "sha256": "24d0f61ee969077a76c82c2cd7a54a57e36e3351c5fafc2757a15171a029e18d"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit-v3/boundary_and_attribution.py",
+      "bytes": 35111,
+      "sha256": "646d6c315875760fe42b15b90a0dbfd9c605d70db4db1e1c7405f5baf7e23246"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit-v3/freeze_continuation_inputs.py",
+      "bytes": 8727,
+      "sha256": "dad373312116fef7e9702eae03b657fcbfc7aaa8d338aeba42b98dc31c52b6c8"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit/audit_continuation.py",
+      "bytes": 16941,
+      "sha256": "f77e032fca24b6fcb02b4f1cfb5c0efc922b937f1d5fdc622624550a5c529fbf"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit/boundary_and_attribution.py",
+      "bytes": 34041,
+      "sha256": "4ab4d4517911dffe48c3b04d976f040535d503139b5324c144405846fba30457"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit/freeze_continuation_inputs.py",
+      "bytes": 8573,
+      "sha256": "3c9240bda53988bab455033fe3757a95d61dd0ce32103807dc044bd8a8df5aea"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit/package_extended_evidence.py",
+      "bytes": 5380,
+      "sha256": "5d5c15f115ccad704b0b6bf63d251106a3dbe4b2b2f6accc8861005d120adadc"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit/plot_continuation.py",
+      "bytes": 2934,
+      "sha256": "8dbfe84ae431af442be496e7c1049dce92e14633217422ed7e83187ceb9174a5"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit/price_jump_forensics/investigate_price_jumps.py",
+      "bytes": 17207,
+      "sha256": "9d4db9cf2c2f7b5f85ab933a256f407e9df8af963dd33c01d181baa82b67060b"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-audit/write_continuation_summary.py",
+      "bytes": 4248,
+      "sha256": "4e877c471c7c8f17aaf7dd542a2f781c774011a68a2bd5b7e8dba7c5d05daf7a"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-input/build_quarter_extension.py",
+      "bytes": 18848,
+      "sha256": "c221343acc0a522044116d6aeba737f397c6b2671f9969051330cad1a0f10aec"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-input/rebuild_from_compact.py",
+      "bytes": 6761,
+      "sha256": "66a391e59f49b5b48315ad7bf31f3560943c18388244c1a1843dd171c1464e4f"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_100_no_partial/generated_continuous_body.py",
+      "bytes": 30532,
+      "sha256": "e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_100_no_partial/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_100_no_partial/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_100_park/generated_continuous_body.py",
+      "bytes": 30532,
+      "sha256": "e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_100_park/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_100_park/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_100_reuse_v3/generated_continuous_body.py",
+      "bytes": 30532,
+      "sha256": "e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_100_reuse_v3/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_100_reuse_v3/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_174_park/generated_continuous_body.py",
+      "bytes": 30532,
+      "sha256": "e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_174_park/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/extended-runs/hard_174_park/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/market-data/collect_public_trades_5m.py",
+      "bytes": 11056,
+      "sha256": "9f167e57a366705cce36e381e968fe1bc62b58bb230aaa877f99b17fc8d6d7b6"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/snapshot-audit/audit_current_lots.py",
+      "bytes": 18540,
+      "sha256": "90c479031d1dba37652c6f746994886d0968ef52e777e7063e46f0c723a7d1a5"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/snapshot-audit/priority_starvation_diagnostic.py",
+      "bytes": 16150,
+      "sha256": "c6592091ac451856902c861dae799a270a9a6d4a6ab76f0dd7a85cad70a657d2"
+    },
+    {
+      "archive": "Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06.zip",
+      "member": "danger-room-20261006/snapshot-audit/verify_same_time_hold_marks.py",
+      "bytes": 5794,
+      "sha256": "6696696430f4ba7fe3b9c49da7410c042b8b94c356003ed3d77b5432802a70ca"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/audit/hard_signal_audit.py",
+      "bytes": 22414,
+      "sha256": "8d47ed18bcac1bc5129fda21262370d59b7b936ab9fadd49ba879d000aecbd47"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/audit/validate_case.py",
+      "bytes": 22922,
+      "sha256": "48c9ee4a39925f5da8c56f36ba1195ec186e92fdbfe688f88f1475129d7d3cc1"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/audit/validate_lots.py",
+      "bytes": 27060,
+      "sha256": "5c61239cabfffed00305956fff53013caf4a2e3bf67776722f51578872f7f376"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/one_percent_test.py",
+      "bytes": 24734,
+      "sha256": "87247fd166775c3230445ed06e29f5a4ba2ad0e9253a9a52e3ff5e085f7db6c7"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/package_evidence.py",
+      "bytes": 1389,
+      "sha256": "fe1675d8c101dfc26787eb8e1fe2716b6cc4fbcebec57c918755399f382de5dd"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/runs/hard_100_park/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/runs/hard_100_park/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/runs/hard_100_reuse/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/runs/hard_100_reuse/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/runs/hard_174_reuse/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/runs/hard_174_reuse/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/runs/legacy_174_park/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/runs/legacy_174_park/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_100/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_100/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_174/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_174/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_legacy/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_legacy/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_legacy_gz/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_legacy_gz/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_park/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/smoke_park/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/summarize.py",
+      "bytes": 25521,
+      "sha256": "13aa483c20341a4a8c0cffccac1f718527c650b871b0a91204ebb98a087b0f7a"
+    },
+    {
+      "archive": "Spectra_One_Percent_Comparison_Evidence.zip",
+      "member": "one-percent-research-20261006/write_report.py",
+      "bytes": 11331,
+      "sha256": "8ab5d9564ad54ed5bf19216cff34dbbd089b92546e9ea5efc3e2d3d45149d4b3"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "baseline-recovery-20261001/adapter/sparse_adapter.py",
+      "bytes": 18449,
+      "sha256": "45249e0273bfa4b15cfc54db2bede37b81c0488239fab1503c8911584127583e"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "baseline-recovery-20261001/audit/validate_sparse_results.py",
+      "bytes": 34531,
+      "sha256": "fa1a3d6c518383f501d2e71895f66cb83153b39e0d92a69589aa62ed8fedece3"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/__init__.py",
+      "bytes": 5216,
+      "sha256": "f7abdf61344bfb6d1bb17c2629d9773fa376fc2096a3ddde21869605310660ec"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/accounting_health.py",
+      "bytes": 15352,
+      "sha256": "703932720a5fe09962b2337d39f6c4ee62b29404352ba7060dfe9fce0d787397"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/asset_fingerprint.py",
+      "bytes": 23026,
+      "sha256": "93fed948aa8670b3ba1fea8f1df93b99b3ad42fe9f4df666fc355b1799684fc2"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/binance_kline_import.py",
+      "bytes": 8988,
+      "sha256": "e97d371eb424a2fed47d95af238f8ef50784fb9b44f0dcdf884b28bf25ed4813"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/capital_governor.py",
+      "bytes": 78935,
+      "sha256": "93a4a6abb48eb94123aaf2529e7d55b1d9059a1a2a96ad00ef5c41f11c29896f"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_exit.py",
+      "bytes": 27437,
+      "sha256": "54d42d99867d4db9509b093a4d69f191db9a7df7e8d78f0643a13ddb570572d3"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_position.py",
+      "bytes": 45745,
+      "sha256": "28b8a06bbbeba31cf46ccff98183e8087f101d3bf288e6e99ea4b0360089d63a"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_accounting.py",
+      "bytes": 13697,
+      "sha256": "0400ce13205c90eaa13dbeed19aaac4b6f584be9cc56b37055b6031fa8e2734b"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_provenance_bridge.py",
+      "bytes": 18025,
+      "sha256": "96bdfc94d9c33685bb2d83c2ef3f4376eba9f5adf14af8d7b0155ca529789a83"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/fill_reconciliation.py",
+      "bytes": 25168,
+      "sha256": "ffde14ee3d667300205a3f0d0a3e6c842a6cccfa2001d75e60d1a8b2b8bc79ac"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_market_fabric.py",
+      "bytes": 13190,
+      "sha256": "1787d100bbf7241d065d212db0c084c600e7e6ffd185211988ca4d6699210d46"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_tardis_fleet_import.py",
+      "bytes": 9724,
+      "sha256": "a8b68e1a640d49ed6909bdb2478fbe3d47d0abad0734b6d0af4acee544f73cec"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_tardis_import.py",
+      "bytes": 7193,
+      "sha256": "4e8da9089156cf75a3962258717f7d2e43d61266d124759372f8463d9b814f91"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/models.py",
+      "bytes": 2921,
+      "sha256": "155f72a31bcd707ac5277a5f41ddc7dd090a76b585c225f4ed246307a2837d03"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/partial_recycle.py",
+      "bytes": 31434,
+      "sha256": "eab2b61bd4c11ad7424fcfed09403a3d397dd6db695841bbd5230b48f9001417"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/position_hold_accounting.py",
+      "bytes": 5837,
+      "sha256": "86d15cd7b8986da79636b2465b2c34c566a15f36164e69043433b33c81b4bcd3"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/recovery_fingerprint.py",
+      "bytes": 20267,
+      "sha256": "6afb839f0e081d127c8dcd8ce8230670517a73142e12d96da18a4104d88bdd66"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/rotating_fleet.py",
+      "bytes": 42818,
+      "sha256": "58b484118f8be69ebf0ae45fe95482b3b2abecd4b4f4c0ec2d9d7c7cf3948247"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_dataset.py",
+      "bytes": 9021,
+      "sha256": "f83b9e1e8c9b1618f9d073c6582df0fd9ce8ab7a7db9711c2772e6439f10d1fa"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab.py",
+      "bytes": 23416,
+      "sha256": "841b519e2e50b4d4ef1d6eb440ad5485d9ccca959230e19bcd74a79fe12b4d51"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab_scenarios.py",
+      "bytes": 5260,
+      "sha256": "b1be4e77114e4a3629b4a5af31c0e140467e601ac7fb7d0d0bc0f194d76b87d8"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab_validation.py",
+      "bytes": 17146,
+      "sha256": "60295f65c0778721711a3975bfca6995d047bbaed7e10bca802b0a48c9fd160a"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_replay.py",
+      "bytes": 21528,
+      "sha256": "6473ac95ca9ca520e4ebb40171d5c0bb5422785e69ab81922fd4c0ce81a66200"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_replay_vcap.py",
+      "bytes": 8157,
+      "sha256": "85713fccf2369c15da9cff220a11defe4fb9e6e9996328347db763163323e112"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_execution.py",
+      "bytes": 8530,
+      "sha256": "80981cb4d4caa84615e79755b159beae4919d0eb9a3c77bd381872c4ef2cddd6"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_lifecycle.py",
+      "bytes": 16164,
+      "sha256": "91795d5ca1de0ccaa280888a77980199334971538c0d34a2207ff4732cb48f86"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_profit_exit.py",
+      "bytes": 14086,
+      "sha256": "0803bc2f168704e2b0258a88172e6e24ca15ea942a1ab76361dad9715a0269da"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_runtime.py",
+      "bytes": 16258,
+      "sha256": "1529a65dbbd3756197d2263d3143541ebc7940a4fba5b208d5b17c126cbd7eff"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_state.py",
+      "bytes": 15766,
+      "sha256": "cc6a182c16fd25c61d86bf9cdab2e65f9ae5a6328135fcaec5cdfe558712d60f"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_tranches.py",
+      "bytes": 11596,
+      "sha256": "74da3fb7e2f2ae679915b4801bf43df99f3daade1fe3eefecce768cfae641111"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/audit/reconstruct_trace_tail.py",
+      "bytes": 5987,
+      "sha256": "43a358f1ad30bc4b42bb32d6491407f6126efc270f923068a1b16b3edd0dc6bb"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/audit/validate_lots.py",
+      "bytes": 21968,
+      "sha256": "7a28e5de342b6761c31e88f25ea35c7e0329c90f1af4d7ef93726b89ea8ab630"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/audit/validate_recycle.py",
+      "bytes": 19064,
+      "sha256": "d2b3a1ee3b47c4fb0f0ef5652d2ddd981da249cd44eea86f25865e80665e22f5"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/contract/partial_recycle_executor.py",
+      "bytes": 13496,
+      "sha256": "8250978f6d84df0ea5549cf12f1d3680e78775dc076249f4cf63566fe7088a88"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/contract/test_partial_recovery_recycling.py",
+      "bytes": 13804,
+      "sha256": "4e3ae61ec9be783e5dcdd1600d62b5874abdb3b9a3a721b356d0384b81448426"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/contract/vcap_lifecycle_tool.py",
+      "bytes": 7668,
+      "sha256": "5eebd14d7c04591806dda8c89a80edbbbc4b7ba56435def13d2a75d5c45946b5"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/contract/vcap_runtime_tool.py",
+      "bytes": 34308,
+      "sha256": "f8915e0f217243f4cd862be0638e94f5e9deb4f3a28f3edc8778fd7628cf8b4b"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/control/compare_reference.py",
+      "bytes": 1820,
+      "sha256": "284cc36c870cbb641b85f010cea8a693fbe874966658b86db91c07c025df9d17"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/control/native2000/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/control/regression1000/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/control/three_day_regression.py",
+      "bytes": 2837,
+      "sha256": "7206b3335b4ab2f5964afd3cf306aac173c5191368f2d8e3a5ca1a756b066e47"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/package_evidence.py",
+      "bytes": 1656,
+      "sha256": "32c40d4a2cdab1239b8fb43405f33c8eebdd3d05329c02cbb7e798e0024019ef"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/recycle/generated_recycle_body.py",
+      "bytes": 29468,
+      "sha256": "97205f461b7fa83b1fe532dc1ace4978c66d9c6e0dbaaf4120207fb1bc18b081"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/recycle/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/recycle_test.py",
+      "bytes": 18540,
+      "sha256": "2172ce8ced223b4fe52962d2e72371cf602c6ee3f70eb5ba3ddb7c3db2b9ced7"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/smoke/generated_recycle_body.py",
+      "bytes": 29468,
+      "sha256": "97205f461b7fa83b1fe532dc1ace4978c66d9c6e0dbaaf4120207fb1bc18b081"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/smoke/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/smoke_control/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/smoke_disabled/generated_recycle_body.py",
+      "bytes": 29468,
+      "sha256": "97205f461b7fa83b1fe532dc1ace4978c66d9c6e0dbaaf4120207fb1bc18b081"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/smoke_disabled/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/summarize.py",
+      "bytes": 5433,
+      "sha256": "72e69f5f0cb24b0758a648d673f14153eef8818f7863218c32ae5ed716ee1101"
+    },
+    {
+      "archive": "Spectra_2000_Recovery_Recycling_Evidence.zip",
+      "member": "recycle-research-20261005/write_report.py",
+      "bytes": 13833,
+      "sha256": "5f72a72e344981ae536019613555655c1e14457bb7ea40ee310c2ded62d293b3"
+    }
+  ],
+  "future_execution_requirements": [
+    "Recover externally preserved source archives by exact archive hashes.",
+    "Verify selected Python members against this immutable manifest and native generated source hash before execution.",
+    "Do not import mutable replacement native code or reinterpret financial rules.",
+    "The fresh holdout replay adapter does not yet exist; independently audit it against the fixed financial spec before scoring.",
+    "Pinned July run_comparison is provenance/policy source and must not hydrate its June residual state into this fresh-cash holdout."
+  ]
+}

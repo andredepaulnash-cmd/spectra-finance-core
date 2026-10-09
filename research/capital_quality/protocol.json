@@ -1,0 +1,140 @@
+{
+  "schema": 2,
+  "experiment": "causal quality and strict purpose budget 2x2",
+  "research_only": true,
+  "frozen_before_arm_results": true,
+  "baseline": "hard_100_park",
+  "start_utc": "2026-07-01T00:00:00+00:00",
+  "end_exclusive_utc": "2026-07-31T00:00:00+00:00",
+  "frames": 8640,
+  "initial_capital": "2000",
+  "restored_equity": "1898.277183091943957381228996",
+  "boundary_checkpoint_sha256": "727b663e91021bb09e063fea916b89972d5bd7d685062bacdec0f925381a2e1c",
+  "native_strategy_sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
+  "tape_sha256": "dde300cb04c5f8c85aafba3924f74e70df1477ce26ca4c1597d295202d047938",
+  "arms": [
+    {
+      "name": "SHARED_RAW",
+      "allowed_purposes": [
+        "RECOVERY",
+        "ENTRY"
+      ],
+      "outstanding_cap_quote": "100",
+      "quality_gate": false,
+      "purpose_caps_quote": {}
+    },
+    {
+      "name": "SPLIT_RAW",
+      "allowed_purposes": [
+        "RECOVERY",
+        "ENTRY"
+      ],
+      "outstanding_cap_quote": "100",
+      "quality_gate": false,
+      "purpose_caps_quote": {
+        "ENTRY": "50",
+        "RECOVERY": "50"
+      }
+    },
+    {
+      "name": "SHARED_QUALITY",
+      "allowed_purposes": [
+        "RECOVERY",
+        "ENTRY"
+      ],
+      "outstanding_cap_quote": "100",
+      "quality_gate": true,
+      "purpose_caps_quote": {}
+    },
+    {
+      "name": "SPLIT_QUALITY",
+      "allowed_purposes": [
+        "RECOVERY",
+        "ENTRY"
+      ],
+      "outstanding_cap_quote": "100",
+      "quality_gate": true,
+      "purpose_caps_quote": {
+        "ENTRY": "50",
+        "RECOVERY": "50"
+      }
+    }
+  ],
+  "cash_policy": {
+    "cap_definition": "Sum of exact P-funded acquisition basis in surviving lots plus pending P claims. Settlement retires acquisition basis exactly once; returns require fresh authorization.",
+    "ordinary_cash_first": true,
+    "reserve_fraction": "0.25",
+    "pair_basis_cap_fraction": "0.05",
+    "maximum_distinct_assets": 50,
+    "ordinary_entry_all_in": "10.25",
+    "partial_proceeds": "All net partial proceeds return to PARK exactly once, as in native control.",
+    "whole_proceeds": "Exact P-funded ownership fraction returns to PARK; ordinary-funded remainder rotates as in native control.",
+    "priority": "Original EXIT then PARTIAL_RECYCLE then RECOVERY then ENTRY. Native recovery planning priority is preserved; no new adaptive ranking is implied.",
+    "no_credit_or_new_deposits": true
+  },
+  "unchanged": {
+    "whole_target_bps": "100",
+    "partial_target_bps": "100",
+    "hard_execution_floor_bps": "100",
+    "fee_bps_per_side": "40",
+    "slippage_bps": "5",
+    "generic_minimum_quote": "5",
+    "volume_participation_fraction": "0.01",
+    "recovery_trigger_fraction": "0.03",
+    "recovery_seed_quote": "40",
+    "entry_selection": "Original causal movement and recorded-volume ranking; not a predictive winner selector.",
+    "recovery_selection": "Original fingerprint/recovery/tranche planners; no new ladder or signal overlay.",
+    "pssm_dtss_dtssr": "OFF"
+  },
+  "execution": {
+    "mechanical_activation_before_matrix": true,
+    "maximum_simulation_seconds_per_arm": 900,
+    "checkpoint_restore_separate_from_simulation_budget": true,
+    "stops": [
+      "Any accounting, ownership, sourcecap or causal cutoff violation",
+      "SHARED_RAW differs from exact audited BOTH control",
+      "Execution budget reached; preserve incomplete evidence",
+      "No authentic parked fill: mark inactive/inconclusive, do not relax thresholds"
+    ],
+    "result_selection": "Compare complete window marked equity, change in open P&L, cash, source utilization, drawdown, and fees. Do not select by realized profit alone.",
+    "no_post_outcome_tuning": true
+  },
+  "limits": [
+    "This July continuation is a bounded mechanism and policy comparison, not a new January-June backtest.",
+    "The period and original native baseline were previously inspected; this is not an untouched performance holdout.",
+    "No new freshness/history gate, predictive winner model, live execution or thirty-second execution guarantee is tested.",
+    "A good result warrants longer validation; it does not approve deployment or guarantee profitability.",
+    "This gate pair is exploratory rule-based qualification, not trained AI, proof of predictive edge, or a hindsight coin allowlist.",
+    "Budget and quality effects are compared independently; per-kind budgets cannot borrow from each other.",
+    "900-second operational cap is frozen before this new matrix and has no financial meaning."
+  ],
+  "frozen_at_utc": "2026-10-09T15:20:08.096123+00:00",
+  "quality_policy": {
+    "scope": "Parked supplement only; ordinary cash first; original native selection/planners/floors preserved",
+    "entry": "Actual finite positive close now, exactly 1h ago and exactly 24h ago; both strict returns >0",
+    "recovery": "Six contiguous actual finite positive 5m candles; close now > close 15m ago, and minimum low of last three > minimum low of preceding three",
+    "decision_cutoff": "Completed current 5m candle end; all referenced indices <= current index; no execution bar inspected",
+    "sparse": "Missing exact anchors or any missing six-bar recovery row denies parked supplement; never forward fill",
+    "ranking": "Original absolute-movement and recorded-volume ranking preserved; no asset-specific hindsight list",
+    "initial_warmup": "Read canonical pre-July tape only as causal history, without resetting native hydrated buffers"
+  },
+  "comparators": {
+    "PARK": "workflow-20261009/results-runtime-v3/OFF (independently audited unchanged control)",
+    "previous_SHARED_RAW": "workflow-20261009/results-runtime-v3/BOTH (full rerun must exactly match)"
+  },
+  "selection_gate": {
+    "complete_window": true,
+    "actual_parked_fills_required": true,
+    "higher_marked_equity_than_PARK": true,
+    "no_higher_window_drawdown_than_PARK": true,
+    "no_worse_terminal_open_pnl_than_PARK": true,
+    "no_production_promotion": "Improvement in this previously viewed July window still needs wider/untouched validation"
+  },
+  "factorial_contrasts": [
+    "SPLIT_RAW minus SHARED_RAW",
+    "SPLIT_QUALITY minus SHARED_QUALITY",
+    "SHARED_QUALITY minus SHARED_RAW",
+    "SPLIT_QUALITY minus SPLIT_RAW",
+    "interaction = SPLIT_QUALITY - SPLIT_RAW - SHARED_QUALITY + SHARED_RAW"
+  ]
+}

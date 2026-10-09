@@ -1,0 +1,87 @@
+{
+  "schema": "spectra-prospective-financial-spec-v1",
+  "research_only": true,
+  "source_policy": "research/capital_quality/protocol.json plus protocol-clarifications.json and pinned native strategy",
+  "native_strategy_sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
+  "comparison_arms": [
+    "OFF",
+    "SHARED_RAW",
+    "SPLIT_RAW",
+    "SHARED_QUALITY",
+    "SPLIT_QUALITY"
+  ],
+  "arm_selection": "All five predeclared arms; no selection by July outcomes or holdout observations.",
+  "initial_state": {
+    "initial_cash_quote": "2000",
+    "initial_ordinary_cash_quote": "2000",
+    "initial_parked_cash_quote": "0",
+    "initial_inventory": [],
+    "deposits_quote": "0",
+    "withdrawals_quote": "0",
+    "note": "Fresh matched cash at actual freeze; differs from July continuation from June residual inventory."
+  },
+  "economics": {
+    "maximum_distinct_assets": 50,
+    "entry_all_in_quote": "10.25",
+    "physical_cash_reserve_fraction": "0.25",
+    "pair_basis_cap_fraction": "0.05",
+    "fee_bps_per_side": "40",
+    "adverse_slippage_bps": "5",
+    "generic_minimum_quote": "5",
+    "maximum_volume_participation_fraction": "0.01",
+    "recovery_trigger_fraction": "0.03",
+    "recovery_seed_quote": "40",
+    "whole_profit_target_bps": "100",
+    "partial_profit_target_bps": "100",
+    "hard_execution_floor_net_bps": "100",
+    "pssm_dtss_dtssr": "OFF",
+    "forced_loss_exits": "OFF"
+  },
+  "universe": {
+    "frozen_identity_file": "research/holdout/frozen-universe.json",
+    "pair_count": 619,
+    "extra_snapshot_pairs": "Provenance/discovery only, never admitted to this comparison.",
+    "missing_pair_policy": "Keep the fixed identity in the audit, mark missing/untradeable/gapped; never silently remove to improve results.",
+    "first_evaluation_bar": "First full 5m candle whose start is at or after the actual financial/source freeze.",
+    "causality": "Fixed universe membership was known before freeze. Use actual completed candles only; no later winners/listings/status snapshot may select earlier trades."
+  },
+  "warmup": {
+    "hours_before_freeze": 24,
+    "source": "Bounded first public 48h raw OHLC pages before freeze; separately labelled historical warmup, excluded from holdout return.",
+    "tuning": "Forbidden; warmup initializes causal buffers only.",
+    "missing_history": "Deny predicates requiring unavailable exact history; never forward-fill or extend historical lookback after observing outcomes."
+  },
+  "timing": {
+    "evaluation_not_before_utc": "2026-11-09T00:00:00Z",
+    "execution": "Historical 5m paper model, no orderbook fills or 30-second execution claim.",
+    "no_outcome_inspection_before_end": true,
+    "no_parameter_tuning_using_holdout": true
+  },
+  "accounting": [
+    "equity = initial cash + realized P&L + open P&L",
+    "No negative cash or quantities",
+    "No duplicate lot sale",
+    "Fees charged once",
+    "Parked-source basis and pending claims counted exactly",
+    "Unsold inventory remains marked equity/exposure",
+    "No future-candle data in decisions"
+  ],
+  "reports_after_close": [
+    "Complete-window marked equity and return",
+    "Cash and parked-source utilization",
+    "Realized and open P&L separately",
+    "Fees and modeled slippage",
+    "Maximum account drawdown",
+    "Trade/partial counts and unresolved inventory",
+    "Sparse bars, capture failures, delayed collection and stale marks",
+    "All five arms, including failed/inactive/inconclusive arms"
+  ],
+  "execution_readiness": {
+    "status": "COLLECTION_ONLY_FRESH_REPLAY_ADAPTER_NOT_BUILT",
+    "financial_rules_and_initial_conditions": "Frozen now, before prospective market outcomes.",
+    "future_adapter": "Must independently reproduce the pinned native planners/economics and exact fresh-cash initial state; no new predicate/parameter changes using holdout outcomes.",
+    "july_runner_limit": "Pinned July runner hydrates June residual inventory and restored1898 assumptions; it is not executable as the fresh2000 holdout runner.",
+    "native_source_manifest": "research/holdout/native-source-manifest.json",
+    "mutable_native_imports": "Forbidden; resolve only the exact external archive/member pins before future execution."
+  }
+}
