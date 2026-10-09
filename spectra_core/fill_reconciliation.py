@@ -11,7 +11,6 @@ from .capital_governor import CapitalGovernor
 from .economic_position import EconomicPositionLedger
 from .models import IntentKind
 
-
 ZERO = Decimal("0")
 
 
@@ -557,6 +556,45 @@ class LiveFillLedgerReconciler:
     ) -> FillReconciliationResult:
         fill = trade_fill_evidence_from_raw(raw)
 
+        # Cash authority burns authorization before dispatch, and exact BUY
+        # evidence audits actual spending even when the inventory fill replays.
+        # Source SELLs have no approved sale-purpose manifest: record financial
+        # truth below, but keep their unclassified proceeds out of spending.
+        authority = self.governor.cash_authority_snapshot()
+        binding = self.get_binding(fill.order_id)
+        if authority is not None and binding is not None:
+            self._validate_fill_binding(fill, binding)
+            if fill.occurred_at > authority.activated_at:
+                if fill.side == "BUY":
+                    try:
+                        acquired, spent, _ = self._fee_geometry(fill)
+                    except ValueError:
+                        self.governor.record_cash_conflict(
+                            f"source-fill:{fill.trade_id}",
+                            "source fee cannot be valued exactly",
+                        )
+                        raise
+                    self.governor.record_cash_buy_fill(
+                        trade_id=fill.trade_id,
+                        order_id=fill.order_id,
+                        proposal_id=binding.proposal_id,
+                        executor_id=binding.executor_id,
+                        pair=fill.pair,
+                        account_name=fill.account_name,
+                        connector_name=fill.connector_name,
+                        gross_spent_quote=spent,
+                        base_acquired=acquired,
+                        price=fill.price,
+                        fee_paid=fill.fee_paid,
+                        fee_currency=fill.fee_currency,
+                        occurred_at=fill.occurred_at,
+                    )
+                else:
+                    self.governor.record_cash_conflict(
+                        f"source-fill:{fill.trade_id}",
+                        "source SELL has no durable cash sale purpose",
+                    )
+
         replay = self._existing_result(fill)
         if replay is not None:
             return replay
@@ -584,9 +622,7 @@ class LiveFillLedgerReconciler:
                 raise ValueError("reconciled_at must be numeric")
             reconciled = float(reconciled_at)
             if not isfinite(reconciled) or reconciled <= 0:
-                raise ValueError(
-                    "reconciled_at must be finite and positive"
-                )
+                raise ValueError("reconciled_at must be finite and positive")
 
         amount_base, quote_amount, fee_quote = self._fee_geometry(fill)
         result_id = f"trade-fill:{fill.trade_id}"

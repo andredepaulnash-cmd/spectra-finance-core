@@ -8,9 +8,9 @@ from math import isfinite
 from pathlib import Path
 
 from .capital_governor import CapitalGovernor
+from .decimal_math import exact_decimal_difference, exact_decimal_sum
 from .models import IntentKind
 from .recovery_fingerprint import VCAPPositionState
-
 
 ZERO = Decimal("0")
 
@@ -179,8 +179,7 @@ class EconomicPositionLedger:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
-            conn.executescript(
-                """
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS economic_positions (
                     position_id TEXT PRIMARY KEY,
                     pair TEXT NOT NULL,
@@ -239,8 +238,13 @@ class EconomicPositionLedger:
                     FOREIGN KEY(position_id)
                         REFERENCES economic_positions(position_id)
                 );
-                """
-            )
+                CREATE TABLE IF NOT EXISTS economic_exit_lot_allocations (
+                    event_id TEXT NOT NULL, lot_id TEXT NOT NULL,
+                    base_sold TEXT NOT NULL, cost_basis_quote TEXT NOT NULL,
+                    entry_fees_quote TEXT NOT NULL,
+                    PRIMARY KEY (event_id, lot_id)
+                );
+                """)
 
             columns = {
                 str(row["name"])
@@ -285,14 +289,12 @@ class EconomicPositionLedger:
                     f"the same base asset: {assets}"
                 )
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE UNIQUE INDEX IF NOT EXISTS
                     economic_positions_active_base_unique
                 ON economic_positions(base_asset)
                 WHERE status = 'ACTIVE'
-                """
-            )
+                """)
 
     def open_position(
         self,
@@ -841,6 +843,18 @@ class EconomicPositionLedger:
             position_closed=bool(row["position_closed"]),
         )
 
+    def exit_basis_by_lot(self, event_id: str) -> tuple[tuple[str, Decimal], ...]:
+        """Actual lot basis consumed in the same transaction as a sale event."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT lot_id, cost_basis_quote FROM economic_exit_lot_allocations "
+                "WHERE event_id = ? ORDER BY lot_id",
+                (_text(event_id, "event_id"),),
+            ).fetchall()
+        return tuple(
+            (str(row["lot_id"]), Decimal(row["cost_basis_quote"])) for row in rows
+        )
+
     def record_partial_exit(
         self,
         *,
@@ -903,29 +917,23 @@ class EconomicPositionLedger:
                     for row in rows
                     if Decimal(str(row["base_remaining"])) > ZERO
                 ]
-                total_active_base = sum(
-                    (lot.base_remaining for lot in all_active_lots),
-                    ZERO,
+                total_active_base = exact_decimal_sum(
+                    lot.base_remaining for lot in all_active_lots
                 )
 
                 if eligible_lot_ids is None:
                     lots = all_active_lots
                 else:
                     if not eligible_lot_ids:
-                        raise ValueError(
-                            "eligible_lot_ids cannot be empty"
-                        )
+                        raise ValueError("eligible_lot_ids cannot be empty")
                     normalized_scope = tuple(
-                        _text(lot_id, "eligible_lot_id")
-                        for lot_id in eligible_lot_ids
+                        _text(lot_id, "eligible_lot_id") for lot_id in eligible_lot_ids
                     )
                     if len(set(normalized_scope)) != len(normalized_scope):
                         raise ValueError("eligible_lot_ids cannot contain duplicates")
                     by_id = {lot.lot_id: lot for lot in all_active_lots}
                     missing = [
-                        lot_id
-                        for lot_id in normalized_scope
-                        if lot_id not in by_id
+                        lot_id for lot_id in normalized_scope if lot_id not in by_id
                     ]
                     if missing:
                         raise ValueError(
@@ -933,7 +941,7 @@ class EconomicPositionLedger:
                         )
                     lots = [by_id[lot_id] for lot_id in normalized_scope]
 
-                eligible_base = sum((lot.base_remaining for lot in lots), ZERO)
+                eligible_base = exact_decimal_sum(lot.base_remaining for lot in lots)
                 if sold > eligible_base:
                     message = (
                         "exit base exceeds ACTIVE_TRADE inventory"
@@ -946,36 +954,77 @@ class EconomicPositionLedger:
                 allocated_entry_fees = ZERO
                 remaining_to_sell = sold
                 updates: list[tuple[Decimal, Decimal, Decimal, str]] = []
+                allocations = []
 
                 for index, lot in enumerate(lots):
                     if remaining_to_sell <= ZERO:
                         break
 
-                    if index == len(lots) - 1:
+                    if sold == eligible_base:
+                        lot_sale = lot.base_remaining
+                    elif index == len(lots) - 1:
                         lot_sale = remaining_to_sell
                     else:
+                        # A rounded proportional proposal must leave a residual
+                        # that later owned lots can actually supply. Tiny final
+                        # lots cannot absorb the rounding remainder by fiat.
+                        future_capacity = exact_decimal_sum(
+                            other.base_remaining for other in lots[index + 1 :]
+                        )
+                        minimum_sale = max(
+                            ZERO,
+                            exact_decimal_difference(remaining_to_sell, future_capacity),
+                        )
                         lot_sale = min(
                             lot.base_remaining,
-                            sold * lot.base_remaining / eligible_base,
+                            remaining_to_sell,
+                            max(minimum_sale, sold * lot.base_remaining / eligible_base),
                         )
 
                     lot_sale = min(lot_sale, lot.base_remaining)
                     if lot_sale <= ZERO:
                         continue
 
-                    ratio = lot_sale / lot.base_remaining
-                    basis_piece = lot.cost_basis_remaining_quote * ratio
-                    fee_piece = lot.entry_fees_remaining_quote * ratio
+                    if lot_sale == lot.base_remaining:
+                        basis_piece = lot.cost_basis_remaining_quote
+                        fee_piece = lot.entry_fees_remaining_quote
+                    else:
+                        ratio = lot_sale / lot.base_remaining
+                        basis_piece = min(
+                            lot.cost_basis_remaining_quote,
+                            lot.cost_basis_remaining_quote * ratio,
+                        )
+                        fee_piece = min(
+                            lot.entry_fees_remaining_quote,
+                            lot.entry_fees_remaining_quote * ratio,
+                        )
 
-                    allocated_basis += basis_piece
-                    allocated_entry_fees += fee_piece
-                    remaining_to_sell -= lot_sale
+                    allocated_basis = exact_decimal_sum((allocated_basis, basis_piece))
+                    allocated_entry_fees = exact_decimal_sum(
+                        (allocated_entry_fees, fee_piece)
+                    )
+                    remaining_to_sell = exact_decimal_difference(
+                        remaining_to_sell, lot_sale
+                    )
+                    allocations.append(
+                        (
+                            eid,
+                            lot.lot_id,
+                            str(lot_sale),
+                            str(basis_piece),
+                            str(fee_piece),
+                        )
+                    )
 
                     updates.append(
                         (
-                            lot.base_remaining - lot_sale,
-                            lot.cost_basis_remaining_quote - basis_piece,
-                            lot.entry_fees_remaining_quote - fee_piece,
+                            exact_decimal_difference(lot.base_remaining, lot_sale),
+                            exact_decimal_difference(
+                                lot.cost_basis_remaining_quote, basis_piece
+                            ),
+                            exact_decimal_difference(
+                                lot.entry_fees_remaining_quote, fee_piece
+                            ),
                             lot.lot_id,
                         )
                     )
@@ -1006,14 +1055,20 @@ class EconomicPositionLedger:
                         ),
                     )
 
-                realized = (
-                    proceeds
-                    - exit_fee
-                    - allocated_basis
-                    - allocated_entry_fees
+                conn.executemany(
+                    "INSERT INTO economic_exit_lot_allocations VALUES (?, ?, ?, ?, ?)",
+                    allocations,
+                )
+                realized = exact_decimal_sum(
+                    (
+                        proceeds,
+                        exit_fee.copy_negate(),
+                        allocated_basis.copy_negate(),
+                        allocated_entry_fees.copy_negate(),
+                    )
                 )
 
-                active_after = total_active_base - sold
+                active_after = exact_decimal_difference(total_active_base, sold)
                 closed = active_after == ZERO
 
                 conn.execute(
@@ -1105,14 +1160,12 @@ class EconomicPositionLedger:
         ).fetchall()
         active_lots = [self._lot_from_row(row) for row in active_rows]
 
-        active_base = sum((lot.base_remaining for lot in active_lots), ZERO)
-        active_basis = sum(
-            (lot.cost_basis_remaining_quote for lot in active_lots),
-            ZERO,
+        active_base = exact_decimal_sum(lot.base_remaining for lot in active_lots)
+        active_basis = exact_decimal_sum(
+            lot.cost_basis_remaining_quote for lot in active_lots
         )
-        active_fees = sum(
-            (lot.entry_fees_remaining_quote for lot in active_lots),
-            ZERO,
+        active_fees = exact_decimal_sum(
+            lot.entry_fees_remaining_quote for lot in active_lots
         )
 
         realized_row = conn.execute(
@@ -1123,9 +1176,8 @@ class EconomicPositionLedger:
             """,
             (position_id,),
         ).fetchall()
-        realized = sum(
-            (Decimal(str(row["realized_pnl_quote"])) for row in realized_row),
-            ZERO,
+        realized = exact_decimal_sum(
+            Decimal(str(row["realized_pnl_quote"])) for row in realized_row
         )
 
         strategic = conn.execute(
@@ -1137,9 +1189,8 @@ class EconomicPositionLedger:
             """,
             (pair, OwnershipBucket.STRATEGIC_RETAINED.value),
         ).fetchall()
-        strategic_base = sum(
-            (Decimal(str(row["base_remaining"])) for row in strategic),
-            ZERO,
+        strategic_base = exact_decimal_sum(
+            Decimal(str(row["base_remaining"])) for row in strategic
         )
 
         unattributed = conn.execute(
@@ -1151,9 +1202,8 @@ class EconomicPositionLedger:
             """,
             (pair, OwnershipBucket.UNATTRIBUTED.value),
         ).fetchall()
-        unattributed_base = sum(
-            (Decimal(str(row["base_remaining"])) for row in unattributed),
-            ZERO,
+        unattributed_base = exact_decimal_sum(
+            Decimal(str(row["base_remaining"])) for row in unattributed
         )
 
         recovery_ids = tuple(
@@ -1179,9 +1229,7 @@ class EconomicPositionLedger:
             strategic_retained_base_same_pair=strategic_base,
             unattributed_base_same_pair=unattributed_base,
             active_lot_ids=tuple(
-                lot.lot_id
-                for lot in active_lots
-                if lot.base_remaining > ZERO
+                lot.lot_id for lot in active_lots if lot.base_remaining > ZERO
             ),
             recovery_proposal_ids=recovery_ids,
         )

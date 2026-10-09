@@ -3,13 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from dataclasses import dataclass
-from decimal import Decimal
+from dataclasses import dataclass, replace
+from decimal import ROUND_CEILING, Decimal, localcontext
 from enum import StrEnum
 from math import isfinite
 from pathlib import Path
 
 from .capital_governor import CapitalGovernor
+from .decimal_math import exact_decimal_difference, exact_decimal_sum
 from .economic_position import (
     EconomicLot,
     EconomicLotSource,
@@ -19,7 +20,6 @@ from .economic_position import (
 )
 from .kraken_market_fabric import KrakenTradingRule
 from .models import IntentKind
-
 
 ZERO = Decimal("0")
 TEN_THOUSAND = Decimal("10000")
@@ -116,14 +116,15 @@ class PartialRecycleManifest:
     sell_executor_id: str
     created_at: float
     completed_at: float | None
+    # None identifies a pre-protection manifest: reconcile its actual fills,
+    # but never issue a new unprotected sale from it.
+    target_net_profit_bps: Decimal | None = None
+    protected_limit_price: Decimal | None = None
+    cash_proceeds_route: str | None = None
 
     @property
     def lot_ids(self) -> tuple[str, ...]:
-        return tuple(
-            lot_id
-            for owner in self.owners
-            for lot_id in owner.lot_ids
-        )
+        return tuple(lot_id for owner in self.owners for lot_id in owner.lot_ids)
 
     @property
     def proposal_ids(self) -> tuple[str, ...]:
@@ -161,8 +162,7 @@ class PartialRecycleStore:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
-            conn.executescript(
-                """
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS partial_recycle_manifests (
                     manifest_id TEXT PRIMARY KEY,
                     position_id TEXT NOT NULL,
@@ -200,8 +200,33 @@ class PartialRecycleStore:
                     FOREIGN KEY(manifest_id)
                         REFERENCES partial_recycle_manifests(manifest_id)
                 );
-                """
-            )
+                """)
+            conn.execute("BEGIN IMMEDIATE")
+            columns = {
+                str(row["name"])
+                for row in conn.execute("PRAGMA table_info(partial_recycle_manifests)")
+            }
+            for column in (
+                "target_net_profit_bps",
+                "protected_limit_price",
+                "cash_proceeds_route",
+            ):
+                if column not in columns:
+                    conn.execute(
+                        f"ALTER TABLE partial_recycle_manifests ADD COLUMN {column} TEXT"
+                    )
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS partial_recycle_dispatch_claims (
+                    manifest_id TEXT PRIMARY KEY,
+                    claimed_at REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS partial_recycle_protection_conflicts (
+                    manifest_id TEXT NOT NULL,
+                    conflict TEXT NOT NULL,
+                    observed_at REAL NOT NULL,
+                    PRIMARY KEY (manifest_id, conflict)
+                );
+                """)
 
     @staticmethod
     def _owners_json(owners: tuple[PartialRecycleOwner, ...]) -> str:
@@ -212,12 +237,8 @@ class PartialRecycleStore:
                     "executor_id": owner.executor_id,
                     "lot_ids": list(owner.lot_ids),
                     "target_base": str(owner.target_base),
-                    "target_cost_basis_quote": str(
-                        owner.target_cost_basis_quote
-                    ),
-                    "target_entry_fees_quote": str(
-                        owner.target_entry_fees_quote
-                    ),
+                    "target_cost_basis_quote": str(owner.target_cost_basis_quote),
+                    "target_entry_fees_quote": str(owner.target_entry_fees_quote),
                 }
                 for owner in owners
             ],
@@ -269,31 +290,30 @@ class PartialRecycleStore:
             status=PartialRecycleManifestStatus(str(row["status"])),
             owners=cls._owners_from_json(str(row["owners_json"])),
             target_base=Decimal(str(row["target_base"])),
-            target_cost_basis_quote=Decimal(
-                str(row["target_cost_basis_quote"])
-            ),
-            target_entry_fees_quote=Decimal(
-                str(row["target_entry_fees_quote"])
-            ),
+            target_cost_basis_quote=Decimal(str(row["target_cost_basis_quote"])),
+            target_entry_fees_quote=Decimal(str(row["target_entry_fees_quote"])),
             reference_price=Decimal(str(row["reference_price"])),
             min_order_size=Decimal(str(row["min_order_size"])),
             min_notional_quote=Decimal(str(row["min_notional_quote"])),
-            expected_exit_cost_bps=Decimal(
-                str(row["expected_exit_cost_bps"])
-            ),
-            estimated_net_pnl_quote=Decimal(
-                str(row["estimated_net_pnl_quote"])
-            ),
-            estimated_net_return_bps=Decimal(
-                str(row["estimated_net_return_bps"])
-            ),
+            expected_exit_cost_bps=Decimal(str(row["expected_exit_cost_bps"])),
+            estimated_net_pnl_quote=Decimal(str(row["estimated_net_pnl_quote"])),
+            estimated_net_return_bps=Decimal(str(row["estimated_net_return_bps"])),
             sell_executor_id=str(row["sell_executor_id"]),
             created_at=float(row["created_at"]),
             completed_at=(
-                None
-                if row["completed_at"] is None
-                else float(row["completed_at"])
+                None if row["completed_at"] is None else float(row["completed_at"])
             ),
+            target_net_profit_bps=(
+                None
+                if row["target_net_profit_bps"] is None
+                else Decimal(str(row["target_net_profit_bps"]))
+            ),
+            protected_limit_price=(
+                None
+                if row["protected_limit_price"] is None
+                else Decimal(str(row["protected_limit_price"]))
+            ),
+            cash_proceeds_route=row["cash_proceeds_route"],
         )
 
     def load(self, manifest_id: str) -> PartialRecycleManifest | None:
@@ -340,11 +360,26 @@ class PartialRecycleStore:
                 if existing is not None:
                     current = self._from_row(existing)
                     if current != manifest:
-                        raise RuntimeError(
-                            "partial recycle manifest replay conflicts"
-                        )
+                        raise RuntimeError("partial recycle manifest replay conflicts")
                     conn.rollback()
                     return current
+                whole_exit_table = conn.execute("""
+                    SELECT 1 FROM sqlite_master
+                    WHERE type = 'table' AND name = 'economic_exit_manifests'
+                    """).fetchone()
+                if whole_exit_table is not None:
+                    whole_exit = conn.execute(
+                        """
+                        SELECT 1 FROM economic_exit_manifests
+                        WHERE position_id = ? AND status = 'OPEN'
+                        LIMIT 1
+                        """,
+                        (manifest.position_id,),
+                    ).fetchone()
+                    if whole_exit is not None:
+                        raise RuntimeError(
+                            "open economic exit manifest blocks partial recycling"
+                        )
                 conn.execute(
                     """
                     INSERT INTO partial_recycle_manifests (
@@ -354,8 +389,9 @@ class PartialRecycleStore:
                         min_order_size, min_notional_quote,
                         expected_exit_cost_bps, estimated_net_pnl_quote,
                         estimated_net_return_bps, sell_executor_id,
-                        created_at, completed_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                        created_at, completed_at,
+                        target_net_profit_bps, protected_limit_price, cash_proceeds_route
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)
                     """,
                     (
                         manifest.manifest_id,
@@ -374,6 +410,17 @@ class PartialRecycleStore:
                         str(manifest.estimated_net_return_bps),
                         manifest.sell_executor_id,
                         manifest.created_at,
+                        (
+                            None
+                            if manifest.target_net_profit_bps is None
+                            else str(manifest.target_net_profit_bps)
+                        ),
+                        (
+                            None
+                            if manifest.protected_limit_price is None
+                            else str(manifest.protected_limit_price)
+                        ),
+                        manifest.cash_proceeds_route,
                     ),
                 )
                 conn.commit()
@@ -384,6 +431,58 @@ class PartialRecycleStore:
         if created is None:
             raise RuntimeError("partial recycle manifest creation failed")
         return created
+
+    def dispatch_claimed(self, manifest_id: str) -> bool:
+        mid = _text(manifest_id, "manifest_id")
+        with self._connect() as conn:
+            return (
+                conn.execute(
+                    "SELECT 1 FROM partial_recycle_dispatch_claims WHERE manifest_id = ?",
+                    (mid,),
+                ).fetchone()
+                is not None
+            )
+
+    def claim_dispatch(self, *, manifest_id: str, now: float) -> bool:
+        """Claim once before any API write; an uncertain claim is never retried."""
+        mid = _text(manifest_id, "manifest_id")
+        timestamp = _time(now, "now")
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                "SELECT status FROM partial_recycle_manifests WHERE manifest_id = ?",
+                (mid,),
+            ).fetchone()
+            if row is None or row["status"] != PartialRecycleManifestStatus.OPEN.value:
+                raise RuntimeError("partial recycle dispatch requires an OPEN manifest")
+            cursor = conn.execute(
+                "INSERT OR IGNORE INTO partial_recycle_dispatch_claims VALUES (?, ?)",
+                (mid, timestamp),
+            )
+            return cursor.rowcount == 1
+
+    def protection_conflicts(self, manifest_id: str) -> tuple[str, ...]:
+        mid = _text(manifest_id, "manifest_id")
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT conflict FROM partial_recycle_protection_conflicts "
+                "WHERE manifest_id = ? ORDER BY conflict",
+                (mid,),
+            ).fetchall()
+        return tuple(str(row["conflict"]) for row in rows)
+
+    def record_protection_conflict(
+        self, *, manifest_id: str, conflict: str, now: float
+    ) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO partial_recycle_protection_conflicts VALUES (?, ?, ?)",
+                (
+                    _text(manifest_id, "manifest_id"),
+                    _text(conflict, "conflict"),
+                    _time(now, "now"),
+                ),
+            )
 
     def fill_recorded(self, trade_id: str) -> bool:
         tid = _text(trade_id, "trade_id")
@@ -447,9 +546,7 @@ class PartialRecycleStore:
                     float(existing["occurred_at"]),
                 )
                 if actual != values:
-                    raise RuntimeError(
-                        "partial recycle fill replay conflicts"
-                    )
+                    raise RuntimeError("partial recycle fill replay conflicts")
                 return
             conn.execute(
                 """
@@ -462,6 +559,26 @@ class PartialRecycleStore:
                 (tid, *values),
             )
 
+    def durable_fill_geometry(
+        self, manifest_id: str
+    ) -> tuple[tuple[str, Decimal, Decimal], ...]:
+        """Exact disposed quantity and realized P&L for completion audits."""
+        mid = _text(manifest_id, "manifest_id")
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT trade_id, base_sold, realized_pnl_quote "
+                "FROM partial_recycle_fills WHERE manifest_id = ? ORDER BY trade_id",
+                (mid,),
+            ).fetchall()
+        return tuple(
+            (
+                str(row["trade_id"]),
+                _decimal(row["base_sold"], "base_sold", positive=True),
+                _decimal(row["realized_pnl_quote"], "realized_pnl_quote"),
+            )
+            for row in rows
+        )
+
     def realized_pnl(self, manifest_id: str) -> Decimal:
         mid = _text(manifest_id, "manifest_id")
         with self._connect() as conn:
@@ -473,9 +590,8 @@ class PartialRecycleStore:
                 """,
                 (mid,),
             ).fetchall()
-        return sum(
-            (Decimal(str(row["realized_pnl_quote"])) for row in rows),
-            ZERO,
+        return exact_decimal_sum(
+            (Decimal(str(row["realized_pnl_quote"])) for row in rows)
         )
 
     def mark_completed(self, manifest_id: str, *, now: float) -> None:
@@ -532,14 +648,12 @@ def _owner_from_lots(
         proposal_id=proposal_id,
         executor_id=executor_id,
         lot_ids=tuple(lot.lot_id for lot in lots),
-        target_base=sum((lot.base_remaining for lot in lots), ZERO),
-        target_cost_basis_quote=sum(
-            (lot.cost_basis_remaining_quote for lot in lots),
-            ZERO,
+        target_base=exact_decimal_sum((lot.base_remaining for lot in lots)),
+        target_cost_basis_quote=exact_decimal_sum(
+            (lot.cost_basis_remaining_quote for lot in lots)
         ),
-        target_entry_fees_quote=sum(
-            (lot.entry_fees_remaining_quote for lot in lots),
-            ZERO,
+        target_entry_fees_quote=exact_decimal_sum(
+            (lot.entry_fees_remaining_quote for lot in lots)
         ),
     )
 
@@ -558,14 +672,8 @@ def _owner_geometry(
         - owner.target_cost_basis_quote
         - owner.target_entry_fees_quote
     )
-    invested = (
-        owner.target_cost_basis_quote + owner.target_entry_fees_quote
-    )
-    return_bps = (
-        ZERO
-        if invested <= ZERO
-        else pnl * TEN_THOUSAND / invested
-    )
+    invested = owner.target_cost_basis_quote + owner.target_entry_fees_quote
+    return_bps = ZERO if invested <= ZERO else pnl * TEN_THOUSAND / invested
     return pnl, return_bps
 
 
@@ -575,23 +683,13 @@ def _aggregate_geometry(
     price: Decimal,
     exit_cost_bps: Decimal,
 ) -> tuple[Decimal, Decimal, Decimal, Decimal, Decimal]:
-    base = sum((owner.target_base for owner in owners), ZERO)
-    basis = sum(
-        (owner.target_cost_basis_quote for owner in owners),
-        ZERO,
-    )
-    fees = sum(
-        (owner.target_entry_fees_quote for owner in owners),
-        ZERO,
-    )
+    base = exact_decimal_sum((owner.target_base for owner in owners))
+    basis = exact_decimal_sum((owner.target_cost_basis_quote for owner in owners))
+    fees = exact_decimal_sum((owner.target_entry_fees_quote for owner in owners))
     gross = base * price
     pnl = gross - (gross * exit_cost_bps / TEN_THOUSAND) - basis - fees
     invested = basis + fees
-    return_bps = (
-        ZERO
-        if invested <= ZERO
-        else pnl * TEN_THOUSAND / invested
-    )
+    return_bps = ZERO if invested <= ZERO else pnl * TEN_THOUSAND / invested
     return base, basis, fees, pnl, return_bps
 
 
@@ -604,8 +702,7 @@ def _manifest_id(
         [
             position_id,
             *(
-                f"{owner.proposal_id}:{owner.executor_id}:"
-                + ",".join(owner.lot_ids)
+                f"{owner.proposal_id}:{owner.executor_id}:" + ",".join(owner.lot_ids)
                 for owner in owners
             ),
         ]
@@ -614,22 +711,112 @@ def _manifest_id(
     return f"partial-recycle:{digest}"
 
 
+def protected_partial_recycle_price(
+    *,
+    target_base: Decimal,
+    target_cost_basis_quote: Decimal,
+    target_entry_fees_quote: Decimal,
+    target_net_profit_bps: Decimal,
+    expected_exit_cost_bps: Decimal,
+    trading_rule: KrakenTradingRule,
+) -> Decimal:
+    """Minimum tick-valid price for the exact proportionally disposed parcel.
+
+    Entry fees are distinct from acquisition basis. Exit costs include the
+    already configured fee/slippage allowance; they are not counted twice.
+    No quantity rounding may expand or change the immutable lot selection.
+    """
+    base = _decimal(target_base, "target_base", positive=True)
+    basis = _decimal(target_cost_basis_quote, "target_cost_basis_quote", positive=True)
+    fees = _decimal(
+        target_entry_fees_quote, "target_entry_fees_quote", non_negative=True
+    )
+    target = _decimal(target_net_profit_bps, "target_net_profit_bps", non_negative=True)
+    costs = _decimal(
+        expected_exit_cost_bps, "expected_exit_cost_bps", non_negative=True
+    )
+    if costs >= TEN_THOUSAND:
+        raise ValueError("expected_exit_cost_bps must be below 10000")
+    if trading_rule.supports_limit_orders is not True:
+        raise ValueError("partial recycle requires supported LIMIT orders")
+    tick = _decimal(
+        trading_rule.min_price_increment, "min_price_increment", positive=True
+    )
+    step = _decimal(
+        trading_rule.min_base_amount_increment,
+        "min_base_amount_increment",
+        positive=True,
+    )
+    minimum_base = _decimal(
+        trading_rule.min_order_size, "min_order_size", non_negative=True
+    )
+    minimum_quote = _decimal(
+        trading_rule.effective_min_quote, "effective_min_quote", non_negative=True
+    )
+    with localcontext() as context:
+        context.prec = 80
+        if base < minimum_base or base % step != ZERO:
+            raise ValueError(
+                "partial recycle base is below minimum or not exactly quantized"
+            )
+        required = (basis + fees) * (1 + target / TEN_THOUSAND)
+        price = max(
+            required / (base * (1 - costs / TEN_THOUSAND)), minimum_quote / base
+        )
+        return (price / tick).to_integral_value(rounding=ROUND_CEILING) * tick
+
+
 def validate_partial_recycle_manifest(
     manifest: PartialRecycleManifest,
     *,
     ledger: EconomicPositionLedger,
     governor: CapitalGovernor,
 ) -> None:
+    durable = PartialRecycleStore(ledger.path).load(manifest.manifest_id)
+    if durable is None or durable != replace(
+        manifest, status=durable.status, completed_at=durable.completed_at
+    ):
+        raise RuntimeError(
+            "partial recycle immutable manifest differs from durable state"
+        )
+    protected = manifest.protected_limit_price is not None
+    if manifest.cash_proceeds_route not in {None, "PARK"}:
+        raise RuntimeError("partial recycle cash route must preserve PARK purpose")
+    if protected != (manifest.target_net_profit_bps is not None):
+        raise RuntimeError("partial recycle profit protection is incomplete")
+    if protected:
+        price = _decimal(
+            manifest.protected_limit_price, "protected_limit_price", positive=True
+        )
+        target = _decimal(
+            manifest.target_net_profit_bps, "target_net_profit_bps", non_negative=True
+        )
+        costs = _decimal(
+            manifest.expected_exit_cost_bps, "expected_exit_cost_bps", non_negative=True
+        )
+        if costs >= TEN_THOUSAND:
+            raise RuntimeError("partial recycle exit costs invalidate protection")
+        with localcontext() as context:
+            context.prec = 80
+            invested = (
+                manifest.target_cost_basis_quote + manifest.target_entry_fees_quote
+            )
+            if price * manifest.target_base * (1 - costs / TEN_THOUSAND) < invested * (
+                1 + target / TEN_THOUSAND
+            ):
+                raise RuntimeError(
+                    "partial recycle limit violates the configured profit floor"
+                )
     snapshot = ledger.snapshot(manifest.position_id)
-    if snapshot.status != EconomicPositionStatus.ACTIVE:
+    if snapshot.status != EconomicPositionStatus.ACTIVE and not (
+        snapshot.status == EconomicPositionStatus.CLOSED
+        and snapshot.active_base == ZERO
+    ):
         raise RuntimeError("partial recycle position is no longer active")
     if snapshot.pair != manifest.pair:
         raise RuntimeError("partial recycle manifest pair changed")
 
-    active = {
-        lot.lot_id: lot
-        for lot in ledger.list_active_lots(manifest.position_id)
-    }
+    active = {lot.lot_id: lot for lot in ledger.list_active_lots(manifest.position_id)}
     for owner in manifest.owners:
         provenance = governor.get_execution_provenance(owner.proposal_id)
         receipt = governor.get_execution_receipt(owner.proposal_id)
@@ -639,9 +826,7 @@ def validate_partial_recycle_manifest(
             or provenance.executor_id != owner.executor_id
             or provenance.intent != IntentKind.RECOVERY
         ):
-            raise RuntimeError(
-                "partial recycle source ownership is no longer exact"
-            )
+            raise RuntimeError("partial recycle source ownership is no longer exact")
         current_base = ZERO
         for lot_id in owner.lot_ids:
             lot = active.get(lot_id)
@@ -653,10 +838,8 @@ def validate_partial_recycle_manifest(
                 or lot.source != EconomicLotSource.VCAP_RECOVERY
                 or lot.ownership != OwnershipBucket.ACTIVE_TRADE
             ):
-                raise RuntimeError(
-                    "partial recycle lot ownership changed"
-                )
-            current_base += lot.base_remaining
+                raise RuntimeError("partial recycle lot ownership changed")
+            current_base = exact_decimal_sum((current_base, lot.base_remaining))
         if current_base > owner.target_base:
             raise RuntimeError(
                 "partial recycle inventory increased after manifest creation"
@@ -668,17 +851,13 @@ def remaining_partial_recycle_base(
     *,
     ledger: EconomicPositionLedger,
 ) -> Decimal:
-    active = {
-        lot.lot_id: lot
-        for lot in ledger.list_active_lots(manifest.position_id)
-    }
-    return sum(
+    active = {lot.lot_id: lot for lot in ledger.list_active_lots(manifest.position_id)}
+    return exact_decimal_sum(
         (
             active[lot_id].base_remaining
             for lot_id in manifest.lot_ids
             if lot_id in active
-        ),
-        ZERO,
+        )
     )
 
 
@@ -690,6 +869,10 @@ def assess_partial_recycle_manifest(
     store: PartialRecycleStore,
     now: float,
 ) -> PartialRecycleProgress:
+    if store.protection_conflicts(manifest.manifest_id):
+        raise RuntimeError(
+            "partial recycle profit protection conflict requires resolution"
+        )
     validate_partial_recycle_manifest(
         manifest,
         ledger=ledger,
@@ -699,6 +882,39 @@ def assess_partial_recycle_manifest(
         manifest,
         ledger=ledger,
     )
+    recorded = store.durable_fill_geometry(manifest.manifest_id)
+    # Ledger, Governor and journal updates are replayable, but not one atomic
+    # transaction. A crash must not turn an unjournaled disposal into success.
+    if exact_decimal_sum((base for _, base, _ in recorded)) != exact_decimal_difference(
+        manifest.target_base, remaining
+    ):
+        raise RuntimeError(
+            "partial recycle disposed inventory lacks exact durable fill coverage"
+        )
+    if manifest.target_net_profit_bps is not None:
+        with localcontext() as context:
+            context.prec = 80
+            invested = (
+                manifest.target_cost_basis_quote + manifest.target_entry_fees_quote
+            )
+            for trade_id, base, pnl in recorded:
+                required_pnl = (
+                    invested
+                    * base
+                    / manifest.target_base
+                    * manifest.target_net_profit_bps
+                    / TEN_THOUSAND
+                )
+                if pnl < required_pnl:
+                    store.record_protection_conflict(
+                        manifest_id=manifest.manifest_id,
+                        conflict=f"profit_floor_breached:{trade_id}",
+                        now=now,
+                    )
+        if store.protection_conflicts(manifest.manifest_id):
+            raise RuntimeError(
+                "partial recycle profit protection conflict requires resolution"
+            )
     completed = remaining == ZERO
     if completed and manifest.status == PartialRecycleManifestStatus.OPEN:
         store.mark_completed(manifest.manifest_id, now=now)
@@ -743,6 +959,8 @@ def plan_partial_recycle(
         "slippage_allowance_bps",
         non_negative=True,
     )
+    if fee_bps + slippage_bps >= TEN_THOUSAND:
+        raise ValueError("expected exit costs must be below 10000 bps")
     timestamp = _time(now, "now")
     recycle_policy = policy or PartialRecyclePolicy()
     manifest_store = store or PartialRecycleStore(ledger.path)
@@ -778,9 +996,7 @@ def plan_partial_recycle(
         if lot.source != EconomicLotSource.VCAP_RECOVERY:
             continue
         if lot.proposal_id is None or lot.executor_id is None:
-            raise ValueError(
-                f"recovery lot {lot.lot_id} lacks exact ownership"
-            )
+            raise ValueError(f"recovery lot {lot.lot_id} lacks exact ownership")
         grouped.setdefault(
             (lot.proposal_id, lot.executor_id),
             [],
@@ -824,18 +1040,18 @@ def plan_partial_recycle(
 
     if not profitable:
         action = (
-            PartialRecycleAction.REPAIR_PENDING
-            if repair
-            else PartialRecycleAction.NONE
+            PartialRecycleAction.REPAIR_PENDING if repair else PartialRecycleAction.NONE
         )
         return PartialRecycleDecision(
             action=action,
             manifest=None,
             repair_lot_ids=tuple(repair_lot_ids),
             reasons=(
-                "subminimum_recovery_inventory_requires_consolidation"
-                if repair
-                else "no_recovery_owner_meets_partial_profit_floor",
+                (
+                    "subminimum_recovery_inventory_requires_consolidation"
+                    if repair
+                    else "no_recovery_owner_meets_partial_profit_floor"
+                ),
             ),
         )
 
@@ -862,9 +1078,7 @@ def plan_partial_recycle(
         ):
             selected.append(owner)
 
-    selected_tuple = tuple(
-        sorted(selected, key=lambda owner: owner.proposal_id)
-    )
+    selected_tuple = tuple(sorted(selected, key=lambda owner: owner.proposal_id))
     base, basis, fees, pnl, return_bps = _aggregate_geometry(
         selected_tuple,
         price=price,
@@ -889,6 +1103,14 @@ def plan_partial_recycle(
         )
 
     mid = _manifest_id(position_id=pid, owners=selected_tuple)
+    protected_price = protected_partial_recycle_price(
+        target_base=base,
+        target_cost_basis_quote=basis,
+        target_entry_fees_quote=fees,
+        target_net_profit_bps=recycle_policy.target_net_profit_bps,
+        expected_exit_cost_bps=exit_cost_bps,
+        trading_rule=trading_rule,
+    )
     manifest = PartialRecycleManifest(
         manifest_id=mid,
         position_id=pid,
@@ -907,6 +1129,9 @@ def plan_partial_recycle(
         sell_executor_id=f"{mid}:sell",
         created_at=timestamp,
         completed_at=None,
+        target_net_profit_bps=recycle_policy.target_net_profit_bps,
+        protected_limit_price=protected_price,
+        cash_proceeds_route="PARK",
     )
     created = manifest_store.create(manifest)
     validate_partial_recycle_manifest(

@@ -3,14 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from dataclasses import dataclass
-from decimal import Decimal
+from dataclasses import dataclass, replace
+from decimal import ROUND_CEILING, Decimal, localcontext
 from enum import StrEnum
 from math import isfinite
 from pathlib import Path
 from typing import Iterable
 
 from .capital_governor import CapitalGovernor
+from .decimal_math import exact_decimal_difference, exact_decimal_sum
 from .economic_position import (
     EconomicLot,
     EconomicPositionLedger,
@@ -18,9 +19,10 @@ from .economic_position import (
 )
 from .kraken_market_fabric import KrakenTradingRule
 from .models import IntentKind
-
+from .partial_recycle import protected_partial_recycle_price
 
 ZERO = Decimal("0")
+BPS = Decimal("10000")
 
 
 def _text(value: object, field: str) -> str:
@@ -111,6 +113,11 @@ class EconomicPositionExitManifest:
     owners: tuple[EconomicExitOwner, ...]
     created_at: float
     completed_at: float | None
+    target_net_profit_bps: Decimal | None = None
+    expected_exit_cost_bps: Decimal | None = None
+    protected_limit_price: Decimal | None = None
+    sell_executor_id: str | None = None
+    cash_proceeds_route: str | None = None
 
     @property
     def proposal_ids(self) -> tuple[str, ...]:
@@ -122,11 +129,7 @@ class EconomicPositionExitManifest:
 
     @property
     def lot_ids(self) -> tuple[str, ...]:
-        return tuple(
-            lot_id
-            for owner in self.owners
-            for lot_id in owner.lot_ids
-        )
+        return tuple(lot_id for owner in self.owners for lot_id in owner.lot_ids)
 
 
 class EconomicExitManifestStore:
@@ -144,8 +147,7 @@ class EconomicExitManifestStore:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
-            conn.executescript(
-                """
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS economic_exit_manifests (
                     manifest_id TEXT PRIMARY KEY,
                     position_id TEXT NOT NULL,
@@ -169,8 +171,43 @@ class EconomicExitManifestStore:
                     economic_exit_manifest_open_position_idx
                 ON economic_exit_manifests(position_id)
                 WHERE status = 'OPEN';
-                """
-            )
+                """)
+            conn.execute("BEGIN IMMEDIATE")
+            columns = {
+                str(row["name"])
+                for row in conn.execute("PRAGMA table_info(economic_exit_manifests)")
+            }
+            for column in (
+                "target_net_profit_bps",
+                "expected_exit_cost_bps",
+                "protected_limit_price",
+                "sell_executor_id",
+                "cash_proceeds_route",
+            ):
+                if column not in columns:
+                    conn.execute(
+                        f"ALTER TABLE economic_exit_manifests ADD COLUMN {column} TEXT"
+                    )
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS economic_exit_dispatch_claims (
+                    manifest_id TEXT PRIMARY KEY, claimed_at REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS economic_exit_protection_conflicts (
+                    manifest_id TEXT NOT NULL, conflict TEXT NOT NULL,
+                    observed_at REAL NOT NULL, PRIMARY KEY (manifest_id, conflict)
+                );
+                CREATE TABLE IF NOT EXISTS economic_exit_finality (
+                    manifest_id TEXT PRIMARY KEY, executor_id TEXT NOT NULL,
+                    observed_at REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS economic_exit_fills (
+                    trade_id TEXT PRIMARY KEY, manifest_id TEXT NOT NULL,
+                    order_id TEXT NOT NULL, base_sold TEXT NOT NULL,
+                    gross_proceeds_quote TEXT NOT NULL, exit_fee_quote TEXT NOT NULL,
+                    allocated_basis_quote TEXT NOT NULL, allocated_entry_fees_quote TEXT NOT NULL,
+                    realized_pnl_quote TEXT NOT NULL, price TEXT NOT NULL, occurred_at REAL NOT NULL
+                );
+            """)
 
     @staticmethod
     def _owners_json(owners: Iterable[EconomicExitOwner]) -> str:
@@ -184,12 +221,8 @@ class EconomicExitManifestStore:
                     "connector_name": owner.connector_name,
                     "lot_ids": list(owner.lot_ids),
                     "target_base": str(owner.target_base),
-                    "target_cost_basis_quote": str(
-                        owner.target_cost_basis_quote
-                    ),
-                    "target_entry_fees_quote": str(
-                        owner.target_entry_fees_quote
-                    ),
+                    "target_cost_basis_quote": str(owner.target_cost_basis_quote),
+                    "target_entry_fees_quote": str(owner.target_entry_fees_quote),
                 }
                 for owner in owners
             ],
@@ -243,18 +276,12 @@ class EconomicExitManifestStore:
             pair=str(row["pair"]),
             status=EconomicExitManifestStatus(str(row["status"])),
             target_active_base=Decimal(str(row["target_active_base"])),
-            target_cost_basis_quote=Decimal(
-                str(row["target_cost_basis_quote"])
-            ),
-            target_entry_fees_quote=Decimal(
-                str(row["target_entry_fees_quote"])
-            ),
+            target_cost_basis_quote=Decimal(str(row["target_cost_basis_quote"])),
+            target_entry_fees_quote=Decimal(str(row["target_entry_fees_quote"])),
             reference_price=Decimal(str(row["reference_price"])),
             min_order_size=Decimal(str(row["min_order_size"])),
             min_notional_quote=Decimal(str(row["min_notional_quote"])),
-            realized_pnl_before_quote=Decimal(
-                str(row["realized_pnl_before_quote"])
-            ),
+            realized_pnl_before_quote=Decimal(str(row["realized_pnl_before_quote"])),
             strategic_retained_base_at_creation=Decimal(
                 str(row["strategic_retained_base_at_creation"])
             ),
@@ -264,10 +291,25 @@ class EconomicExitManifestStore:
             owners=cls._owners_from_json(str(row["owners_json"])),
             created_at=float(row["created_at"]),
             completed_at=(
-                None
-                if row["completed_at"] is None
-                else float(row["completed_at"])
+                None if row["completed_at"] is None else float(row["completed_at"])
             ),
+            target_net_profit_bps=(
+                None
+                if row["target_net_profit_bps"] is None
+                else Decimal(row["target_net_profit_bps"])
+            ),
+            expected_exit_cost_bps=(
+                None
+                if row["expected_exit_cost_bps"] is None
+                else Decimal(row["expected_exit_cost_bps"])
+            ),
+            protected_limit_price=(
+                None
+                if row["protected_limit_price"] is None
+                else Decimal(row["protected_limit_price"])
+            ),
+            sell_executor_id=row["sell_executor_id"],
+            cash_proceeds_route=row["cash_proceeds_route"],
         )
 
     def load(self, manifest_id: str) -> EconomicPositionExitManifest | None:
@@ -341,9 +383,7 @@ class EconomicExitManifestStore:
                 if existing is not None:
                     current = self._from_row(existing)
                     if current != manifest:
-                        raise RuntimeError(
-                            "economic exit manifest replay conflicts"
-                        )
+                        raise RuntimeError("economic exit manifest replay conflicts")
                     conn.rollback()
                     return current
 
@@ -361,6 +401,20 @@ class EconomicExitManifestStore:
                 if open_row is not None:
                     conn.rollback()
                     return self._from_row(open_row)
+
+                if conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+                    "AND name = 'partial_recycle_manifests'"
+                ).fetchone():
+                    partial = conn.execute(
+                        "SELECT 1 FROM partial_recycle_manifests "
+                        "WHERE position_id = ? AND status = 'OPEN'",
+                        (manifest.position_id,),
+                    ).fetchone()
+                    if partial:
+                        raise RuntimeError(
+                            "open partial recycle manifest blocks economic exit"
+                        )
 
                 conn.execute(
                     """
@@ -380,9 +434,11 @@ class EconomicExitManifestStore:
                         unattributed_base_at_creation,
                         owners_json,
                         created_at,
-                        completed_at
+                        completed_at,
+                        target_net_profit_bps, expected_exit_cost_bps,
+                        protected_limit_price, sell_executor_id, cash_proceeds_route
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
                     """,
                     (
                         manifest.manifest_id,
@@ -400,6 +456,23 @@ class EconomicExitManifestStore:
                         str(manifest.unattributed_base_at_creation),
                         owners_json,
                         manifest.created_at,
+                        (
+                            None
+                            if manifest.target_net_profit_bps is None
+                            else str(manifest.target_net_profit_bps)
+                        ),
+                        (
+                            None
+                            if manifest.expected_exit_cost_bps is None
+                            else str(manifest.expected_exit_cost_bps)
+                        ),
+                        (
+                            None
+                            if manifest.protected_limit_price is None
+                            else str(manifest.protected_limit_price)
+                        ),
+                        manifest.sell_executor_id,
+                        manifest.cash_proceeds_route,
                     ),
                 )
                 conn.commit()
@@ -411,6 +484,195 @@ class EconomicExitManifestStore:
         if created is None:
             raise RuntimeError("economic exit manifest creation failed")
         return created
+
+    def dispatch_claimed(self, manifest_id: str) -> bool:
+        with self._connect() as conn:
+            return (
+                conn.execute(
+                    "SELECT 1 FROM economic_exit_dispatch_claims WHERE manifest_id = ?",
+                    (_text(manifest_id, "manifest_id"),),
+                ).fetchone()
+                is not None
+            )
+
+    def claim_dispatch(self, *, manifest_id: str, now: float) -> bool:
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                "SELECT status FROM economic_exit_manifests WHERE manifest_id = ?",
+                (_text(manifest_id, "manifest_id"),),
+            ).fetchone()
+            if row is None or row["status"] != EconomicExitManifestStatus.OPEN.value:
+                raise RuntimeError("economic exit dispatch requires an OPEN manifest")
+            cursor = conn.execute(
+                "INSERT OR IGNORE INTO economic_exit_dispatch_claims VALUES (?, ?)",
+                (manifest_id, _time(now, "now")),
+            )
+            return cursor.rowcount == 1
+
+    def protection_conflicts(self, manifest_id: str) -> tuple[str, ...]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT conflict FROM economic_exit_protection_conflicts "
+                "WHERE manifest_id = ? ORDER BY conflict",
+                (manifest_id,),
+            ).fetchall()
+        return tuple(str(row["conflict"]) for row in rows)
+
+    def record_protection_conflict(
+        self, *, manifest_id: str, conflict: str, now: float
+    ) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO economic_exit_protection_conflicts VALUES (?, ?, ?)",
+                (
+                    _text(manifest_id, "manifest_id"),
+                    _text(conflict, "conflict"),
+                    _time(now, "now"),
+                ),
+            )
+
+    def record_finality(
+        self, *, manifest_id: str, executor_id: str, now: float
+    ) -> None:
+        manifest = self.load(manifest_id)
+        if manifest is None or executor_id != manifest.sell_executor_id:
+            raise RuntimeError("economic exit finality executor identity changed")
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO economic_exit_finality VALUES (?, ?, ?)",
+                (manifest_id, executor_id, _time(now, "now")),
+            )
+
+    def finality_confirmed(self, manifest_id: str) -> bool:
+        with self._connect() as conn:
+            return (
+                conn.execute(
+                    "SELECT 1 FROM economic_exit_finality WHERE manifest_id = ?",
+                    (manifest_id,),
+                ).fetchone()
+                is not None
+            )
+
+    def fill_recorded(self, trade_id: str) -> bool:
+        with self._connect() as conn:
+            return (
+                conn.execute(
+                    "SELECT 1 FROM economic_exit_fills WHERE trade_id = ?",
+                    (_text(trade_id, "trade_id"),),
+                ).fetchone()
+                is not None
+            )
+
+    def record_fill(
+        self,
+        *,
+        trade_id: str,
+        manifest_id: str,
+        order_id: str,
+        base_sold: Decimal,
+        gross_proceeds_quote: Decimal,
+        exit_fee_quote: Decimal,
+        allocated_basis_quote: Decimal,
+        allocated_entry_fees_quote: Decimal,
+        realized_pnl_quote: Decimal,
+        price: Decimal,
+        occurred_at: float,
+    ) -> None:
+        tid = _text(trade_id, "trade_id")
+        fields = (
+            "manifest_id",
+            "order_id",
+            "base_sold",
+            "gross_proceeds_quote",
+            "exit_fee_quote",
+            "allocated_basis_quote",
+            "allocated_entry_fees_quote",
+            "realized_pnl_quote",
+            "price",
+            "occurred_at",
+        )
+        values = (
+            _text(manifest_id, "manifest_id"),
+            _text(order_id, "order_id"),
+            str(_decimal(base_sold, "base_sold", positive=True)),
+            str(
+                _decimal(
+                    gross_proceeds_quote, "gross_proceeds_quote", non_negative=True
+                )
+            ),
+            str(_decimal(exit_fee_quote, "exit_fee_quote", non_negative=True)),
+            str(
+                _decimal(
+                    allocated_basis_quote, "allocated_basis_quote", non_negative=True
+                )
+            ),
+            str(
+                _decimal(
+                    allocated_entry_fees_quote,
+                    "allocated_entry_fees_quote",
+                    non_negative=True,
+                )
+            ),
+            str(_decimal(realized_pnl_quote, "realized_pnl_quote")),
+            str(_decimal(price, "price", positive=True)),
+            _time(occurred_at, "occurred_at"),
+        )
+        with self._connect() as conn:
+            existing = conn.execute(
+                "SELECT * FROM economic_exit_fills WHERE trade_id = ?", (tid,)
+            ).fetchone()
+            if existing is not None:
+                if tuple(existing[field] for field in fields) != values:
+                    raise RuntimeError("economic exit fill replay conflicts")
+                return
+            conn.execute(
+                "INSERT INTO economic_exit_fills VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (tid, *values),
+            )
+
+    def validate_fill_coverage(
+        self,
+        manifest: EconomicPositionExitManifest,
+        *,
+        remaining: Decimal,
+        now: float | None,
+    ) -> None:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM economic_exit_fills WHERE manifest_id = ?",
+                (manifest.manifest_id,),
+            ).fetchall()
+        if exact_decimal_sum(
+            (Decimal(row["base_sold"]) for row in rows)
+        ) != exact_decimal_difference(manifest.target_active_base, remaining):
+            raise RuntimeError(
+                "economic exit disposed inventory lacks exact durable fill coverage"
+            )
+        with localcontext() as context:
+            context.prec = 80
+            for row in rows:
+                basis = Decimal(row["allocated_basis_quote"]) + Decimal(
+                    row["allocated_entry_fees_quote"]
+                )
+                required = basis * manifest.target_net_profit_bps / BPS
+                if (
+                    Decimal(row["price"]) < manifest.protected_limit_price
+                    or Decimal(row["realized_pnl_quote"]) < required
+                ):
+                    if now is None:
+                        raise RuntimeError(
+                            "economic exit profit protection conflict requires resolution"
+                        )
+                    self.record_protection_conflict(
+                        manifest_id=manifest.manifest_id,
+                        conflict=f"profit_floor_breached:{row['trade_id']}",
+                        now=now,
+                    )
+        if self.protection_conflicts(manifest.manifest_id):
+            raise RuntimeError(
+                "economic exit profit protection conflict requires resolution"
+            )
 
     def mark_completed(
         self,
@@ -470,21 +732,13 @@ def _group_owners(
         provenance = governor.get_execution_provenance(lot.proposal_id)
         receipt = governor.get_execution_receipt(lot.proposal_id)
         if provenance is None or receipt != lot.executor_id:
-            raise ValueError(
-                f"active lot {lot.lot_id} lost exact execution provenance"
-            )
+            raise ValueError(f"active lot {lot.lot_id} lost exact execution provenance")
         if provenance.executor_id != lot.executor_id:
-            raise ValueError(
-                f"active lot {lot.lot_id} executor ownership changed"
-            )
+            raise ValueError(f"active lot {lot.lot_id} executor ownership changed")
         if provenance.pair.strip().upper() != pair:
-            raise ValueError(
-                f"active lot {lot.lot_id} crosses exit pair"
-            )
+            raise ValueError(f"active lot {lot.lot_id} crosses exit pair")
         if provenance.intent not in {IntentKind.ENTRY, IntentKind.RECOVERY}:
-            raise ValueError(
-                f"active lot {lot.lot_id} is not owned trade capital"
-            )
+            raise ValueError(f"active lot {lot.lot_id} is not owned trade capital")
         if provenance.account_name is None or provenance.connector_name is None:
             raise ValueError(
                 f"active lot {lot.lot_id} has unscoped execution provenance"
@@ -492,9 +746,7 @@ def _group_owners(
 
         prior = executor_owner.get(lot.executor_id)
         if prior is not None and prior != lot.proposal_id:
-            raise ValueError(
-                "one executor cannot own multiple live capital proposals"
-            )
+            raise ValueError("one executor cannot own multiple live capital proposals")
         executor_owner[lot.executor_id] = lot.proposal_id
         grouped.setdefault(
             (lot.proposal_id, lot.executor_id),
@@ -516,23 +768,14 @@ def _group_owners(
                 account_name=str(provenance.account_name),
                 connector_name=str(provenance.connector_name).lower(),
                 lot_ids=tuple(lot.lot_id for lot in owner_lots),
-                target_base=sum(
-                    (lot.base_remaining for lot in owner_lots),
-                    ZERO,
+                target_base=exact_decimal_sum(
+                    (lot.base_remaining for lot in owner_lots)
                 ),
-                target_cost_basis_quote=sum(
-                    (
-                        lot.cost_basis_remaining_quote
-                        for lot in owner_lots
-                    ),
-                    ZERO,
+                target_cost_basis_quote=exact_decimal_sum(
+                    (lot.cost_basis_remaining_quote for lot in owner_lots)
                 ),
-                target_entry_fees_quote=sum(
-                    (
-                        lot.entry_fees_remaining_quote
-                        for lot in owner_lots
-                    ),
-                    ZERO,
+                target_entry_fees_quote=exact_decimal_sum(
+                    (lot.entry_fees_remaining_quote for lot in owner_lots)
                 ),
             )
         )
@@ -568,6 +811,46 @@ def validate_manifest_against_ledger(
     *,
     ledger: EconomicPositionLedger,
 ) -> None:
+    if manifest.cash_proceeds_route not in {None, "PRODUCTIVE"}:
+        raise RuntimeError("whole exit cash route must preserve PRODUCTIVE purpose")
+    durable = EconomicExitManifestStore(ledger.path).load(manifest.manifest_id)
+    if durable is None or durable != replace(
+        manifest, status=durable.status, completed_at=durable.completed_at
+    ):
+        raise RuntimeError(
+            "economic exit immutable manifest differs from durable state"
+        )
+    protected_fields = (
+        manifest.target_net_profit_bps,
+        manifest.expected_exit_cost_bps,
+        manifest.protected_limit_price,
+        manifest.sell_executor_id,
+    )
+    if any(value is not None for value in protected_fields):
+        if any(value is None for value in protected_fields):
+            raise RuntimeError("economic exit profit protection is incomplete")
+        price = _decimal(
+            manifest.protected_limit_price, "protected_limit_price", positive=True
+        )
+        target = _decimal(
+            manifest.target_net_profit_bps, "target_net_profit_bps", non_negative=True
+        )
+        costs = _decimal(
+            manifest.expected_exit_cost_bps, "expected_exit_cost_bps", non_negative=True
+        )
+        if costs >= BPS:
+            raise RuntimeError("economic exit costs invalidate protection")
+        with localcontext() as context:
+            context.prec = 80
+            invested = (
+                manifest.target_cost_basis_quote + manifest.target_entry_fees_quote
+            )
+            if price * manifest.target_active_base * (1 - costs / BPS) < invested * (
+                1 + target / BPS
+            ):
+                raise RuntimeError(
+                    "economic exit limit violates configured profit floor"
+                )
     snapshot = ledger.snapshot(manifest.position_id)
     if snapshot.pair != manifest.pair:
         raise RuntimeError("economic exit manifest pair changed")
@@ -582,9 +865,7 @@ def validate_manifest_against_ledger(
     allowed_lot_ids = set(manifest.lot_ids)
     current_lots = ledger.list_active_lots(manifest.position_id)
     unexpected = [
-        lot.lot_id
-        for lot in current_lots
-        if lot.lot_id not in allowed_lot_ids
+        lot.lot_id for lot in current_lots if lot.lot_id not in allowed_lot_ids
     ]
     if unexpected:
         raise RuntimeError(
@@ -598,16 +879,14 @@ def validate_manifest_against_ledger(
     current_by_owner: dict[tuple[str, str], Decimal] = {}
     for lot in current_lots:
         if lot.proposal_id is None or lot.executor_id is None:
-            raise RuntimeError(
-                "active inventory lost exact ownership during exit"
-            )
+            raise RuntimeError("active inventory lost exact ownership during exit")
         key = (lot.proposal_id, lot.executor_id)
         if key not in owner_targets:
             raise RuntimeError(
                 "active inventory owner is outside immutable exit manifest"
             )
-        current_by_owner[key] = (
-            current_by_owner.get(key, ZERO) + lot.base_remaining
+        current_by_owner[key] = exact_decimal_sum(
+            (current_by_owner.get(key, ZERO), lot.base_remaining)
         )
 
     for key, current in current_by_owner.items():
@@ -626,6 +905,9 @@ def create_or_load_position_exit_manifest(
     current_price: Decimal,
     now: float,
     store: EconomicExitManifestStore | None = None,
+    target_net_profit_bps: Decimal | None = None,
+    expected_exit_cost_bps: Decimal | None = None,
+    protected_floor_price: Decimal | None = None,
 ) -> EconomicPositionExitManifest:
     pid = _text(position_id, "position_id")
     timestamp = _time(now, "now")
@@ -650,21 +932,21 @@ def create_or_load_position_exit_manifest(
         governor=governor,
         pair=snapshot.pair,
     )
-    _validate_sellability(
-        owners,
-        trading_rule=trading_rule,
-        current_price=current_price,
-    )
+    protected = target_net_profit_bps is not None or expected_exit_cost_bps is not None
+    if protected and (target_net_profit_bps is None or expected_exit_cost_bps is None):
+        raise ValueError("economic exit requires explicit target and exit costs")
+    if not protected:
+        if protected_floor_price is not None:
+            raise ValueError("economic exit floor requires explicit target and costs")
+        _validate_sellability(
+            owners, trading_rule=trading_rule, current_price=current_price
+        )
 
-    target_base = sum((owner.target_base for owner in owners), ZERO)
-    target_basis = sum(
-        (owner.target_cost_basis_quote for owner in owners),
-        ZERO,
+    target_base = exact_decimal_sum((owner.target_base for owner in owners))
+    target_basis = exact_decimal_sum(
+        (owner.target_cost_basis_quote for owner in owners)
     )
-    target_fees = sum(
-        (owner.target_entry_fees_quote for owner in owners),
-        ZERO,
-    )
+    target_fees = exact_decimal_sum((owner.target_entry_fees_quote for owner in owners))
     if (
         target_base != snapshot.active_base
         or target_basis != snapshot.active_cost_basis_quote
@@ -674,12 +956,34 @@ def create_or_load_position_exit_manifest(
             "exit owner manifest does not exactly cover ACTIVE_TRADE geometry"
         )
 
+    protected_price = None
+    if protected:
+        # Use the already-tested exact-parcel algebra. Whole-position disposal
+        # follows the same proportional allocation, including ENTRY owners.
+        protected_price = protected_partial_recycle_price(
+            target_base=target_base,
+            target_cost_basis_quote=target_basis,
+            target_entry_fees_quote=target_fees,
+            target_net_profit_bps=target_net_profit_bps,
+            expected_exit_cost_bps=expected_exit_cost_bps,
+            trading_rule=trading_rule,
+        )
+        if protected_floor_price is not None:
+            floor = _decimal(
+                protected_floor_price, "protected_floor_price", positive=True
+            )
+            with localcontext() as context:
+                context.prec = 80
+                tick = trading_rule.min_price_increment
+                protected_price = max(
+                    protected_price,
+                    (floor / tick).to_integral_value(rounding=ROUND_CEILING) * tick,
+                )
+
+    identity = _manifest_id(position_id=pid, pair=snapshot.pair, owners=owners)
+
     manifest = EconomicPositionExitManifest(
-        manifest_id=_manifest_id(
-            position_id=pid,
-            pair=snapshot.pair,
-            owners=owners,
-        ),
+        manifest_id=identity,
         position_id=pid,
         pair=snapshot.pair,
         status=EconomicExitManifestStatus.OPEN,
@@ -697,12 +1001,19 @@ def create_or_load_position_exit_manifest(
         strategic_retained_base_at_creation=(
             snapshot.strategic_retained_base_same_pair
         ),
-        unattributed_base_at_creation=(
-            snapshot.unattributed_base_same_pair
-        ),
+        unattributed_base_at_creation=(snapshot.unattributed_base_same_pair),
         owners=owners,
         created_at=timestamp,
         completed_at=None,
+        target_net_profit_bps=target_net_profit_bps,
+        expected_exit_cost_bps=expected_exit_cost_bps,
+        protected_limit_price=protected_price,
+        sell_executor_id=(
+            None
+            if not protected
+            else "spectra-whole-exit-" + identity.rsplit(":", 1)[-1]
+        ),
+        cash_proceeds_route="PRODUCTIVE" if protected else None,
     )
     created = manifest_store.create(manifest)
     validate_manifest_against_ledger(created, ledger=ledger)
@@ -723,9 +1034,9 @@ def realized_pnl_for_manifest(
     *,
     ledger: EconomicPositionLedger,
 ) -> Decimal:
-    return (
-        ledger.snapshot(manifest.position_id).realized_pnl_quote
-        - manifest.realized_pnl_before_quote
+    return exact_decimal_difference(
+        ledger.snapshot(manifest.position_id).realized_pnl_quote,
+        manifest.realized_pnl_before_quote,
     )
 
 
@@ -738,17 +1049,35 @@ def assess_position_exit_manifest(
 ) -> EconomicExitProgress:
     validate_manifest_against_ledger(manifest, ledger=ledger)
     snapshot = ledger.snapshot(manifest.position_id)
+    if manifest.sell_executor_id is not None:
+        manifest_store = store or EconomicExitManifestStore(ledger.path)
+        if manifest_store.protection_conflicts(manifest.manifest_id):
+            raise RuntimeError(
+                "economic exit profit protection conflict requires resolution"
+            )
+        manifest_store.validate_fill_coverage(
+            manifest, remaining=snapshot.active_base, now=now
+        )
 
-    realized = (
-        snapshot.realized_pnl_quote
-        - manifest.realized_pnl_before_quote
+    realized = exact_decimal_difference(
+        snapshot.realized_pnl_quote, manifest.realized_pnl_before_quote
     )
     retained = snapshot.strategic_retained_base_same_pair
 
     if snapshot.active_base == ZERO:
         if snapshot.status != EconomicPositionStatus.CLOSED:
-            raise RuntimeError(
-                "zero active base did not close economic position"
+            raise RuntimeError("zero active base did not close economic position")
+        if (
+            manifest.sell_executor_id is not None
+            and not manifest_store.finality_confirmed(manifest.manifest_id)
+        ):
+            return EconomicExitProgress(
+                manifest_id=manifest.manifest_id,
+                state=EconomicExitProgressState.PENDING,
+                remaining_active_base=ZERO,
+                realized_pnl_quote=realized,
+                strategic_retained_base=retained,
+                reasons=("confirmed_inventory_flat_awaiting_sell_executor_finality",),
             )
         if store is not None:
             if now is None:
@@ -771,8 +1100,21 @@ def assess_position_exit_manifest(
 
     remaining = snapshot.active_base
     if (
+        manifest.sell_executor_id is not None
+        and manifest_store.dispatch_claimed(manifest.manifest_id)
+        and not manifest_store.finality_confirmed(manifest.manifest_id)
+    ):
+        return EconomicExitProgress(
+            manifest_id=manifest.manifest_id,
+            state=EconomicExitProgressState.PENDING,
+            remaining_active_base=remaining,
+            realized_pnl_quote=realized,
+            strategic_retained_base=retained,
+            reasons=("protected_sell_pending_remainder_remains_owned",),
+        )
+    if (
         remaining < manifest.min_order_size
-        or remaining * manifest.reference_price
+        or remaining * (manifest.protected_limit_price or manifest.reference_price)
         < manifest.min_notional_quote
     ):
         return EconomicExitProgress(

@@ -293,12 +293,13 @@ def test_profit_exit_releases_recovery_budget_only_after_terminal_accounting(
         )
     )
 
-    assert result["exit_requested"] is True
+    assert result["exit_requested"] is False
     assert result["all_recovery_budget_released"] is True
     assert result["capital_recycling_state"] == "RELEASED"
     assert result["executors"][0]["realized_pnl_quote"] == "2.10"
     assert result["executors"][0]["remaining_recovery_exposure_quote"] == "0"
-    assert client.executors.stop_calls == [("exec-profit-1", False)]
+    assert client.executors.stop_calls == []
+    assert "legacy_profit_exit_requires_unified_protected_manifest" in result["reasons"]
     assert g.current_recovery_exposure_quote() == D("0")
 
 

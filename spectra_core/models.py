@@ -46,6 +46,9 @@ class CapitalSnapshot:
     pair_exposure_quote: Decimal = Decimal("0")
     position_exposure_quote: Decimal = Decimal("0")
     recovery_exposure_quote: Decimal = Decimal("0")
+    account_name: str | None = None
+    connector_name: str | None = None
+    quote_asset: str | None = None
 
 
 @dataclass(frozen=True)
@@ -55,6 +58,9 @@ class CapitalProposal:
     intent: IntentKind
     amount_quote: Decimal
     leverage: Decimal = Decimal("1")
+    account_name: str | None = None
+    connector_name: str | None = None
+    quote_asset: str | None = None
 
 
 @dataclass(frozen=True)

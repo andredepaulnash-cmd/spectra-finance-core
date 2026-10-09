@@ -15,10 +15,7 @@ from .fill_reconciliation import (
 )
 from .models import IntentKind
 
-
-SPECTRA_HUMMINGBOT_API_REVISION = (
-    "84426ffbf9ba09522b4444664f9770236205ae29"
-)
+SPECTRA_HUMMINGBOT_API_REVISION = "84426ffbf9ba09522b4444664f9770236205ae29"
 
 
 def _text(value: object, field: str) -> str:
@@ -361,9 +358,7 @@ def synchronize_executor_evidence(
     # Preflight every existing binding before any new ledger mutation.
     for order in order_snapshot.orders:
         expected_role = (
-            buy_role
-            if order.side == "BUY"
-            else EconomicFillRole.POSITION_EXIT
+            buy_role if order.side == "BUY" else EconomicFillRole.POSITION_EXIT
         )
         existing = reconciler.get_binding(order.order_id)
         if existing is not None and not _binding_matches(
@@ -401,9 +396,7 @@ def synchronize_executor_evidence(
             created_at=order.created_at,
         )
 
-    buy_trades = [
-        trade for trade in trade_snapshot.trades if trade.side == "BUY"
-    ]
+    buy_trades = [trade for trade in trade_snapshot.trades if trade.side == "BUY"]
     for trade in buy_trades:
         result = reconciler.reconcile_trade_fill(
             {
@@ -457,9 +450,7 @@ def synchronize_executor_evidence(
             )
         except ValueError:
             unresolved_orders.append(order.order_id)
-            unresolved_trades.extend(
-                sell_trade_ids_by_order.get(order.order_id, ())
-            )
+            unresolved_trades.extend(sell_trade_ids_by_order.get(order.order_id, ()))
 
     for trade in trade_snapshot.trades:
         if trade.side != "SELL" or trade.trade_id in unresolved_trades:
@@ -507,8 +498,15 @@ def synchronize_executor_evidence(
         and not unresolved_order_set
         and not unresolved_trade_set
     )
+    cash_authority = reconciler.governor.cash_authority_snapshot()
+    cash_blocked = cash_authority is not None and cash_authority.blocked
+    # Inventory reconciliation must remain reachable while sale cash is held.
+    # New spending is gated by the Governor; a pending cross-journal handoff
+    # must not prevent the runtime from reconciling its existing sale executor.
 
     reasons: list[str] = []
+    if cash_blocked:
+        reasons.append("cash_authority_requires_reconciliation")
     if fully:
         reasons.append("executor_accounting_fully_reconciled")
     else:
