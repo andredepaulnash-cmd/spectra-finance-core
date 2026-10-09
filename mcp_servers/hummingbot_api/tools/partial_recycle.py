@@ -291,6 +291,8 @@ async def synchronize_partial_recycle_executor(
         else:
             applied += 1
 
+    if outstanding > remaining_partial_recycle_base(manifest, ledger=ledger):
+        conflicts.append("outstanding_orders_exceed_manifest_inventory")
     for conflict in conflicts:
         store.record_protection_conflict(
             manifest_id=manifest.manifest_id, conflict=conflict, now=now

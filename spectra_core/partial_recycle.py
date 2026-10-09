@@ -10,6 +10,7 @@ from math import isfinite
 from pathlib import Path
 
 from .capital_governor import CapitalGovernor
+from .decimal_math import exact_decimal_difference, exact_decimal_sum
 from .economic_position import (
     EconomicLot,
     EconomicLotSource,
@@ -356,6 +357,23 @@ class PartialRecycleStore:
                         raise RuntimeError("partial recycle manifest replay conflicts")
                     conn.rollback()
                     return current
+                whole_exit_table = conn.execute("""
+                    SELECT 1 FROM sqlite_master
+                    WHERE type = 'table' AND name = 'economic_exit_manifests'
+                    """).fetchone()
+                if whole_exit_table is not None:
+                    whole_exit = conn.execute(
+                        """
+                        SELECT 1 FROM economic_exit_manifests
+                        WHERE position_id = ? AND status = 'OPEN'
+                        LIMIT 1
+                        """,
+                        (manifest.position_id,),
+                    ).fetchone()
+                    if whole_exit is not None:
+                        raise RuntimeError(
+                            "open economic exit manifest blocks partial recycling"
+                        )
                 conn.execute(
                     """
                     INSERT INTO partial_recycle_manifests (
@@ -565,9 +583,8 @@ class PartialRecycleStore:
                 """,
                 (mid,),
             ).fetchall()
-        return sum(
-            (Decimal(str(row["realized_pnl_quote"])) for row in rows),
-            ZERO,
+        return exact_decimal_sum(
+            (Decimal(str(row["realized_pnl_quote"])) for row in rows)
         )
 
     def mark_completed(self, manifest_id: str, *, now: float) -> None:
@@ -624,14 +641,12 @@ def _owner_from_lots(
         proposal_id=proposal_id,
         executor_id=executor_id,
         lot_ids=tuple(lot.lot_id for lot in lots),
-        target_base=sum((lot.base_remaining for lot in lots), ZERO),
-        target_cost_basis_quote=sum(
-            (lot.cost_basis_remaining_quote for lot in lots),
-            ZERO,
+        target_base=exact_decimal_sum((lot.base_remaining for lot in lots)),
+        target_cost_basis_quote=exact_decimal_sum(
+            (lot.cost_basis_remaining_quote for lot in lots)
         ),
-        target_entry_fees_quote=sum(
-            (lot.entry_fees_remaining_quote for lot in lots),
-            ZERO,
+        target_entry_fees_quote=exact_decimal_sum(
+            (lot.entry_fees_remaining_quote for lot in lots)
         ),
     )
 
@@ -661,15 +676,9 @@ def _aggregate_geometry(
     price: Decimal,
     exit_cost_bps: Decimal,
 ) -> tuple[Decimal, Decimal, Decimal, Decimal, Decimal]:
-    base = sum((owner.target_base for owner in owners), ZERO)
-    basis = sum(
-        (owner.target_cost_basis_quote for owner in owners),
-        ZERO,
-    )
-    fees = sum(
-        (owner.target_entry_fees_quote for owner in owners),
-        ZERO,
-    )
+    base = exact_decimal_sum((owner.target_base for owner in owners))
+    basis = exact_decimal_sum((owner.target_cost_basis_quote for owner in owners))
+    fees = exact_decimal_sum((owner.target_entry_fees_quote for owner in owners))
     gross = base * price
     pnl = gross - (gross * exit_cost_bps / TEN_THOUSAND) - basis - fees
     invested = basis + fees
@@ -818,7 +827,7 @@ def validate_partial_recycle_manifest(
                 or lot.ownership != OwnershipBucket.ACTIVE_TRADE
             ):
                 raise RuntimeError("partial recycle lot ownership changed")
-            current_base += lot.base_remaining
+            current_base = exact_decimal_sum((current_base, lot.base_remaining))
         if current_base > owner.target_base:
             raise RuntimeError(
                 "partial recycle inventory increased after manifest creation"
@@ -831,13 +840,12 @@ def remaining_partial_recycle_base(
     ledger: EconomicPositionLedger,
 ) -> Decimal:
     active = {lot.lot_id: lot for lot in ledger.list_active_lots(manifest.position_id)}
-    return sum(
+    return exact_decimal_sum(
         (
             active[lot_id].base_remaining
             for lot_id in manifest.lot_ids
             if lot_id in active
-        ),
-        ZERO,
+        )
     )
 
 
@@ -865,7 +873,9 @@ def assess_partial_recycle_manifest(
     recorded = store.durable_fill_geometry(manifest.manifest_id)
     # Ledger, Governor and journal updates are replayable, but not one atomic
     # transaction. A crash must not turn an unjournaled disposal into success.
-    if sum((base for _, base, _ in recorded), ZERO) != manifest.target_base - remaining:
+    if exact_decimal_sum((base for _, base, _ in recorded)) != exact_decimal_difference(
+        manifest.target_base, remaining
+    ):
         raise RuntimeError(
             "partial recycle disposed inventory lacks exact durable fill coverage"
         )

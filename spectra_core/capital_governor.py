@@ -7,13 +7,10 @@ import time
 from decimal import Decimal
 from pathlib import Path
 
+from .decimal_math import exact_decimal_difference, exact_decimal_sum
 from .executor_accounting import (
     assess_recovery_exposure,
     reconcile_recovery_exposure_with_position_holds,
-)
-from .position_hold_accounting import (
-    PositionHoldAccounting,
-    position_hold_accounting_from_raw,
 )
 from .models import (
     CapitalDecision,
@@ -21,12 +18,15 @@ from .models import (
     CapitalProposal,
     CapitalSnapshot,
     DecisionStatus,
-    IntentKind,
     ExecutionProvenance,
-    ExecutorAccountingObservation,
     ExecutorAccountingDelta,
+    ExecutorAccountingObservation,
+    IntentKind,
 )
-
+from .position_hold_accounting import (
+    PositionHoldAccounting,
+    position_hold_accounting_from_raw,
+)
 
 ZERO = Decimal("0")
 
@@ -1704,7 +1704,6 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
-
     @staticmethod
     def _position_hold_scope(
         *,
@@ -2023,10 +2022,7 @@ class CapitalGovernor:
             """,
             (proposal_id,),
         ).fetchall()
-        return sum(
-            (Decimal(str(row["amount_quote"])) for row in rows),
-            ZERO,
-        )
+        return exact_decimal_sum(Decimal(str(row["amount_quote"])) for row in rows)
 
     def record_recovery_recycle_release(
         self,
@@ -2086,15 +2082,13 @@ class CapitalGovernor:
                         str(existing["proposal_id"]) != pid
                         or Decimal(str(existing["amount_quote"])) != amount_quote
                     ):
-                        raise RuntimeError(
-                            "recovery recycle release replay conflicts"
-                        )
+                        raise RuntimeError("recovery recycle release replay conflicts")
                     conn.commit()
                     return self._recovery_recycle_release_quote(conn, pid)
 
                 released = self._recovery_recycle_release_quote(conn, pid)
                 authorized = Decimal(str(provenance["authorized_quote"]))
-                if released + amount_quote > authorized:
+                if exact_decimal_sum((released, amount_quote)) > authorized:
                     raise ValueError(
                         "recycle release exceeds authorized recovery capital"
                     )
@@ -2108,7 +2102,7 @@ class CapitalGovernor:
                     (rid, pid, str(amount_quote), time.time()),
                 )
                 conn.commit()
-                return released + amount_quote
+                return exact_decimal_sum((released, amount_quote))
             except Exception:
                 conn.rollback()
                 raise
@@ -2164,9 +2158,7 @@ class CapitalGovernor:
                 authorized_quote=Decimal(str(row["authorized_quote"])),
                 leverage=Decimal(str(row["leverage"])),
                 account_name=(
-                    None
-                    if row["account_name"] is None
-                    else str(row["account_name"])
+                    None if row["account_name"] is None else str(row["account_name"])
                 ),
                 connector_name=(
                     None
@@ -2174,9 +2166,7 @@ class CapitalGovernor:
                     else str(row["connector_name"])
                 ),
                 controller_id=(
-                    None
-                    if row["controller_id"] is None
-                    else str(row["controller_id"])
+                    None if row["controller_id"] is None else str(row["controller_id"])
                 ),
             )
 
@@ -2185,9 +2175,16 @@ class CapitalGovernor:
                     conn,
                     provenance.proposal_id,
                 )
-                total += max(
-                    provenance.authorized_quote - released,
-                    ZERO,
+                total = exact_decimal_sum(
+                    (
+                        total,
+                        max(
+                            exact_decimal_difference(
+                                provenance.authorized_quote, released
+                            ),
+                            ZERO,
+                        ),
+                    )
                 )
                 continue
 
@@ -2204,12 +2201,8 @@ class CapitalGovernor:
                     if row["obs_close_type"] is None
                     else str(row["obs_close_type"])
                 ),
-                filled_amount_quote=Decimal(
-                    str(row["obs_filled_amount_quote"])
-                ),
-                cum_fees_quote=Decimal(
-                    str(row["obs_cum_fees_quote"])
-                ),
+                filled_amount_quote=Decimal(str(row["obs_filled_amount_quote"])),
+                cum_fees_quote=Decimal(str(row["obs_cum_fees_quote"])),
                 position_size_quote=(
                     None
                     if row["obs_position_size_quote"] is None
@@ -2246,9 +2239,16 @@ class CapitalGovernor:
                         conn,
                         provenance.proposal_id,
                     )
-                    total += max(
-                        assessment.exposure_quote - released,
-                        ZERO,
+                    total = exact_decimal_sum(
+                        (
+                            total,
+                            max(
+                                exact_decimal_difference(
+                                    assessment.exposure_quote, released
+                                ),
+                                ZERO,
+                            ),
+                        )
                     )
                     continue
 
@@ -2263,19 +2263,25 @@ class CapitalGovernor:
                 # Missing/stale evidence and even a fresh empty exact scope
                 # remain fail-closed through the reconciliation helper.
                 if holds is not None:
-                    assessment = (
-                        reconcile_recovery_exposure_with_position_holds(
-                            observation,
-                            provenance,
-                            holds,
-                        )
+                    assessment = reconcile_recovery_exposure_with_position_holds(
+                        observation,
+                        provenance,
+                        holds,
                     )
 
             released = self._recovery_recycle_release_quote(
                 conn,
                 provenance.proposal_id,
             )
-            total += max(assessment.exposure_quote - released, ZERO)
+            total = exact_decimal_sum(
+                (
+                    total,
+                    max(
+                        exact_decimal_difference(assessment.exposure_quote, released),
+                        ZERO,
+                    ),
+                )
+            )
 
         return total
 
