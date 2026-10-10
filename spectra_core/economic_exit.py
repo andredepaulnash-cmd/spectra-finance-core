@@ -6,6 +6,7 @@ import sqlite3
 from dataclasses import dataclass, replace
 from decimal import ROUND_CEILING, Decimal, localcontext
 from enum import StrEnum
+from fractions import Fraction
 from math import isfinite
 from pathlib import Path
 from typing import Iterable
@@ -70,6 +71,7 @@ class EconomicExitProgressState(StrEnum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
     DUST_BLOCKED = "DUST_BLOCKED"
+    RESIDUAL_RETAINED = "RESIDUAL_RETAINED"
 
 
 @dataclass(frozen=True)
@@ -208,6 +210,14 @@ class EconomicExitManifestStore:
                     realized_pnl_quote TEXT NOT NULL, price TEXT NOT NULL, occurred_at REAL NOT NULL
                 );
             """)
+            finality_columns = {
+                str(row["name"])
+                for row in conn.execute("PRAGMA table_info(economic_exit_finality)")
+            }
+            if "proof_json" not in finality_columns:
+                conn.execute(
+                    "ALTER TABLE economic_exit_finality ADD COLUMN proof_json TEXT"
+                )
 
     @staticmethod
     def _owners_json(owners: Iterable[EconomicExitOwner]) -> str:
@@ -402,18 +412,96 @@ class EconomicExitManifestStore:
                     conn.rollback()
                     return self._from_row(open_row)
 
-                if conn.execute(
-                    "SELECT 1 FROM sqlite_master WHERE type = 'table' "
-                    "AND name = 'partial_recycle_manifests'"
-                ).fetchone():
-                    partial = conn.execute(
-                        "SELECT 1 FROM partial_recycle_manifests "
-                        "WHERE position_id = ? AND status = 'OPEN'",
+                # Whole-position and partial sells share one ownership ledger.
+                # Recheck both scope and dispatch exclusions inside the same
+                # write transaction used to install the immutable manifest.
+                tables = {
+                    str(row["name"])
+                    for row in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    )
+                }
+                if "partial_recycle_manifests" in tables:
+                    if conn.execute(
+                        "SELECT 1 FROM partial_recycle_manifests WHERE position_id = ? AND status = 'OPEN' LIMIT 1",
                         (manifest.position_id,),
-                    ).fetchone()
-                    if partial:
-                        raise RuntimeError(
-                            "open partial recycle manifest blocks economic exit"
+                    ).fetchone():
+                        raise ValueError(
+                            "open partial manifest blocks whole-position exit"
+                        )
+                    if "partial_recycle_dispatch_claims" in tables:
+                        from .partial_recycle import (
+                            partial_dispatch_terminal_certificate,
+                        )
+
+                        claims = conn.execute(
+                            "SELECT d.manifest_id FROM partial_recycle_dispatch_claims d JOIN partial_recycle_manifests m "
+                            "ON m.manifest_id = d.manifest_id WHERE m.position_id = ?",
+                            (manifest.position_id,),
+                        ).fetchall()
+                        for claim in claims:
+                            if (
+                                partial_dispatch_terminal_certificate(
+                                    conn, str(claim["manifest_id"]), schema="main"
+                                )
+                                is None
+                            ):
+                                raise ValueError(
+                                    "unproven partial dispatch blocks whole-position exit"
+                                )
+                position = conn.execute(
+                    "SELECT pair,status FROM economic_positions WHERE position_id = ?",
+                    (manifest.position_id,),
+                ).fetchone()
+                if (
+                    position is None
+                    or str(position["status"]) != EconomicPositionStatus.ACTIVE.value
+                    or str(position["pair"]) != manifest.pair
+                ):
+                    raise ValueError(
+                        "whole-position exit requires unchanged ACTIVE ownership"
+                    )
+                lots = conn.execute(
+                    "SELECT * FROM economic_lots WHERE position_id = ? AND ownership = 'ACTIVE_TRADE'",
+                    (manifest.position_id,),
+                ).fetchall()
+                remaining = {
+                    str(row["lot_id"]): row
+                    for row in lots
+                    if Decimal(str(row["base_remaining"])) > ZERO
+                }
+                if set(remaining) != set(manifest.lot_ids):
+                    raise ValueError(
+                        "whole-position exit lot scope changed before manifest claim"
+                    )
+                for owner in manifest.owners:
+                    scoped = [remaining[lot_id] for lot_id in owner.lot_ids]
+                    if any(
+                        str(row["proposal_id"]) != owner.proposal_id
+                        or str(row["executor_id"]) != owner.executor_id
+                        for row in scoped
+                    ):
+                        raise ValueError(
+                            "whole-position exit owner changed before manifest claim"
+                        )
+                    if (
+                        exact_decimal_sum(
+                            Decimal(str(row["base_remaining"])) for row in scoped
+                        )
+                        != owner.target_base
+                        or exact_decimal_sum(
+                            Decimal(str(row["cost_basis_remaining_quote"]))
+                            for row in scoped
+                        )
+                        != owner.target_cost_basis_quote
+                        or exact_decimal_sum(
+                            Decimal(str(row["entry_fees_remaining_quote"]))
+                            for row in scoped
+                        )
+                        != owner.target_entry_fees_quote
+                    ):
+                        raise ValueError(
+                            "whole-position exit geometry changed before manifest claim"
                         )
 
                 conn.execute(
@@ -504,6 +592,61 @@ class EconomicExitManifestStore:
             ).fetchone()
             if row is None or row["status"] != EconomicExitManifestStatus.OPEN.value:
                 raise RuntimeError("economic exit dispatch requires an OPEN manifest")
+            if conn.execute(
+                "SELECT 1 FROM economic_exit_dispatch_claims WHERE manifest_id = ?",
+                (manifest_id,),
+            ).fetchone():
+                return False
+            manifest = self._from_row(
+                conn.execute(
+                    "SELECT * FROM economic_exit_manifests WHERE manifest_id = ?",
+                    (manifest_id,),
+                ).fetchone()
+            )
+            position = conn.execute(
+                "SELECT status FROM economic_positions WHERE position_id = ?",
+                (manifest.position_id,),
+            ).fetchone()
+            if (
+                position is None
+                or position["status"] != EconomicPositionStatus.ACTIVE.value
+            ):
+                raise RuntimeError(
+                    "economic exit dispatch requires unchanged ACTIVE ownership"
+                )
+            lots = conn.execute(
+                "SELECT * FROM economic_lots WHERE position_id = ? AND ownership = 'ACTIVE_TRADE'",
+                (manifest.position_id,),
+            ).fetchall()
+            remaining = {
+                str(lot["lot_id"]): lot
+                for lot in lots
+                if Decimal(lot["base_remaining"]) > ZERO
+            }
+            if set(remaining) != set(manifest.lot_ids) or any(
+                exact_decimal_sum(
+                    Decimal(remaining[lid][field]) for lid in manifest.lot_ids
+                )
+                != target
+                for field, target in (
+                    ("base_remaining", manifest.target_active_base),
+                    ("cost_basis_remaining_quote", manifest.target_cost_basis_quote),
+                    ("entry_fees_remaining_quote", manifest.target_entry_fees_quote),
+                )
+            ):
+                raise RuntimeError(
+                    "economic exit ownership changed before dispatch claim"
+                )
+            if conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='partial_recycle_manifests'"
+            ).fetchone():
+                if conn.execute(
+                    "SELECT 1 FROM partial_recycle_manifests WHERE position_id = ? AND status='OPEN'",
+                    (manifest.position_id,),
+                ).fetchone():
+                    raise RuntimeError(
+                        "open partial manifest blocks economic exit dispatch"
+                    )
             cursor = conn.execute(
                 "INSERT OR IGNORE INTO economic_exit_dispatch_claims VALUES (?, ?)",
                 (manifest_id, _time(now, "now")),
@@ -533,26 +676,61 @@ class EconomicExitManifestStore:
             )
 
     def record_finality(
-        self, *, manifest_id: str, executor_id: str, now: float
+        self, *, manifest_id: str, executor_id: str, now: float, proof: dict
     ) -> None:
         manifest = self.load(manifest_id)
         if manifest is None or executor_id != manifest.sell_executor_id:
             raise RuntimeError("economic exit finality executor identity changed")
         with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            journal = conn.execute(
+                "SELECT * FROM economic_exit_fills WHERE manifest_id = ?",
+                (manifest_id,),
+            ).fetchall()
+            _validate_whole_terminal_proof(proof, manifest, journal)
+            current = exact_decimal_sum(
+                Decimal(row[0])
+                for row in conn.execute(
+                    "SELECT base_remaining FROM economic_lots WHERE position_id = ? AND ownership='ACTIVE_TRADE'",
+                    (manifest.position_id,),
+                )
+            )
+            if current != Decimal(proof["remaining_base"]):
+                raise RuntimeError(
+                    "whole terminal inventory changed before finality claim"
+                )
             conn.execute(
-                "INSERT OR IGNORE INTO economic_exit_finality VALUES (?, ?, ?)",
-                (manifest_id, executor_id, _time(now, "now")),
+                "INSERT INTO economic_exit_finality (manifest_id, executor_id, observed_at, proof_json) "
+                "VALUES (?, ?, ?, ?) ON CONFLICT(manifest_id) DO UPDATE SET "
+                "executor_id=excluded.executor_id, observed_at=excluded.observed_at, proof_json=excluded.proof_json",
+                (
+                    manifest_id,
+                    executor_id,
+                    _time(now, "now"),
+                    json.dumps(proof, sort_keys=True),
+                ),
             )
 
     def finality_confirmed(self, manifest_id: str) -> bool:
         with self._connect() as conn:
-            return (
-                conn.execute(
-                    "SELECT 1 FROM economic_exit_finality WHERE manifest_id = ?",
-                    (manifest_id,),
-                ).fetchone()
-                is not None
+            row = conn.execute(
+                "SELECT proof_json FROM economic_exit_finality WHERE manifest_id = ?",
+                (manifest_id,),
+            ).fetchone()
+            if row is None or row["proof_json"] is None:
+                return False
+            manifest_row = conn.execute(
+                "SELECT * FROM economic_exit_manifests WHERE manifest_id = ?",
+                (manifest_id,),
+            ).fetchone()
+            journal = conn.execute(
+                "SELECT * FROM economic_exit_fills WHERE manifest_id = ?",
+                (manifest_id,),
+            ).fetchall()
+            _validate_whole_terminal_proof(
+                json.loads(row["proof_json"]), self._from_row(manifest_row), journal
             )
+            return True
 
     def fill_recorded(self, trade_id: str) -> bool:
         with self._connect() as conn:
@@ -701,6 +879,225 @@ class EconomicExitManifestStore:
         return result
 
 
+def _validate_whole_terminal_proof(proof, manifest, journal):
+    """Validate exact terminal SELL coverage without trusting aggregate balances."""
+    if not isinstance(proof, dict):
+        raise RuntimeError("whole terminal proof is not an object")
+    body = {key: value for key, value in proof.items() if key != "sha256"}
+    digest = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    if (
+        proof.get("sha256") != digest
+        or proof.get("schema") != "spectra-whole-terminal-v1"
+        or proof.get("manifest_id") != manifest.manifest_id
+        or proof.get("executor_id") != manifest.sell_executor_id
+        or proof.get("executor_status") != "TERMINATED"
+    ):
+        raise RuntimeError("whole terminal proof identity conflicts")
+    orders, trades = proof.get("orders"), proof.get("trades")
+    if not isinstance(orders, list) or not orders or not isinstance(trades, list):
+        raise RuntimeError("whole terminal proof lacks exact order/trade coverage")
+    by_order = {row["order_id"]: row for row in orders}
+    by_trade = {row["trade_id"]: row for row in trades}
+    actual = {str(row["trade_id"]): row for row in journal}
+    if (
+        len(by_order) != len(orders)
+        or len(by_trade) != len(trades)
+        or set(by_trade) != set(actual)
+    ):
+        raise RuntimeError("whole terminal proof repeats or omits durable fills")
+    volume = _decimal(
+        Decimal(str(proof.get("executor_filled_quote"))),
+        "terminal_executor_volume",
+        non_negative=True,
+    )
+    if Fraction(volume) != sum(
+        (
+            Fraction(Decimal(trade["amount_base"])) * Fraction(Decimal(trade["price"]))
+            for trade in trades
+        ),
+        Fraction(0),
+    ):
+        raise RuntimeError(
+            "whole terminal proof executor volume differs from exact trades"
+        )
+    remaining = _decimal(
+        Decimal(str(proof.get("remaining_base"))),
+        "terminal_remaining_base",
+        non_negative=True,
+    )
+    if exact_decimal_sum(
+        Decimal(row["base_sold"]) for row in journal
+    ) != exact_decimal_difference(manifest.target_active_base, remaining):
+        raise RuntimeError(
+            "whole terminal proof inventory lacks exact disposed fill coverage"
+        )
+    terminal = {"FILLED", "CANCELED", "CANCELLED", "FAILED", "REJECTED", "EXPIRED"}
+    for order_id, order in by_order.items():
+        amount = _decimal(
+            Decimal(order["amount"]), "terminal_order_amount", positive=True
+        )
+        filled = _decimal(
+            Decimal(order["filled_amount"]), "terminal_order_fill", non_negative=True
+        )
+        if (
+            order["status"] not in terminal
+            or order["side"] != "SELL"
+            or order["order_type"] != "LIMIT"
+            or _decimal(Decimal(order["price"]), "terminal_order_price", positive=True)
+            < manifest.protected_limit_price
+            or filled > amount
+            or (order["status"] == "FILLED" and filled != amount)
+            or filled
+            != exact_decimal_sum(
+                Decimal(trade["amount_base"])
+                for trade in trades
+                if trade["order_id"] == order_id
+            )
+        ):
+            raise RuntimeError(
+                "whole terminal proof includes live, unprotected, or incompletely covered orders"
+            )
+    scopes = {(owner.account_name, owner.connector_name) for owner in manifest.owners}
+    if len(scopes) != 1:
+        raise RuntimeError("whole terminal proof has ambiguous owner scope")
+    account, connector = next(iter(scopes))
+    base_asset, quote_asset = manifest.pair.rsplit("-", 1)
+    for trade_id, trade in by_trade.items():
+        stored = actual[trade_id]
+        if (
+            trade["order_id"] not in by_order
+            or trade["side"] != "SELL"
+            or (trade["pair"], trade["account_name"], trade["connector_name"])
+            != (manifest.pair, account, connector)
+            or str(stored["order_id"]) != trade["order_id"]
+        ):
+            raise RuntimeError("whole terminal trade crosses immutable scope")
+        amount = _decimal(
+            Decimal(trade["amount_base"]), "terminal_trade_amount", positive=True
+        )
+        price = _decimal(Decimal(trade["price"]), "terminal_trade_price", positive=True)
+        fee = _decimal(
+            Decimal(trade["fee_paid"]), "terminal_trade_fee", non_negative=True
+        )
+        fee_currency = trade["fee_currency"]
+        if fee > ZERO and fee_currency not in {base_asset, quote_asset}:
+            raise RuntimeError("whole terminal trade fee has unproven valuation")
+        sold = Fraction(amount) + (Fraction(fee) if fee_currency == base_asset else 0)
+        gross = Fraction(amount) * Fraction(price)
+        exit_fee = Fraction(fee) if fee_currency == quote_asset else 0
+        if (
+            Fraction(Decimal(stored["base_sold"])) != sold
+            or Fraction(Decimal(stored["gross_proceeds_quote"])) != gross
+            or Fraction(Decimal(stored["exit_fee_quote"])) != exit_fee
+            or Decimal(stored["price"]) != price
+            or float(stored["occurred_at"])
+            != _time(trade["occurred_at"], "terminal_trade_time")
+        ):
+            raise RuntimeError(
+                "whole terminal proof conflicts with exact durable fills"
+            )
+        invested = Fraction(Decimal(stored["allocated_basis_quote"])) + Fraction(
+            Decimal(stored["allocated_entry_fees_quote"])
+        )
+        if (
+            price < manifest.protected_limit_price
+            or Fraction(Decimal(stored["realized_pnl_quote"]))
+            < invested * Fraction(manifest.target_net_profit_bps) / 10000
+        ):
+            raise RuntimeError(
+                "whole terminal proof violates immutable profit protection"
+            )
+
+
+def economic_exit_terminal_certificate(connection, manifest_id, *, schema="main"):
+    """Read a complete protected whole SELL proof under the ownership lock."""
+    if (
+        not isinstance(schema, str)
+        or not schema.isidentifier()
+        or schema
+        not in {str(row[1]) for row in connection.execute("PRAGMA database_list")}
+    ):
+        raise ValueError("invalid whole certificate database schema")
+    tables = {
+        str(row[0])
+        for row in connection.execute(
+            f"SELECT name FROM {schema}.sqlite_master WHERE type='table'"
+        )
+    }
+    required = {
+        "economic_exit_manifests",
+        "economic_exit_dispatch_claims",
+        "economic_exit_finality",
+        "economic_exit_fills",
+    }
+    if not required.issubset(tables):
+        return None
+    if not connection.execute(
+        f"SELECT 1 FROM {schema}.economic_exit_dispatch_claims WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone():
+        return None
+    columns = {
+        str(row[1])
+        for row in connection.execute(
+            f"PRAGMA {schema}.table_info(economic_exit_finality)"
+        )
+    }
+    if "proof_json" not in columns:
+        return None
+    row = connection.execute(
+        f"SELECT * FROM {schema}.economic_exit_finality WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone()
+    if row is None or row["proof_json"] is None:
+        return None
+    manifest_row = connection.execute(
+        f"SELECT * FROM {schema}.economic_exit_manifests WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone()
+    if manifest_row is None:
+        raise RuntimeError("whole terminal certificate lost its manifest")
+    manifest = EconomicExitManifestStore._from_row(manifest_row)
+    if (
+        manifest.cash_proceeds_route != "PRODUCTIVE"
+        or manifest.sell_executor_id != row["executor_id"]
+    ):
+        raise RuntimeError(
+            "whole terminal certificate changed its execution or cash route"
+        )
+    if (
+        "economic_exit_protection_conflicts" in tables
+        and connection.execute(
+            f"SELECT 1 FROM {schema}.economic_exit_protection_conflicts WHERE manifest_id = ?",
+            (manifest_id,),
+        ).fetchone()
+    ):
+        raise RuntimeError(
+            "whole terminal certificate has unresolved profit protection conflict"
+        )
+    journal = connection.execute(
+        f"SELECT * FROM {schema}.economic_exit_fills WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchall()
+    proof = json.loads(row["proof_json"])
+    _validate_whole_terminal_proof(proof, manifest, journal)
+    lots = connection.execute(
+        f"SELECT base_remaining FROM {schema}.economic_lots WHERE position_id = ? AND ownership = 'ACTIVE_TRADE'",
+        (manifest.position_id,),
+    ).fetchall()
+    remaining = exact_decimal_sum(Decimal(lot[0]) for lot in lots)
+    disposed = exact_decimal_sum(Decimal(fill["base_sold"]) for fill in journal)
+    if disposed != exact_decimal_difference(
+        manifest.target_active_base, Decimal(proof["remaining_base"])
+    ) or remaining > Decimal(proof["remaining_base"]):
+        raise RuntimeError(
+            "whole terminal certificate inventory lacks exact fill coverage"
+        )
+    return proof
+
+
 def _manifest_id(
     *,
     position_id: str,
@@ -727,6 +1124,13 @@ def _group_owners(
         if lot.proposal_id is None or lot.executor_id is None:
             raise ValueError(
                 f"active lot {lot.lot_id} lacks exact proposal/executor ownership"
+            )
+        conflicts = getattr(governor, "get_protected_buy_conflicts", lambda _: ())(
+            lot.proposal_id
+        )
+        if conflicts:
+            raise ValueError(
+                "economic exit owner has unresolved protected BUY conflict"
             )
 
         provenance = governor.get_execution_provenance(lot.proposal_id)
@@ -810,6 +1214,8 @@ def validate_manifest_against_ledger(
     manifest: EconomicPositionExitManifest,
     *,
     ledger: EconomicPositionLedger,
+    allow_additional_inventory: bool = False,
+    governor: CapitalGovernor | None = None,
 ) -> None:
     if manifest.cash_proceeds_route not in {None, "PRODUCTIVE"}:
         raise RuntimeError("whole exit cash route must preserve PRODUCTIVE purpose")
@@ -867,10 +1273,47 @@ def validate_manifest_against_ledger(
     unexpected = [
         lot.lot_id for lot in current_lots if lot.lot_id not in allowed_lot_ids
     ]
-    if unexpected:
+    if unexpected and not allow_additional_inventory:
         raise RuntimeError(
             "new ACTIVE_TRADE inventory appeared after exit manifest creation"
         )
+    if unexpected:
+        if governor is None:
+            raise RuntimeError(
+                "additional inventory reconciliation requires exact capital authority"
+            )
+        scopes = {
+            (owner.account_name, owner.connector_name) for owner in manifest.owners
+        }
+        if len(scopes) != 1:
+            raise RuntimeError(
+                "additional inventory has ambiguous economic owner scope"
+            )
+        scope = next(iter(scopes))
+        for lot in current_lots:
+            if lot.lot_id in allowed_lot_ids:
+                continue
+            provenance = (
+                None
+                if lot.proposal_id is None
+                else governor.get_execution_provenance(lot.proposal_id)
+            )
+            if (
+                provenance is None
+                or lot.executor_id != provenance.executor_id
+                or governor.get_execution_receipt(lot.proposal_id)
+                != provenance.executor_id
+                or provenance.pair.strip().upper() != manifest.pair
+                or (provenance.account_name, (provenance.connector_name or "").lower())
+                != scope
+                or provenance.intent not in {IntentKind.ENTRY, IntentKind.RECOVERY}
+            ):
+                raise RuntimeError(
+                    "additional inventory lacks exact scoped execution ownership"
+                )
+        # A previously dispatched SELL may only consume its original manifest
+        # lot IDs; subsequent confirmed BUY lots stay outside that parcel.
+        current_lots = [lot for lot in current_lots if lot.lot_id in allowed_lot_ids]
 
     owner_targets = {
         (owner.proposal_id, owner.executor_id): owner.target_base
@@ -912,6 +1355,9 @@ def create_or_load_position_exit_manifest(
     pid = _text(position_id, "position_id")
     timestamp = _time(now, "now")
     manifest_store = store or EconomicExitManifestStore(ledger.path)
+
+    if ledger.snapshot(pid).status == EconomicPositionStatus.RESIDUAL:
+        raise ValueError("retired residual ownership cannot dispatch another exit")
 
     existing = manifest_store.open_for_position(pid)
     if existing is not None:
@@ -1063,6 +1509,19 @@ def assess_position_exit_manifest(
         snapshot.realized_pnl_quote, manifest.realized_pnl_before_quote
     )
     retained = snapshot.strategic_retained_base_same_pair
+
+    if snapshot.status == EconomicPositionStatus.RESIDUAL:
+        return EconomicExitProgress(
+            manifest_id=manifest.manifest_id,
+            state=EconomicExitProgressState.RESIDUAL_RETAINED,
+            remaining_active_base=snapshot.active_base,
+            realized_pnl_quote=realized,
+            strategic_retained_base=retained,
+            reasons=(
+                "terminal_residual_exact_ownership_retained",
+                "no_capital_released_for_residual",
+            ),
+        )
 
     if snapshot.active_base == ZERO:
         if snapshot.status != EconomicPositionStatus.CLOSED:

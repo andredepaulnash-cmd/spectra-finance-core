@@ -6,6 +6,7 @@ exchange stub controls only observable executor, order and trade evidence.
 
 import asyncio
 import sqlite3
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from decimal import Decimal
@@ -245,6 +246,7 @@ def execute(case, client, *, current_price=D("0.50"), trading_rule=None):
             trading_rule=rule() if trading_rule is None else trading_rule,
             current_price=current_price,
             now=2010,
+            market_observed_at=time.time(),
         )
     )
 
@@ -389,8 +391,9 @@ def test_uncertain_creation_is_not_retried_even_if_next_lookup_says_not_found(
     client = EvidenceClient(decision.manifest)
     client.executors.create_failure = TimeoutError("submission acknowledgement lost")
     install_evidence(monkeypatch, decision.manifest)
-    with pytest.raises((RuntimeError, TimeoutError)):
-        execute(protected_case, client)
+    result = execute(protected_case, client)
+    assert result["executed"] is False
+    assert result["dispatch_state"] == "AMBIGUOUS_REQUIRES_RECONCILIATION"
     assert len(client.executors.created) == 1
     client.executors.known = False
     client.executors.create_failure = None
@@ -419,8 +422,9 @@ def test_none_executor_lookup_is_ambiguous_and_never_permission_to_dispatch(
 
     monkeypatch.setattr(client.executors, "get_executor", lookup)
     install_evidence(monkeypatch, decision.manifest)
-    with pytest.raises((RuntimeError, ValueError)):
-        execute(protected_case, client)
+    result = execute(protected_case, client)
+    assert result["executed"] is False
+    assert result["dispatch_state"] == "LOOKUP_UNKNOWN_REQUIRES_RECONCILIATION"
     assert client.executors.created == []
     assert g.current_recovery_exposure_quote() == D("4")
     assert book.get_lot("recovery-profit-lot").base_remaining == D("10")
@@ -706,23 +710,40 @@ def test_mixed_basis_parcel_uses_proportional_aggregate_profit_floor(
 
 
 def test_concurrent_dispatch_claim_has_one_winner_and_survives_restart(protected_case):
-    _, book, decision = protected_case
+    g, book, decision = protected_case
     manifest = decision.manifest
     stores = (PartialRecycleStore(book.path), PartialRecycleStore(book.path))
     with ThreadPoolExecutor(max_workers=2) as pool:
         winners = list(
             pool.map(
                 lambda store: store.claim_dispatch(
-                    manifest_id=manifest.manifest_id, now=2010
+                    manifest,
+                    now=2010,
+                    ledger=book,
+                    governor=g,
+                    trading_rule=rule(),
+                    current_price=D("0.50"),
+                    market_observed_at=time.time(),
                 ),
                 stores,
             )
         )
-    assert winners.count(True) == 1
-    assert winners.count(False) == 1
+    assert sum(winner is not None and winner.allowed for winner in winners) == 1
+    assert winners.count(None) == 1
     restarted = PartialRecycleStore(book.path)
     assert restarted.dispatch_claimed(manifest.manifest_id) is True
-    assert restarted.claim_dispatch(manifest_id=manifest.manifest_id, now=2020) is False
+    assert (
+        restarted.claim_dispatch(
+            manifest,
+            now=2020,
+            ledger=book,
+            governor=g,
+            trading_rule=rule(),
+            current_price=D("0.50"),
+            market_observed_at=time.time(),
+        )
+        is None
+    )
 
 
 def test_combined_live_orders_exceeding_inventory_create_a_durable_conflict(
@@ -791,8 +812,8 @@ def test_known_executor_without_order_or_fill_proof_keeps_manifest_pending(
 
     monkeypatch.setattr(client.executors, "get_executor", lookup)
     install_evidence(monkeypatch, manifest, no_orders=True)
-    result = execute(protected_case, client)
-    assert result["result"]["completed"] is False
+    with pytest.raises(RuntimeError, match="profit protection conflict"):
+        execute(protected_case, client)
     assert client.executors.created == []
     assert book.get_lot("recovery-profit-lot").base_remaining == D("10")
     assert g.current_recovery_exposure_quote() == D("4")

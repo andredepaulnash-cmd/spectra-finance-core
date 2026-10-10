@@ -121,8 +121,7 @@ class AccountingHealthSupervisor:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS economic_accounting_health (
                     position_id TEXT PRIMARY KEY,
                     recorded_state TEXT NOT NULL,
@@ -138,8 +137,7 @@ class AccountingHealthSupervisor:
                     unresolved_trade_ids_json TEXT NOT NULL,
                     reason TEXT NOT NULL
                 )
-                """
-            )
+                """)
 
     def record_reports(
         self,
@@ -163,31 +161,40 @@ class AccountingHealthSupervisor:
                 raise ValueError("accounting report belongs to another position")
 
         unresolved_orders = _ids(
-            order_id
-            for report in rows
-            for order_id in report.unresolved_order_ids
+            order_id for report in rows for order_id in report.unresolved_order_ids
         )
         unresolved_trades = _ids(
-            trade_id
-            for report in rows
-            for trade_id in report.unresolved_trade_ids
+            trade_id for report in rows for trade_id in report.unresolved_trade_ids
         )
         fully = sum(1 for report in rows if report.fully_reconciled)
         complete = (
-            fully == len(rows)
-            and not unresolved_orders
-            and not unresolved_trades
+            fully == len(rows) and not unresolved_orders and not unresolved_trades
         )
         state = (
-            AccountingHealthState.HEALTHY
-            if complete
-            else AccountingHealthState.HOLD
+            AccountingHealthState.HEALTHY if complete else AccountingHealthState.HOLD
         )
         reason = (
             "all_executor_accounting_fully_reconciled"
             if complete
             else "executor_accounting_requires_reconciliation"
         )
+        # Preserve the narrow policy-only HOLD needed to continue recording an
+        # already dispatched sale. Missing orders/trades or lagging cumulative
+        # fill evidence retain the generic HOLD and cannot grant that path.
+        if (
+            not complete
+            and not unresolved_orders
+            and not unresolved_trades
+            and all(
+                report.fully_reconciled
+                or (
+                    "protected_buy_requires_reconciliation" in report.reasons
+                    and "protected_buy_fill_coverage_incomplete" not in report.reasons
+                )
+                for report in rows
+            )
+        ):
+            reason = "protected_buy_requires_reconciliation"
 
         with self._connect() as conn:
             existing = conn.execute(
@@ -397,9 +404,7 @@ class AccountingHealthSupervisor:
         recorded = AccountingHealthState(str(row["recorded_state"]))
         last_attempt = float(row["last_attempt_at"])
         last_success = (
-            None
-            if row["last_success_at"] is None
-            else float(row["last_success_at"])
+            None if row["last_success_at"] is None else float(row["last_success_at"])
         )
         reason = str(row["reason"])
 
@@ -417,12 +422,8 @@ class AccountingHealthSupervisor:
                 reasons.append("accounting_reconciliation_stale")
 
         try:
-            unresolved_orders = tuple(
-                json.loads(str(row["unresolved_order_ids_json"]))
-            )
-            unresolved_trades = tuple(
-                json.loads(str(row["unresolved_trade_ids_json"]))
-            )
+            unresolved_orders = tuple(json.loads(str(row["unresolved_order_ids_json"])))
+            unresolved_trades = tuple(json.loads(str(row["unresolved_trade_ids_json"])))
         except json.JSONDecodeError as exc:
             raise RuntimeError("corrupt accounting health watermark") from exc
 
@@ -434,9 +435,7 @@ class AccountingHealthSupervisor:
             last_success_at=last_success,
             max_age_seconds=self.policy.max_age_seconds,
             proposal_count=int(row["proposal_count"]),
-            fully_reconciled_proposals=int(
-                row["fully_reconciled_proposals"]
-            ),
+            fully_reconciled_proposals=int(row["fully_reconciled_proposals"]),
             known_orders=int(row["known_orders"]),
             bound_orders=int(row["bound_orders"]),
             confirmed_fills=int(row["confirmed_fills"]),

@@ -11,6 +11,7 @@ from dataclasses import replace
 from decimal import Decimal
 from fractions import Fraction
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 
@@ -254,6 +255,20 @@ def install_evidence(
 
     monkeypatch.setattr(exit_tool, "fetch_executor_order_snapshot", order_snapshot)
     monkeypatch.setattr(exit_tool, "fetch_executor_trade_snapshot", trade_snapshot)
+    original_lookup = EvidenceExecutors.get_executor
+
+    async def exact_lookup(self, executor_id):
+        raw = await original_lookup(self, executor_id)
+        if executor_id == manifest.sell_executor_id and isinstance(raw, dict):
+            raw = dict(
+                raw,
+                filled_amount_quote=str(
+                    sum((trade.quote_amount for trade in fills), D("0"))
+                ),
+            )
+        return raw
+
+    monkeypatch.setattr(EvidenceExecutors, "get_executor", exact_lookup)
 
 
 def fill(manifest, trade_id, amount, *, price=None, fee=None, **changes):
@@ -278,17 +293,20 @@ def fill(manifest, trade_id, amount, *, price=None, fee=None, **changes):
 
 def execute(case, client, *, decision=None, rule=None):
     g, ledger, manifest = case
-    return asyncio.run(
-        exit_tool.execute_economic_position_exit(
-            client,
-            decision=protected_decision() if decision is None else decision,
-            governor=g,
-            ledger=ledger,
-            position_id=manifest.position_id,
-            trading_rule=trading_rule() if rule is None else rule,
-            now=2010,
+    with patch.object(exit_tool.time, "time", return_value=2010):
+        return asyncio.run(
+            exit_tool.execute_economic_position_exit(
+                client,
+                decision=protected_decision() if decision is None else decision,
+                governor=g,
+                ledger=ledger,
+                position_id=manifest.position_id,
+                trading_rule=trading_rule() if rule is None else rule,
+                now=2010,
+                best_bid=manifest.protected_limit_price or D("0.50"),
+                market_observed_at=2010,
+            )
         )
-    )
 
 
 def synchronize(case, client, *, ledger=None, manifest=None):
@@ -1050,8 +1068,18 @@ def partial_manifest(g, ledger):
 
 def test_open_whole_exit_blocks_new_partial_recycling(whole_case):
     g, ledger, manifest = whole_case
-    with pytest.raises(RuntimeError, match="economic exit|whole"):
-        partial_manifest(g, ledger)
+    decision = plan_partial_recycle(
+        ledger=ledger,
+        governor=g,
+        position_id=manifest.position_id,
+        trading_rule=trading_rule(),
+        current_price=D("0.50"),
+        expected_exit_fee_bps=D("40"),
+        slippage_allowance_bps=D("5"),
+        now=2000,
+    )
+    assert decision.manifest is None
+    assert "open_whole_exit_blocks_partial_manifest_creation" in decision.reasons
     assert ledger.snapshot(manifest.position_id).active_base == D("40")
     assert (
         PartialRecycleStore(ledger.path).open_for_position(manifest.position_id) is None
@@ -1061,7 +1089,7 @@ def test_open_whole_exit_blocks_new_partial_recycling(whole_case):
 def test_open_partial_recycle_blocks_new_whole_exit(tmp_path):
     g, ledger = build_owned_position(tmp_path)
     partial = partial_manifest(g, ledger)
-    with pytest.raises(RuntimeError, match="partial"):
+    with pytest.raises((RuntimeError, ValueError), match="partial"):
         create_manifest(g, ledger)
     assert PartialRecycleStore(ledger.path).load(partial.manifest_id) == partial
     assert (
@@ -1093,7 +1121,7 @@ def test_atomic_whole_and_partial_manifest_creations_cannot_both_win(tmp_path):
         try:
             store.create(manifest)
             return "CREATED"
-        except RuntimeError:
+        except (RuntimeError, ValueError):
             return "BLOCKED"
 
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -1300,7 +1328,7 @@ def test_exact_full_fill_stays_pending_until_seller_and_all_orders_are_final(
     assert client.executors.created == []
 
 
-def test_restart_resumes_protected_sell_in_runtime_until_confirmed_flat(
+def test_restart_reconciles_sell_but_requires_exact_retirement_before_completion(
     whole_case, tmp_path, monkeypatch
 ):
     g, ledger, manifest = whole_case
@@ -1379,9 +1407,10 @@ def test_restart_resumes_protected_sell_in_runtime_until_confirmed_flat(
     completed = resume(
         restarted_cycle, restarted_ledger, restarted_runtime, restarted_lifecycle, 2030
     )
-    assert completed["phase"] == VCAPRuntimePhase.COMPLETED.value
+    assert completed["phase"] == VCAPRuntimePhase.AWAITING_RECONCILIATION.value
+    assert restarted_ledger.get_retirement_certificate(manifest.position_id) is None
     assert (
-        restarted_lifecycle.load("whole-envelope").status == VCAPLifecycleStatus.RETIRED
+        restarted_lifecycle.load("whole-envelope").status == VCAPLifecycleStatus.ACTIVE
     )
     assert restarted_ledger.snapshot(manifest.position_id).active_base == D("0")
     assert restarted_ledger.get_lot("retained-43").base_remaining == D("43")

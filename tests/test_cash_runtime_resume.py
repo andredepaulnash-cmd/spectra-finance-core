@@ -52,6 +52,21 @@ def test_pending_sale_cash_survives_crash_and_runtime_finishes_same_sale(
     trade = evidence.fill(manifest, "cash-runtime-trade-1", str(manifest.target_base))
     client = evidence.EvidenceClient(manifest)
     client.executors.known = True
+    original_get_executor = client.executors.get_executor
+
+    async def terminal_sell(executor_id):
+        raw = await original_get_executor(executor_id)
+        if executor_id == manifest.sell_executor_id:
+            return dict(
+                raw,
+                status="TERMINATED",
+                close_type="COMPLETED",
+                filled_amount_quote=str(trade.quote_amount),
+                cum_fees_quote=str(trade.fee_paid),
+            )
+        return raw
+
+    client.executors.get_executor = terminal_sell
     evidence.install_evidence(monkeypatch, manifest, (trade,), status="FILLED")
 
     # Source evidence is fetched by the real health supervisor and bridge.

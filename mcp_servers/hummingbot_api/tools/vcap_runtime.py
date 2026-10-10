@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from decimal import Decimal
+import time
+from decimal import ROUND_DOWN, Decimal
 from typing import Any, Iterable
 
 from mcp_servers.hummingbot_api.tools.accounting_health import (
@@ -9,7 +10,10 @@ from mcp_servers.hummingbot_api.tools.accounting_health import (
 from mcp_servers.hummingbot_api.tools.economic_exit import (
     dispatch_protected_economic_exit,
     reconcile_economic_exit_owner_accounting,
+    retire_terminal_economic_position,
+    synchronize_economic_position_exit,
 )
+from mcp_servers.hummingbot_api.tools.execution_book import fetch_protected_kraken_book
 from mcp_servers.hummingbot_api.tools.partial_recycle import (
     synchronize_partial_recycle_executor,
 )
@@ -30,7 +34,10 @@ from spectra_core.economic_exit import (
     EconomicExitProgressState,
     assess_position_exit_manifest,
 )
-from spectra_core.economic_position import EconomicPositionLedger
+from spectra_core.economic_position import (
+    EconomicPositionLedger,
+    EconomicPositionStatus,
+)
 from spectra_core.kraken_market_fabric import (
     KrakenTradingRule,
     collect_kraken_universe,
@@ -130,9 +137,7 @@ async def _refresh_market(
         raise RuntimeError("market observation timestamp is ahead of runtime clock")
     age = float(now) - observation.timestamp
     if age > policy.market_max_age_seconds:
-        raise RuntimeError(
-            f"market observation is stale by {age:.3f}s"
-        )
+        raise RuntimeError(f"market observation is stale by {age:.3f}s")
 
     prior = runtime_store.load_fingerprint(pair)
     if prior is None:
@@ -143,9 +148,7 @@ async def _refresh_market(
         # Exact retry/restart of the same market snapshot is idempotent.
         fingerprint = prior
     else:
-        raise RuntimeError(
-            "market observation predates persisted asset fingerprint"
-        )
+        raise RuntimeError("market observation predates persisted asset fingerprint")
 
     runtime_store.save_fingerprint(fingerprint, now=now)
     return (
@@ -168,6 +171,7 @@ def _proposal_scope(
     return _dedupe(
         (
             *ledger.active_proposal_ids(position_id),
+            *ledger.bound_proposal_ids(position_id),
             *extras,
         )
     )
@@ -236,7 +240,9 @@ async def _resume_reconciliation(
     policy: VCAPRuntimePolicy | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
+    allow_new_dispatch: bool = True,
 ) -> dict[str, Any]:
+    policy = policy or VCAPRuntimePolicy()
     state = lifecycle_store.load(cycle.envelope_proposal_id)
     if state is None:
         conflict = runtime_store.transition(
@@ -290,7 +296,9 @@ async def _resume_reconciliation(
                 conflict,
                 reasons=conflict.decision_reasons,
             )
-        scoped_ids = exit_manifest.proposal_ids
+        scoped_ids = _dedupe(
+            (*state.recovery_proposal_ids, *exit_manifest.proposal_ids)
+        )
     elif cycle.planned_action == VCAPLifecycleAction.PARTIAL_RECYCLE.value:
         partial_store = PartialRecycleStore(ledger.path)
         manifest_id = None
@@ -336,7 +344,16 @@ async def _resume_reconciliation(
     scope = _proposal_scope(
         position_id=cycle.position_id,
         ledger=ledger,
-        recovery_proposal_ids=scoped_ids,
+        recovery_proposal_ids=(
+            *scoped_ids,
+            *(
+                claim["proposal_id"]
+                for claim in governor.get_entry_submissions_for_position(
+                    position_id=cycle.position_id,
+                    ledger_path=ledger.path,
+                )
+            ),
+        ),
         mutation_proposal_id=cycle.mutation_proposal_id,
     )
     try:
@@ -390,6 +407,91 @@ async def _resume_reconciliation(
             reasons=health.reasons,
         )
 
+    # A protected BUY policy breach cannot conceal later real SELL fills.
+    # This exception is only for an exact persisted SELL dispatch with complete
+    # source ownership/trade coverage. It never creates, certifies or settles
+    # cash while the protected source remains in HOLD.
+    policy_hold = (
+        health.state == AccountingHealthState.HOLD
+        and "protected_buy_requires_reconciliation" in health.reasons
+        and health.proposal_count == len(scope)
+        and health.known_orders == health.bound_orders
+        and health.confirmed_fills == health.ledgered_fills
+        and not health.unresolved_order_ids
+        and not health.unresolved_trade_ids
+        and any(governor.get_protected_buy_conflicts(pid) for pid in scope)
+    )
+    held_manifest = None
+    held_store = None
+    if policy_hold:
+        if (
+            cycle.planned_action == VCAPLifecycleAction.EXIT.value
+            and exit_manifest is not None
+            and exit_manifest_store is not None
+            and exit_manifest.sell_executor_id is not None
+            and exit_manifest_store.dispatch_claimed(exit_manifest.manifest_id)
+        ):
+            held_manifest, held_store = exit_manifest, exit_manifest_store
+        elif (
+            cycle.planned_action == VCAPLifecycleAction.PARTIAL_RECYCLE.value
+            and partial_manifest is not None
+            and partial_store is not None
+            and partial_store.dispatch_claimed(partial_manifest.manifest_id)
+        ):
+            held_manifest, held_store = partial_manifest, partial_store
+    if held_manifest is not None:
+        exact_owners = held_manifest.position_id == cycle.position_id and all(
+            owner.proposal_id in scope
+            and governor.get_execution_receipt(owner.proposal_id) == owner.executor_id
+            for owner in held_manifest.owners
+        )
+        if exact_owners:
+            hold_error = None
+            try:
+                if cycle.planned_action == VCAPLifecycleAction.EXIT.value:
+                    await synchronize_economic_position_exit(
+                        client,
+                        manifest=held_manifest,
+                        governor=governor,
+                        ledger=ledger,
+                        store=held_store,
+                        now=now,
+                        reconciliation_only=True,
+                    )
+                else:
+                    await synchronize_partial_recycle_executor(
+                        client,
+                        manifest=held_manifest,
+                        governor=governor,
+                        ledger=ledger,
+                        store=held_store,
+                        now=now,
+                        reconciliation_only=True,
+                    )
+            except Exception as exc:
+                hold_error = str(exc)
+            waiting = runtime_store.transition(
+                cycle.cycle_id,
+                phase=VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                now=now,
+                expected_phases=(
+                    VCAPRuntimePhase.MUTATION_DISPATCHING,
+                    VCAPRuntimePhase.MUTATION_DISPATCHED,
+                    VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                ),
+                decision_reasons=(
+                    *health.reasons,
+                    "protected_buy_hold_existing_sell_reconciliation_only",
+                ),
+                last_error=hold_error,
+            )
+            return _runtime_result(
+                waiting,
+                accounting_state=health.state.value,
+                executed=True,
+                reasons=waiting.decision_reasons,
+            )
+
     reconciled = False
     if health.state == AccountingHealthState.HEALTHY:
         if cycle.planned_action == VCAPLifecycleAction.EXECUTE_TRANCHE.value:
@@ -413,6 +515,7 @@ async def _resume_reconciliation(
                         now=now,
                         account_name=account_name,
                         controller_id=controller_id,
+                        allow_new_dispatch=allow_new_dispatch,
                     )
                     if result.get("requires_fresh_trading_rule"):
                         _, fresh_rule, _ = await _refresh_market(
@@ -420,8 +523,9 @@ async def _resume_reconciliation(
                             pair=exit_manifest.pair,
                             runtime_store=runtime_store,
                             policy=policy or VCAPRuntimePolicy(),
-                            now=now,
+                            now=time.time(),
                         )
+                        book = await fetch_protected_kraken_book(fresh_rule)
                         result = await dispatch_protected_economic_exit(
                             client,
                             manifest=exit_manifest,
@@ -431,6 +535,9 @@ async def _resume_reconciliation(
                             trading_rule=fresh_rule,
                             account_name=account_name,
                             controller_id=controller_id,
+                            allow_new_dispatch=allow_new_dispatch,
+                            best_bid=book.best_bid,
+                            market_observed_at=book.market_observed_at,
                         )
                     owner_accounting = result
                 else:
@@ -468,10 +575,49 @@ async def _resume_reconciliation(
                     reasons=waiting.decision_reasons,
                 )
 
-            if progress.state == EconomicExitProgressState.DUST_BLOCKED:
-                hold = runtime_store.transition(
+            retirement_error = None
+            if ledger.get_retirement_certificate(cycle.position_id) is None:
+                try:
+                    # Settlement of an existing SELL must precede retirement.
+                    # Fetch proof at completion time, independently of tick start.
+                    fresh_fingerprint, fresh_rule, fresh_price = await _refresh_market(
+                        client,
+                        pair=exit_manifest.pair,
+                        runtime_store=runtime_store,
+                        policy=policy,
+                        now=time.time(),
+                    )
+                    await retire_terminal_economic_position(
+                        client,
+                        position_id=cycle.position_id,
+                        proposal_ids=scope,
+                        governor=governor,
+                        ledger=ledger,
+                        trading_rule=fresh_rule,
+                        current_price=fresh_price,
+                        market_observed_at=fresh_fingerprint.last_seen_at,
+                        now=time.time(),
+                        max_age_seconds=policy.market_max_age_seconds,
+                    )
+                except Exception as exc:
+                    retirement_error = str(exc)
+                progress = assess_position_exit_manifest(
+                    exit_manifest,
+                    ledger=ledger,
+                    store=exit_manifest_store,
+                    now=now,
+                )
+
+            if progress.state == EconomicExitProgressState.RESIDUAL_RETAINED:
+                checkpoint_vcap_exit_result(
+                    state=state,
+                    store=lifecycle_store,
+                    recovery_budget_released=False,
+                    now=now,
+                )
+                completed = runtime_store.transition(
                     cycle.cycle_id,
-                    phase=VCAPRuntimePhase.HOLD,
+                    phase=VCAPRuntimePhase.COMPLETED,
                     now=now,
                     expected_phases=(
                         VCAPRuntimePhase.MUTATION_DISPATCHING,
@@ -482,17 +628,46 @@ async def _resume_reconciliation(
                         *health.reasons,
                         *progress.reasons,
                     ),
-                    last_error="economic exit is blocked by exchange dust",
+                    last_error=None,
                 )
                 return _runtime_result(
-                    hold,
+                    completed,
                     accounting_state=health.state.value,
                     executed=True,
-                    reasons=hold.decision_reasons,
+                    reasons=completed.decision_reasons,
                 )
 
-            if progress.state == EconomicExitProgressState.COMPLETED and bool(
-                owner_accounting.get("all_recovery_budget_released")
+            if progress.state == EconomicExitProgressState.DUST_BLOCKED:
+                waiting = runtime_store.transition(
+                    cycle.cycle_id,
+                    phase=VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                    now=now,
+                    expected_phases=(
+                        VCAPRuntimePhase.MUTATION_DISPATCHING,
+                        VCAPRuntimePhase.MUTATION_DISPATCHED,
+                        VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                    ),
+                    decision_reasons=(
+                        *health.reasons,
+                        *progress.reasons,
+                        "terminal_residual_proof_pending",
+                    ),
+                    last_error=retirement_error,
+                )
+                return _runtime_result(
+                    waiting,
+                    accounting_state=health.state.value,
+                    executed=True,
+                    reasons=waiting.decision_reasons,
+                )
+
+            if (
+                progress.state == EconomicExitProgressState.COMPLETED
+                and ledger.get_retirement_certificate(cycle.position_id) is not None
+                and (
+                    exit_manifest.sell_executor_id is not None
+                    or bool(owner_accounting.get("all_recovery_budget_released"))
+                )
             ):
                 checkpoint_vcap_exit_result(
                     state=state,
@@ -543,7 +718,75 @@ async def _resume_reconciliation(
                 store=partial_store,
                 now=now,
             )
-            reconciled = progress.completed
+            # Selected inventory can be flat while its SELL is still running.
+            # Only exact terminal proof permits a new runtime cycle.
+            reconciled = progress.terminal
+            snapshot = ledger.snapshot(cycle.position_id)
+            may_need_retirement = (
+                not progress.completed
+                or snapshot.active_base < partial_manifest.min_order_size
+                or snapshot.active_base * partial_manifest.reference_price
+                < partial_manifest.min_notional_quote
+            )
+            if (
+                progress.terminal
+                and may_need_retirement
+                and ledger.get_retirement_certificate(cycle.position_id) is None
+            ):
+                try:
+                    fresh_fingerprint, fresh_rule, fresh_price = await _refresh_market(
+                        client,
+                        pair=partial_manifest.pair,
+                        runtime_store=runtime_store,
+                        policy=policy,
+                        now=time.time(),
+                    )
+                    snapshot = ledger.snapshot(cycle.position_id)
+                    increment = fresh_rule.min_base_amount_increment
+                    sellable_base = (
+                        snapshot.active_base / increment
+                    ).to_integral_value(
+                        rounding=ROUND_DOWN,
+                    ) * increment
+                    if (
+                        sellable_base <= 0
+                        or sellable_base < fresh_rule.min_order_size
+                        or sellable_base * fresh_price < fresh_rule.effective_min_quote
+                    ):
+                        await retire_terminal_economic_position(
+                            client,
+                            position_id=cycle.position_id,
+                            proposal_ids=scope,
+                            governor=governor,
+                            ledger=ledger,
+                            trading_rule=fresh_rule,
+                            current_price=fresh_price,
+                            market_observed_at=fresh_fingerprint.last_seen_at,
+                            now=time.time(),
+                            max_age_seconds=policy.market_max_age_seconds,
+                        )
+                except Exception as exc:
+                    waiting = runtime_store.transition(
+                        cycle.cycle_id,
+                        phase=VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                        now=now,
+                        expected_phases=(
+                            VCAPRuntimePhase.MUTATION_DISPATCHING,
+                            VCAPRuntimePhase.MUTATION_DISPATCHED,
+                            VCAPRuntimePhase.AWAITING_RECONCILIATION,
+                        ),
+                        decision_reasons=(
+                            *health.reasons,
+                            "terminal_partial_retirement_proof_pending",
+                        ),
+                        last_error=str(exc),
+                    )
+                    return _runtime_result(
+                        waiting,
+                        accounting_state=health.state.value,
+                        executed=True,
+                        reasons=waiting.decision_reasons,
+                    )
 
     if reconciled:
         completed = runtime_store.transition(
@@ -610,8 +853,11 @@ async def run_vcap_runtime_cycle(
     tranche_policy: VCAPTranchePolicy | None = None,
     profit_policy: VCAPProfitExitPolicy | None = None,
     runtime_policy: VCAPRuntimePolicy | None = None,
+    buy_max_price_slippage_bps: Decimal | None = None,
+    buy_fee_allowance_bps: Decimal | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
+    allow_new_dispatch: bool = True,
 ) -> dict[str, Any]:
     """Run or resume exactly one closed-loop VCAP runtime cycle.
 
@@ -660,11 +906,26 @@ async def run_vcap_runtime_cycle(
             lifecycle_store=lifecycle_store,
             runtime_store=runtime_store,
             accounting_supervisor=accounting_supervisor,
-            now=now,
             policy=policy,
+            now=now,
             account_name=account_name,
             controller_id=controller_id,
+            allow_new_dispatch=(
+                allow_new_dispatch
+                and ledger.snapshot(position_id).status == EconomicPositionStatus.ACTIVE
+            ),
         )
+
+    if ledger.snapshot(position_id).status != EconomicPositionStatus.ACTIVE:
+        blocked = runtime_store.transition(
+            cycle.cycle_id,
+            phase=VCAPRuntimePhase.HOLD,
+            now=now,
+            expected_phases=_PREPLAN_PHASES,
+            decision_reasons=("inactive_position_new_mutation_blocked",),
+            last_error="inactive owner has no pending dispatched mutation",
+        )
+        return _runtime_result(blocked, executed=False)
 
     state = lifecycle_store.load(envelope_proposal_id)
     if state is None:
@@ -683,7 +944,16 @@ async def run_vcap_runtime_cycle(
     proposal_scope = _proposal_scope(
         position_id=position_id,
         ledger=ledger,
-        recovery_proposal_ids=state.recovery_proposal_ids,
+        recovery_proposal_ids=(
+            *state.recovery_proposal_ids,
+            *(
+                claim["proposal_id"]
+                for claim in governor.get_entry_submissions_for_position(
+                    position_id=position_id,
+                    ledger_path=ledger.path,
+                )
+            ),
+        ),
     )
     try:
         health = await _refresh_accounting(
@@ -771,6 +1041,52 @@ async def run_vcap_runtime_cycle(
         now=now,
         expected_phases=(VCAPRuntimePhase.ACCOUNTING_PRECHECKED,),
     )
+
+    if ledger.snapshot(position_id).active_base == 0 and (
+        ledger.bound_proposal_ids(position_id)
+        or governor.get_entry_submissions_for_position(
+            position_id=position_id,
+            ledger_path=ledger.path,
+        )
+    ):
+        try:
+            certificate = await retire_terminal_economic_position(
+                client,
+                position_id=position_id,
+                proposal_ids=proposal_scope,
+                governor=governor,
+                ledger=ledger,
+                trading_rule=trading_rule,
+                current_price=current_price,
+                market_observed_at=fingerprint.last_seen_at,
+                now=now,
+                max_age_seconds=policy.market_max_age_seconds,
+            )
+            reasons = ("terminal_empty_or_flat_position_retired", certificate["kind"])
+            error = None
+        except Exception as exc:
+            reasons = ("empty_position_terminal_proof_pending",)
+            error = str(exc)
+        checkpoint_vcap_exit_result(
+            state=state,
+            store=lifecycle_store,
+            recovery_budget_released=False,
+            now=now,
+        )
+        held = runtime_store.transition(
+            cycle.cycle_id,
+            phase=VCAPRuntimePhase.HOLD,
+            now=now,
+            expected_phases=(VCAPRuntimePhase.MARKET_REFRESHED,),
+            decision_reasons=reasons,
+            last_error=error,
+        )
+        return _runtime_result(
+            held,
+            accounting_state=health.state.value,
+            executed=False,
+            reasons=held.decision_reasons,
+        )
 
     decision = plan_vcap_lifecycle_from_ledger(
         position_id=position_id,
@@ -915,6 +1231,69 @@ async def run_vcap_runtime_cycle(
             reasons=blocked.decision_reasons,
         )
 
+    if ledger.snapshot(position_id).status != EconomicPositionStatus.ACTIVE:
+        blocked = runtime_store.transition(
+            cycle.cycle_id,
+            phase=VCAPRuntimePhase.HOLD,
+            now=now,
+            expected_phases=(VCAPRuntimePhase.PLANNED,),
+            decision_reasons=("economic_position_no_longer_active_before_dispatch",),
+            last_error="position retired during preexecution reconciliation",
+        )
+        return _runtime_result(
+            blocked,
+            accounting_state=preexec_health.state.value,
+            action=decision.action.value,
+            executed=False,
+        )
+
+    best_bid = None
+    sell_market_observed_at = fingerprint.last_seen_at
+    if decision.action == VCAPLifecycleAction.PARTIAL_RECYCLE:
+        try:
+            fingerprint, trading_rule, current_price = await _refresh_market(
+                client,
+                pair=current_state.pair,
+                runtime_store=runtime_store,
+                policy=policy,
+                now=time.time(),
+            )
+        except Exception as exc:
+            blocked = runtime_store.transition(
+                cycle.cycle_id,
+                phase=VCAPRuntimePhase.HOLD,
+                now=now,
+                expected_phases=(VCAPRuntimePhase.PLANNED,),
+                decision_reasons=("partial_recycle_final_market_refresh_failed",),
+                last_error=str(exc),
+            )
+            return _runtime_result(
+                blocked,
+                accounting_state=preexec_health.state.value,
+                action=decision.action.value,
+                executed=False,
+            )
+    elif decision.action == VCAPLifecycleAction.EXIT:
+        try:
+            book = await fetch_protected_kraken_book(trading_rule)
+            best_bid = book.best_bid
+            sell_market_observed_at = book.market_observed_at
+        except Exception as exc:
+            blocked = runtime_store.transition(
+                cycle.cycle_id,
+                phase=VCAPRuntimePhase.HOLD,
+                now=now,
+                expected_phases=(VCAPRuntimePhase.PLANNED,),
+                decision_reasons=("whole_exit_fresh_venue_book_unavailable",),
+                last_error=str(exc),
+            )
+            return _runtime_result(
+                blocked,
+                accounting_state=preexec_health.state.value,
+                action=decision.action.value,
+                executed=False,
+            )
+
     cycle = runtime_store.transition(
         cycle.cycle_id,
         phase=VCAPRuntimePhase.MUTATION_DISPATCHING,
@@ -933,6 +1312,15 @@ async def run_vcap_runtime_cycle(
             ledger=ledger,
             trading_rule=trading_rule,
             current_price=current_price,
+            expected_exit_cost_bps=(expected_exit_fee_bps + slippage_allowance_bps),
+            market_observed_at=(
+                sell_market_observed_at
+                if decision.action == VCAPLifecycleAction.EXIT
+                else fingerprint.last_seen_at
+            ),
+            best_bid=best_bid,
+            buy_max_price_slippage_bps=buy_max_price_slippage_bps,
+            buy_fee_allowance_bps=buy_fee_allowance_bps,
             accounting_health=preexec_health,
             account_name=account_name,
             controller_id=controller_id,
@@ -1039,8 +1427,9 @@ async def run_vcap_runtime_cycle(
         lifecycle_store=lifecycle_store,
         runtime_store=runtime_store,
         accounting_supervisor=accounting_supervisor,
-        now=now,
         policy=policy,
+        now=now,
         account_name=account_name,
         controller_id=controller_id,
+        allow_new_dispatch=allow_new_dispatch,
     )

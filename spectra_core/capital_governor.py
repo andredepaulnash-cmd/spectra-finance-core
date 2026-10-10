@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import sqlite3
 import time
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from pathlib import Path
 
 from . import cash_authority as cash
@@ -53,9 +54,7 @@ def validate_capital_policy(policy: CapitalPolicy) -> None:
         or isinstance(policy.reservation_ttl_seconds, bool)
         or policy.reservation_ttl_seconds <= 0
     ):
-        raise ValueError(
-            "reservation_ttl_seconds must be a positive integer"
-        )
+        raise ValueError("reservation_ttl_seconds must be a positive integer")
 
     if (
         not isinstance(policy.position_hold_snapshot_ttl_seconds, int)
@@ -110,6 +109,64 @@ class CapitalGovernor:
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 )
+                """)
+
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS entry_submission_claims (
+                    proposal_id TEXT PRIMARY KEY,
+                    base_asset TEXT NOT NULL,
+                    position_id TEXT NOT NULL,
+                    ledger_path TEXT NOT NULL,
+                    pair TEXT NOT NULL,
+                    account_name TEXT NOT NULL,
+                    connector_name TEXT NOT NULL,
+                    controller_id TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    executor_id TEXT,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS entry_submission_active_asset
+                ON entry_submission_claims(base_asset)
+                WHERE state IN ('COMMITTED', 'DISPATCHED');
+                CREATE TABLE IF NOT EXISTS position_submission_bindings (
+                    proposal_id TEXT PRIMARY KEY,
+                    base_asset TEXT NOT NULL,
+                    position_id TEXT NOT NULL,
+                    ledger_path TEXT NOT NULL,
+                    pair TEXT NOT NULL,
+                    account_name TEXT NOT NULL,
+                    connector_name TEXT NOT NULL,
+                    controller_id TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    executor_id TEXT,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS protected_buy_submissions (
+                    proposal_id TEXT PRIMARY KEY,
+                    authorized_quote_budget TEXT NOT NULL,
+                    position_id TEXT NOT NULL,
+                    ledger_path TEXT NOT NULL,
+                    pair TEXT NOT NULL,
+                    account_name TEXT NOT NULL,
+                    connector_name TEXT NOT NULL,
+                    controller_id TEXT NOT NULL,
+                    config_json TEXT NOT NULL,
+                    config_sha256 TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS protected_buy_conflicts (
+                    proposal_id TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    PRIMARY KEY(proposal_id, reason)
+                );
+                CREATE TABLE IF NOT EXISTS protected_buy_policies (
+                    proposal_id TEXT PRIMARY KEY,
+                    policy_json TEXT NOT NULL,
+                    policy_sha256 TEXT NOT NULL
+                );
                 """)
 
             conn.execute("""
@@ -373,6 +430,11 @@ class CapitalGovernor:
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
+                protected_conflict = self._protected_buy_scope_rejection(
+                    conn, account, connector
+                )
+                if protected_conflict:
+                    raise RuntimeError(f"cash activation blocked: {protected_conflict}")
                 bound = cash.binding(conn)
                 if bound is not None:
                     if bound["payload_json"] == payload:
@@ -662,6 +724,7 @@ class CapitalGovernor:
                     "SELECT status, settlement_evidence FROM cash_sale_fills WHERE event_id=?",
                     (event,),
                 ).fetchone()
+
                 if row is None:
                     cash.record_conflict(
                         conn,
@@ -670,6 +733,7 @@ class CapitalGovernor:
                     )
                     conn.commit()
                     return False
+
                 if row["status"] == "SETTLED":
                     exact = row["settlement_evidence"] == evidence
                     if not exact:
@@ -915,10 +979,7 @@ class CapitalGovernor:
         now: float | None = None,
     ) -> int:
         current_time = time.time() if now is None else now
-        cutoff = (
-            current_time
-            - self.policy.reservation_ttl_seconds
-        )
+        cutoff = current_time - self.policy.reservation_ttl_seconds
 
         cursor = conn.execute(
             """
@@ -981,14 +1042,8 @@ class CapitalGovernor:
             proposal_id=row["proposal_id"],
             status=DecisionStatus(row["status"]),
             reason=row["reason"],
-            reserved_quote=(
-                Decimal(row["amount_quote"])
-                if active
-                else ZERO
-            ),
-            available_after_quote=Decimal(
-                row["available_after_quote"]
-            ),
+            reserved_quote=(Decimal(row["amount_quote"]) if active else ZERO),
+            available_after_quote=Decimal(row["available_after_quote"]),
         )
 
     def reserve(
@@ -1005,6 +1060,7 @@ class CapitalGovernor:
             raise ValueError("pair is required")
 
         with self._connect() as conn:
+            recovery_ledgers = self._attach_recovery_exposure_ledgers(conn)
             conn.execute("BEGIN IMMEDIATE")
 
             try:
@@ -1043,6 +1099,21 @@ class CapitalGovernor:
                     """,
                     (proposal.proposal_id,),
                 ).fetchone()
+
+                protected_conflict = self._protected_buy_scope_rejection(
+                    conn,
+                    proposal.account_name,
+                    proposal.connector_name,
+                )
+                if protected_conflict:
+                    conn.commit()
+                    return CapitalDecision(
+                        proposal.proposal_id,
+                        DecisionStatus.REJECTED,
+                        protected_conflict,
+                        ZERO,
+                        ZERO,
+                    )
 
                 # Idempotency:
                 # the same proposal_id can never reserve twice.
@@ -1086,7 +1157,9 @@ class CapitalGovernor:
                 # transaction as RESERVED/COMMITTED claims. Otherwise a
                 # COMMITTED -> RECONCILED handoff could briefly disappear
                 # from both buckets between two separate reads.
-                reconciled_recovery = self._current_recovery_exposure_quote(conn)
+                reconciled_recovery = self._current_recovery_exposure_quote(
+                    conn, recovery_ledgers
+                )
 
                 amount = proposal.amount_quote
 
@@ -1276,11 +1349,7 @@ class CapitalGovernor:
             )
 
         # Global committed-capital ceiling.
-        total_after = (
-            snapshot.committed_quote
-            + active_total
-            + amount
-        )
+        total_after = snapshot.committed_quote + active_total + amount
 
         if total_after > p.max_total_committed_quote:
             return (
@@ -1290,25 +1359,15 @@ class CapitalGovernor:
             )
 
         # Per-pair concentration ceiling.
-        pair_after = (
-            snapshot.pair_exposure_quote
-            + active_pair
-            + amount
-        )
+        pair_after = snapshot.pair_exposure_quote + active_pair + amount
 
         if pair_after > p.max_pair_quote:
             return (
-                f"pair exposure cap exceeded: "
-                f"{pair_after} > "
-                f"{p.max_pair_quote}"
+                f"pair exposure cap exceeded: " f"{pair_after} > " f"{p.max_pair_quote}"
             )
 
         # Per-position ceiling.
-        position_after = (
-            snapshot.position_exposure_quote
-            + active_pair
-            + amount
-        )
+        position_after = snapshot.position_exposure_quote + active_pair + amount
 
         if position_after > p.max_position_quote:
             return (
@@ -1319,11 +1378,7 @@ class CapitalGovernor:
 
         # Recovery capital is separately bounded.
         if proposal.intent == IntentKind.RECOVERY:
-            recovery_after = (
-                reconciled_recovery
-                + active_recovery
-                + amount
-            )
+            recovery_after = reconciled_recovery + active_recovery + amount
 
             if recovery_after > p.max_recovery_quote:
                 return (
@@ -1338,6 +1393,12 @@ class CapitalGovernor:
         self,
         proposal: CapitalProposal,
         reason: str = "committed for matched execution",
+        *,
+        recovery_scope: tuple[str, str, str] | None = None,
+        position_id: str | None = None,
+        ledger_path: str | Path | None = None,
+        protected_buy_config: dict | None = None,
+        protected_buy_policy: dict | None = None,
     ) -> bool:
         """Atomically verify and consume an exact RESERVED capital claim."""
         proposal_id = proposal.proposal_id.strip()
@@ -1347,8 +1408,30 @@ class CapitalGovernor:
             raise ValueError("proposal_id is required")
         if not pair:
             raise ValueError("pair is required")
+        if protected_buy_config is not None and recovery_scope is None:
+            raise ValueError("protected BUY commit requires exact RECOVERY scope")
 
         with self._connect() as conn:
+            recovery_ledger = None
+            if recovery_scope is not None:
+                from .economic_position import normalized_base_asset
+
+                owner = conn.execute(
+                    "SELECT ledger_path FROM entry_submission_claims WHERE base_asset = ? "
+                    "AND state IN ('COMMITTED', 'DISPATCHED')",
+                    (normalized_base_asset(pair),),
+                ).fetchone()
+                bound_path = owner["ledger_path"] if owner is not None else ledger_path
+                if bound_path is not None:
+                    path = Path(bound_path).resolve()
+                    if not path.is_file():
+                        raise ValueError(
+                            "protected RECOVERY economic ledger is unavailable"
+                        )
+                    schema = "main" if path == self.db_path.resolve() else "economic"
+                    if schema != "main":
+                        conn.execute("ATTACH DATABASE ? AS economic", (str(path),))
+                    recovery_ledger = (schema, str(path))
             conn.execute("BEGIN IMMEDIATE")
             try:
                 self._expire_stale(conn)
@@ -1369,6 +1452,21 @@ class CapitalGovernor:
                 if cash.authority_rejection(
                     conn, proposal
                 ) or cash.reservation_scope_rejection(conn, row):
+                    conn.commit()
+                    return False
+
+                if self._protected_buy_scope_rejection(
+                    conn,
+                    *(
+                        recovery_scope[:2]
+                        if recovery_scope is not None
+                        else (proposal.account_name, proposal.connector_name)
+                    ),
+                ) or self._protected_buy_scope_rejection(
+                    conn,
+                    row["account_name"],
+                    row["connector_name"],
+                ):
                     conn.commit()
                     return False
 
@@ -1393,6 +1491,16 @@ class CapitalGovernor:
                     conn.commit()
                     return False
 
+                bound = cash.binding(conn)
+                if bound is not None and recovery_scope is not None:
+                    cash.validate_scope(
+                        bound,
+                        recovery_scope[0],
+                        recovery_scope[1],
+                        pair.rsplit("-", 1)[-1],
+                        pair=pair,
+                    )
+
                 if not cash.burn(
                     conn,
                     proposal_id,
@@ -1403,6 +1511,72 @@ class CapitalGovernor:
                 ):
                     conn.commit()
                     return False
+
+                if recovery_scope is not None:
+                    if proposal.intent != IntentKind.RECOVERY:
+                        raise ValueError("recovery scope requires RECOVERY intent")
+                    owner = self._validate_recovery_scope(
+                        conn, proposal, recovery_scope, position_id, recovery_ledger
+                    )
+                    if protected_buy_config is not None:
+                        if recovery_ledger is None or not position_id:
+                            raise ValueError(
+                                "protected BUY requires exact economic position scope"
+                            )
+                        schema, actual_path = recovery_ledger
+                        position = conn.execute(
+                            f"SELECT * FROM {schema}.economic_positions WHERE position_id=?",
+                            (position_id,),
+                        ).fetchone()
+                        if (
+                            position is None
+                            or position["status"] != "ACTIVE"
+                            or position["pair"] != pair
+                            or position["base_asset"] != normalized_base_asset(pair)
+                        ):
+                            raise ValueError(
+                                "protected BUY requires its exact ACTIVE position"
+                            )
+                        if (
+                            conn.execute(
+                                f"SELECT 1 FROM {schema}.economic_position_retirements WHERE position_id=?",
+                                (position_id,),
+                            ).fetchone()
+                            is not None
+                        ):
+                            raise ValueError(
+                                "protected BUY position has been terminally retired"
+                            )
+                        if owner is None:
+                            owner = dict(position)
+                            owner["ledger_path"] = actual_path
+                        self._record_protected_buy_submission(
+                            conn,
+                            proposal,
+                            position_id,
+                            actual_path,
+                            recovery_scope,
+                            protected_buy_config,
+                            protected_buy_policy,
+                        )
+                    if owner is not None:
+                        now = time.time()
+                        conn.execute(
+                            """INSERT INTO position_submission_bindings (
+                                proposal_id,base_asset,position_id,ledger_path,pair,
+                                account_name,connector_name,controller_id,state,created_at,updated_at
+                            ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?)""",
+                            (
+                                proposal_id,
+                                owner["base_asset"],
+                                owner["position_id"],
+                                owner["ledger_path"],
+                                pair,
+                                *recovery_scope,
+                                now,
+                                now,
+                            ),
+                        )
 
                 cursor = conn.execute(
                     """
@@ -1426,6 +1600,797 @@ class CapitalGovernor:
             except Exception:
                 conn.rollback()
                 raise
+
+    @staticmethod
+    def _submission_scope(
+        account_name: str, connector_name: str, controller_id: str
+    ) -> tuple[str, str, str]:
+        values = (account_name, connector_name, controller_id)
+        if any(not isinstance(value, str) or not value.strip() for value in values):
+            raise ValueError(
+                "submission account, connector and controller are required"
+            )
+        return (
+            account_name.strip(),
+            connector_name.strip().lower(),
+            controller_id.strip(),
+        )
+
+    def get_entry_submission_claim(self, proposal_id: str) -> dict | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM entry_submission_claims WHERE proposal_id = ?",
+                (proposal_id,),
+            ).fetchone()
+        return None if row is None else dict(row)
+
+    def get_protected_buy_submission(self, proposal_id: str) -> dict | None:
+        """Return immutable funded BUY configuration and exact durable receipt."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT b.*, r.executor_id, c.status AS capital_status "
+                "FROM protected_buy_submissions b "
+                "JOIN capital_reservations c ON c.proposal_id=b.proposal_id "
+                "LEFT JOIN execution_receipts r ON r.proposal_id=b.proposal_id "
+                "WHERE b.proposal_id=?",
+                (proposal_id,),
+            ).fetchone()
+            policy_row = conn.execute(
+                "SELECT * FROM protected_buy_policies WHERE proposal_id=?",
+                (proposal_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        if (
+            hashlib.sha256(row["config_json"].encode()).hexdigest()
+            != row["config_sha256"]
+        ):
+            raise ValueError("protected BUY configuration evidence is corrupt")
+        result = dict(row)
+        result["config"] = json.loads(result.pop("config_json"))
+        result["policy"] = None
+        if policy_row is not None:
+            if (
+                hashlib.sha256(policy_row["policy_json"].encode()).hexdigest()
+                != policy_row["policy_sha256"]
+            ):
+                raise ValueError("protected BUY policy evidence is corrupt")
+            result["policy"] = json.loads(policy_row["policy_json"])
+            result["policy_sha256"] = policy_row["policy_sha256"]
+        result["submission_state"] = (
+            "DISPATCHED" if result["executor_id"] else "COMMITTED"
+        )
+        return result
+
+    def get_protected_buy_conflicts(self, proposal_id: str) -> tuple[str, ...]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT reason FROM protected_buy_conflicts WHERE proposal_id=? ORDER BY reason",
+                (proposal_id,),
+            ).fetchall()
+        return tuple(row["reason"] for row in rows)
+
+    @staticmethod
+    def _protected_buy_scope_rejection(conn, account_name, connector_name) -> str:
+        # An unknown legacy scope cannot prove that it excludes the breached owner.
+        account = (
+            account_name.strip()
+            if isinstance(account_name, str) and account_name.strip()
+            else None
+        )
+        connector = (
+            connector_name.strip().lower()
+            if isinstance(connector_name, str) and connector_name.strip()
+            else None
+        )
+        row = conn.execute(
+            "SELECT c.proposal_id,c.reason FROM protected_buy_conflicts c "
+            "JOIN protected_buy_submissions b ON b.proposal_id=c.proposal_id "
+            "WHERE (? IS NULL OR b.account_name=?) "
+            "AND (? IS NULL OR b.connector_name=?) ORDER BY c.created_at LIMIT 1",
+            (account, account, connector, connector),
+        ).fetchone()
+        return (
+            ""
+            if row is None
+            else f"protected BUY execution conflict ({row['proposal_id']}): {row['reason']}"
+        )
+
+    def protected_buy_scope_rejection(
+        self, *, account_name: str | None, connector_name: str | None
+    ) -> str:
+        """Block new spending for a breached account/connector, including before activation."""
+        with self._connect() as conn:
+            return self._protected_buy_scope_rejection(
+                conn, account_name, connector_name
+            )
+
+    def record_protected_buy_conflict(self, *, proposal_id: str, reason: str) -> None:
+        """Record execution breaches without discarding confirmed fills or cash."""
+        pid, detail = cash.text(proposal_id, "proposal_id"), cash.text(reason, "reason")
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                if (
+                    conn.execute(
+                        "SELECT 1 FROM protected_buy_submissions WHERE proposal_id=?",
+                        (pid,),
+                    ).fetchone()
+                    is None
+                ):
+                    raise ValueError(
+                        "protected BUY conflict requires exact submission evidence"
+                    )
+                conn.execute(
+                    "INSERT OR IGNORE INTO protected_buy_conflicts VALUES (?,?,?)",
+                    (pid, detail, time.time()),
+                )
+                if cash.binding(conn) is not None:
+                    cash.record_conflict(
+                        conn,
+                        "protected-buy:"
+                        + pid
+                        + ":"
+                        + hashlib.sha256(detail.encode()).hexdigest(),
+                        detail,
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+
+    @staticmethod
+    def _record_protected_buy_submission(
+        conn,
+        proposal,
+        position_id,
+        ledger_path,
+        scope,
+        config,
+        policy=None,
+    ) -> None:
+        allowed = {
+            "id",
+            "type",
+            "connector_name",
+            "trading_pair",
+            "side",
+            "amount",
+            "execution_strategy",
+            "price",
+            "leverage",
+            "level_id",
+            "position_action",
+            "controller_id",
+            "timestamp",
+        }
+        if not isinstance(config, dict) or set(config) - allowed:
+            raise ValueError("protected BUY configuration has unsupported fields")
+        if (
+            config.get("type") != "order_executor"
+            or type(config.get("side")) is not int
+            or config["side"] != 1
+            or config.get("execution_strategy") != "LIMIT"
+            or config.get("connector_name") != scope[1]
+            or config.get("trading_pair") != proposal.pair.strip().upper()
+            or config.get("leverage") != 1
+            or config.get("position_action", "OPEN") != "OPEN"
+            or config.get("controller_id", scope[2]) != scope[2]
+        ):
+            raise ValueError("protected BUY configuration conflicts with authorization")
+        amount, price = Decimal(str(config.get("amount"))), Decimal(
+            str(config.get("price"))
+        )
+        if not all(value.is_finite() and value > ZERO for value in (amount, price)):
+            raise ValueError(
+                "protected BUY amount and price must be finite and positive"
+            )
+        with localcontext() as context:
+            context.prec = max(
+                28, len(amount.as_tuple().digits) + len(price.as_tuple().digits) + 2
+            )
+            principal = amount * price
+        if principal > proposal.amount_quote:
+            raise ValueError(
+                "protected BUY price/quantity exceeds original quote budget"
+            )
+        if policy is not None:
+            if not isinstance(policy, dict):
+                raise ValueError("protected BUY policy must be an exact mapping")
+            values = {}
+            for field in (
+                "fee_allowance_bps",
+                "max_price_slippage_bps",
+                "reference_price",
+                "price_cap",
+                "amount_base",
+                "max_principal_quote",
+                "max_fee_quote",
+                "max_total_quote",
+                "authorized_quote_budget",
+            ):
+                raw = policy.get(field)
+                if isinstance(raw, bool):
+                    raise ValueError("protected BUY policy contains an invalid decimal")
+                values[field] = Decimal(str(raw))
+                if not values[field].is_finite() or values[field] < ZERO:
+                    raise ValueError("protected BUY policy contains an invalid decimal")
+            with localcontext() as context:
+                context.prec = max(
+                    60, sum(len(v.as_tuple().digits) for v in values.values()) + 10
+                )
+                fee = principal * values["fee_allowance_bps"] / Decimal("10000")
+                total = principal + fee
+                admitted_cap = values["reference_price"] * (
+                    Decimal("1") + values["max_price_slippage_bps"] / Decimal("10000")
+                )
+            if (
+                values["fee_allowance_bps"] >= Decimal("10000")
+                or values["max_price_slippage_bps"] >= Decimal("10000")
+                or values["reference_price"] <= ZERO
+                or price > values["price_cap"]
+                or values["price_cap"] > admitted_cap
+                or amount != values["amount_base"]
+                or principal != values["max_principal_quote"]
+                or fee != values["max_fee_quote"]
+                or total != values["max_total_quote"]
+                or values["authorized_quote_budget"] != proposal.amount_quote
+                or total > proposal.amount_quote
+            ):
+                raise ValueError(
+                    "protected BUY policy conflicts with exact bounded geometry"
+                )
+            book = policy.get("venue_book")
+            if (
+                not isinstance(book, dict)
+                or book.get("pair") != proposal.pair.strip().upper()
+            ):
+                raise ValueError(
+                    "protected BUY policy lacks exact fresh venue-book scope"
+                )
+            observed = cash.timestamp(book.get("received_at"), "venue_book.received_at")
+            requested = cash.timestamp(
+                book.get("requested_at"), "venue_book.requested_at"
+            )
+            now = time.time()
+            if requested > observed or observed > now or now - observed > 30:
+                raise ValueError(
+                    "protected BUY venue book became stale before atomic capital commit"
+                )
+            if "venue_rules_observed_at" in book:
+                rules_observed = cash.timestamp(
+                    book["venue_rules_observed_at"], "venue_rules_observed_at"
+                )
+                if rules_observed > now or now - rules_observed > 30:
+                    raise ValueError(
+                        "protected BUY venue minima became stale before atomic capital commit"
+                    )
+        payload = json.dumps(config, sort_keys=True, separators=(",", ":"), default=str)
+        existing = conn.execute(
+            "SELECT config_json FROM protected_buy_submissions WHERE proposal_id=?",
+            (proposal.proposal_id,),
+        ).fetchone()
+        if existing is not None:
+            raise ValueError("protected BUY submission is already durably claimed")
+        conn.execute(
+            "INSERT INTO protected_buy_submissions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                proposal.proposal_id,
+                str(proposal.amount_quote),
+                position_id,
+                ledger_path,
+                proposal.pair.strip().upper(),
+                *scope,
+                payload,
+                hashlib.sha256(payload.encode()).hexdigest(),
+                time.time(),
+            ),
+        )
+        if policy is not None:
+            policy_json = json.dumps(
+                policy, sort_keys=True, separators=(",", ":"), default=str
+            )
+            conn.execute(
+                "INSERT INTO protected_buy_policies VALUES (?,?,?)",
+                (
+                    proposal.proposal_id,
+                    policy_json,
+                    hashlib.sha256(policy_json.encode()).hexdigest(),
+                ),
+            )
+
+    def get_entry_submissions_for_position(
+        self, *, position_id: str, ledger_path: str | Path
+    ) -> tuple[dict, ...]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT * FROM entry_submission_claims
+                WHERE position_id = ? AND ledger_path = ?
+                ORDER BY created_at, proposal_id""",
+                (position_id, str(Path(ledger_path).resolve())),
+            ).fetchall()
+        return tuple(dict(row) for row in rows)
+
+    def get_asset_submission_proposals(self, base_asset: str) -> tuple[dict, ...]:
+        """Expose all potentially live capital owners for terminal retirement.
+
+        Canonical identity covers aliases and quote pairs, including legacy
+        proposals that predate durable position binding. Unbound/uncertain
+        claims must never disappear merely because they have no confirmed lot.
+        """
+        from .economic_position import normalized_base_asset
+
+        base = normalized_base_asset(f"{base_asset}-USD")
+        with self._connect() as conn:
+            rows = conn.execute("""SELECT c.*, r.executor_id FROM capital_reservations c
+                LEFT JOIN execution_receipts r ON r.proposal_id = c.proposal_id
+                WHERE c.status IN ('RESERVED','COMMITTED','RECONCILED')
+                ORDER BY c.created_at, c.proposal_id""").fetchall()
+            bindings = {
+                row["proposal_id"]: dict(row)
+                for row in conn.execute(
+                    "SELECT * FROM entry_submission_claims UNION ALL "
+                    "SELECT * FROM position_submission_bindings"
+                ).fetchall()
+            }
+        result = []
+        for row in rows:
+            if normalized_base_asset(row["pair"]) != base:
+                continue
+            item = dict(row)
+            binding = bindings.get(row["proposal_id"])
+            item.update(
+                position_id=None if binding is None else binding["position_id"],
+                ledger_path=None if binding is None else binding["ledger_path"],
+                submission_state=None if binding is None else binding["state"],
+            )
+            result.append(item)
+        return tuple(result)
+
+    @staticmethod
+    def _entry_retirement_proven(conn, schema: str, claim: sqlite3.Row) -> bool:
+        # CLOSED inventory alone is insufficient: an old BUY may still fill.
+        # The ledger writes this certificate only after complete terminal
+        # executor/order/trade evidence has been reconciled.
+        if claim["executor_id"] is None:
+            return False
+        exists = conn.execute(
+            f"SELECT 1 FROM {schema}.sqlite_master WHERE type = 'table' "
+            "AND name = 'economic_position_retirements'"
+        ).fetchone()
+        if exists is None:
+            return False
+        row = conn.execute(
+            f"SELECT event_id, certificate_json FROM {schema}.economic_position_retirements "
+            "WHERE position_id = ?",
+            (claim["position_id"],),
+        ).fetchone()
+        position = conn.execute(
+            f"SELECT status, pair, base_asset FROM {schema}.economic_positions WHERE position_id = ?",
+            (claim["position_id"],),
+        ).fetchone()
+        if (
+            row is None
+            or position is None
+            or position["status"] not in {"CLOSED", "RESIDUAL"}
+        ):
+            return False
+        certificate = json.loads(row["certificate_json"])
+        if not isinstance(certificate, dict):
+            return False
+        for field in ("proposal_ids", "executor_ids"):
+            values = certificate.get(field)
+            if (
+                not isinstance(values, list)
+                or any(not isinstance(value, str) or not value for value in values)
+                or len(set(values)) != len(values)
+            ):
+                return False
+        proof = certificate.get("proof_sha256")
+        if (
+            not isinstance(proof, str)
+            or len(proof) != 64
+            or any(char not in "0123456789abcdef" for char in proof)
+        ):
+            return False
+        payload = certificate.get("proof")
+        if (
+            not isinstance(payload, dict)
+            or hashlib.sha256(
+                json.dumps(payload, sort_keys=True, default=str).encode()
+            ).hexdigest()
+            != proof
+        ):
+            return False
+        owners = payload.get("owners")
+        if not isinstance(owners, list) or any(
+            not isinstance(owner, dict) for owner in owners
+        ):
+            return False
+        if {owner.get("proposal_id") for owner in owners} != set(
+            certificate["proposal_ids"]
+        ):
+            return False
+        if any(
+            conn.execute(
+                "SELECT 1 FROM protected_buy_conflicts WHERE proposal_id=?",
+                (proposal_id,),
+            ).fetchone()
+            is not None
+            for proposal_id in certificate["proposal_ids"]
+        ):
+            return False
+        proven_executors = {
+            owner.get("provenance", {}).get("executor_id") for owner in owners
+        }
+        if proven_executors != set(certificate["executor_ids"]):
+            return False
+        if (certificate.get("kind") == "RESIDUAL") != (
+            position["status"] == "RESIDUAL"
+        ):
+            return False
+        lots = conn.execute(
+            f"SELECT base_remaining, cost_basis_remaining_quote, entry_fees_remaining_quote "
+            f"FROM {schema}.economic_lots WHERE position_id = ? AND ownership = 'ACTIVE_TRADE'",
+            (claim["position_id"],),
+        ).fetchall()
+        for field, column in (
+            ("remaining_base", "base_remaining"),
+            ("cost_basis", "cost_basis_remaining_quote"),
+            ("entry_fees", "entry_fees_remaining_quote"),
+        ):
+            expected = Decimal(certificate[field])
+            actual = exact_decimal_sum(Decimal(lot[column]) for lot in lots)
+            if not expected.is_finite() or expected < ZERO or actual != expected:
+                return False
+        return (
+            certificate.get("event_id") == row["event_id"]
+            and certificate.get("kind")
+            in {"RESIDUAL", "EMPTY_TERMINAL", "FLAT_TERMINAL"}
+            and position["pair"] == claim["pair"]
+            and position["base_asset"] == claim["base_asset"]
+            and certificate.get("position_id") == claim["position_id"]
+            and certificate.get("ledger_path") == claim["ledger_path"]
+            and certificate.get("pair") == claim["pair"]
+            and certificate.get("base_asset") == claim["base_asset"]
+            and claim["proposal_id"] in certificate.get("proposal_ids", [])
+            and claim["executor_id"] in certificate.get("executor_ids", [])
+        )
+
+    def commit_entry_submission_if_matches(
+        self,
+        proposal: CapitalProposal,
+        *,
+        position_id: str,
+        ledger_path: str | Path,
+        account_name: str,
+        connector_name: str,
+        controller_id: str,
+        protected_buy_config: dict | None = None,
+        protected_buy_policy: dict | None = None,
+    ) -> bool:
+        """Claim canonical ENTRY identity and capital before external submission.
+
+        The caller must already own a zero-inventory ACTIVE prefill position.
+        The attached economic ledger is read under the same SQLite write lock;
+        only the capital database is mutated. Uncertain submissions keep their
+        canonical identity through restart until terminal retirement is proven.
+        """
+        from .economic_position import normalized_base_asset
+
+        if proposal.intent != IntentKind.ENTRY:
+            raise ValueError("ENTRY identity claim requires ENTRY intent")
+        if not isinstance(position_id, str) or not position_id.strip():
+            raise ValueError("ENTRY submission requires an exact position_id")
+        pid = position_id.strip()
+        path = Path(ledger_path).resolve()
+        if not path.is_file():
+            raise ValueError("ENTRY economic ledger does not exist")
+        scope = self._submission_scope(account_name, connector_name, controller_id)
+        pair = proposal.pair.strip().upper()
+        base = normalized_base_asset(pair)
+        with self._connect() as conn:
+            schema = "main" if path == self.db_path.resolve() else "economic"
+            if schema == "economic":
+                conn.execute("ATTACH DATABASE ? AS economic", (str(path),))
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                self._expire_stale(conn)
+                reservation = conn.execute(
+                    "SELECT * FROM capital_reservations WHERE proposal_id = ?",
+                    (proposal.proposal_id.strip(),),
+                ).fetchone()
+                if reservation is None or not (
+                    reservation["status"] == DecisionStatus.RESERVED.value
+                    and reservation["pair"] == pair
+                    and reservation["intent"] == IntentKind.ENTRY.value
+                    and Decimal(reservation["amount_quote"]) == proposal.amount_quote
+                    and Decimal(reservation["leverage"]) == proposal.leverage
+                ):
+                    conn.rollback()
+                    return False
+                if cash.authority_rejection(
+                    conn, proposal
+                ) or cash.reservation_scope_rejection(conn, reservation):
+                    conn.rollback()
+                    return False
+                if self._protected_buy_scope_rejection(
+                    conn,
+                    scope[0],
+                    scope[1],
+                ) or self._protected_buy_scope_rejection(
+                    conn,
+                    reservation["account_name"],
+                    reservation["connector_name"],
+                ):
+                    conn.rollback()
+                    return False
+                bound = cash.binding(conn)
+                if bound is not None:
+                    actual_scope = cash.scope(
+                        account_name, connector_name, pair.rsplit("-", 1)[-1]
+                    )
+                    proposal_scope = cash.scope(
+                        proposal.account_name,
+                        proposal.connector_name,
+                        proposal.quote_asset,
+                    )
+                    reserved_scope = tuple(
+                        reservation[name]
+                        for name in ("account_name", "connector_name", "quote_asset")
+                    )
+                    if actual_scope != proposal_scope or actual_scope != reserved_scope:
+                        conn.rollback()
+                        return False
+                    cash.validate_scope(bound, *actual_scope, pair=pair)
+                position = conn.execute(
+                    f"SELECT * FROM {schema}.economic_positions WHERE position_id = ?",
+                    (pid,),
+                ).fetchone()
+                if (
+                    position is None
+                    or position["status"] != "ACTIVE"
+                    or position["pair"] != pair
+                    or position["base_asset"] != base
+                ):
+                    raise ValueError("ENTRY requires its exact ACTIVE prefill position")
+                active = conn.execute(
+                    f"SELECT position_id FROM {schema}.economic_positions "
+                    "WHERE base_asset = ? AND status = 'ACTIVE'",
+                    (base,),
+                ).fetchall()
+                if len(active) != 1 or active[0]["position_id"] != pid:
+                    raise ValueError(
+                        "canonical asset already has another ACTIVE position"
+                    )
+                lots = conn.execute(
+                    f"SELECT base_remaining FROM {schema}.economic_lots "
+                    "WHERE position_id = ? AND ownership = 'ACTIVE_TRADE'",
+                    (pid,),
+                ).fetchall()
+                if any(Decimal(row["base_remaining"]) != ZERO for row in lots):
+                    raise ValueError(
+                        "ENTRY cannot add a new submission to held active inventory"
+                    )
+                claims = conn.execute(
+                    "SELECT * FROM entry_submission_claims WHERE base_asset = ? "
+                    "AND state IN ('COMMITTED', 'DISPATCHED')",
+                    (base,),
+                ).fetchall()
+                for claim in claims:
+                    if claim["ledger_path"] != str(
+                        path
+                    ) or not self._entry_retirement_proven(conn, schema, claim):
+                        raise ValueError(
+                            "canonical asset already has a protected ENTRY submission"
+                        )
+                    conn.execute(
+                        "UPDATE entry_submission_claims SET state = 'RETIRED', updated_at = ? "
+                        "WHERE proposal_id = ?",
+                        (time.time(), claim["proposal_id"]),
+                    )
+                owners = conn.execute(
+                    """SELECT c.*, r.executor_id FROM capital_reservations c
+                    LEFT JOIN execution_receipts r ON r.proposal_id = c.proposal_id
+                    WHERE c.status IN ('COMMITTED', 'RECONCILED')
+                      AND c.proposal_id != ?""",
+                    (proposal.proposal_id.strip(),),
+                ).fetchall()
+                for owner in owners:
+                    if normalized_base_asset(owner["pair"]) != base:
+                        continue
+                    if not self._capital_submission_retirement_proven(
+                        conn, schema, str(path), owner
+                    ):
+                        raise ValueError(
+                            "canonical asset has an uncertified protected submission"
+                        )
+                if not cash.burn(
+                    conn,
+                    proposal.proposal_id.strip(),
+                    proposal.amount_quote,
+                    reserved_cash_quote=self._cash_claims(conn, reserved_only=True),
+                    protected_cash_quote=self._cash_claims(conn),
+                    reserve_floor_quote=self.policy.reserve_floor_quote,
+                ):
+                    # Claim retirement and fee-aware burn are one boundary.
+                    conn.rollback()
+                    return False
+                if protected_buy_config is not None:
+                    self._record_protected_buy_submission(
+                        conn,
+                        proposal,
+                        pid,
+                        str(path),
+                        scope,
+                        protected_buy_config,
+                        protected_buy_policy,
+                    )
+                now = time.time()
+                conn.execute(
+                    """INSERT INTO entry_submission_claims (
+                        proposal_id,base_asset,position_id,ledger_path,pair,
+                        account_name,connector_name,controller_id,state,created_at,updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?)""",
+                    (
+                        proposal.proposal_id.strip(),
+                        base,
+                        pid,
+                        str(path),
+                        pair,
+                        *scope,
+                        now,
+                        now,
+                    ),
+                )
+                cursor = conn.execute(
+                    "UPDATE capital_reservations SET status = ?, reason = ?, updated_at = ? "
+                    "WHERE proposal_id = ? AND status = ?",
+                    (
+                        DecisionStatus.COMMITTED.value,
+                        "committed with canonical ENTRY identity",
+                        now,
+                        proposal.proposal_id.strip(),
+                        DecisionStatus.RESERVED.value,
+                    ),
+                )
+                if cursor.rowcount != 1:
+                    raise RuntimeError(
+                        "ENTRY capital claim changed during identity submission"
+                    )
+                conn.commit()
+                return True
+            except Exception:
+                conn.rollback()
+                raise
+
+    def _capital_submission_retirement_proven(
+        self,
+        conn: sqlite3.Connection,
+        schema: str,
+        ledger_path: str,
+        owner: sqlite3.Row,
+    ) -> bool:
+        """Cover legacy/RECOVERY owners as well as canonical ENTRY claims."""
+        from .economic_position import normalized_base_asset
+
+        if owner["executor_id"] is None:
+            return False
+        binding = conn.execute(
+            "SELECT * FROM entry_submission_claims WHERE proposal_id = ? "
+            "UNION ALL SELECT * FROM position_submission_bindings WHERE proposal_id = ?",
+            (owner["proposal_id"], owner["proposal_id"]),
+        ).fetchone()
+        if binding is not None:
+            return (
+                binding["ledger_path"] == ledger_path
+                and binding["pair"] == owner["pair"]
+                and binding["executor_id"] == owner["executor_id"]
+                and self._entry_retirement_proven(conn, schema, binding)
+            )
+        exists = conn.execute(
+            f"SELECT 1 FROM {schema}.sqlite_master WHERE type = 'table' "
+            "AND name = 'economic_position_retirements'"
+        ).fetchone()
+        if exists is None:
+            return False
+        # Historical proposals did not persist a submission position. Only an
+        # exact terminal certificate in the actual runtime ledger can prove
+        # their ownership; a flat label or an empty lot query is insufficient.
+        base = normalized_base_asset(owner["pair"])
+        positions = conn.execute(
+            f"SELECT r.position_id FROM {schema}.economic_position_retirements r "
+            f"JOIN {schema}.economic_positions p ON p.position_id = r.position_id "
+            "WHERE p.base_asset = ?",
+            (base,),
+        ).fetchall()
+        for position in positions:
+            claim = dict(owner)
+            claim.update(
+                position_id=position["position_id"],
+                ledger_path=ledger_path,
+                base_asset=base,
+            )
+            if self._entry_retirement_proven(conn, schema, claim):
+                return True
+        return False
+
+    @staticmethod
+    def _validate_recovery_scope(conn, proposal, scope, position_id, recovery_ledger):
+        from .economic_position import normalized_base_asset
+
+        claim = conn.execute(
+            "SELECT * FROM entry_submission_claims WHERE base_asset = ? "
+            "AND state IN ('COMMITTED', 'DISPATCHED')",
+            (normalized_base_asset(proposal.pair),),
+        ).fetchone()
+        if claim is not None and (
+            tuple(
+                claim[name]
+                for name in ("account_name", "connector_name", "controller_id")
+            )
+            != scope
+            or claim["pair"] != proposal.pair.strip().upper()
+            or claim["position_id"] != position_id
+        ):
+            raise ValueError(
+                "RECOVERY scope does not match the protected ENTRY position"
+            )
+        if claim is not None:
+            if recovery_ledger is None or recovery_ledger[1] != claim["ledger_path"]:
+                raise ValueError("RECOVERY economic identity changed before commit")
+            schema = recovery_ledger[0]
+            position = conn.execute(
+                f"SELECT status, pair, base_asset FROM {schema}.economic_positions "
+                "WHERE position_id = ?",
+                (claim["position_id"],),
+            ).fetchone()
+            if (
+                position is None
+                or position["status"] != "ACTIVE"
+                or position["pair"] != claim["pair"]
+                or position["base_asset"] != claim["base_asset"]
+            ):
+                raise ValueError("RECOVERY requires its exact ACTIVE economic position")
+            certificate_table = conn.execute(
+                f"SELECT 1 FROM {schema}.sqlite_master WHERE type = 'table' "
+                "AND name = 'economic_position_retirements'"
+            ).fetchone()
+            if (
+                certificate_table is not None
+                and conn.execute(
+                    f"SELECT 1 FROM {schema}.economic_position_retirements WHERE position_id = ?",
+                    (claim["position_id"],),
+                ).fetchone()
+                is not None
+            ):
+                raise ValueError(
+                    "RECOVERY position has already been terminally retired"
+                )
+        return claim
+
+    def commit_recovery_submission_if_matches(
+        self,
+        proposal: CapitalProposal,
+        *,
+        account_name: str,
+        connector_name: str,
+        controller_id: str,
+        position_id: str | None = None,
+        ledger_path: str | Path | None = None,
+        protected_buy_config: dict | None = None,
+        protected_buy_policy: dict | None = None,
+    ) -> bool:
+        """Preserve legacy recovery while preventing scoped ENTRY ownership drift."""
+        scope = self._submission_scope(account_name, connector_name, controller_id)
+        return self.commit_if_matches(
+            proposal,
+            recovery_scope=scope,
+            position_id=position_id,
+            ledger_path=ledger_path,
+            protected_buy_config=protected_buy_config,
+            protected_buy_policy=protected_buy_policy,
+        )
 
     def carve_reserved_recovery_tranche(
         self,
@@ -1475,6 +2440,13 @@ class CapitalGovernor:
                 self._expire_stale(conn)
 
                 if cash.authority_rejection(conn, tranche_proposal):
+                    conn.commit()
+                    return False
+                if self._protected_buy_scope_rejection(
+                    conn,
+                    tranche_proposal.account_name,
+                    tranche_proposal.connector_name,
+                ):
                     conn.commit()
                     return False
 
@@ -1534,6 +2506,13 @@ class CapitalGovernor:
                 ).fetchone()
 
                 if parent is None:
+                    conn.commit()
+                    return False
+                if self._protected_buy_scope_rejection(
+                    conn,
+                    parent["account_name"],
+                    parent["connector_name"],
+                ):
                     conn.commit()
                     return False
 
@@ -1706,6 +2685,18 @@ class CapitalGovernor:
             conn.execute("BEGIN IMMEDIATE")
 
             try:
+                if target == DecisionStatus.COMMITTED:
+                    scoped_row = conn.execute(
+                        "SELECT account_name,connector_name FROM capital_reservations WHERE proposal_id=?",
+                        (proposal_id,),
+                    ).fetchone()
+                    if scoped_row is not None and self._protected_buy_scope_rejection(
+                        conn,
+                        scoped_row["account_name"],
+                        scoped_row["connector_name"],
+                    ):
+                        conn.commit()
+                        return False
                 if (
                     target == DecisionStatus.COMMITTED
                     and cash.binding(conn) is not None
@@ -1864,6 +2855,28 @@ class CapitalGovernor:
             conn.execute("BEGIN IMMEDIATE")
 
             try:
+                entry_claim = conn.execute(
+                    "SELECT * FROM entry_submission_claims WHERE proposal_id = ?",
+                    (proposal_id,),
+                ).fetchone()
+                if entry_claim is not None and normalized_scope != tuple(
+                    entry_claim[name]
+                    for name in ("account_name", "connector_name", "controller_id")
+                ):
+                    raise RuntimeError(
+                        "execution receipt scope conflicts with ENTRY submission"
+                    )
+                position_claim = conn.execute(
+                    "SELECT * FROM position_submission_bindings WHERE proposal_id = ?",
+                    (proposal_id,),
+                ).fetchone()
+                if position_claim is not None and normalized_scope != tuple(
+                    position_claim[name]
+                    for name in ("account_name", "connector_name", "controller_id")
+                ):
+                    raise RuntimeError(
+                        "execution receipt scope conflicts with position submission"
+                    )
                 reservation = conn.execute(
                     """
                     SELECT
@@ -2095,6 +3108,19 @@ class CapitalGovernor:
                         "proposal changed state during execution reconciliation"
                     )
 
+                if entry_claim is not None:
+                    conn.execute(
+                        "UPDATE entry_submission_claims SET state = 'DISPATCHED', "
+                        "executor_id = ?, updated_at = ? WHERE proposal_id = ?",
+                        (executor_id, now, proposal_id),
+                    )
+                if position_claim is not None:
+                    conn.execute(
+                        "UPDATE position_submission_bindings SET state = 'DISPATCHED', "
+                        "executor_id = ?, updated_at = ? WHERE proposal_id = ?",
+                        (executor_id, now, proposal_id),
+                    )
+
                 conn.commit()
                 return True
 
@@ -2164,19 +3190,13 @@ class CapitalGovernor:
             authorized_quote=Decimal(str(row["authorized_quote"])),
             leverage=Decimal(str(row["leverage"])),
             account_name=(
-                None
-                if row["account_name"] is None
-                else str(row["account_name"])
+                None if row["account_name"] is None else str(row["account_name"])
             ),
             connector_name=(
-                None
-                if row["connector_name"] is None
-                else str(row["connector_name"])
+                None if row["connector_name"] is None else str(row["connector_name"])
             ),
             controller_id=(
-                None
-                if row["controller_id"] is None
-                else str(row["controller_id"])
+                None if row["controller_id"] is None else str(row["controller_id"])
             ),
         )
 
@@ -2278,9 +3298,7 @@ class CapitalGovernor:
                     else Decimal(previous["filled_amount_quote"])
                 )
                 previous_fees = (
-                    ZERO
-                    if previous is None
-                    else Decimal(previous["cum_fees_quote"])
+                    ZERO if previous is None else Decimal(previous["cum_fees_quote"])
                 )
 
                 # GridExecutor changes the meaning of filled_amount_quote when
@@ -2306,8 +3324,7 @@ class CapitalGovernor:
                     and not grid_position_hold_rebase
                 ):
                     raise RuntimeError(
-                        "filled_amount_quote moved backwards for "
-                        f"{executor_id}"
+                        "filled_amount_quote moved backwards for " f"{executor_id}"
                     )
 
                 if observation.cum_fees_quote < previous_fees:
@@ -2360,6 +3377,14 @@ class CapitalGovernor:
                     )
 
                     if comparable == previous_comparable:
+                        # A successful exact-scope refresh is new freshness
+                        # evidence, even when counters and terminal state are
+                        # unchanged. Keep one observation and zero deltas.
+                        conn.execute(
+                            "UPDATE executor_accounting_observations SET observed_at = ? "
+                            "WHERE observation_id = ?",
+                            (time.time(), previous["observation_id"]),
+                        )
                         conn.commit()
                         return ExecutorAccountingDelta(
                             proposal_id=str(provenance["proposal_id"]),
@@ -2449,6 +3474,31 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
+    def get_latest_executor_accounting(
+        self, executor_id: str
+    ) -> tuple[ExecutorAccountingObservation, float] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM executor_accounting_observations WHERE executor_id = ? "
+                "ORDER BY observation_id DESC LIMIT 1",
+                (executor_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        optional = lambda name: None if row[name] is None else Decimal(row[name])
+        observation = ExecutorAccountingObservation(
+            executor_id=row["executor_id"],
+            executor_type=row["executor_type"],
+            status=row["status"],
+            close_type=row["close_type"],
+            filled_amount_quote=Decimal(row["filled_amount_quote"]),
+            cum_fees_quote=Decimal(row["cum_fees_quote"]),
+            position_size_quote=optional("position_size_quote"),
+            net_pnl_quote=optional("net_pnl_quote"),
+            realized_pnl_quote=optional("realized_pnl_quote"),
+        )
+        return observation, float(row["observed_at"])
+
     @staticmethod
     def _position_hold_scope(
         *,
@@ -2515,9 +3565,7 @@ class CapitalGovernor:
             or not math.isfinite(float(timestamp))
             or float(timestamp) < 0
         ):
-            raise ValueError(
-                "observed_at must be a finite non-negative timestamp"
-            )
+            raise ValueError("observed_at must be a finite non-negative timestamp")
 
         timestamp = float(timestamp)
 
@@ -2525,9 +3573,7 @@ class CapitalGovernor:
 
         for hold in holds:
             if not isinstance(hold, PositionHoldAccounting):
-                raise ValueError(
-                    "holds must contain PositionHoldAccounting values"
-                )
+                raise ValueError("holds must contain PositionHoldAccounting values")
 
             raw = {
                 "account_name": hold.account_name,
@@ -2666,17 +3712,12 @@ class CapitalGovernor:
         observed_at = float(snapshot["observed_at"])
 
         if not math.isfinite(observed_at):
-            raise RuntimeError(
-                "persisted PositionHold snapshot timestamp is invalid"
-            )
+            raise RuntimeError("persisted PositionHold snapshot timestamp is invalid")
 
         age = current_time - observed_at
 
         # Future-dated or stale evidence is never allowed to reduce exposure.
-        if (
-            age < 0
-            or age > self.policy.position_hold_snapshot_ttl_seconds
-        ):
+        if age < 0 or age > self.policy.position_hold_snapshot_ttl_seconds:
             return None
 
         rows = conn.execute(
@@ -2691,8 +3732,7 @@ class CapitalGovernor:
 
         if len(rows) > 1:
             raise RuntimeError(
-                "persisted exact PositionHold snapshot contains "
-                "multiple ACTIVE rows"
+                "persisted exact PositionHold snapshot contains " "multiple ACTIVE rows"
             )
 
         holds: list[PositionHoldAccounting] = []
@@ -2852,9 +3892,101 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
+    def _attach_recovery_exposure_ledgers(
+        self, conn: sqlite3.Connection
+    ) -> dict[str, str]:
+        """Attach scoped ledgers before the governor/ledger write-lock boundary.
+
+        An unavailable or unattachable ledger is omitted deliberately: its
+        scoped owner retains full authorization in the exposure calculation.
+        """
+        schemas = {
+            str(Path(row["file"]).resolve()): str(row["name"])
+            for row in conn.execute("PRAGMA database_list").fetchall()
+            if row["file"]
+        }
+        rows = conn.execute(
+            "SELECT DISTINCT ledger_path FROM position_submission_bindings"
+        ).fetchall()
+        for index, row in enumerate(rows):
+            path = Path(row["ledger_path"]).resolve()
+            if str(path) in schemas or not path.is_file():
+                continue
+            schema = f"recovery_ledger_{index}"
+            try:
+                conn.execute(f"ATTACH DATABASE ? AS {schema}", (str(path),))
+            except sqlite3.Error:
+                continue
+            schemas[str(path)] = schema
+        return schemas
+
+    def _scoped_recovery_basis_floor(
+        self,
+        conn: sqlite3.Connection,
+        provenance: ExecutionProvenance,
+        recovery_ledgers: dict[str, str],
+    ) -> Decimal:
+        """Preserve exact remaining lot basis for guarded RECOVERY ownership."""
+        binding = conn.execute(
+            "SELECT * FROM position_submission_bindings WHERE proposal_id = ?",
+            (provenance.proposal_id,),
+        ).fetchone()
+        if binding is None:
+            # Historical unbound executions keep their existing semantics.
+            return ZERO
+        fallback = provenance.authorized_quote
+        exact_scope = (
+            binding["executor_id"] == provenance.executor_id
+            and binding["pair"] == provenance.pair
+            and binding["account_name"] == provenance.account_name
+            and binding["connector_name"] == provenance.connector_name
+            and binding["controller_id"] == provenance.controller_id
+            and binding["state"] == "DISPATCHED"
+        )
+        schema = recovery_ledgers.get(str(Path(binding["ledger_path"]).resolve()))
+        if not exact_scope or schema is None:
+            return fallback
+        try:
+            position = conn.execute(
+                f"SELECT pair, base_asset, status FROM {schema}.economic_positions "
+                "WHERE position_id = ?",
+                (binding["position_id"],),
+            ).fetchone()
+            if (
+                position is None
+                or position["pair"] != binding["pair"]
+                or position["base_asset"] != binding["base_asset"]
+                or position["status"] not in {"ACTIVE", "RESIDUAL", "CLOSED"}
+            ):
+                return fallback
+            # Inspect every lot for this owner so a conflicting position or
+            # executor can never be silently excluded by a narrow SQL filter.
+            lots = conn.execute(
+                f"SELECT * FROM {schema}.economic_lots WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchall()
+            basis = ZERO
+            for lot in lots:
+                if (
+                    lot["position_id"] != binding["position_id"]
+                    or lot["pair"] != binding["pair"]
+                    or lot["executor_id"] != provenance.executor_id
+                    or lot["source"] != "VCAP_RECOVERY"
+                    or lot["ownership"] != "ACTIVE_TRADE"
+                ):
+                    return fallback
+                remaining = Decimal(lot["cost_basis_remaining_quote"])
+                if not remaining.is_finite() or remaining < ZERO:
+                    return fallback
+                basis = exact_decimal_sum((basis, remaining))
+            return basis
+        except (sqlite3.Error, ValueError, TypeError, ArithmeticError):
+            return fallback
+
     def _current_recovery_exposure_quote(
         self,
         conn: sqlite3.Connection,
+        recovery_ledgers: dict[str, str],
     ) -> Decimal:
         """Compute reconciled RECOVERY exposure using one DB transaction."""
         rows = conn.execute(
@@ -2914,6 +4046,9 @@ class CapitalGovernor:
                     None if row["controller_id"] is None else str(row["controller_id"])
                 ),
             )
+            basis_floor = self._scoped_recovery_basis_floor(
+                conn, provenance, recovery_ledgers
+            )
 
             if row["observation_id"] is None:
                 released = self._recovery_recycle_release_quote(
@@ -2927,6 +4062,7 @@ class CapitalGovernor:
                             exact_decimal_difference(
                                 provenance.authorized_quote, released
                             ),
+                            basis_floor,
                             ZERO,
                         ),
                     )
@@ -2991,6 +4127,7 @@ class CapitalGovernor:
                                 exact_decimal_difference(
                                     assessment.exposure_quote, released
                                 ),
+                                basis_floor,
                                 ZERO,
                             ),
                         )
@@ -3023,6 +4160,7 @@ class CapitalGovernor:
                     total,
                     max(
                         exact_decimal_difference(assessment.exposure_quote, released),
+                        basis_floor,
                         ZERO,
                     ),
                 )
@@ -3033,7 +4171,15 @@ class CapitalGovernor:
     def current_recovery_exposure_quote(self) -> Decimal:
         """Return current quote capital attributable to RECOVERY executors."""
         with self._connect() as conn:
-            return self._current_recovery_exposure_quote(conn)
+            recovery_ledgers = self._attach_recovery_exposure_ledgers(conn)
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                exposure = self._current_recovery_exposure_quote(conn, recovery_ledgers)
+                conn.commit()
+                return exposure
+            except Exception:
+                conn.rollback()
+                raise
 
     def protected_quote(self) -> Decimal:
         """

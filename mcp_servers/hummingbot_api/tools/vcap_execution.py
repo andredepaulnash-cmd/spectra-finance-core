@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from decimal import Decimal
 from typing import Any
 
 from mcp_servers.hummingbot_api.tools.executor_create import create_dca_executor
@@ -19,6 +20,9 @@ async def execute_vcap_decision(
     governor: CapitalGovernor,
     account_name: str = "master_account",
     controller_id: str = "spectra",
+    position_id: str | None = None,
+    buy_max_price_slippage_bps: Decimal | None = None,
+    buy_fee_allowance_bps: Decimal | None = None,
 ) -> dict[str, Any]:
     """Execute one prevalidated VCAP tranche through the Spectra DCA path.
 
@@ -101,14 +105,17 @@ async def execute_vcap_decision(
         connector_name="kraken",
         trading_pair=proposal.pair,
         side=1,
-        amounts_quote=[float(proposal.amount_quote)],
-        prices=[float(decision.current_price)],
+        amounts_quote=[str(proposal.amount_quote)],
+        prices=[str(decision.current_price)],
         leverage=1,
         level_id=f"vcap-{decision.sequence:04d}",
         account_name=account,
         controller_id=controller_id,
         spectra_proposal_id=proposal.proposal_id,
         spectra_intent="RECOVERY",
+        spectra_position_id=position_id,
+        spectra_max_price_slippage_bps=buy_max_price_slippage_bps,
+        spectra_fee_allowance_bps=buy_fee_allowance_bps,
     )
 
     return {

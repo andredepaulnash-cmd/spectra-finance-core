@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 from decimal import Decimal
+from time import time
 
 import pytest
 
 from mcp_servers.hummingbot_api.tools import executor_create
 from mcp_servers.hummingbot_api.tools.vcap_execution import execute_vcap_decision
 from spectra_core.capital_governor import CapitalGovernor
+from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.kraken_authorization import reserve_kraken_capital
 from spectra_core.models import (
     BreakerMode,
@@ -44,7 +46,15 @@ class Connectors:
     async def get_trading_rules(self, *, connector_name, trading_pairs):
         assert connector_name == "kraken"
         return {
-            pair: {"min_order_size": "0.001", "min_notional_size": "1"}
+            pair: {
+                "min_order_size": "0.001",
+                "min_notional_size": "1",
+                "min_price_increment": "0.01",
+                "min_base_amount_increment": "0.001",
+                "min_quote_amount_increment": "0.01",
+                "supports_limit_orders": True,
+                "supports_market_orders": True,
+            }
             for pair in trading_pairs
         }
 
@@ -91,10 +101,41 @@ def activated_governor(tmp_path):
 
 
 def configure_executor_gate(monkeypatch, governor):
+    from mcp_servers.hummingbot_api.tools import execution_book
+    from mcp_servers.hummingbot_api.tools.execution_book import FreshVenueBook
+
     executor_create.trading_rules_cache.clear()
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
     monkeypatch.setattr(executor_create, "get_breaker_mode", lambda: BreakerMode.NORMAL)
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: governor)
+    ledger = EconomicPositionLedger(governor.db_path.parent / "scope-economic.sqlite3")
+    ledger.open_position(
+        position_id="cash-scope-position", pair="BTC-USD", created_at=1001
+    )
+    monkeypatch.setattr(executor_create, "get_economic_position_ledger", lambda: ledger)
+
+    async def fresh(rule):
+        observed = time()
+        return FreshVenueBook(
+            rule.trading_pair,
+            "XBTUSD",
+            D("95"),
+            D("95.01"),
+            ((D("95"), D("100")),),
+            ((D("95.01"), D("100")),),
+            observed - 0.01,
+            observed,
+            "test-fresh-Kraken-Depth",
+            "b" * 64,
+            venue_min_order_size=D("0.001"),
+            venue_min_cost_quote=D("1"),
+            venue_base_asset="BTC",
+            venue_quote_asset="USD",
+            venue_rules_observed_at=observed,
+            venue_rules_sha256="d" * 64,
+        )
+
+    monkeypatch.setattr(execution_book, "fetch_protected_kraken_book", fresh)
 
 
 def authorize(client, governor, account="funded_account", amount="50"):
@@ -121,10 +162,15 @@ def create_grid(client, proposal_id, account):
             end_price=100,
             limit_price=80,
             total_amount_quote=50,
+            min_order_amount_quote=50,
+            max_open_orders=1,
             leverage=1,
             account_name=account,
             spectra_proposal_id=proposal_id,
             spectra_intent="ENTRY",
+            spectra_position_id="cash-scope-position",
+            spectra_max_price_slippage_bps="50",
+            spectra_fee_allowance_bps="40",
         )
     )
 
@@ -255,6 +301,9 @@ def test_vcap_actual_scope_survives_carve_commit_and_restart_replay(
             decision=decision,
             governor=activated_governor,
             account_name="funded_account",
+            position_id="cash-scope-position",
+            buy_max_price_slippage_bps=D("50"),
+            buy_fee_allowance_bps=D("40"),
         )
     )
     assert first["executed"]

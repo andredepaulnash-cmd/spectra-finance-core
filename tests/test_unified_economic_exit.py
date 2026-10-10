@@ -430,6 +430,7 @@ def test_exit_requests_every_active_owner_and_never_targets_retained_lot(
     tmp_path,
     monkeypatch,
 ):
+    monkeypatch.setattr(exit_tool.time, "time", lambda: 2000)
     g, ledger = build_owned_position(tmp_path)
     client = FakeClient()
     monkeypatch.setattr(
@@ -454,6 +455,8 @@ def test_exit_requests_every_active_owner_and_never_targets_retained_lot(
             position_id="xrp-position-1",
             trading_rule=trading_rule(),
             now=2_000,
+            best_bid=D("0.50"),
+            market_observed_at=2000,
         )
     )
 

@@ -81,4 +81,18 @@ jobs:
             tests/test_strategy_replay_vcap.py \
             tests/test_kraken_tardis_import.py \
             tests/test_binance_kline_import.py \
-            tests/test_rotating_fleet.py
+            tests/test_rotating_fleet.py \
+            tests/test_entry_identity_submission.py \
+            tests/test_residual_position_lifecycle.py \
+            tests/test_terminal_retirement_runtime.py \
+            tests/test_terminal_retirement_scheduler.py \
+            tests/test_partial_recycle_dispatch_guards.py \
+            tests/test_partial_residual_runtime.py \
+            tests/test_executor_trading_rule_preflight.py \
+            tests/test_typed_executor_tools.py \
+            tests/test_integrated_entry_cash_authority.py \
+            tests/test_integrated_partial_exit.py \
+            tests/test_integrated_retirement_exit.py \
+            tests/test_integrated_runtime_restart.py \
+            tests/test_execution_price_policy.py \
+            tests/test_protected_buy_reconciliation.py

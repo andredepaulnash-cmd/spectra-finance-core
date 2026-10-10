@@ -3,11 +3,13 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 from enum import StrEnum
+from fractions import Fraction
 from math import isfinite
 
 from .capital_governor import CapitalGovernor
+from .decimal_math import exact_decimal_sum
 from .economic_position import EconomicPositionLedger
 from .models import IntentKind
 
@@ -99,7 +101,14 @@ class TradeFillEvidence:
 
     @property
     def quote_amount(self) -> Decimal:
-        return self.amount_base * self.price
+        with localcontext() as context:
+            context.prec = max(
+                28,
+                len(self.amount_base.as_tuple().digits)
+                + len(self.price.as_tuple().digits)
+                + 2,
+            )
+            return self.amount_base * self.price
 
 
 @dataclass(frozen=True)
@@ -210,8 +219,7 @@ class LiveFillLedgerReconciler:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
-            conn.executescript(
-                """
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS economic_fill_bindings (
                     order_id TEXT PRIMARY KEY,
                     position_id TEXT NOT NULL,
@@ -249,8 +257,7 @@ class LiveFillLedgerReconciler:
                 CREATE INDEX IF NOT EXISTS
                     economic_trade_fill_order_idx
                 ON economic_trade_fill_reconciliation(order_id);
-                """
-            )
+                """)
 
     def bind_executor_order(
         self,
@@ -289,9 +296,7 @@ class LiveFillLedgerReconciler:
         if provenance.pair.strip().upper() != normalized_pair:
             raise ValueError("fill binding pair does not match provenance")
         if provenance.account_name is None or provenance.connector_name is None:
-            raise ValueError(
-                "fill binding requires scoped execution provenance"
-            )
+            raise ValueError("fill binding requires scoped execution provenance")
         if provenance.account_name != account:
             raise ValueError("fill binding account does not match provenance")
         if provenance.connector_name.lower() != connector:
@@ -302,13 +307,11 @@ class LiveFillLedgerReconciler:
             EconomicFillRole.VCAP_RECOVERY: IntentKind.RECOVERY,
         }.get(role)
         if expected_intent is not None and provenance.intent != expected_intent:
-            raise ValueError(
-                f"{role.value} binding has wrong capital intent"
-            )
-        if (
-            role == EconomicFillRole.POSITION_EXIT
-            and provenance.intent not in {IntentKind.ENTRY, IntentKind.RECOVERY}
-        ):
+            raise ValueError(f"{role.value} binding has wrong capital intent")
+        if role == EconomicFillRole.POSITION_EXIT and provenance.intent not in {
+            IntentKind.ENTRY,
+            IntentKind.RECOVERY,
+        }:
             raise ValueError("exit binding source is not owned trade capital")
 
         snapshot = self.ledger.snapshot(position)
@@ -355,9 +358,7 @@ class LiveFillLedgerReconciler:
                 executor_id=provenance.executor_id,
             )
             if not owned:
-                raise ValueError(
-                    "exit binding source owns no active economic lots"
-                )
+                raise ValueError("exit binding source owns no active economic lots")
 
         with self._connect() as conn:
             conn.execute(
@@ -461,9 +462,7 @@ class LiveFillLedgerReconciler:
             float(row["occurred_at"]),
         )
         if actual != self._evidence_signature(fill):
-            raise RuntimeError(
-                "trade_id replay conflicts with existing fill evidence"
-            )
+            raise RuntimeError("trade_id replay conflicts with existing fill evidence")
 
         return FillReconciliationResult(
             trade_id=fill.trade_id,
@@ -486,16 +485,16 @@ class LiveFillLedgerReconciler:
             base_asset,
             quote_asset,
         }:
-            raise ValueError(
-                "third-currency trade fee cannot be valued exactly"
-            )
+            raise ValueError("third-currency trade fee cannot be valued exactly")
 
         if fill.side == "BUY":
             acquired_base = fill.amount_base
             entry_fee_quote = ZERO
 
             if fill.fee_paid > ZERO and fee_currency == base_asset:
-                acquired_base -= fill.fee_paid
+                acquired_base = exact_decimal_sum(
+                    (acquired_base, fill.fee_paid.copy_negate())
+                )
                 if acquired_base <= ZERO:
                     raise ValueError("base-denominated fee consumes entire fill")
             elif fill.fee_paid > ZERO and fee_currency == quote_asset:
@@ -507,7 +506,7 @@ class LiveFillLedgerReconciler:
         exit_fee_quote = ZERO
 
         if fill.fee_paid > ZERO and fee_currency == base_asset:
-            base_sold += fill.fee_paid
+            base_sold = exact_decimal_sum((base_sold, fill.fee_paid))
         elif fill.fee_paid > ZERO and fee_currency == quote_asset:
             exit_fee_quote = fill.fee_paid
 
@@ -526,23 +525,17 @@ class LiveFillLedgerReconciler:
             raise ValueError("trade fill connector does not match order binding")
 
         expected_side = (
-            "SELL"
-            if binding.role == EconomicFillRole.POSITION_EXIT
-            else "BUY"
+            "SELL" if binding.role == EconomicFillRole.POSITION_EXIT else "BUY"
         )
         if fill.side != expected_side:
             raise ValueError(
                 f"{binding.role.value} requires {expected_side} trade fills"
             )
 
-        provenance = self.governor.get_execution_provenance(
-            binding.proposal_id
-        )
+        provenance = self.governor.get_execution_provenance(binding.proposal_id)
         receipt = self.governor.get_execution_receipt(binding.proposal_id)
         if provenance is None or receipt != binding.executor_id:
-            raise ValueError(
-                "bound fill lost exact execution provenance"
-            )
+            raise ValueError("bound fill lost exact execution provenance")
         if provenance.executor_id != binding.executor_id:
             raise ValueError("bound fill executor provenance changed")
         if provenance.pair.strip().upper() != binding.pair:
@@ -597,6 +590,8 @@ class LiveFillLedgerReconciler:
 
         replay = self._existing_result(fill)
         if replay is not None:
+            if binding is not None:
+                self._audit_protected_buy_fill(fill, binding)
             return replay
 
         binding = self.get_binding(fill.order_id)
@@ -715,6 +710,10 @@ class LiveFillLedgerReconciler:
                     ),
                 )
 
+        # Policy failures must not erase confirmed money. The inventory and
+        # exact trade journal commit first; this durable gate also replays after
+        # a crash between those commits and the policy audit.
+        self._audit_protected_buy_fill(fill, binding)
         return FillReconciliationResult(
             trade_id=fill.trade_id,
             order_id=fill.order_id,
@@ -724,6 +723,68 @@ class LiveFillLedgerReconciler:
             position_id=binding.position_id,
             reasons=("confirmed_trade_fill_applied",),
         )
+
+    def _audit_protected_buy_fill(
+        self,
+        fill: TradeFillEvidence,
+        binding: FillOwnershipBinding,
+    ) -> None:
+        if fill.side != "BUY":
+            return
+        submission = self.governor.get_protected_buy_submission(binding.proposal_id)
+        if submission is None:
+            return
+        config = submission["config"]
+        cap = Fraction(Decimal(str(config["price"])))
+        amount = Fraction(Decimal(str(config["amount"])))
+        reasons: list[str] = []
+        if Fraction(fill.price) > cap:
+            reasons.append(f"protected_buy_fill_price_above_cap:{fill.trade_id}")
+
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT r.amount_base, r.price, r.fee_paid, r.fee_currency "
+                "FROM economic_trade_fill_reconciliation r "
+                "JOIN economic_fill_bindings b ON b.order_id=r.order_id "
+                "WHERE b.proposal_id=? AND r.side='BUY'",
+                (binding.proposal_id,),
+            ).fetchall()
+        filled = sum(
+            (Fraction(Decimal(row["amount_base"])) for row in rows), Fraction(0)
+        )
+        if filled > amount:
+            reasons.append("protected_buy_cumulative_fills_above_authorized_amount")
+
+        policy = submission.get("policy")
+        if policy is None:
+            reasons.append("protected_buy_fee_policy_missing")
+        else:
+            fee_rate = Fraction(Decimal(str(policy["fee_allowance_bps"]))) / 10000
+            base, quote = fill.pair.split("-", 1)
+            # Compare in the confirmed fee's own asset; no rounded conversion
+            # can hide a breach and third-asset fees are never estimated.
+            if fill.fee_paid:
+                if fill.fee_currency == quote:
+                    exceeded = (
+                        Fraction(fill.fee_paid)
+                        > Fraction(fill.amount_base) * Fraction(fill.price) * fee_rate
+                    )
+                elif fill.fee_currency == base:
+                    exceeded = (
+                        Fraction(fill.fee_paid) > Fraction(fill.amount_base) * fee_rate
+                    )
+                else:
+                    exceeded = True
+                if exceeded:
+                    reasons.append(
+                        f"protected_buy_fill_fee_above_allowance:{fill.trade_id}"
+                    )
+
+        for reason in reasons:
+            self.governor.record_protected_buy_conflict(
+                proposal_id=binding.proposal_id,
+                reason=reason,
+            )
 
     def reconcile_trade_fills(
         self,
@@ -740,9 +801,7 @@ class LiveFillLedgerReconciler:
             previous = seen.get(fill.trade_id)
             if previous is not None:
                 if previous != fill:
-                    raise RuntimeError(
-                        "batch contains conflicting duplicate trade_id"
-                    )
+                    raise RuntimeError("batch contains conflicting duplicate trade_id")
                 continue
             seen[fill.trade_id] = fill
             results.append(

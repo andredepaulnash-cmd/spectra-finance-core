@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
+import time
+from dataclasses import asdict
 from decimal import Decimal, localcontext
 from typing import Any
 
@@ -25,7 +29,12 @@ from spectra_core.economic_exit import (
     create_or_load_position_exit_manifest,
     validate_manifest_against_ledger,
 )
-from spectra_core.economic_position import EconomicPositionLedger
+from spectra_core.economic_position import (
+    EconomicPositionLedger,
+    TerminalExecutorEvidence,
+    validate_protected_buy_terminal_evidence,
+)
+from spectra_core.execution_policy import build_protected_sell_limit_price
 from spectra_core.executor_accounting import (
     assess_recovery_exposure,
     executor_accounting_observation_from_raw,
@@ -43,6 +52,67 @@ from spectra_core.vcap_profit_exit import (
     VCAPProfitExitAction,
     VCAPProfitExitDecision,
 )
+
+
+async def retire_terminal_economic_position(
+    client: Any,
+    *,
+    position_id: str,
+    proposal_ids: tuple[str, ...],
+    governor: CapitalGovernor,
+    ledger: EconomicPositionLedger,
+    trading_rule: KrakenTradingRule,
+    current_price: Decimal,
+    market_observed_at: float,
+    now: float,
+    max_age_seconds: float = 30,
+) -> dict[str, Any]:
+    """Certify terminal inventory after exact fills have been reconciled.
+
+    A fresh terminal snapshot does not apply fills or release capital here.
+    The ledger rejects any discrepancy with persisted ownership and receipts.
+    """
+    evidence = []
+    for proposal_id in proposal_ids:
+        provenance = governor.get_execution_provenance(proposal_id)
+        if provenance is None:
+            raise RuntimeError("terminal owner has no execution provenance")
+        raw = await client.executors.get_executor(provenance.executor_id)
+        observation = executor_accounting_observation_from_raw(
+            raw,
+            expected_executor_id=provenance.executor_id,
+        )
+        governor.reconcile_executor_accounting(observation)
+        trades = await fetch_executor_trade_snapshot(
+            client,
+            executor_id=provenance.executor_id,
+        )
+        orders = await fetch_executor_order_snapshot(
+            client,
+            executor_id=provenance.executor_id,
+        )
+        evidence.append(
+            TerminalExecutorEvidence(
+                proposal_id=proposal_id,
+                order_snapshot=orders,
+                trade_snapshot=trades,
+                observed_at=time.time(),
+                executor_config=raw.get("config"),
+            )
+        )
+    return ledger.retire_terminal_position(
+        event_id=f"terminal-retirement:{position_id}",
+        position_id=position_id,
+        governor=governor,
+        executor_evidence=tuple(evidence),
+        trading_rule=trading_rule,
+        current_price=current_price,
+        rules_observed_at=market_observed_at,
+        price_observed_at=market_observed_at,
+        now=time.time(),
+        max_age_seconds=max_age_seconds,
+    )
+
 
 ZERO = Decimal("0")
 BPS = Decimal("10000")
@@ -219,12 +289,22 @@ def _release_recovery_basis(manifest, result, governor, ledger, trade_id):
 
 
 async def synchronize_economic_position_exit(
-    client, *, manifest, governor, ledger, store, now
+    client, *, manifest, governor, ledger, store, now, reconciliation_only=False
 ):
     """Apply only confirmed exact synthetic SELL evidence, including on restart."""
-    validate_manifest_against_ledger(manifest, ledger=ledger)
+    dispatched = manifest.sell_executor_id is not None and store.dispatch_claimed(
+        manifest.manifest_id
+    )
+    validate_manifest_against_ledger(
+        manifest,
+        ledger=ledger,
+        allow_additional_inventory=dispatched,
+        governor=governor if dispatched else None,
+    )
     account, connector = _scope(manifest, governor)
     if manifest.sell_executor_id is None:
+        if reconciliation_only:
+            raise RuntimeError("reconciliation-only requires an exact protected SELL")
         progress = assess_position_exit_manifest(
             manifest, ledger=ledger, store=store, now=now
         )
@@ -277,18 +357,6 @@ async def synchronize_economic_position_exit(
     for conflict in conflicts:
         store.record_protection_conflict(
             manifest_id=manifest.manifest_id, conflict=conflict, now=now
-        )
-    if (
-        sell_observation.status.strip().upper() == "TERMINATED"
-        and orders.orders
-        and all(
-            order.status.strip().upper() in TERMINAL_ORDERS for order in orders.orders
-        )
-    ):
-        store.record_finality(
-            manifest_id=manifest.manifest_id,
-            executor_id=manifest.sell_executor_id,
-            now=now,
         )
     cash_events = {}
     for fill in trades.trades:
@@ -376,9 +444,24 @@ async def synchronize_economic_position_exit(
             conflict="outstanding_orders_exceed_manifest_inventory",
             now=now,
         )
-    progress = assess_position_exit_manifest(
-        manifest, ledger=ledger, store=store, now=now
-    )
+    # Confirmed venue fills remain financial truth even when policy is on HOLD.
+    # Their cash receipts stay PENDING until every protection gate is clear.
+    if reconciliation_only:
+        raise RuntimeError("whole SELL reconciliation-only HOLD retains pending cash")
+    if any(
+        lot.lot_id not in manifest.lot_ids
+        for lot in ledger.list_active_lots(manifest.position_id)
+    ):
+        raise RuntimeError("whole SELL immutable parcel growth retains pending cash")
+    if store.protection_conflicts(manifest.manifest_id):
+        raise RuntimeError(
+            "economic exit profit protection conflict requires resolution"
+        )
+    if any(
+        governor.get_protected_buy_conflicts(owner.proposal_id)
+        for owner in manifest.owners
+    ):
+        raise RuntimeError("protected BUY source conflict requires reconciliation")
     for fill, result, cash_event_id in cash_results:
         finalize_sale_cash_fill(
             governor=governor,
@@ -390,6 +473,44 @@ async def synchronize_economic_position_exit(
             sale_purpose="WHOLE_EXIT",
         )
     require_clear_cash_authority(governor)
+    if (
+        sell_observation.status.strip().upper() == "TERMINATED"
+        and orders.orders
+        and all(
+            order.status.strip().upper() in TERMINAL_ORDERS for order in orders.orders
+        )
+    ):
+        proof = {
+            "schema": "spectra-whole-terminal-v1",
+            "manifest_id": manifest.manifest_id,
+            "executor_id": manifest.sell_executor_id,
+            "executor_status": "TERMINATED",
+            "executor_filled_quote": str(sell_observation.filled_amount_quote),
+            "remaining_base": str(ledger.snapshot(manifest.position_id).active_base),
+            "orders": [
+                dict(
+                    asdict(order),
+                    status=order.status.strip().upper(),
+                    order_type=order.order_type.strip().upper(),
+                )
+                for order in orders.orders
+            ],
+            "trades": [asdict(fill) for fill in trades.trades],
+        }
+        # Decimal fields are serialized losslessly before hashing and replay.
+        proof = json.loads(json.dumps(proof, default=str))
+        proof["sha256"] = hashlib.sha256(
+            json.dumps(proof, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        store.record_finality(
+            manifest_id=manifest.manifest_id,
+            executor_id=manifest.sell_executor_id,
+            now=now,
+            proof=proof,
+        )
+    progress = assess_position_exit_manifest(
+        manifest, ledger=ledger, store=store, now=now
+    )
     return {
         "manifest_id": manifest.manifest_id,
         "sell_executor_id": manifest.sell_executor_id,
@@ -449,10 +570,19 @@ async def dispatch_protected_economic_exit(
     trading_rule=None,
     account_name="master_account",
     controller_id="spectra",
+    allow_new_dispatch=True,
+    best_bid=None,
+    market_observed_at=None,
 ):
     """Finish an unclaimed first dispatch or reconcile a previously claimed sale."""
     store = EconomicExitManifestStore(ledger.path)
-    validate_manifest_against_ledger(manifest, ledger=ledger)
+    claimed = store.dispatch_claimed(manifest.manifest_id)
+    validate_manifest_against_ledger(
+        manifest,
+        ledger=ledger,
+        allow_additional_inventory=claimed and manifest.sell_executor_id is not None,
+        governor=governor if claimed else None,
+    )
     account, connector = _scope(manifest, governor)
     if account != account_name or connector != "kraken":
         raise ValueError("economic exit scope must match the configured Kraken account")
@@ -496,6 +626,17 @@ async def dispatch_protected_economic_exit(
         raise RuntimeError(
             "economic exit dispatch outcome is ambiguous; reconciliation required"
         )
+    if not allow_new_dispatch:
+        return _result(
+            manifest, ledger, store, now, reasons=("new_exit_dispatch_disabled",)
+        )
+    if any(
+        getattr(governor, "get_protected_buy_conflicts", lambda _: ())(
+            owner.proposal_id
+        )
+        for owner in manifest.owners
+    ):
+        raise RuntimeError("economic exit owner has unresolved protected BUY conflict")
     if store.protection_conflicts(manifest.manifest_id):
         raise RuntimeError(
             "economic exit profit protection conflict requires resolution"
@@ -530,6 +671,21 @@ async def dispatch_protected_economic_exit(
         or manifest.protected_limit_price % trading_rule.min_price_increment != ZERO
     ):
         raise RuntimeError("economic exit protection needs replan for changed rules")
+    if best_bid is None or market_observed_at is None:
+        return _result(
+            manifest,
+            ledger,
+            store,
+            now,
+            reasons=("first_submission_requires_fresh_executable_bid",),
+        )
+    execution_price = build_protected_sell_limit_price(
+        manifest.protected_limit_price,
+        best_bid=best_bid,
+        trading_rule=trading_rule,
+        market_observed_at=market_observed_at,
+        now=now,
+    )
     source_evidence = []
     owner_rows = []
     for owner in manifest.owners:
@@ -537,7 +693,7 @@ async def dispatch_protected_economic_exit(
         obs = executor_accounting_observation_from_raw(
             raw, expected_executor_id=owner.executor_id
         )
-        if (
+        if obs.executor_type != "order_executor" and (
             obs.status.strip().upper() != "TERMINATED"
             or (obs.close_type or "").strip().upper() != "POSITION_HOLD"
         ):
@@ -557,11 +713,24 @@ async def dispatch_protected_economic_exit(
         passive = (
             obs.status.strip().upper() == "TERMINATED"
             and (obs.close_type or "").strip().upper() == "POSITION_HOLD"
+            and obs.executor_type in {"grid_executor", "dca_executor"}
             and all(
                 order.status.strip().upper() in TERMINAL_ORDERS
                 for order in orders.orders
             )
         )
+        if obs.executor_type == "order_executor" and obs.status == "TERMINATED":
+            validate_protected_buy_terminal_evidence(
+                governor=governor,
+                proposal_id=owner.proposal_id,
+                observation=obs,
+                orders=orders,
+                trades=trades,
+                position_id=manifest.position_id,
+                ledger_path=ledger.path,
+                executor_config=raw.get("config"),
+            )
+            passive = True
         covered = all(
             exact_decimal_sum(
                 (
@@ -613,6 +782,13 @@ async def dispatch_protected_economic_exit(
     validate_manifest_against_ledger(manifest, ledger=ledger)
     if ledger.snapshot(manifest.position_id).active_base != manifest.target_active_base:
         raise RuntimeError("economic exit inventory changed before first submission")
+    execution_price = build_protected_sell_limit_price(
+        manifest.protected_limit_price,
+        best_bid=best_bid,
+        trading_rule=trading_rule,
+        market_observed_at=market_observed_at,
+        now=time.time(),
+    )
     bind_sale_cash_authority(
         governor=governor,
         manifest=manifest,
@@ -635,7 +811,7 @@ async def dispatch_protected_economic_exit(
             "side": 2,
             "amount": str(manifest.target_active_base),
             "execution_strategy": "LIMIT",
-            "price": str(manifest.protected_limit_price),
+            "price": str(execution_price),
             "leverage": 1,
             "level_id": "whole-exit-" + manifest.manifest_id.rsplit(":", 1)[-1][:12],
         },
@@ -671,6 +847,9 @@ async def execute_economic_position_exit(
     now,
     account_name="master_account",
     controller_id="spectra",
+    best_bid=None,
+    market_observed_at=None,
+    allow_new_dispatch=True,
 ):
     if decision.action != VCAPProfitExitAction.EXIT:
         return {
@@ -721,4 +900,7 @@ async def execute_economic_position_exit(
         now=now,
         account_name=account_name,
         controller_id=controller_id,
+        best_bid=best_bid,
+        market_observed_at=market_observed_at,
+        allow_new_dispatch=allow_new_dispatch,
     )

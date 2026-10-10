@@ -1,7 +1,9 @@
 import asyncio
+import time
 from decimal import Decimal
 
 import pytest
+from aiohttp import ClientResponseError
 
 import mcp_servers.hummingbot_api.tools.partial_recycle as partial_tool
 from spectra_core.capital_governor import CapitalGovernor
@@ -340,9 +342,7 @@ class FakeExecutors:
                 "net_pnl_quote": "0",
                 "custom_info": {"realized_pnl_quote": "0"},
             }
-        error = RuntimeError("executor not found")
-        error.status = 404
-        raise error
+        raise ClientResponseError(None, (), status=404, message="executor not found")
 
     async def create_executor(
         self,
@@ -479,6 +479,7 @@ def test_confirmed_partial_recycle_realizes_profit_releases_basis_and_keeps_posi
             trading_rule=rule(),
             current_price=D("0.50"),
             now=2_010,
+            market_observed_at=time.time(),
         )
     )
 
