@@ -1,0 +1,66 @@
+{
+  "upstream_repository": "hummingbot/hummingbot",
+  "core_revision": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "license": "Apache-2.0",
+  "original_upstream_notice_present": false,
+  "source_logic_only": true,
+  "installed_backend_verified": false,
+  "files": [
+    {
+      "file": "order_types.py",
+      "upstream_path": "hummingbot/strategy_v2/executors/order_executor/data_types.py",
+      "git_blob_sha": "67715e3d14a1edf636defa95a7bbe5c73b8cff90",
+      "sha256": "ff62fbd7c774754ba872d9692129f06e473821638277d850d80480f1cd67b409",
+      "size_bytes": 3823
+    },
+    {
+      "file": "order_executor.py",
+      "upstream_path": "hummingbot/strategy_v2/executors/order_executor/order_executor.py",
+      "git_blob_sha": "39001ddda04172e7472e1925afc3b3d4f645b835",
+      "sha256": "7ba680564d3b68edf78f8d80a885d599598035c7c6748abd9a37c89c293a4b09",
+      "size_bytes": 26542
+    },
+    {
+      "file": "kraken_exchange.py",
+      "upstream_path": "hummingbot/connector/exchange/kraken/kraken_exchange.py",
+      "git_blob_sha": "454c6bd4bf700e8d778f82af3d75b53e4417da0b",
+      "sha256": "8429899dec3d8eba902ecdab3e34fad6d26a1db730ef420b6dd4391ba83c0807",
+      "size_bytes": 29888
+    },
+    {
+      "file": "common.py",
+      "upstream_path": "hummingbot/core/data_type/common.py",
+      "git_blob_sha": "a658cff5fc7f246ad101f9dcb5ce30a8b47d839b",
+      "sha256": "b06a787e9ca30d07d9a319a1daa8bcdced727d5be84cacef32893c76e07b680b",
+      "size_bytes": 3122
+    },
+    {
+      "file": "core_models_executors.py",
+      "upstream_path": "hummingbot/strategy_v2/models/executors.py",
+      "git_blob_sha": "30d3353b2713a30eccdf8b4041b96d68cd0cfd00",
+      "sha256": "bb567313b858df2f908f7570199ff661b3f353d51fa6692ec40476ddeda584d6",
+      "size_bytes": 2798
+    },
+    {
+      "file": "client_order_tracker.py",
+      "upstream_path": "hummingbot/connector/client_order_tracker.py",
+      "git_blob_sha": "735d13c0646ac886871408b0036ac8916f4e0b90",
+      "sha256": "555c82d35f965e930302fe711369d6327bad34588cb4f89313024eee1ef5c6d7",
+      "size_bytes": 19169
+    },
+    {
+      "file": "in_flight_order.py",
+      "upstream_path": "hummingbot/core/data_type/in_flight_order.py",
+      "git_blob_sha": "669e75608f1ae170a639c3d9c3a250107cf53271",
+      "sha256": "f0985f713ec63292d72c924853dd7746fae26ff3daa4593e087cc33756174f45",
+      "size_bytes": 14681
+    },
+    {
+      "file": "LICENSE",
+      "upstream_path": "LICENSE",
+      "git_blob_sha": "e998fcfee5d9d1ba105679b6a755d10fa68cdc97",
+      "sha256": "f0dd03c14db3dfbce03c166645f88fda96599ad1a5d217fddb49134de8c72a29",
+      "size_bytes": 11352
+    }
+  ]
+}
