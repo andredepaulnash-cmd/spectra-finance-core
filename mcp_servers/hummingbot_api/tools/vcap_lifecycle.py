@@ -4,6 +4,15 @@ from dataclasses import replace
 from decimal import Decimal
 from typing import Any
 
+from mcp_servers.hummingbot_api.tools.economic_exit import (
+    execute_economic_position_exit,
+)
+from mcp_servers.hummingbot_api.tools.partial_recycle import (
+    execute_partial_recycle,
+)
+from mcp_servers.hummingbot_api.tools.vcap_execution import (
+    execute_vcap_decision,
+)
 from spectra_core.accounting_health import AccountingHealthDecision
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.economic_position import EconomicPositionLedger
@@ -17,16 +26,6 @@ from spectra_core.vcap_lifecycle import (
 )
 from spectra_core.vcap_state import VCAPLifecycleStatus
 
-from mcp_servers.hummingbot_api.tools.vcap_execution import (
-    execute_vcap_decision,
-)
-from mcp_servers.hummingbot_api.tools.economic_exit import (
-    execute_economic_position_exit,
-)
-from mcp_servers.hummingbot_api.tools.partial_recycle import (
-    execute_partial_recycle,
-)
-
 
 async def execute_vcap_lifecycle_decision(
     client: Any,
@@ -39,6 +38,11 @@ async def execute_vcap_lifecycle_decision(
     ledger: EconomicPositionLedger | None = None,
     trading_rule: KrakenTradingRule | None = None,
     current_price: Decimal | None = None,
+    expected_exit_cost_bps: Decimal | None = None,
+    market_observed_at: float | None = None,
+    best_bid: Decimal | None = None,
+    buy_max_price_slippage_bps: Decimal | None = None,
+    buy_fee_allowance_bps: Decimal | None = None,
     accounting_health: AccountingHealthDecision | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
@@ -95,6 +99,9 @@ async def execute_vcap_lifecycle_decision(
             governor=governor,
             account_name=account_name,
             controller_id=controller_id,
+            position_id=position_id,
+            buy_max_price_slippage_bps=buy_max_price_slippage_bps,
+            buy_fee_allowance_bps=buy_fee_allowance_bps,
         )
 
         checkpoint = checkpoint_vcap_tranche_execution(
@@ -109,9 +116,7 @@ async def execute_vcap_lifecycle_decision(
             "result": result,
             "lifecycle_status": checkpoint.status.value,
             "next_sequence": checkpoint.next_sequence,
-            "remaining_authorized_quote": str(
-                checkpoint.remaining_authorized_quote
-            ),
+            "remaining_authorized_quote": str(checkpoint.remaining_authorized_quote),
         }
 
     if decision.action == VCAPLifecycleAction.PARTIAL_RECYCLE:
@@ -148,6 +153,8 @@ async def execute_vcap_lifecycle_decision(
             ledger=ledger,
             trading_rule=trading_rule,
             current_price=current_price,
+            expected_exit_cost_bps=expected_exit_cost_bps,
+            market_observed_at=market_observed_at,
             now=now,
             account_name=account_name,
             controller_id=controller_id,
@@ -191,12 +198,15 @@ async def execute_vcap_lifecycle_decision(
             position_id=position_id,
             trading_rule=trading_rule,
             now=now,
+            best_bid=best_bid,
+            market_observed_at=market_observed_at,
+            account_name=account_name,
+            controller_id=controller_id,
         )
 
-        economically_complete = (
-            result.get("economic_exit_state") == "COMPLETED"
-            and bool(result.get("all_recovery_budget_released"))
-        )
+        economically_complete = result.get(
+            "economic_exit_state"
+        ) == "COMPLETED" and bool(result.get("all_recovery_budget_released"))
         checkpoint = checkpoint_vcap_exit_result(
             state=decision.state,
             store=store,

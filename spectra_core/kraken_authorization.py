@@ -80,9 +80,7 @@ async def reserve_kraken_capital(
         client,
         account_name=account,
         trading_pair=pair,
-        recovery_exposure_quote=(
-            capital_governor.current_recovery_exposure_quote()
-        ),
+        recovery_exposure_quote=(capital_governor.current_recovery_exposure_quote()),
         refresh=refresh,
     )
 
@@ -92,6 +90,9 @@ async def reserve_kraken_capital(
         intent=intent_kind,
         amount_quote=amount,
         leverage=Decimal("1"),
+        account_name=account,
+        connector_name="kraken",
+        quote_asset=pair.rsplit("-", 1)[1],
     )
 
     decision = capital_governor.reserve(proposal, snapshot)

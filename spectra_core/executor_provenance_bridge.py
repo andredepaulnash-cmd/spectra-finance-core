@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+from fractions import Fraction
 from math import isfinite
 
 from .fill_reconciliation import (
@@ -15,10 +16,7 @@ from .fill_reconciliation import (
 )
 from .models import IntentKind
 
-
-SPECTRA_HUMMINGBOT_API_REVISION = (
-    "84426ffbf9ba09522b4444664f9770236205ae29"
-)
+SPECTRA_HUMMINGBOT_API_REVISION = "84426ffbf9ba09522b4444664f9770236205ae29"
 
 
 def _text(value: object, field: str) -> str:
@@ -152,9 +150,7 @@ def executor_order_snapshot_from_raw(
 
         raw_price = row.get("price")
         price = (
-            None
-            if raw_price is None
-            else _decimal(raw_price, "price", positive=True)
+            None if raw_price is None else _decimal(raw_price, "price", positive=True)
         )
         raw_average = row.get("average_fill_price")
         average = (
@@ -167,11 +163,7 @@ def executor_order_snapshot_from_raw(
             )
         )
         raw_updated = row.get("updated_at")
-        updated = (
-            None
-            if raw_updated is None
-            else _timestamp(raw_updated, "updated_at")
-        )
+        updated = None if raw_updated is None else _timestamp(raw_updated, "updated_at")
 
         parsed.append(
             ExecutorOrderEvidence(
@@ -256,9 +248,7 @@ def _expected_buy_role(intent: IntentKind) -> EconomicFillRole:
         return EconomicFillRole.BASE_ENTRY
     if intent == IntentKind.RECOVERY:
         return EconomicFillRole.VCAP_RECOVERY
-    raise ValueError(
-        "executor provenance intent cannot own economic entry inventory"
-    )
+    raise ValueError("executor provenance intent cannot own economic entry inventory")
 
 
 def _binding_matches(
@@ -361,9 +351,7 @@ def synchronize_executor_evidence(
     # Preflight every existing binding before any new ledger mutation.
     for order in order_snapshot.orders:
         expected_role = (
-            buy_role
-            if order.side == "BUY"
-            else EconomicFillRole.POSITION_EXIT
+            buy_role if order.side == "BUY" else EconomicFillRole.POSITION_EXIT
         )
         existing = reconciler.get_binding(order.order_id)
         if existing is not None and not _binding_matches(
@@ -401,9 +389,7 @@ def synchronize_executor_evidence(
             created_at=order.created_at,
         )
 
-    buy_trades = [
-        trade for trade in trade_snapshot.trades if trade.side == "BUY"
-    ]
+    buy_trades = [trade for trade in trade_snapshot.trades if trade.side == "BUY"]
     for trade in buy_trades:
         result = reconciler.reconcile_trade_fill(
             {
@@ -457,9 +443,7 @@ def synchronize_executor_evidence(
             )
         except ValueError:
             unresolved_orders.append(order.order_id)
-            unresolved_trades.extend(
-                sell_trade_ids_by_order.get(order.order_id, ())
-            )
+            unresolved_trades.extend(sell_trade_ids_by_order.get(order.order_id, ()))
 
     for trade in trade_snapshot.trades:
         if trade.side != "SELL" or trade.trade_id in unresolved_trades:
@@ -498,6 +482,55 @@ def synchronize_executor_evidence(
         for order in order_snapshot.orders
         if reconciler.get_binding(order.order_id) is not None
     )
+    protected = reconciler.governor.get_protected_buy_submission(proposal)
+    protected_coverage = True
+    if protected is not None:
+        config = protected["config"]
+        authorized_amount = Fraction(Decimal(str(config["amount"])))
+        price_cap = Fraction(Decimal(str(config["price"])))
+        protected_buy_orders = [
+            order for order in order_snapshot.orders if order.side == "BUY"
+        ]
+        protected_coverage = bool(protected_buy_orders)
+        breaches: list[str] = []
+        if any(order.side != "BUY" for order in order_snapshot.orders):
+            breaches.append("protected_buy_executor_contains_unapproved_sell_order")
+        for order in protected_buy_orders:
+            if order.order_type.upper() != "LIMIT":
+                breaches.append(f"protected_buy_order_is_not_limit:{order.order_id}")
+            if order.price is None or Fraction(order.price) > price_cap:
+                breaches.append(f"protected_buy_order_price_above_cap:{order.order_id}")
+            if Fraction(order.amount) != authorized_amount:
+                breaches.append(f"protected_buy_order_amount_changed:{order.order_id}")
+            if Fraction(order.filled_amount) > authorized_amount:
+                breaches.append(
+                    f"protected_buy_order_fills_above_authorized_amount:{order.order_id}"
+                )
+            if (
+                order.average_fill_price is not None
+                and Fraction(order.average_fill_price) > price_cap
+            ):
+                breaches.append(
+                    f"protected_buy_order_average_above_cap:{order.order_id}"
+                )
+            journal_amount = sum(
+                (
+                    Fraction(trade.amount_base)
+                    for trade in trade_snapshot.trades
+                    if trade.order_id == order.order_id
+                ),
+                Fraction(0),
+            )
+            # A lagging trade endpoint is incomplete evidence, not a permanent
+            # violation. Never attest terminal accounting before it catches up.
+            if journal_amount != Fraction(order.filled_amount):
+                protected_coverage = False
+        # Record order attestations after financial truth has been ledgered.
+        for reason in breaches:
+            reconciler.governor.record_protected_buy_conflict(
+                proposal_id=proposal, reason=reason
+            )
+    protected_conflicts = reconciler.governor.get_protected_buy_conflicts(proposal)
     unresolved_order_set = tuple(dict.fromkeys(unresolved_orders))
     unresolved_trade_set = tuple(dict.fromkeys(unresolved_trades))
     ledgered = applied + replayed
@@ -506,9 +539,22 @@ def synchronize_executor_evidence(
         and ledgered == len(trade_snapshot.trades)
         and not unresolved_order_set
         and not unresolved_trade_set
+        and protected_coverage
+        and not protected_conflicts
     )
+    cash_authority = reconciler.governor.cash_authority_snapshot()
+    cash_blocked = cash_authority is not None and cash_authority.blocked
+    # Inventory reconciliation must remain reachable while sale cash is held.
+    # New spending is gated by the Governor; a pending cross-journal handoff
+    # must not prevent the runtime from reconciling its existing sale executor.
 
     reasons: list[str] = []
+    if protected_conflicts:
+        reasons.append("protected_buy_requires_reconciliation")
+    if not protected_coverage:
+        reasons.append("protected_buy_fill_coverage_incomplete")
+    if cash_blocked:
+        reasons.append("cash_authority_requires_reconciliation")
     if fully:
         reasons.append("executor_accounting_fully_reconciled")
     else:

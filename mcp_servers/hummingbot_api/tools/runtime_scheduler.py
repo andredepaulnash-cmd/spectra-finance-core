@@ -3,9 +3,15 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Awaitable, Callable, Mapping
 
+from mcp_servers.hummingbot_api.tools.vcap_runtime import (
+    run_vcap_runtime_cycle,
+)
 from spectra_core.accounting_health import AccountingHealthSupervisor
 from spectra_core.capital_governor import CapitalGovernor
-from spectra_core.economic_position import EconomicPositionLedger
+from spectra_core.economic_position import (
+    EconomicPositionLedger,
+    EconomicPositionStatus,
+)
 from spectra_core.models import BreakerMode
 from spectra_core.runtime_scheduler import (
     FleetPositionState,
@@ -17,11 +23,6 @@ from spectra_core.vcap_runtime import (
     VCAPRuntimeStore,
 )
 from spectra_core.vcap_state import VCAPStateStore
-
-from mcp_servers.hummingbot_api.tools.vcap_runtime import (
-    run_vcap_runtime_cycle,
-)
-
 
 CycleRunner = Callable[..., Awaitable[dict[str, Any]]]
 
@@ -66,8 +67,10 @@ async def run_vcap_scheduler_tick(
     cycle_runner: CycleRunner = run_vcap_runtime_cycle,
     account_name: str = "master_account",
     controller_id: str = "spectra",
+    buy_max_price_slippage_bps: Decimal | None = None,
+    buy_fee_allowance_bps: Decimal | None = None,
 ) -> dict[str, Any]:
-    """Service a bounded fleet of active economic positions.
+    """Service a bounded fleet of active positions and terminal reconciliation.
 
     The scheduler owns orchestration, never strategy sizing. Each selected
     position delegates to the existing restart-safe VCAP runtime, which remains
@@ -86,14 +89,51 @@ async def run_vcap_scheduler_tick(
     policy = scheduler_policy or RuntimeSchedulerPolicy()
     active_ids = ledger.list_active_position_ids()
     active_set = set(active_ids)
+    # Confirmed SELL fills can make a position CLOSED before its executor and
+    # capital ownership have terminal proof. Keep only that existing mutation
+    # in the service pool; a closed position never gets a fresh strategy cycle.
+    retirement_ids: list[str] = []
+    pending_ids = dict.fromkeys(
+        (
+            *ledger.list_pending_retirement_position_ids(),
+            *runtime_store.list_pending_reconciliation_position_ids(),
+        )
+    )
+    for position_id in pending_ids:
+        if position_id in active_set:
+            continue
+        try:
+            snapshot = ledger.snapshot(position_id)
+        except (KeyError, ValueError):
+            # Runtime history cannot synthesize a missing economic owner.
+            continue
+        if snapshot.status not in {
+            EconomicPositionStatus.CLOSED,
+            EconomicPositionStatus.RESIDUAL,
+        }:
+            continue
+        latest = runtime_store.latest_for_position(position_id)
+        binding = scheduler_store.binding_for_position(position_id)
+        if (
+            latest is not None
+            and not latest.terminal
+            and latest.phase in _RECONCILIATION_PHASES
+            and (
+                binding is None
+                or binding.envelope_proposal_id == latest.envelope_proposal_id
+            )
+        ):
+            retirement_ids.append(position_id)
+    service_ids = active_ids + tuple(retirement_ids)
+    service_set = set(service_ids)
 
     # Explicit bindings are a migration/bootstrap surface, not a pair-based
     # guess. Once persisted, a position/envelope relationship is immutable.
     if position_envelopes is not None:
-        unknown = sorted(set(position_envelopes) - active_set)
+        unknown = sorted(set(position_envelopes) - service_set)
         if unknown:
             raise ValueError(
-                "cannot bind inactive economic positions: " + ", ".join(unknown)
+                "cannot bind positions outside the service fleet: " + ", ".join(unknown)
             )
         for position_id, envelope_id in position_envelopes.items():
             scheduler_store.bind_position(
@@ -106,7 +146,7 @@ async def run_vcap_scheduler_tick(
 
     # Migrate exact ownership already proven by PR #17 runtime history. We never
     # infer a binding merely because a lifecycle state shares the same pair.
-    for position_id in active_ids:
+    for position_id in service_ids:
         if scheduler_store.binding_for_position(position_id) is not None:
             continue
         latest = runtime_store.latest_for_position(position_id)
@@ -121,7 +161,7 @@ async def run_vcap_scheduler_tick(
         )
 
     selected = scheduler_store.select_positions(
-        active_position_ids=active_ids,
+        active_position_ids=service_ids,
         runtime_store=runtime_store,
         policy=policy,
         now=now,
@@ -156,6 +196,37 @@ async def run_vcap_scheduler_tick(
                 continue
 
             latest = runtime_store.latest_for_position(position_id)
+            # Recheck after selection: another reconciler may have completed
+            # the cycle or retired the position during this tick. Exact durable
+            # envelope identity is required to resume a closed owner.
+            snapshot = ledger.snapshot(position_id)
+            if snapshot.status != EconomicPositionStatus.ACTIVE and not (
+                snapshot.status
+                in {EconomicPositionStatus.CLOSED, EconomicPositionStatus.RESIDUAL}
+                and position_id in retirement_ids
+                and latest is not None
+                and not latest.terminal
+                and latest.phase in _RECONCILIATION_PHASES
+                and latest.envelope_proposal_id == binding.envelope_proposal_id
+            ):
+                record = scheduler_store.record_outcome(
+                    position_id=position_id,
+                    state=FleetPositionState.BLOCKED,
+                    now=now,
+                    policy=policy,
+                    cycle_id=None if latest is None else latest.cycle_id,
+                    runtime_phase=None if latest is None else latest.phase.value,
+                    error="inactive position has no exact pending reconciliation",
+                )
+                results.append(
+                    {
+                        "position_id": position_id,
+                        "serviced": False,
+                        "fleet_state": record.state.value,
+                        "reason": "inactive_position_new_mutation_blocked",
+                    }
+                )
+                continue
             if breaker_mode == BreakerMode.HALTED and not (
                 latest is not None and latest.phase in _RECONCILIATION_PHASES
             ):
@@ -194,6 +265,12 @@ async def run_vcap_scheduler_tick(
                     now=now,
                     account_name=account_name,
                     controller_id=controller_id,
+                    allow_new_dispatch=(
+                        breaker_mode != BreakerMode.HALTED
+                        and snapshot.status == EconomicPositionStatus.ACTIVE
+                    ),
+                    buy_max_price_slippage_bps=buy_max_price_slippage_bps,
+                    buy_fee_allowance_bps=buy_fee_allowance_bps,
                 )
                 fleet_state = _fleet_state_for_result(result)
                 record = scheduler_store.record_outcome(
@@ -207,14 +284,10 @@ async def run_vcap_scheduler_tick(
                         else str(result["cycle_id"])
                     ),
                     runtime_phase=(
-                        None
-                        if result.get("phase") is None
-                        else str(result["phase"])
+                        None if result.get("phase") is None else str(result["phase"])
                     ),
                     error=(
-                        None
-                        if result.get("error") is None
-                        else str(result["error"])
+                        None if result.get("error") is None else str(result["error"])
                     ),
                 )
                 results.append(
@@ -257,12 +330,14 @@ async def run_vcap_scheduler_tick(
         "tick_sequence": tick.sequence,
         "breaker_mode": breaker_mode.value,
         "active_position_count": len(active_ids),
+        "service_position_count": len(service_ids),
+        "retirement_position_ids": retirement_ids,
         "selected_position_count": len(selected),
         "selected_position_ids": list(selected),
         "results": results,
         "fleet": list(
             scheduler_store.fleet_status(
-                active_position_ids=active_ids,
+                active_position_ids=service_ids,
                 runtime_store=runtime_store,
                 now=now,
                 policy=policy,

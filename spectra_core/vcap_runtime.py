@@ -56,9 +56,7 @@ class VCAPRuntimePolicy:
     def __post_init__(self) -> None:
         max_age = float(self.market_max_age_seconds)
         if not isfinite(max_age) or max_age <= 0:
-            raise ValueError(
-                "market_max_age_seconds must be finite and positive"
-            )
+            raise ValueError("market_max_age_seconds must be finite and positive")
         if (
             isinstance(self.order_book_depth, bool)
             or not isinstance(self.order_book_depth, int)
@@ -105,8 +103,7 @@ class VCAPRuntimeStore:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
-            conn.executescript(
-                """
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS vcap_runtime_cycles (
                     cycle_id TEXT PRIMARY KEY,
                     position_id TEXT NOT NULL,
@@ -134,8 +131,7 @@ class VCAPRuntimeStore:
                     fingerprint_json TEXT NOT NULL,
                     updated_at REAL NOT NULL
                 );
-                """
-            )
+                """)
 
     @staticmethod
     def _cycle_from_row(row: sqlite3.Row) -> VCAPRuntimeCycle:
@@ -157,9 +153,7 @@ class VCAPRuntimeStore:
             sequence=int(row["sequence"]),
             phase=VCAPRuntimePhase(str(row["phase"])),
             planned_action=(
-                None
-                if row["planned_action"] is None
-                else str(row["planned_action"])
+                None if row["planned_action"] is None else str(row["planned_action"])
             ),
             mutation_key=(
                 None if row["mutation_key"] is None else str(row["mutation_key"])
@@ -174,13 +168,9 @@ class VCAPRuntimeStore:
             created_at=float(row["created_at"]),
             heartbeat_at=float(row["heartbeat_at"]),
             completed_at=(
-                None
-                if row["completed_at"] is None
-                else float(row["completed_at"])
+                None if row["completed_at"] is None else float(row["completed_at"])
             ),
-            last_error=(
-                None if row["last_error"] is None else str(row["last_error"])
-            ),
+            last_error=(None if row["last_error"] is None else str(row["last_error"])),
         )
 
     def load(self, cycle_id: str) -> VCAPRuntimeCycle | None:
@@ -206,6 +196,43 @@ class VCAPRuntimeStore:
                 (pid,),
             ).fetchone()
         return None if row is None else self._cycle_from_row(row)
+
+    def list_pending_reconciliation_position_ids(
+        self, *, limit: int = 1000
+    ) -> tuple[str, ...]:
+        """List a bounded oldest-first pool of exact latest pending mutations.
+
+        A terminal newer cycle supersedes earlier pending history. This list
+        authorizes reconciliation discovery only; callers must recheck the
+        position, immutable envelope binding and execution evidence.
+        """
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+            raise ValueError("limit must be a positive integer")
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT c.position_id
+                FROM vcap_runtime_cycles c
+                WHERE c.phase IN (?, ?, ?)
+                  AND c.completed_at IS NULL
+                  AND c.mutation_key IS NOT NULL
+                  AND c.planned_action IN ('EXIT', 'PARTIAL_RECYCLE', 'EXECUTE_TRANCHE')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM vcap_runtime_cycles newer
+                      WHERE newer.position_id = c.position_id
+                        AND newer.sequence > c.sequence
+                  )
+                ORDER BY c.heartbeat_at, c.position_id
+                LIMIT ?
+                """,
+                (
+                    VCAPRuntimePhase.MUTATION_DISPATCHING.value,
+                    VCAPRuntimePhase.MUTATION_DISPATCHED.value,
+                    VCAPRuntimePhase.AWAITING_RECONCILIATION.value,
+                    limit,
+                ),
+            ).fetchall()
+        return tuple(str(row["position_id"]) for row in rows)
 
     def begin_or_resume(
         self,
@@ -362,11 +389,7 @@ class VCAPRuntimeStore:
                     if execution_result is None
                     else execution_result
                 )
-                completed_at = (
-                    timestamp
-                    if phase in TERMINAL_RUNTIME_PHASES
-                    else None
-                )
+                completed_at = timestamp if phase in TERMINAL_RUNTIME_PHASES else None
 
                 conn.execute(
                     """

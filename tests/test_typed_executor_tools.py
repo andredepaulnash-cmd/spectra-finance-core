@@ -518,6 +518,7 @@ def test_saving_a_partial_barrier_updates_the_stored_block_rather_than_truncatin
 
 def _spectra_bridge_governor(tmp_path):
     from decimal import Decimal as D
+
     from spectra_core import CapitalGovernor, CapitalPolicy
 
     return CapitalGovernor(
@@ -531,6 +532,96 @@ def _spectra_bridge_governor(tmp_path):
             max_leverage=D("1"),
         ),
     )
+
+
+def _bounded_spectra_fixture(
+    monkeypatch, client, *, governor=None, rules=None, price="95"
+):
+    """Offline venue evidence and exact position; read-only gates are allowed."""
+    from decimal import Decimal as D
+    from time import time
+
+    from mcp_servers.hummingbot_api.tools import execution_book
+    from spectra_core.economic_position import EconomicPositionLedger
+
+    class CommitTrap:
+        def cash_authority_snapshot(self):
+            return None
+
+        def protected_buy_scope_rejection(self, **kwargs):
+            return ""
+
+        def commit_entry_submission_if_matches(self, *args, **kwargs):
+            raise AssertionError("invalid venue geometry reached capital commit")
+
+    monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+    monkeypatch.setattr(
+        executor_create, "get_breaker_mode", lambda: executor_create.BreakerMode.NORMAL
+    )
+    monkeypatch.setattr(
+        executor_create, "get_capital_governor", lambda: governor or CommitTrap()
+    )
+    if governor is not None:
+        ledger = EconomicPositionLedger(
+            governor.db_path.parent / "bounded-tool-economic.sqlite3"
+        )
+        ledger.open_position(
+            position_id="typed-prefill", pair="BTC-USD", created_at=1001
+        )
+        monkeypatch.setattr(
+            executor_create, "get_economic_position_ledger", lambda: ledger
+        )
+
+    class Connectors:
+        async def get_trading_rules(self, *, connector_name, trading_pairs):
+            assert connector_name == "kraken"
+            if rules is None:
+                return None
+            return {
+                pair: dict(
+                    rules,
+                    min_price_increment="0.01",
+                    min_base_amount_increment="0.00000001",
+                    min_quote_amount_increment="0.01",
+                    supports_limit_orders=True,
+                    supports_market_orders=True,
+                )
+                for pair in trading_pairs
+            }
+
+    client.connectors = Connectors()
+
+    async def fresh(rule):
+        observed = time()
+        return execution_book.FreshVenueBook(
+            rule.trading_pair,
+            "XBTUSD",
+            D(price) - D("0.01"),
+            D(price),
+            ((D(price) - D("0.01"), D("100")),),
+            ((D(price), D("100")),),
+            observed - 0.01,
+            observed,
+            "test-fresh-Kraken-Depth",
+            "c" * 64,
+            venue_min_order_size=D("0.00001"),
+            venue_min_cost_quote=D("1"),
+            venue_base_asset="BTC",
+            venue_quote_asset="USD",
+            venue_rules_observed_at=observed,
+            venue_rules_sha256="d" * 64,
+        )
+
+    monkeypatch.setattr(execution_book, "fetch_protected_kraken_book", fresh)
+
+
+_BOUNDED_TYPED_ARGS = dict(
+    spectra_position_id="typed-prefill",
+    spectra_max_price_slippage_bps="50",
+    spectra_fee_allowance_bps="40",
+    min_order_amount_quote=50,
+    max_open_orders=1,
+)
 
 
 def test_spectra_without_claim_never_touches_hummingbot(monkeypatch):
@@ -575,6 +666,7 @@ def test_spectra_without_claim_never_touches_hummingbot(monkeypatch):
 
 def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
     from decimal import Decimal as D
+
     from spectra_core import (
         CapitalProposal,
         CapitalSnapshot,
@@ -592,10 +684,13 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
         leverage=D("1"),
     )
 
-    assert g.reserve(
-        claim,
-        CapitalSnapshot(free_quote=D("500")),
-    ).status == DecisionStatus.RESERVED
+    assert (
+        g.reserve(
+            claim,
+            CapitalSnapshot(free_quote=D("500")),
+        ).status
+        == DecisionStatus.RESERVED
+    )
 
     calls = []
 
@@ -605,10 +700,7 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
             async def create_executor(executor_config, account_name, controller_id):
                 # This assertion executes INSIDE the fake external call.
                 # Therefore COMMITTED must already be durable.
-                assert (
-                    g.get_decision("bridge-1").status
-                    == DecisionStatus.COMMITTED
-                )
+                assert g.get_decision("bridge-1").status == DecisionStatus.COMMITTED
 
                 calls.append(
                     {
@@ -641,9 +733,18 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: g)
 
+    client = _Client()
+    _bounded_spectra_fixture(
+        monkeypatch,
+        client,
+        governor=g,
+        rules={"min_order_size": "0.00001", "min_notional_size": "1"},
+        price="95",
+    )
+
     result = asyncio.run(
         executor_create.create_grid_executor(
-            _Client(),
+            client,
             connector_name="kraken",
             trading_pair="BTC-USD",
             side=1,
@@ -655,6 +756,7 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
             controller_id="wrong-controller",
             spectra_proposal_id="bridge-1",
             spectra_intent="ENTRY",
+            **_BOUNDED_TYPED_ARGS,
         )
     )
 
@@ -664,10 +766,7 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
 
     # COMMITTED was already asserted inside the fake Hummingbot call.
     # Once a concrete executor_id returns, receipt reconciliation completes.
-    assert (
-        g.get_decision("bridge-1").status
-        == DecisionStatus.RECONCILED
-    )
+    assert g.get_decision("bridge-1").status == DecisionStatus.RECONCILED
     assert g.get_execution_receipt("bridge-1") == "exec-spectra-1"
 
 
@@ -727,6 +826,8 @@ def test_spectra_missing_trading_rules_stops_before_capital_commit(monkeypatch):
         governor_must_not_be_touched,
     )
 
+    _bounded_spectra_fixture(monkeypatch, client, rules=None, price="95")
+
     result = asyncio.run(
         executor_create.create_grid_executor(
             client,
@@ -740,6 +841,9 @@ def test_spectra_missing_trading_rules_stops_before_capital_commit(monkeypatch):
             leverage=1,
             spectra_proposal_id="rules-test",
             spectra_intent="ENTRY",
+            spectra_position_id="typed-prefill",
+            spectra_max_price_slippage_bps="50",
+            spectra_fee_allowance_bps="40",
         )
     )
 
@@ -771,10 +875,13 @@ def test_spectra_backend_exception_leaves_capital_committed(
         leverage=D("1"),
     )
 
-    assert g.reserve(
-        claim,
-        CapitalSnapshot(free_quote=D("500")),
-    ).status == DecisionStatus.RESERVED
+    assert (
+        g.reserve(
+            claim,
+            CapitalSnapshot(free_quote=D("500")),
+        ).status
+        == DecisionStatus.RESERVED
+    )
 
     calls = []
 
@@ -787,9 +894,7 @@ def test_spectra_backend_exception_leaves_capital_committed(
                 controller_id,
             ):
                 assert (
-                    g.get_decision(
-                        "bridge-backend-exception"
-                    ).status
+                    g.get_decision("bridge-backend-exception").status
                     == DecisionStatus.COMMITTED
                 )
 
@@ -826,9 +931,18 @@ def test_spectra_backend_exception_leaves_capital_committed(
         lambda: g,
     )
 
+    client = _Client()
+    _bounded_spectra_fixture(
+        monkeypatch,
+        client,
+        governor=g,
+        rules={"min_order_size": "0.00001", "min_notional_size": "1"},
+        price="95",
+    )
+
     result = asyncio.run(
         executor_create.create_grid_executor(
-            _Client(),
+            client,
             connector_name="kraken",
             trading_pair="BTC-USD",
             side=1,
@@ -839,25 +953,16 @@ def test_spectra_backend_exception_leaves_capital_committed(
             leverage=1,
             spectra_proposal_id="bridge-backend-exception",
             spectra_intent="ENTRY",
+            **_BOUNDED_TYPED_ARGS,
         )
     )
 
     assert len(calls) == 1
     assert "error" in result
 
-    assert (
-        g.get_decision(
-            "bridge-backend-exception"
-        ).status
-        == DecisionStatus.COMMITTED
-    )
+    assert g.get_decision("bridge-backend-exception").status == DecisionStatus.COMMITTED
 
-    assert (
-        g.get_execution_receipt(
-            "bridge-backend-exception"
-        )
-        is None
-    )
+    assert g.get_execution_receipt("bridge-backend-exception") is None
 
 
 def test_spectra_missing_executor_id_leaves_capital_committed(
@@ -884,10 +989,13 @@ def test_spectra_missing_executor_id_leaves_capital_committed(
         leverage=D("1"),
     )
 
-    assert g.reserve(
-        claim,
-        CapitalSnapshot(free_quote=D("500")),
-    ).status == DecisionStatus.RESERVED
+    assert (
+        g.reserve(
+            claim,
+            CapitalSnapshot(free_quote=D("500")),
+        ).status
+        == DecisionStatus.RESERVED
+    )
 
     calls = []
 
@@ -900,9 +1008,7 @@ def test_spectra_missing_executor_id_leaves_capital_committed(
                 controller_id,
             ):
                 assert (
-                    g.get_decision(
-                        "bridge-missing-id"
-                    ).status
+                    g.get_decision("bridge-missing-id").status
                     == DecisionStatus.COMMITTED
                 )
 
@@ -942,9 +1048,18 @@ def test_spectra_missing_executor_id_leaves_capital_committed(
         lambda: g,
     )
 
+    client = _Client()
+    _bounded_spectra_fixture(
+        monkeypatch,
+        client,
+        governor=g,
+        rules={"min_order_size": "0.00001", "min_notional_size": "1"},
+        price="95",
+    )
+
     result = asyncio.run(
         executor_create.create_grid_executor(
-            _Client(),
+            client,
             connector_name="kraken",
             trading_pair="BTC-USD",
             side=1,
@@ -955,6 +1070,7 @@ def test_spectra_missing_executor_id_leaves_capital_committed(
             leverage=1,
             spectra_proposal_id="bridge-missing-id",
             spectra_intent="ENTRY",
+            **_BOUNDED_TYPED_ARGS,
         )
     )
 
@@ -962,20 +1078,9 @@ def test_spectra_missing_executor_id_leaves_capital_committed(
     assert "error" in result
     assert "ambiguous" in result["error"].lower()
 
-    assert (
-        g.get_decision(
-            "bridge-missing-id"
-        ).status
-        == DecisionStatus.COMMITTED
-    )
+    assert g.get_decision("bridge-missing-id").status == DecisionStatus.COMMITTED
 
-    assert (
-        g.get_execution_receipt(
-            "bridge-missing-id"
-        )
-        is None
-    )
-
+    assert g.get_execution_receipt("bridge-missing-id") is None
 
 
 def test_spectra_breaker_normal_reads_persisted_state(
@@ -987,9 +1092,7 @@ def test_spectra_breaker_normal_reads_persisted_state(
 
     state_dir = tmp_path / "spectra-state"
     state_dir.mkdir()
-    (state_dir / "breaker_state.json").write_text(
-        '{"mode":"NORMAL"}'
-    )
+    (state_dir / "breaker_state.json").write_text('{"mode":"NORMAL"}')
 
     monkeypatch.setenv(
         "SPECTRA_STATE_DIR",
@@ -1023,10 +1126,13 @@ def _assert_spectra_breaker_refuses_before_commit(
         leverage=D("1"),
     )
 
-    assert g.reserve(
-        claim,
-        CapitalSnapshot(free_quote=D("500")),
-    ).status == DecisionStatus.RESERVED
+    assert (
+        g.reserve(
+            claim,
+            CapitalSnapshot(free_quote=D("500")),
+        ).status
+        == DecisionStatus.RESERVED
+    )
 
     client = _RecordingClient()
 
@@ -1049,9 +1155,7 @@ def _assert_spectra_breaker_refuses_before_commit(
     )
 
     def governor_must_not_be_touched():
-        raise AssertionError(
-            "HALTED Spectra execution touched the capital governor"
-        )
+        raise AssertionError("HALTED Spectra execution touched the capital governor")
 
     monkeypatch.setattr(
         executor_create,
@@ -1126,9 +1230,7 @@ def test_spectra_corrupt_breaker_state_fails_closed(
 ):
     state_dir = tmp_path / "corrupt-breaker-state"
     state_dir.mkdir()
-    (state_dir / "breaker_state.json").write_text(
-        "{this-is-not-json"
-    )
+    (state_dir / "breaker_state.json").write_text("{this-is-not-json")
 
     monkeypatch.setenv(
         "SPECTRA_STATE_DIR",
@@ -1142,7 +1244,7 @@ def test_spectra_corrupt_breaker_state_fails_closed(
     )
 
 
-def test_spectra_grid_derives_legal_child_floor_and_safe_defaults(
+def test_spectra_grid_single_limit_meets_minima_and_excludes_native_close_defaults(
     monkeypatch,
     tmp_path,
 ):
@@ -1165,10 +1267,13 @@ def test_spectra_grid_derives_legal_child_floor_and_safe_defaults(
         leverage=D("1"),
     )
 
-    assert g.reserve(
-        claim,
-        CapitalSnapshot(free_quote=D("500")),
-    ).status == DecisionStatus.RESERVED
+    assert (
+        g.reserve(
+            claim,
+            CapitalSnapshot(free_quote=D("500")),
+        ).status
+        == DecisionStatus.RESERVED
+    )
 
     captured = []
 
@@ -1213,9 +1318,18 @@ def test_spectra_grid_derives_legal_child_floor_and_safe_defaults(
         lambda: g,
     )
 
+    client = _Client()
+    _bounded_spectra_fixture(
+        monkeypatch,
+        client,
+        governor=g,
+        rules={"min_order_size": "0.01", "min_notional_size": "5"},
+        price="95",
+    )
+
     result = asyncio.run(
         executor_create.create_grid_executor(
-            _Client(),
+            client,
             connector_name="kraken",
             trading_pair="BTC-USD",
             side=1,
@@ -1228,6 +1342,7 @@ def test_spectra_grid_derives_legal_child_floor_and_safe_defaults(
             deduct_base_fees=True,
             spectra_proposal_id="grid-child-floor",
             spectra_intent="ENTRY",
+            **_BOUNDED_TYPED_ARGS,
         )
     )
 
@@ -1236,16 +1351,14 @@ def test_spectra_grid_derives_legal_child_floor_and_safe_defaults(
 
     payload = captured[0]
 
-    # The base-size equivalent is:
-    # 0.01 BTC * $100 = $1, so the $5 notional minimum dominates.
-    # A stricter saved Spectra/executor preference is also valid; the
-    # invariant is that the effective child floor may never be below $5.
-    assert D(str(payload["min_order_amount_quote"])) >= D("5")
-
-    # Spectra's initial spot lane does not inherit/accept these
-    # inventory-sensitive defaults.
-    assert payload["keep_position"] is False
-    assert payload["deduct_base_fees"] is False
+    # The protected parcel uses venue-legal quantized base and fixed LIMIT price.
+    assert payload["type"] == "order_executor"
+    assert payload["execution_strategy"] == "LIMIT"
+    assert D(payload["amount"]) >= D("0.01")
+    assert D(payload["amount"]) * D(payload["price"]) >= D("5")
+    # Native autonomous-close/inventory defaults do not enter the one-shot BUY.
+    assert "keep_position" not in payload and "deduct_base_fees" not in payload
+    assert "triple_barrier_config" not in payload
 
 
 def test_spectra_grid_rejects_child_floor_below_base_minimum(
@@ -1272,14 +1385,19 @@ def test_spectra_grid_rejects_child_floor_below_base_minimum(
     )
 
     def governor_must_not_be_touched():
-        raise AssertionError(
-            "illegal Grid child sizing reached capital commit"
-        )
+        raise AssertionError("illegal Grid child sizing reached capital commit")
 
     monkeypatch.setattr(
         executor_create,
         "get_capital_governor",
         governor_must_not_be_touched,
+    )
+
+    _bounded_spectra_fixture(
+        monkeypatch,
+        client,
+        rules={"min_order_size": "0.1", "min_notional_size": "1"},
+        price="95",
     )
 
     result = asyncio.run(
@@ -1291,16 +1409,20 @@ def test_spectra_grid_rejects_child_floor_below_base_minimum(
             start_price=90,
             end_price=100,
             limit_price=80,
-            total_amount_quote=50,
+            total_amount_quote=5,
             min_order_amount_quote=5,
+            max_open_orders=1,
             leverage=1,
             spectra_proposal_id="illegal-grid-child",
             spectra_intent="ENTRY",
+            spectra_position_id="typed-prefill",
+            spectra_max_price_slippage_bps="50",
+            spectra_fee_allowance_bps="40",
         )
     )
 
     assert client.calls == []
-    assert "venue-legal minimum" in result["error"]
+    assert "cannot meet current venue minimums" in result["error"]
 
 
 def test_spectra_dca_rejects_child_below_base_minimum(
@@ -1327,14 +1449,19 @@ def test_spectra_dca_rejects_child_below_base_minimum(
     )
 
     def governor_must_not_be_touched():
-        raise AssertionError(
-            "illegal DCA child sizing reached capital commit"
-        )
+        raise AssertionError("illegal DCA child sizing reached capital commit")
 
     monkeypatch.setattr(
         executor_create,
         "get_capital_governor",
         governor_must_not_be_touched,
+    )
+
+    _bounded_spectra_fixture(
+        monkeypatch,
+        client,
+        rules={"min_order_size": "0.1", "min_notional_size": "1"},
+        price="100",
     )
 
     result = asyncio.run(
@@ -1343,16 +1470,19 @@ def test_spectra_dca_rejects_child_below_base_minimum(
             connector_name="kraken",
             trading_pair="BTC-USD",
             side=1,
-            amounts_quote=[5, 5],
-            prices=[100, 90],
+            amounts_quote=[5],
+            prices=[100],
             leverage=1,
             spectra_proposal_id="illegal-dca-child",
             spectra_intent="ENTRY",
+            spectra_position_id="typed-prefill",
+            spectra_max_price_slippage_bps="50",
+            spectra_fee_allowance_bps="40",
         )
     )
 
     assert client.calls == []
-    assert "venue-legal minimum" in result["error"]
+    assert "cannot meet current venue minimums" in result["error"]
 
 
 def test_spectra_incomplete_trading_rules_fail_closed(
@@ -1378,14 +1508,16 @@ def test_spectra_incomplete_trading_rules_fail_closed(
     )
 
     def governor_must_not_be_touched():
-        raise AssertionError(
-            "incomplete venue rules reached capital commit"
-        )
+        raise AssertionError("incomplete venue rules reached capital commit")
 
     monkeypatch.setattr(
         executor_create,
         "get_capital_governor",
         governor_must_not_be_touched,
+    )
+
+    _bounded_spectra_fixture(
+        monkeypatch, client, rules={"min_notional_size": "5"}, price="95"
     )
 
     result = asyncio.run(
@@ -1401,6 +1533,9 @@ def test_spectra_incomplete_trading_rules_fail_closed(
             leverage=1,
             spectra_proposal_id="incomplete-rules",
             spectra_intent="ENTRY",
+            spectra_position_id="typed-prefill",
+            spectra_max_price_slippage_bps="50",
+            spectra_fee_allowance_bps="40",
         )
     )
 
@@ -1431,10 +1566,13 @@ def test_spectra_accepts_zero_notional_rule_and_uses_base_minimum(
         leverage=D("1"),
     )
 
-    assert g.reserve(
-        claim,
-        CapitalSnapshot(free_quote=D("500")),
-    ).status == DecisionStatus.RESERVED
+    assert (
+        g.reserve(
+            claim,
+            CapitalSnapshot(free_quote=D("500")),
+        ).status
+        == DecisionStatus.RESERVED
+    )
 
     captured = []
 
@@ -1479,9 +1617,18 @@ def test_spectra_accepts_zero_notional_rule_and_uses_base_minimum(
         lambda: g,
     )
 
+    client = _Client()
+    _bounded_spectra_fixture(
+        monkeypatch,
+        client,
+        governor=g,
+        rules={"min_order_size": "0.00005", "min_notional_size": "0"},
+        price="95000",
+    )
+
     result = asyncio.run(
         executor_create.create_grid_executor(
-            _Client(),
+            client,
             connector_name="kraken",
             trading_pair="BTC-USD",
             side=1,
@@ -1492,14 +1639,16 @@ def test_spectra_accepts_zero_notional_rule_and_uses_base_minimum(
             leverage=1,
             spectra_proposal_id="kraken-zero-notional",
             spectra_intent="ENTRY",
+            **_BOUNDED_TYPED_ARGS,
         )
     )
 
     assert result["executor_id"] == "exec-zero-notional"
     assert len(captured) == 1
 
-    # 0.00005 BTC * $100,000 highest grid price = $5.
+    payload = captured[0]
     assert (
-        D(str(captured[0]["min_order_amount_quote"]))
-        >= D("5")
+        payload["type"] == "order_executor" and payload["execution_strategy"] == "LIMIT"
     )
+    assert D(payload["amount"]) >= D("0.00005")
+    assert D(payload["amount"]) * D(payload["price"]) <= D("50")
