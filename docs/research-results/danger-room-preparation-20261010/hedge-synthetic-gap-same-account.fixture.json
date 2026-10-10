@@ -1,0 +1,354 @@
+{
+  "schema": "spectra-constructed-hedge-pilot-v1",
+  "experiment_class": "CONSTRUCTED_PREEMBARGO_FIXTURE",
+  "fixture_only": true,
+  "historical_inputs_deferred": true,
+  "approved_for_live": false,
+  "capital": {
+    "hedge_cash": "5000",
+    "source": "EXPLICIT_ADDITIONAL_COMMON_RESEARCH_CASH",
+    "same_extra_cash_all_arms": true
+  },
+  "initial_spot": {
+    "FICTIONAL_ALT_A": {
+      "units": "100",
+      "all_in_basis": "10000",
+      "source_owner": "SPOT_ORDINARY"
+    },
+    "FICTIONAL_ALT_B": {
+      "units": "50",
+      "all_in_basis": "2500",
+      "source_owner": "VCAP"
+    },
+    "FICTIONAL_DUST": {
+      "units": "0.000001",
+      "all_in_basis": "0.000003",
+      "source_owner": "PARK"
+    }
+  },
+  "cash_owners": {
+    "SPOT_ORDINARY": "500",
+    "VCAP": "400",
+    "PARK": "1100"
+  },
+  "estimator": {
+    "formula": "OLS_INTERCEPT_COMPLETED_SIMPLE_RETURNS_V1",
+    "lookback_returns": 3,
+    "minimum_observations": 3,
+    "beta_lower": "0",
+    "beta_upper": "2",
+    "zero_variance_policy": "UNKNOWN",
+    "missing_beta_policy": "TARGET_ZERO_NEXT_EVENT"
+  },
+  "signal": {
+    "formula": "BTC_LOOKBACK_RETURN_CONFIRMATION_V1",
+    "entry_return": "-0.05",
+    "exit_return": "0.03",
+    "entry_confirmations": 2,
+    "exit_confirmations": 1,
+    "minimum_dwell_bars": 1,
+    "cooldown_bars": 1,
+    "decision_lag_seconds": "0",
+    "rebalance_every_bars": 1
+  },
+  "execution": {
+    "latency_seconds": "0.5",
+    "spread_fraction": "0.001",
+    "slippage_fraction": "0.001",
+    "liquidation_slippage_fraction": "0.02",
+    "fill_policy": "DECLARED_NEXT_BAR_OPEN_FRACTION_FLOORED",
+    "event_order": "OPEN_RISK_FILL_FUNDING_ADVERSE_MARK_SPOT_CLOSE_SIGNAL",
+    "stale_policy": "ABORT_MISSING_DECISIVE_MARK"
+  },
+  "route": {
+    "instrument_id": "FICTIONAL_BTC_UNIT_TEST_CONTRACT",
+    "contract_size_btc": "0.01",
+    "minimum_contracts": 1,
+    "position_limit_contracts": 10000,
+    "initial_margin_rate": "0.20",
+    "maintenance_margin_rate": "0.10",
+    "entry_fee_per_contract": "0.15",
+    "exit_fee_per_contract": "0.15",
+    "liquidation_fee": "10",
+    "liquidation_trigger_buffer": "0",
+    "funding_sign_convention": "POSITIVE_RATE_CREDITS_SHORT",
+    "recourse": "SYNTHETIC_SPOT_THEN_ALL_OWNER_CASH",
+    "collateral_conversion_fee_fraction": "0.05",
+    "funding_reserve": {
+      "adverse_rally_fraction": "0.20",
+      "funding_cost_fraction_bound": "0.001",
+      "liquidation_cash_buffer": "10",
+      "fixed_buffer": "10"
+    },
+    "forced_liquidation_execution": "SYNTHETIC_INSTANT_COVER_AT_ADVERSE_MARK_EVEN_DURING_OUTAGE"
+  },
+  "bars": [
+    {
+      "open_time": "2026-01-01T00:00:00+00:00",
+      "close_time": "2026-01-01T00:04:59+00:00",
+      "published_at": "2026-01-01T00:04:59+00:00",
+      "btc_open": "100000",
+      "btc_close": "100000",
+      "btc_adverse_mark": "100000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "100",
+        "FICTIONAL_ALT_B": "50",
+        "FICTIONAL_DUST": "2"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "100",
+        "FICTIONAL_ALT_B": "50",
+        "FICTIONAL_DUST": "2"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:05:00+00:00",
+      "close_time": "2026-01-01T00:09:59+00:00",
+      "published_at": "2026-01-01T00:09:59+00:00",
+      "btc_open": "100000",
+      "btc_close": "99000",
+      "btc_adverse_mark": "100000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "100",
+        "FICTIONAL_ALT_B": "50",
+        "FICTIONAL_DUST": "2"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "99",
+        "FICTIONAL_ALT_B": "49.5",
+        "FICTIONAL_DUST": "1.98"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:10:00+00:00",
+      "close_time": "2026-01-01T00:14:59+00:00",
+      "published_at": "2026-01-01T00:14:59+00:00",
+      "btc_open": "99000",
+      "btc_close": "95000",
+      "btc_adverse_mark": "99000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "99",
+        "FICTIONAL_ALT_B": "49.5",
+        "FICTIONAL_DUST": "1.98"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "95",
+        "FICTIONAL_ALT_B": "47.5",
+        "FICTIONAL_DUST": "1.9"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:15:00+00:00",
+      "close_time": "2026-01-01T00:19:59+00:00",
+      "published_at": "2026-01-01T00:19:59+00:00",
+      "btc_open": "95000",
+      "btc_close": "90000",
+      "btc_adverse_mark": "95000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "95",
+        "FICTIONAL_ALT_B": "47.5",
+        "FICTIONAL_DUST": "1.9"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "90",
+        "FICTIONAL_ALT_B": "45",
+        "FICTIONAL_DUST": "1.8"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:20:00+00:00",
+      "close_time": "2026-01-01T00:24:59+00:00",
+      "published_at": "2026-01-01T00:24:59+00:00",
+      "btc_open": "90000",
+      "btc_close": "85000",
+      "btc_adverse_mark": "90000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "90",
+        "FICTIONAL_ALT_B": "45",
+        "FICTIONAL_DUST": "1.8"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "85",
+        "FICTIONAL_ALT_B": "42.5",
+        "FICTIONAL_DUST": "1.7"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:25:00+00:00",
+      "close_time": "2026-01-01T00:29:59+00:00",
+      "published_at": "2026-01-01T00:29:59+00:00",
+      "btc_open": "85000",
+      "btc_close": "80000",
+      "btc_adverse_mark": "85000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "85",
+        "FICTIONAL_ALT_B": "42.5",
+        "FICTIONAL_DUST": "1.7"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "80",
+        "FICTIONAL_ALT_B": "40",
+        "FICTIONAL_DUST": "1.6"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:30:00+00:00",
+      "close_time": "2026-01-01T00:34:59+00:00",
+      "published_at": "2026-01-01T00:34:59+00:00",
+      "btc_open": "80000",
+      "btc_close": "77000",
+      "btc_adverse_mark": "80000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "80",
+        "FICTIONAL_ALT_B": "40",
+        "FICTIONAL_DUST": "1.6"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "77",
+        "FICTIONAL_ALT_B": "38.5",
+        "FICTIONAL_DUST": "1.54"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:35:00+00:00",
+      "close_time": "2026-01-01T00:39:59+00:00",
+      "published_at": "2026-01-01T00:39:59+00:00",
+      "btc_open": "250000",
+      "btc_close": "76000",
+      "btc_adverse_mark": "270000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "77",
+        "FICTIONAL_ALT_B": "38.5",
+        "FICTIONAL_DUST": "1.54"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "76",
+        "FICTIONAL_ALT_B": "38",
+        "FICTIONAL_DUST": "1.52"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:40:00+00:00",
+      "close_time": "2026-01-01T00:44:59+00:00",
+      "published_at": "2026-01-01T00:44:59+00:00",
+      "btc_open": "76000",
+      "btc_close": "80000",
+      "btc_adverse_mark": "80000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "76",
+        "FICTIONAL_ALT_B": "38",
+        "FICTIONAL_DUST": "1.52"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "80",
+        "FICTIONAL_ALT_B": "40",
+        "FICTIONAL_DUST": "1.6"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:45:00+00:00",
+      "close_time": "2026-01-01T00:49:59+00:00",
+      "published_at": "2026-01-01T00:49:59+00:00",
+      "btc_open": "80000",
+      "btc_close": "85000",
+      "btc_adverse_mark": "85000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "80",
+        "FICTIONAL_ALT_B": "40",
+        "FICTIONAL_DUST": "1.6"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "85",
+        "FICTIONAL_ALT_B": "42.5",
+        "FICTIONAL_DUST": "1.7"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:50:00+00:00",
+      "close_time": "2026-01-01T00:54:59+00:00",
+      "published_at": "2026-01-01T00:54:59+00:00",
+      "btc_open": "85000",
+      "btc_close": "95000",
+      "btc_adverse_mark": "95000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "85",
+        "FICTIONAL_ALT_B": "42.5",
+        "FICTIONAL_DUST": "1.7"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "95",
+        "FICTIONAL_ALT_B": "47.5",
+        "FICTIONAL_DUST": "1.9"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    },
+    {
+      "open_time": "2026-01-01T00:55:00+00:00",
+      "close_time": "2026-01-01T00:59:59+00:00",
+      "published_at": "2026-01-01T00:59:59+00:00",
+      "btc_open": "95000",
+      "btc_close": "100000",
+      "btc_adverse_mark": "100000",
+      "spot_open_marks": {
+        "FICTIONAL_ALT_A": "95",
+        "FICTIONAL_ALT_B": "47.5",
+        "FICTIONAL_DUST": "1.9"
+      },
+      "spot_close_marks": {
+        "FICTIONAL_ALT_A": "100",
+        "FICTIONAL_ALT_B": "50",
+        "FICTIONAL_DUST": "2"
+      },
+      "fill_fraction": "1",
+      "instrument_online": true,
+      "funding_rate": "-0.00001",
+      "spot_events": []
+    }
+  ],
+  "terminal_policy": "CANCEL_PENDING_AND_MARK_OPEN_POSITIONS",
+  "accounting_tolerance": "0.000000000000000000000000000001",
+  "calculation_precision": 60
+}

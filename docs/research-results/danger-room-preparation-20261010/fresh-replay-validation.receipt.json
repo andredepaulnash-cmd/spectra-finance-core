@@ -1,0 +1,114 @@
+{
+  "schema": "spectra-fresh-cash-adapter-validation-v2",
+  "research_only": true,
+  "status": "NATIVE_ADAPTER_AND_POST_END_ASSEMBLY_CONSTRUCTED_TESTS_PASS",
+  "commands": [
+    {
+      "command": "python3 -m unittest discover -s research/holdout_replay/tests -p 'test_*.py' -v",
+      "tests": 44,
+      "native_replay_tests": 24,
+      "collector_assembly_tests": 20,
+      "passed": true,
+      "seconds": 35.51,
+      "log_sha256": "7a7b78a17f8c1c8a3faa7fb37c3b77fa6955eeaeb3402657832280574bb484ed",
+      "network_used": false,
+      "source_archive_transfers_required_for_ci": false
+    }
+  ],
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3"
+  },
+  "frozen_protocol_sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+  "native_generated_source_sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
+  "immutable_source_candidates_verified": 11,
+  "pinned_native_python_members": 27,
+  "pinned_native_python_bytes": 585656,
+  "fixture_matrix": {
+    "arms": [
+      "OFF",
+      "SHARED_RAW",
+      "SPLIT_RAW",
+      "SHARED_QUALITY",
+      "SPLIT_QUALITY"
+    ],
+    "warmup_frames_per_arm": 288,
+    "evaluation_frames_per_arm": 256,
+    "total_account_frames": 1280,
+    "total_fills": 5577,
+    "parked_funded_buy_activation": {
+      "OFF": false,
+      "SHARED_RAW": true,
+      "SPLIT_RAW": true,
+      "SHARED_QUALITY": true,
+      "SPLIT_QUALITY": true
+    },
+    "input_class": "constructed_fixture",
+    "performance_claim": false
+  },
+  "independent_exact_fraction_review": {
+    "sha256": "a6b7137a7a1d4e2181411b2e2522bb9110858d5854e52a44b3d531fd2e1beb2d",
+    "scope": "Five native constructed arms, 5577 fills,1280 account frames, exact fresh seed, native lot/basis and parked-source retirement conservation",
+    "receipt_path": "docs/research-results/danger-room-preparation-20261010/independent-native-accounting.receipt.json"
+  },
+  "public_prospective_embargo_end_utc": "2026-11-09T00:00:00Z",
+  "prospective_payload_reads_before_embargo_rejected": true,
+  "public_clock_override": false,
+  "original_whole_source_archives_rehashed_before_prospective_scoring": true,
+  "genuine_capture_assembly_or_scoring_completed": false,
+  "holdout_payloads_read": false,
+  "new_market_data_acquired": false,
+  "checkpoint_hydration_used": false,
+  "production_source_modified": false,
+  "approved_for_live": false,
+  "three_native_adapter_changes": [
+    "Passive 24-hour causal warmup with no financial activity",
+    "Passive accounting/ownership observer after original scheduling",
+    "Evaluation-only sample-index correction for native initialization metrics"
+  ],
+  "source_sha256": {
+    "research/holdout_replay/README.md": "368cb26f64cc895cb5d53ce151d114def8f8e83cf536d8b429619c4f211a9ca9",
+    "research/holdout_replay/assemble_captures.py": "9261fbb32b23be443c344371c4308d48172694e3592bb79fc9c1eccd6bf2fce1",
+    "research/holdout_replay/fixture.py": "a0d060279479931cec48dc8e998f0d1bbc5f1fe345f5a2436234c88bce9ad9c4",
+    "research/holdout_replay/pins.py": "9f840b2fa3b45d9ac1e2eaa6ae565f287cd5640b26a8aab76e60d614fe70b252",
+    "research/holdout_replay/replay.py": "c3707c45d5e60dd6527d35631c2d8d76cba309abde9d8efce59a1ff775068368",
+    "research/holdout_replay/tests/test_assemble_captures.py": "83fbd11518860c03744fe7d66bb8a16481262211d8e2d90b148979b97884c53d",
+    "research/holdout_replay/tests/test_fresh_replay.py": "0a255afd2e9a60a42baac85cf922ecc4bf1cf0f0cad29121d4450ca2839aa299",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/baseline-recovery-20261001/adapter/sparse_adapter.py": "45249e0273bfa4b15cfc54db2bede37b81c0488239fab1503c8911584127583e",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/__init__.py": "f7abdf61344bfb6d1bb17c2629d9773fa376fc2096a3ddde21869605310660ec",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/accounting_health.py": "703932720a5fe09962b2337d39f6c4ee62b29404352ba7060dfe9fce0d787397",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/asset_fingerprint.py": "93fed948aa8670b3ba1fea8f1df93b99b3ad42fe9f4df666fc355b1799684fc2",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/binance_kline_import.py": "e97d371eb424a2fed47d95af238f8ef50784fb9b44f0dcdf884b28bf25ed4813",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/capital_governor.py": "93a4a6abb48eb94123aaf2529e7d55b1d9059a1a2a96ad00ef5c41f11c29896f",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_exit.py": "54d42d99867d4db9509b093a4d69f191db9a7df7e8d78f0643a13ddb570572d3",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_position.py": "28b8a06bbbeba31cf46ccff98183e8087f101d3bf288e6e99ea4b0360089d63a",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_accounting.py": "0400ce13205c90eaa13dbeed19aaac4b6f584be9cc56b37055b6031fa8e2734b",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_provenance_bridge.py": "96bdfc94d9c33685bb2d83c2ef3f4376eba9f5adf14af8d7b0155ca529789a83",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/fill_reconciliation.py": "ffde14ee3d667300205a3f0d0a3e6c842a6cccfa2001d75e60d1a8b2b8bc79ac",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_market_fabric.py": "1787d100bbf7241d065d212db0c084c600e7e6ffd185211988ca4d6699210d46",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/models.py": "155f72a31bcd707ac5277a5f41ddc7dd090a76b585c225f4ed246307a2837d03",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/partial_recycle.py": "eab2b61bd4c11ad7424fcfed09403a3d397dd6db695841bbd5230b48f9001417",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/position_hold_accounting.py": "86d15cd7b8986da79636b2465b2c34c566a15f36164e69043433b33c81b4bcd3",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/recovery_fingerprint.py": "6afb839f0e081d127c8dcd8ce8230670517a73142e12d96da18a4104d88bdd66",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/rotating_fleet.py": "58b484118f8be69ebf0ae45fe95482b3b2abecd4b4f4c0ec2d9d7c7cf3948247",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab.py": "841b519e2e50b4d4ef1d6eb440ad5485d9ccca959230e19bcd74a79fe12b4d51",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_execution.py": "80981cb4d4caa84615e79755b159beae4919d0eb9a3c77bd381872c4ef2cddd6",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_lifecycle.py": "91795d5ca1de0ccaa280888a77980199334971538c0d34a2207ff4732cb48f86",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_profit_exit.py": "0803bc2f168704e2b0258a88172e6e24ca15ea942a1ab76361dad9715a0269da",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_runtime.py": "1529a65dbbd3756197d2263d3143541ebc7940a4fba5b208d5b17c126cbd7eff",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_state.py": "cc6a182c16fd25c61d86bf9cdab2e65f9ae5a6328135fcaec5cdfe558712d60f",
+    "research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_tranches.py": "74da3fb7e2f2ae679915b4801bf43df99f3daade1fe3eefecce768cfae641111",
+    "research/holdout_replay/vendor/Spectra_Danger_Room_Verified_Evidence_2026-10-06/runs/hard_100_park/generated_recycle_body.py": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
+    "research/holdout_replay/vendor/Spectra_Jan_Sep_Danger_Room_Evidence_2026-10-06/danger-room-20261006/continuation-v3/continuation_wrapper.py": "1df12d02dc1ff459d027e172e22f826e6a9b0e7610dcccd1ca14c3bd8a72bb45",
+    "research/holdout_replay/vendor/Spectra_One_Percent_Comparison_Evidence/one-percent-research-20261006/one_percent_test.py": "87247fd166775c3230445ed06e29f5a4ba2ad0e9253a9a52e3ff5e085f7db6c7",
+    "research/holdout_replay/vendor/source-recovery.receipt.json": "129805a41f62cb60730b020b09384899b47805ebd65fc970fef58eca763c3e5e"
+  },
+  "limits": [
+    "Constructed prices/returns establish mechanics only, not trading edge.",
+    "All 619 fixed identities retained; earliest captured online admission is conservative and does not reconstruct missing listing/offline intervals.",
+    "Self-hashed prepared inputs require independent original capture/source provenance review before economic interpretation.",
+    "Actual collecting holdout remains unread and unscored until November closeout.",
+    "Five-minute native next-open/FOK fills and generic minima do not prove actual venue execution, dust tradability or finality."
+  ]
+}

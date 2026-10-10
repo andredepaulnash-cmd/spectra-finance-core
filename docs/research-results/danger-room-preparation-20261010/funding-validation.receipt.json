@@ -1,0 +1,33 @@
+{
+  "schema": "spectra-funding-preparation-validation-v1",
+  "local_unit_tests": 21,
+  "local_unit_test_status": "PASS",
+  "test_command": "python3 -m unittest discover -s research/danger_room/tests -p test_funding_feasibility.py -v",
+  "funding_findings_byte_for_byte_reproduction": "PASS",
+  "saved_historical_cash_frames_reconciled": 8640,
+  "constructed_scenarios": 48,
+  "constructed_arm_assessments": 240,
+  "constructed_arm_cash_reserve_identity_checks": 240,
+  "constructed_nonzero_ratio_notional_cap_checks": 192,
+  "input_sha256": {
+    "park_rows": "a8f2cdd216c203cef7f6801356ac78e1d1ada5fa751fd3095392d1ce599aca13",
+    "june_summary": "405509794840496df929fd73d9b23ca60b1dd203e475f76dc20d8d8cf73c5e4e",
+    "july_summary": "c8bcc62a68cf4dcf73ccce6f448acb03f44a73fff5c6c0fba69ebd776a5c25bd",
+    "btc_spec": "1dcc9632cc349adb5d738b3a33410b8d99180374c181a7614332fec9f5170a4d",
+    "capabilities": "9ee4b2129229aa640343e9a1b4eeaae13bb54b022050753a2af842253f4d345f"
+  },
+  "artifact_sha256": {
+    "research/danger_room/funding_feasibility.py": "b01fb93eb6e72728bab84dad37259bbf12869e72b0fae917ae8f0c4421eb89ab",
+    "research/danger_room/funding_findings.py": "293ad6c1de9f0949debbcc58b7a3bb06a5742521c5f3e008d155a7fbd77be3ad",
+    "research/danger_room/tests/test_funding_feasibility.py": "b0cefc218b19b86250853576727ce35dcfb81fe8397d00ddd7ed6c7311e31525",
+    "docs/research-results/danger-room-preparation-20261010/funding-findings.json": "f0e00030b2064522a4df3e4e4658130b871a142221485f4b983065146bc5db66",
+    "docs/research-results/danger-room-preparation-20261010/funding.md": "3a4d6a9649c145c358e399b56730ca5bff251b20966a9f4de81083c039dafda1"
+  },
+  "scope": "STRUCTURAL_AND_CONDITIONAL_FUNDING_ARITHMETIC_ONLY",
+  "actual_hedge_performance_run": false,
+  "actual_historical_feasibility_proven": false,
+  "approved_for_live": false,
+  "new_item3_data_acquisition": false,
+  "holdout_market_payloads_read": false,
+  "production_modified": false
+}

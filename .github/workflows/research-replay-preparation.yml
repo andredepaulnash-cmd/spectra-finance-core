@@ -1,0 +1,38 @@
+name: Isolated Replay Preparation
+
+on:
+  pull_request:
+    branches: ["research/crash-defense-danger-room-20261010"]
+    paths:
+      - "research/danger_room/funding_feasibility.py"
+      - "research/danger_room/funding_findings.py"
+      - "research/danger_room/hedge_replay.py"
+      - "research/danger_room/tests/test_funding_feasibility.py"
+      - "research/danger_room/tests/test_hedge_replay.py"
+      - "research/holdout_replay/**"
+      - "docs/research-results/danger-room-preparation-20261010/**"
+      - ".github/workflows/research-replay-preparation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-replay-checks:
+    name: Synthetic cash and replay checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Record exact source identity
+        run: |
+          git rev-parse HEAD
+          git rev-parse HEAD^{tree}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install numerical test dependency
+        run: python3 -m pip install numpy==2.3.5 pandas==2.2.3
+      - name: Check funding and constructed hedge replay
+        run: python3 -B -m unittest discover -s research/danger_room/tests -p 'test_*.py' -v
+      - name: Check frozen fresh-cash adapter without market outcomes
+        run: python3 -B -m unittest discover -s research/holdout_replay/tests -p 'test_*.py' -v
