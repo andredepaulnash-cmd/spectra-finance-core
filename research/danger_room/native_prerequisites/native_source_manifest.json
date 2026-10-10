@@ -1,0 +1,786 @@
+{
+  "scope": "Exact original native baseline reproduction and input reconstruction",
+  "recorded_workspace_prefix": "/workspace/scratch/5f43ded42dd7",
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "original_native_decimal_precision": 28,
+    "original_native_decimal_rounding": "ROUND_HALF_EVEN",
+    "independent_accounting_decimal_precision": 60,
+    "independent_accounting_tolerance": "1e-18"
+  },
+  "included_research_source_files": [
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/baselines/reproduce_native_baseline.py",
+      "restore_relative_path": "campaign-20261008-rotation-followup/baselines/reproduce_native_baseline.py",
+      "bytes": 11977,
+      "sha256": "bb7f3320f6461afd39c46096ad6b09110161f5b1452b8ecb1b07cb0890357da3"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/baselines/audit_native_outputs.py",
+      "restore_relative_path": "campaign-20261008-rotation-followup/baselines/audit_native_outputs.py",
+      "bytes": 12089,
+      "sha256": "7fd90ce64502bdedf203221366b802c13159f7e27db6f2cdf8c22ae4f0cd2e11"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/baselines/hard_100_park/generated_recycle_body.py",
+      "restore_relative_path": "campaign-20261008-rotation-followup/baselines/hard_100_park/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/baselines/hard_100_park/generated_strategy_body.py",
+      "restore_relative_path": "campaign-20261008-rotation-followup/baselines/hard_100_park/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/baselines/hard_100_park/generated_continuous_body.py",
+      "restore_relative_path": "campaign-20261008-rotation-followup/baselines/hard_100_park/generated_continuous_body.py",
+      "bytes": 30532,
+      "sha256": "e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/baselines/hard_174_park/generated_recycle_body.py",
+      "restore_relative_path": "campaign-20261008-rotation-followup/baselines/hard_174_park/generated_recycle_body.py",
+      "bytes": 30436,
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/baselines/hard_174_park/generated_strategy_body.py",
+      "restore_relative_path": "campaign-20261008-rotation-followup/baselines/hard_174_park/generated_strategy_body.py",
+      "bytes": 28170,
+      "sha256": "d7eaae22bc14e1929b6ecfca7d8e4f48d8f30516f114091414ffe93fe6f26ec4"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/baselines/hard_174_park/generated_continuous_body.py",
+      "restore_relative_path": "campaign-20261008-rotation-followup/baselines/hard_174_park/generated_continuous_body.py",
+      "bytes": 30532,
+      "sha256": "e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/baseline-recovery-20261001/adapter/sparse_adapter.py",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/baseline-recovery-20261001/adapter/sparse_adapter.py",
+      "bytes": 18449,
+      "sha256": "45249e0273bfa4b15cfc54db2bede37b81c0488239fab1503c8911584127583e"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/one-percent-research-20261006/one_percent_test.py",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/one-percent-research-20261006/one_percent_test.py",
+      "bytes": 24734,
+      "sha256": "87247fd166775c3230445ed06e29f5a4ba2ad0e9253a9a52e3ff5e085f7db6c7"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recycle-research-20261005/recycle_test.py",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recycle-research-20261005/recycle_test.py",
+      "bytes": 18540,
+      "sha256": "2172ce8ced223b4fe52962d2e72371cf602c6ee3f70eb5ba3ddb7c3db2b9ced7"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/continuation-v3/continuation_wrapper.py",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/continuation-v3/continuation_wrapper.py",
+      "bytes": 28165,
+      "sha256": "1df12d02dc1ff459d027e172e22f826e6a9b0e7610dcccd1ca14c3bd8a72bb45"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/extended-input/rebuild_from_compact.py",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/extended-input/rebuild_from_compact.py",
+      "bytes": 6761,
+      "sha256": "66a391e59f49b5b48315ad7bf31f3560943c18388244c1a1843dd171c1464e4f"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/audit_restored_tape.py",
+      "restore_relative_path": "campaign-20261008-rotation-followup/data/audit_restored_tape.py",
+      "bytes": 4769,
+      "sha256": "68521b5af801c4cb1e285396afde89abe0762730b272fe24d3843f4512d04412"
+    }
+  ],
+  "included_protocol_and_input_identity_files": [
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/research-20261001/dataset.json",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/research-20261001/dataset.json",
+      "sha256": "96c701abf141815c6b8693ed638f4399bb7d55ae3f87e665be99efae34eb7e1c"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/extended-input/prepared/metadata.json",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/extended-input/prepared/metadata.json",
+      "sha256": "cdcdc4ebc93150d6fa8f54fc9304edc8deb113633c0161ada4ccd412a12c68b8"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/extended-audit-v3/frozen-inputs-jan-sep-v3.json",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/extended-audit-v3/frozen-inputs-jan-sep-v3.json",
+      "sha256": "1e0fd49d9bc0c5b821bb6fac67fd5fdbd8ab9ae98173188f81866d535d502677"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/reference-prepared/metadata.json",
+      "restore_relative_path": "campaign-20261008-rotation-followup/data/reference-prepared/metadata.json",
+      "sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/prepared/metadata.json",
+      "restore_relative_path": "campaign-20261008-rotation-followup/data/prepared/metadata.json",
+      "sha256": "cdcdc4ebc93150d6fa8f54fc9304edc8deb113633c0161ada4ccd412a12c68b8"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/continuation-v3/protocol.json",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/continuation-v3/protocol.json",
+      "sha256": "a3b45e26119a1e28bb68b77ca98c508b7102f95e961b36d393ff3fac58d9fb07"
+    },
+    {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/one-percent-research-20261006/protocol.json",
+      "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/one-percent-research-20261006/protocol.json",
+      "sha256": "3d87201bf54f7ba0375fc25f54c8038cacd664cfcf9a6a27b0f01e04cd2138f8"
+    }
+  ],
+  "external_native_core": {
+    "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core",
+    "source_file_count": 30,
+    "source_bytes": 561901,
+    "packing_action": "External pinned prerequisite; do not copy Git-backed core source into evidence archive",
+    "actually_imported_modules": [
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/__init__.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/__init__.py",
+        "bytes": 5216,
+        "sha256": "f7abdf61344bfb6d1bb17c2629d9773fa376fc2096a3ddde21869605310660ec",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/accounting_health.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/accounting_health.py",
+        "bytes": 15352,
+        "sha256": "703932720a5fe09962b2337d39f6c4ee62b29404352ba7060dfe9fce0d787397",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.accounting_health"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/asset_fingerprint.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/asset_fingerprint.py",
+        "bytes": 23026,
+        "sha256": "93fed948aa8670b3ba1fea8f1df93b99b3ad42fe9f4df666fc355b1799684fc2",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.asset_fingerprint"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/binance_kline_import.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/binance_kline_import.py",
+        "bytes": 8988,
+        "sha256": "e97d371eb424a2fed47d95af238f8ef50784fb9b44f0dcdf884b28bf25ed4813",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.binance_kline_import"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/capital_governor.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/capital_governor.py",
+        "bytes": 78935,
+        "sha256": "93a4a6abb48eb94123aaf2529e7d55b1d9059a1a2a96ad00ef5c41f11c29896f",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.capital_governor"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_exit.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_exit.py",
+        "bytes": 27437,
+        "sha256": "54d42d99867d4db9509b093a4d69f191db9a7df7e8d78f0643a13ddb570572d3",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.economic_exit"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_position.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_position.py",
+        "bytes": 45745,
+        "sha256": "28b8a06bbbeba31cf46ccff98183e8087f101d3bf288e6e99ea4b0360089d63a",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.economic_position"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_accounting.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_accounting.py",
+        "bytes": 13697,
+        "sha256": "0400ce13205c90eaa13dbeed19aaac4b6f584be9cc56b37055b6031fa8e2734b",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.executor_accounting"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_provenance_bridge.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_provenance_bridge.py",
+        "bytes": 18025,
+        "sha256": "96bdfc94d9c33685bb2d83c2ef3f4376eba9f5adf14af8d7b0155ca529789a83",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.executor_provenance_bridge"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/fill_reconciliation.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/fill_reconciliation.py",
+        "bytes": 25168,
+        "sha256": "ffde14ee3d667300205a3f0d0a3e6c842a6cccfa2001d75e60d1a8b2b8bc79ac",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.fill_reconciliation"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_market_fabric.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_market_fabric.py",
+        "bytes": 13190,
+        "sha256": "1787d100bbf7241d065d212db0c084c600e7e6ffd185211988ca4d6699210d46",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.kraken_market_fabric"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/models.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/models.py",
+        "bytes": 2921,
+        "sha256": "155f72a31bcd707ac5277a5f41ddc7dd090a76b585c225f4ed246307a2837d03",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.models"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/partial_recycle.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/partial_recycle.py",
+        "bytes": 31434,
+        "sha256": "eab2b61bd4c11ad7424fcfed09403a3d397dd6db695841bbd5230b48f9001417",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": "eab2b61bd4c11ad7424fcfed09403a3d397dd6db695841bbd5230b48f9001417",
+        "current_matches_pre_return_pin": true,
+        "module": "spectra_core.partial_recycle"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/position_hold_accounting.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/position_hold_accounting.py",
+        "bytes": 5837,
+        "sha256": "86d15cd7b8986da79636b2465b2c34c566a15f36164e69043433b33c81b4bcd3",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.position_hold_accounting"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/recovery_fingerprint.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/recovery_fingerprint.py",
+        "bytes": 20267,
+        "sha256": "6afb839f0e081d127c8dcd8ce8230670517a73142e12d96da18a4104d88bdd66",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.recovery_fingerprint"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/rotating_fleet.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/rotating_fleet.py",
+        "bytes": 42818,
+        "sha256": "58b484118f8be69ebf0ae45fe95482b3b2abecd4b4f4c0ec2d9d7c7cf3948247",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.rotating_fleet"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab.py",
+        "bytes": 23416,
+        "sha256": "841b519e2e50b4d4ef1d6eb440ad5485d9ccca959230e19bcd74a79fe12b4d51",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.strategy_lab"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_execution.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_execution.py",
+        "bytes": 8530,
+        "sha256": "80981cb4d4caa84615e79755b159beae4919d0eb9a3c77bd381872c4ef2cddd6",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.vcap_execution"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_lifecycle.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_lifecycle.py",
+        "bytes": 16164,
+        "sha256": "91795d5ca1de0ccaa280888a77980199334971538c0d34a2207ff4732cb48f86",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.vcap_lifecycle"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_profit_exit.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_profit_exit.py",
+        "bytes": 14086,
+        "sha256": "0803bc2f168704e2b0258a88172e6e24ca15ea942a1ab76361dad9715a0269da",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.vcap_profit_exit"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_runtime.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_runtime.py",
+        "bytes": 16258,
+        "sha256": "1529a65dbbd3756197d2263d3143541ebc7940a4fba5b208d5b17c126cbd7eff",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.vcap_runtime"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_state.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_state.py",
+        "bytes": 15766,
+        "sha256": "cc6a182c16fd25c61d86bf9cdab2e65f9ae5a6328135fcaec5cdfe558712d60f",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.vcap_state"
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_tranches.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_tranches.py",
+        "bytes": 11596,
+        "sha256": "74da3fb7e2f2ae679915b4801bf43df99f3daade1fe3eefecce768cfae641111",
+        "role": "Actually imported native module in read-only loader probe; required external preserved core",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null,
+        "module": "spectra_core.vcap_tranches"
+      }
+    ],
+    "complete_source_manifest": [
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/__init__.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/__init__.py",
+        "bytes": 5216,
+        "sha256": "f7abdf61344bfb6d1bb17c2629d9773fa376fc2096a3ddde21869605310660ec",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/accounting_health.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/accounting_health.py",
+        "bytes": 15352,
+        "sha256": "703932720a5fe09962b2337d39f6c4ee62b29404352ba7060dfe9fce0d787397",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/asset_fingerprint.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/asset_fingerprint.py",
+        "bytes": 23026,
+        "sha256": "93fed948aa8670b3ba1fea8f1df93b99b3ad42fe9f4df666fc355b1799684fc2",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/binance_kline_import.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/binance_kline_import.py",
+        "bytes": 8988,
+        "sha256": "e97d371eb424a2fed47d95af238f8ef50784fb9b44f0dcdf884b28bf25ed4813",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/capital_governor.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/capital_governor.py",
+        "bytes": 78935,
+        "sha256": "93a4a6abb48eb94123aaf2529e7d55b1d9059a1a2a96ad00ef5c41f11c29896f",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_exit.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_exit.py",
+        "bytes": 27437,
+        "sha256": "54d42d99867d4db9509b093a4d69f191db9a7df7e8d78f0643a13ddb570572d3",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_position.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_position.py",
+        "bytes": 45745,
+        "sha256": "28b8a06bbbeba31cf46ccff98183e8087f101d3bf288e6e99ea4b0360089d63a",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_accounting.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_accounting.py",
+        "bytes": 13697,
+        "sha256": "0400ce13205c90eaa13dbeed19aaac4b6f584be9cc56b37055b6031fa8e2734b",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_provenance_bridge.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_provenance_bridge.py",
+        "bytes": 18025,
+        "sha256": "96bdfc94d9c33685bb2d83c2ef3f4376eba9f5adf14af8d7b0155ca529789a83",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/fill_reconciliation.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/fill_reconciliation.py",
+        "bytes": 25168,
+        "sha256": "ffde14ee3d667300205a3f0d0a3e6c842a6cccfa2001d75e60d1a8b2b8bc79ac",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_market_fabric.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_market_fabric.py",
+        "bytes": 13190,
+        "sha256": "1787d100bbf7241d065d212db0c084c600e7e6ffd185211988ca4d6699210d46",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_tardis_fleet_import.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_tardis_fleet_import.py",
+        "bytes": 9724,
+        "sha256": "a8b68e1a640d49ed6909bdb2478fbe3d47d0abad0734b6d0af4acee544f73cec",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_tardis_import.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_tardis_import.py",
+        "bytes": 7193,
+        "sha256": "4e8da9089156cf75a3962258717f7d2e43d61266d124759372f8463d9b814f91",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/models.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/models.py",
+        "bytes": 2921,
+        "sha256": "155f72a31bcd707ac5277a5f41ddc7dd090a76b585c225f4ed246307a2837d03",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/partial_recycle.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/partial_recycle.py",
+        "bytes": 31434,
+        "sha256": "eab2b61bd4c11ad7424fcfed09403a3d397dd6db695841bbd5230b48f9001417",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": "eab2b61bd4c11ad7424fcfed09403a3d397dd6db695841bbd5230b48f9001417",
+        "current_matches_pre_return_pin": true
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/position_hold_accounting.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/position_hold_accounting.py",
+        "bytes": 5837,
+        "sha256": "86d15cd7b8986da79636b2465b2c34c566a15f36164e69043433b33c81b4bcd3",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/recovery_fingerprint.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/recovery_fingerprint.py",
+        "bytes": 20267,
+        "sha256": "6afb839f0e081d127c8dcd8ce8230670517a73142e12d96da18a4104d88bdd66",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/rotating_fleet.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/rotating_fleet.py",
+        "bytes": 42818,
+        "sha256": "58b484118f8be69ebf0ae45fe95482b3b2abecd4b4f4c0ec2d9d7c7cf3948247",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_dataset.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_dataset.py",
+        "bytes": 9021,
+        "sha256": "f83b9e1e8c9b1618f9d073c6582df0fd9ce8ab7a7db9711c2772e6439f10d1fa",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab.py",
+        "bytes": 23416,
+        "sha256": "841b519e2e50b4d4ef1d6eb440ad5485d9ccca959230e19bcd74a79fe12b4d51",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab_scenarios.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab_scenarios.py",
+        "bytes": 5260,
+        "sha256": "b1be4e77114e4a3629b4a5af31c0e140467e601ac7fb7d0d0bc0f194d76b87d8",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab_validation.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab_validation.py",
+        "bytes": 17146,
+        "sha256": "60295f65c0778721711a3975bfca6995d047bbaed7e10bca802b0a48c9fd160a",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_replay.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_replay.py",
+        "bytes": 21528,
+        "sha256": "6473ac95ca9ca520e4ebb40171d5c0bb5422785e69ab81922fd4c0ce81a66200",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_replay_vcap.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_replay_vcap.py",
+        "bytes": 8157,
+        "sha256": "85713fccf2369c15da9cff220a11defe4fb9e6e9996328347db763163323e112",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_execution.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_execution.py",
+        "bytes": 8530,
+        "sha256": "80981cb4d4caa84615e79755b159beae4919d0eb9a3c77bd381872c4ef2cddd6",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_lifecycle.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_lifecycle.py",
+        "bytes": 16164,
+        "sha256": "91795d5ca1de0ccaa280888a77980199334971538c0d34a2207ff4732cb48f86",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_profit_exit.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_profit_exit.py",
+        "bytes": 14086,
+        "sha256": "0803bc2f168704e2b0258a88172e6e24ca15ea942a1ab76361dad9715a0269da",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_runtime.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_runtime.py",
+        "bytes": 16258,
+        "sha256": "1529a65dbbd3756197d2263d3143541ebc7940a4fba5b208d5b17c126cbd7eff",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_state.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_state.py",
+        "bytes": 15766,
+        "sha256": "cc6a182c16fd25c61d86bf9cdab2e65f9ae5a6328135fcaec5cdfe558712d60f",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      },
+      {
+        "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_tranches.py",
+        "restore_relative_path": "campaign-20261008/native/danger-room-20261006/restored/evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_tranches.py",
+        "bytes": 11596,
+        "sha256": "74da3fb7e2f2ae679915b4801bf43df99f3daade1fe3eefecce768cfae641111",
+        "role": "Complete preserved native core source inventory; do not substitute current Git HEAD",
+        "packing_action": "external_pinned_prerequisite",
+        "pre_return_pin": null,
+        "current_matches_pre_return_pin": null
+      }
+    ],
+    "inventory_warning": "Full native module inventory captured now; only explicit earlier native/driver/receipt pins are described as pre-return pins."
+  },
+  "external_market_inputs": [
+    {
+      "name": "kraken-2026Q3-5m-fixed619-usd.zip",
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/materialized/kraken-2026Q3-5m-fixed619-usd.zip",
+      "bytes": 76872020,
+      "sha256": "e5b3720d12b3847b41108f972039103c21aa142ac68bafd7218186bb91b815c3",
+      "crc": "PASS",
+      "members": 617
+    },
+    {
+      "name": "kraken-2026-05-5m-usd.zip",
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/materialized/Spectra Finance/kraken-2026-05-5m-usd.zip",
+      "bytes": 27648109,
+      "sha256": "1085bb0a87980338d48811182d2b35695db11edcd467ccd5ba169467d4b6ef29",
+      "crc": "PASS",
+      "members": 637
+    },
+    {
+      "name": "kraken-2026-03-5m-usd.zip",
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/materialized/Spectra Finance/kraken-2026-03-5m-usd.zip",
+      "bytes": 23968069,
+      "sha256": "844e0209a036eb459ee04ccca0528ab1ff27245b5dde209b78f2eb672befe937",
+      "crc": "PASS",
+      "members": 581
+    },
+    {
+      "name": "kraken-2026-02-5m-usd.zip",
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/materialized/Spectra Finance/kraken-2026-02-5m-usd.zip",
+      "bytes": 23891213,
+      "sha256": "52c1ede050ff0e82f01834d274f7d1cf9591793fbb9cb80a8e089ed2e9690ba3",
+      "crc": "PASS",
+      "members": 562
+    },
+    {
+      "name": "kraken-2026-04-5m-usd.zip",
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/materialized/Spectra Finance/kraken-2026-04-5m-usd.zip",
+      "bytes": 24209403,
+      "sha256": "d25f458c5fc1c862ad9989af7e528a98c701b569913f42baab58ddd295eb232a",
+      "crc": "PASS",
+      "members": 623
+    },
+    {
+      "name": "kraken-2026-01-5m-usd.zip",
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/materialized/Spectra Finance/kraken-2026-01-5m-usd.zip",
+      "bytes": 25721797,
+      "sha256": "892e6f142267a4c6c2d52537d79738107bcf07b39410f3ed6437ad2a75850fb6",
+      "crc": "PASS",
+      "members": 547
+    },
+    {
+      "name": "kraken-2026-06-5m-usd.zip",
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/materialized/Spectra Finance/kraken-2026-06-5m-usd.zip",
+      "bytes": 27448598,
+      "sha256": "7229bfcfbd6327836c4ba6ac605205ae63e5fb1a1a76849fa1416f02f059b0c0",
+      "crc": "PASS",
+      "members": 643
+    }
+  ],
+  "expected_reconstructed_arrays": {
+    "reference_metadata": {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/reference-prepared/metadata.json",
+      "bytes": 20003,
+      "sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+      "matches_frozen": true
+    },
+    "reference_array": {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/reference-prepared/ohlcv.npy",
+      "bytes": 1548827264,
+      "sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+      "matches_frozen": true
+    },
+    "extended_metadata": {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/prepared/metadata.json",
+      "bytes": 21587,
+      "sha256": "cdcdc4ebc93150d6fa8f54fc9304edc8deb113633c0161ada4ccd412a12c68b8",
+      "matches_frozen": true
+    },
+    "extended_array": {
+      "path": "/workspace/scratch/5f43ded42dd7/campaign-20261008-rotation-followup/data/prepared/ohlcv.npy",
+      "bytes": 2336076416,
+      "sha256": "dde300cb04c5f8c85aafba3924f74e70df1477ce26ca4c1597d295202d047938",
+      "matches_frozen": true
+    }
+  },
+  "financial_reproduction_summary_member": "campaign-20261008-rotation-followup/baselines/Baseline_Reproduction_Summary.json",
+  "scope_warning": "Small exact research sources and receipts are included; native Git-backed core and exact raw tapes/prepared arrays remain separately supplied pinned prerequisites. No current Git HEAD substitution."
+}

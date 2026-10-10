@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "campaign": "profitability-campaign-20261010",
+  "updated_at": "2026-10-10T21:09:00Z",
+  "status": "CONTROLS_RUNNING",
+  "original_controls_running": 2,
+  "new_strategy_evaluations_completed": 0,
+  "mechanics_tests_passed": 102,
+  "canonical_six_month_tape_restored": true,
+  "original_core_modules_verified": 23,
+  "maximum_cumulative_strategy_evaluations": 35,
+  "verified_profitable_candidate": false,
+  "owner_adapter": "IMPLEMENTING",
+  "real_hedge_route": "BLOCKED_ACTUAL_INSTRUMENT_HISTORY",
+  "fresh_validation": "BLOCKED_UNSEEN_TAPE_NOT_IDENTIFIED",
+  "dot_controller": "PREPARED_NOT_PROVISIONED",
+  "kraken_app_callable_in_this_session": false,
+  "production_activation": false,
+  "holdout_payload_accessed": false,
+  "production_head": "6e894fa9c2b55384d0f6120f41ca91892e1fe207"
+}

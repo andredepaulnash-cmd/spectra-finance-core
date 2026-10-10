@@ -1,0 +1,55 @@
+name: Profitability Research Mechanics
+on:
+  pull_request:
+    branches: [research/historical-paper-hedge-20261010]
+    paths:
+      - 'research/danger_room/profitability_campaign.py'
+      - 'research/danger_room/opportunity_selector.py'
+      - 'research/danger_room/module_coordination.py'
+      - 'research/danger_room/market_regime.py'
+      - 'research/danger_room/owned_cash.py'
+      - 'research/danger_room/*profitability*protocol.json'
+      - 'research/danger_room/owned_cash_protocol.json'
+      - 'tests/test_profitability_campaign.py'
+      - 'tests/test_opportunity_selector.py'
+      - 'tests/test_module_coordination.py'
+      - 'tests/test_market_regime.py'
+      - 'tests/test_owned_cash.py'
+      - 'docs/research-results/profitability-campaign-20261010/**'
+      - '.github/workflows/profitability-research.yml'
+permissions:
+  contents: read
+jobs:
+  mechanics:
+    name: Causal selection and owned capital mechanics
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Record exact tested identity
+        run: |
+          git rev-parse HEAD
+          git rev-parse 'HEAD^{tree}'
+      - name: Install tested numerical runtime
+        run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - name: Run fictional fixtures without opening market outcomes
+        run: |
+          python -B -m unittest discover -s tests -p 'test_opportunity_selector.py'
+          python -B -m unittest discover -s tests -p 'test_market_regime.py'
+          python -B -m unittest discover -s tests -p 'test_module_coordination.py'
+          python -B -m unittest discover -s tests -p 'test_profitability_campaign.py'
+          python -B -m unittest discover -s tests -p 'test_owned_cash.py'
+      - name: Verify protocol identities without evaluating strategy
+        run: |
+          python - <<'PY'
+          import hashlib,pathlib
+          root=pathlib.Path('research/danger_room')
+          pins={'profitability_protocol.json':'a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374',
+                'owned_cash_protocol.json':'29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9'}
+          for name,wanted in pins.items():
+              assert hashlib.sha256((root/name).read_bytes()).hexdigest()==wanted,name
+          print('Frozen protocols exact; CI tests fictional mechanics only')
+          PY
