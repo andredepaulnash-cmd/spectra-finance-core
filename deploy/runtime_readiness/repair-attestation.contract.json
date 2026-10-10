@@ -1,0 +1,294 @@
+{
+  "api_image": {
+    "expected_id": null,
+    "expected_repository_digest": null,
+    "source_binding_proven": false,
+    "status": "PENDING_REVIEWED_IMAGE_NOT_BUILT"
+  },
+  "api_reference": {
+    "commit": "84426ffbf9ba09522b4444664f9770236205ae29",
+    "installed_api_proven": false,
+    "tree": "25f37e7712de3a5bf9b0ae443b360c796c8b7b87"
+  },
+  "candidate_base": {
+    "commit": "dd80d15b0f556ceb3088e9a5daf276ba1ba3a37a",
+    "repository": "andredepaulnash-cmd/spectra-finance-core",
+    "tree": "031d6a49344c390803d5bb02ba6a39820745a20c"
+  },
+  "core_reference": {
+    "commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+    "overlay_manifest_sha256": "c46ab17432c51297219eef692b93ab78f9c5450f22ad11f1677c448bb795ef77",
+    "tree": "06c31cf98f8573c2f2a1c819bcfbcebe56d8ee2a"
+  },
+  "host_requirements": {
+    "architecture": "x86_64",
+    "collector_python_minimum": [
+      3,
+      12
+    ],
+    "glibc_version_is_metadata_only": true,
+    "native_abi_check_required": true,
+    "os_family": "Linux",
+    "target_os_id": "bazzite"
+  },
+  "installed_overlay_scope": {
+    "compiled_package_identity_proven": false,
+    "files": [
+      {
+        "bytes": 63371,
+        "path": "hummingbot/strategy_v2/executors/order_executor/order_executor.py",
+        "sha256": "d1ec8cbf68a54a2917f98e2263bcae60120f5f7d2c0c7d8613aeba7f872ecab0"
+      },
+      {
+        "bytes": 49446,
+        "path": "hummingbot/connector/exchange/kraken/kraken_exchange.py",
+        "sha256": "164df576f47f15a2412f1fc03ca4de7e5667937785de7f3ca3a7e26dd59b87e9"
+      },
+      {
+        "bytes": 1323,
+        "path": "hummingbot/core/web_assistant/connections/rest_connection.py",
+        "sha256": "5fbd84aaed827615784e7275a9690d0aaabe030d4adc755111801e9a1225325a"
+      },
+      {
+        "bytes": 32106,
+        "path": "hummingbot/connector/client_order_tracker.py",
+        "sha256": "ea83dce5ef7ccf33f9901a2eacbf8096376ced0e737629b50c0be42f8be3ae8a"
+      },
+      {
+        "bytes": 26608,
+        "path": "hummingbot/strategy_v2/executors/order_executor/spectra_attempt_guard.py",
+        "sha256": "b2af358dde7403178cac0aebbd26c0a30170f90beba07007e3ebc014404ee69f"
+      }
+    ],
+    "scope": "five_static_overlay_file_bytes_only"
+  },
+  "preferred_wheel": {
+    "bytes": 20910055,
+    "filename": "hummingbot-20260922-cp312-cp312-linux_x86_64.whl",
+    "manylinux_certified": false,
+    "platform_tag": "linux_x86_64",
+    "python_abi": "cp312",
+    "sha256": "b92048954145b055ac7bbf85cfdfa4e042c4153eb66aabc29740f4ec34a76dbc"
+  },
+  "proof_boundaries": {
+    "approved_for_live": false,
+    "candidate_code_imported": false,
+    "credentials_read": false,
+    "holdout_payloads_read": false,
+    "image_or_host_installation_performed": false,
+    "private_journals_read": false,
+    "production_modified": false,
+    "runtime_attestation_complete": false,
+    "services_started": false,
+    "venue_requests_performed": false
+  },
+  "repair_reference": {
+    "commit": "fad5f320b2f87cc7c089bea2750dd8344aa1b661",
+    "selected_files": [
+      {
+        "bytes": 4319,
+        "git_blob_sha": "35a612000b72283f59bfc167f0ec02967089ca41",
+        "path": ".github/workflows/spectra-execution-repair.yml",
+        "sha256": "d00547d6ec6cd88032fd24d70d8a67ba896cecb775a8bd919c28a9b91201cad8"
+      },
+      {
+        "bytes": 5395,
+        "git_blob_sha": "a8ecec08b5fb2b579a64b93b50aff3d329bb6048",
+        "path": "deploy/hummingbot_core/Dockerfile",
+        "sha256": "fc21f6554de090f2360e6a167e4c8f4a936568e19bb10d0df3bc92502284f390"
+      },
+      {
+        "bytes": 9115,
+        "git_blob_sha": "a9d8575f0ba342ef50d8b411f438da144d03bf4c",
+        "path": "deploy/hummingbot_core/README.md",
+        "sha256": "3ff98a25f112b533a9a0b0dbab0b31fe71aad34010bdfff8843bc55cd3f0212b"
+      },
+      {
+        "bytes": 22659,
+        "git_blob_sha": "f18e7fb62950afd23ff8dbdca10b6869b9fc1030",
+        "path": "deploy/hummingbot_core/apply_overlay.py",
+        "sha256": "abf8790cb143256049ba3d9ecb3801515015fd71b58099536460310f7b3a4965"
+      },
+      {
+        "bytes": 1785,
+        "git_blob_sha": "1a25bac071816ceac640b659903cd775fa50b558",
+        "path": "deploy/hummingbot_core/build.contract.json",
+        "sha256": "c88dab7a004cee717dbd8632e266b94b01c31364341263a769a65ba547b2c2d9"
+      },
+      {
+        "bytes": 1531,
+        "git_blob_sha": "c7cf490c00dfe57497eed702fff5a11bbc50043d",
+        "path": "deploy/hummingbot_core/licenses/NOTICE",
+        "sha256": "9f8dc51cb56aea0f63ef4a673d8a782b55a85468046979a2f8e56a295db83558"
+      },
+      {
+        "bytes": 1078,
+        "git_blob_sha": "e810392727633e61bfde4629c3138562c8475616",
+        "path": "deploy/hummingbot_core/licenses/hummingbot-api-LICENSE",
+        "sha256": "a809254b8a99d3b1ea974cc6bce5eaf216a6bc575778a6ef35428a09e1ec0ebf"
+      },
+      {
+        "bytes": 11352,
+        "git_blob_sha": "e998fcfee5d9d1ba105679b6a755d10fa68cdc97",
+        "path": "deploy/hummingbot_core/licenses/hummingbot-core-LICENSE",
+        "sha256": "f0dd03c14db3dfbce03c166645f88fda96599ad1a5d217fddb49134de8c72a29"
+      },
+      {
+        "bytes": 1721,
+        "git_blob_sha": "529116319efdb32062de8f252f5b833005864071",
+        "path": "deploy/hummingbot_core/overlay.manifest.json",
+        "sha256": "c46ab17432c51297219eef692b93ab78f9c5450f22ad11f1677c448bb795ef77"
+      },
+      {
+        "bytes": 32106,
+        "git_blob_sha": "127307448c8ea98c9e69448de030a7c27ed929eb",
+        "path": "deploy/hummingbot_core/patches/client_order_tracker.py",
+        "sha256": "ea83dce5ef7ccf33f9901a2eacbf8096376ced0e737629b50c0be42f8be3ae8a"
+      },
+      {
+        "bytes": 49446,
+        "git_blob_sha": "9dd3fa06036ac8da6c043e49143f702401e4ed4e",
+        "path": "deploy/hummingbot_core/patches/kraken_exchange.py",
+        "sha256": "164df576f47f15a2412f1fc03ca4de7e5667937785de7f3ca3a7e26dd59b87e9"
+      },
+      {
+        "bytes": 63371,
+        "git_blob_sha": "7e890be26271cb3249c1baff6a88928b2612d908",
+        "path": "deploy/hummingbot_core/patches/order_executor.py",
+        "sha256": "d1ec8cbf68a54a2917f98e2263bcae60120f5f7d2c0c7d8613aeba7f872ecab0"
+      },
+      {
+        "bytes": 1323,
+        "git_blob_sha": "91dc3bc78afe04c685e61979fae3665aa5011283",
+        "path": "deploy/hummingbot_core/patches/rest_connection.py",
+        "sha256": "5fbd84aaed827615784e7275a9690d0aaabe030d4adc755111801e9a1225325a"
+      },
+      {
+        "bytes": 26608,
+        "git_blob_sha": "d0bfe0925f8e2b9fd4fa554c53cbcc6ef6bfbdc5",
+        "path": "deploy/hummingbot_core/patches/spectra_attempt_guard.py",
+        "sha256": "b2af358dde7403178cac0aebbd26c0a30170f90beba07007e3ebc014404ee69f"
+      },
+      {
+        "bytes": 6838,
+        "git_blob_sha": "773b48fa0ebc6776dc25ba450ce51c8f1b9023b6",
+        "path": "docs/spectra-execution-repair.md",
+        "sha256": "41c41e96f09f46601ac0cffbebd5dda69abc92879465f0b568a327126953b727"
+      },
+      {
+        "bytes": 51479,
+        "git_blob_sha": "b85b68ec1cfa9eba869aaf668a1b0722d86f7863",
+        "path": "mcp_servers/hummingbot_api/tools/executor_create.py",
+        "sha256": "b48c04202723021a214679deee1020f59d514844255ced7513b4feffef1a107f"
+      },
+      {
+        "bytes": 25503,
+        "git_blob_sha": "74ce01c3a9da22420fa343eb5a338712f81d19d4",
+        "path": "scripts/spectra_runtime_attest.py",
+        "sha256": "ec9b9e99907a26f6b4a2d4ccede905fe2b618cb46d7d83b25a78bc2fe397c0a8"
+      },
+      {
+        "bytes": 3307,
+        "git_blob_sha": "8f812fc1a00707757ed7f2b9333ccd65d30d7539",
+        "path": "spectra-runtime.contract.json",
+        "sha256": "48861ede8a0bff0a87f5cee11c7338eec54116868afbc0dcc72e59ca04a9955b"
+      },
+      {
+        "bytes": 1267,
+        "git_blob_sha": "c88bddd1dbff70e1e826b2755c617320a123a1ea",
+        "path": "spectra-stack.lock.json",
+        "sha256": "1495dda29faaa963c19b2dd97ad7189e0d37c5828621682fdfec17c0e10e8199"
+      },
+      {
+        "bytes": 166591,
+        "git_blob_sha": "72a9e9633d582515e96dabb3672b0d1d0ca248b9",
+        "path": "spectra_core/capital_governor.py",
+        "sha256": "892efffa1a731e088983a4d9401047ef19a7aca96448b7ce6af52cd81245436c"
+      },
+      {
+        "bytes": 17668,
+        "git_blob_sha": "6180945a09e1dba78bca1c3ef5aae437263849f2",
+        "path": "tests/test_attempt_journal.py",
+        "sha256": "7586d9b921a3d82d7894abaef50c57a9ba275226e514c8fb5de40cd389929f58"
+      },
+      {
+        "bytes": 11006,
+        "git_blob_sha": "1a617e940eb772ab98f1920e9fc040a128fabdd2",
+        "path": "tests/test_cash_scope_adapters.py",
+        "sha256": "8a75456e16388288b887b7665deeefab798f7b818f1e32abab222b8395d58539"
+      },
+      {
+        "bytes": 20707,
+        "git_blob_sha": "5e0512ff23ab315b3d8f661ffa4baf95686663e9",
+        "path": "tests/test_core_overlay_build.py",
+        "sha256": "ebddc936842c0a5edf90e63f3312aef5b5b602c694f5ffb1df71f4d741be5a52"
+      },
+      {
+        "bytes": 59231,
+        "git_blob_sha": "c079e39bd218369c66ef14463a6ec196f17d3079",
+        "path": "tests/test_corrected_kraken_placement.py",
+        "sha256": "fa870844694baaeee14d24b5d95d1f4f54a4a7887be4fefedb94386baa9c8e00"
+      },
+      {
+        "bytes": 56398,
+        "git_blob_sha": "62f5e288e52df3638a02b5843518f305d475ff01",
+        "path": "tests/test_corrected_limit_executor.py",
+        "sha256": "93d9b88bda52211e417369bdae9c6ee701819839b8df5acab6cce4fed9877adb"
+      },
+      {
+        "bytes": 21590,
+        "git_blob_sha": "b8772010d462158a6995ddaca67bd93e0fdc1ef2",
+        "path": "tests/test_entry_identity_submission.py",
+        "sha256": "3598482b0c5a039d0ee83e95e9873492d189cdc59c341a8e59d73dbc098f4a92"
+      },
+      {
+        "bytes": 33323,
+        "git_blob_sha": "86b47d2d630169bd61b41b3c853017aa69172ab7",
+        "path": "tests/test_integrated_entry_cash_authority.py",
+        "sha256": "9e52dedf26ff536ac288e40eb1a59b7cfb182ef6a5f99259eb57300cfde6d620"
+      },
+      {
+        "bytes": 35403,
+        "git_blob_sha": "c6519957232e17d241fba62591edea2a8cfeee32",
+        "path": "tests/test_integrated_runtime_restart.py",
+        "sha256": "a680ffb83bbba17fbeaa86472cf1a4e1769371cd73b5b420df802e0621a66f0c"
+      },
+      {
+        "bytes": 21380,
+        "git_blob_sha": "288dd717d8f0b38fa92ac34c119e6b41a3fed52e",
+        "path": "tests/test_protected_attempt_identity.py",
+        "sha256": "a753d4eeb42df54d859eba74e6446a3cd0f13aaecd3bd90a5a5139986c4c45b4"
+      },
+      {
+        "bytes": 7322,
+        "git_blob_sha": "8faadfc1517f1d798346b7f4606ef63c9f67d0ea",
+        "path": "tests/test_spectra_kraken_execution_flow.py",
+        "sha256": "9e4a87ed152dcf37863761051e268ed9062640715ad838ab40b3b2bd5684d9f1"
+      },
+      {
+        "bytes": 46524,
+        "git_blob_sha": "3bc58f72268b7d0ebb3029d279b1cc938e5273aa",
+        "path": "tests/test_typed_executor_tools.py",
+        "sha256": "e9edbaf7f86f8d98ecdee7cda529ea8958a64662614178722a02d18342cb09a4"
+      },
+      {
+        "bytes": 13784,
+        "git_blob_sha": "f9b809468490ed1c0ff608556d9233d42c012419",
+        "path": "tests/test_vcap_execution_loop.py",
+        "sha256": "feebf3cde52105d76c08616d107ae311fa890e3657d33c35cf40d11c7676a8b0"
+      }
+    ],
+    "source_scope": "all_29_PR33_changed_files_plus_3_retained_build_inputs",
+    "tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+    "whole_checkout_proven": false
+  },
+  "required_remaining_proof": [
+    "Full dependency-resolved API image build, immutable image digest and independently reviewed source binding.",
+    "Actual Bazzite host evidence from the authorized MCP runner, plus separate bounded compiled-module ABI check.",
+    "Full backend dependency and API integration checks in an isolated test environment.",
+    "Cancellation, late-fill, business-ledger finality and restart continuity acceptance using fictional fixtures.",
+    "Separate activation decision; this collector never grants trading authority."
+  ],
+  "schema_version": 1,
+  "scope": "repair_static_read_only_attestation"
+}

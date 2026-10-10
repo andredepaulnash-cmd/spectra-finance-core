@@ -1,0 +1,14 @@
+[
+  {
+    "venv_role": "resolved",
+    "exit_code": 0,
+    "elapsed_seconds": 5.64446262200363,
+    "log": "runtime-final-runtime-dependency-venv-installed-guard.log"
+  },
+  {
+    "venv_role": "offline-reconstruction",
+    "exit_code": 0,
+    "elapsed_seconds": 6.026568092987873,
+    "log": "runtime-final-runtime-offline-venv-installed-guard.log"
+  }
+]

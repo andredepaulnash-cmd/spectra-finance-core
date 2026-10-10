@@ -1,0 +1,66 @@
+{
+  "api_source_commit": "84426ffbf9ba09522b4444664f9770236205ae29",
+  "approved_for_live": false,
+  "compatibility_constraints": [
+    "numpy==2.2.6",
+    "pandas==2.3.2",
+    "setuptools==80.8.0",
+    "Cython==3.0.12",
+    "wheel==0.48.0",
+    "aiohttp<3.14",
+    "injective-py==1.14.1",
+    "xrpl-py==4.4.0",
+    "web3==7.16.0",
+    "eip712==0.3.3",
+    "eth-typing>=5,<6"
+  ],
+  "compiled_abi_compatibility_verified": false,
+  "compiled_wheel_numpy_headers": "2.3.5",
+  "conda_to_pypi_name_mapping": {
+    "docker-py": "docker"
+  },
+  "core_source_commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "core_wheel": {
+    "bytes": 20910055,
+    "package": "hummingbot",
+    "requires_dist_count": 47,
+    "sha256": "b92048954145b055ac7bbf85cfdfa4e042c4153eb66aabc29740f4ec34a76dbc",
+    "version": "20260922"
+  },
+  "dependencies_fully_locked": false,
+  "dependency_resolution_run": false,
+  "excluded_legacy_extra_is_not_a_declared_wheel_dependency": true,
+  "full_api_image_built": false,
+  "installed_backend_verified": false,
+  "native_conda_requirements": [
+    "libcxx",
+    "libta-lib>=0.6.4"
+  ],
+  "native_requirements_satisfied_by_pip": false,
+  "products_sha256": {
+    "constraints.compatibility.txt": "3f45bb493ffc3ad591abea4f55fb5c645c570c48d4c871efdadfd7afe80d2795",
+    "environment.no-pypi-core.yml": "a3df686e89839681710d46faab22603320ad6df34882461568f6c03c24cd152a",
+    "requirements.core-api-without-legacy-extra.txt": "a4a620862b3389d26e0ba59480b875143f1bc60b7f988ef59a634e8048aa1762",
+    "requirements.legacy-extra.txt": "6bfa6b389b6f2c00dec4443d7bfe50a177cd7ddf8b417221c7d5e3964ec55b17",
+    "requirements.source-derived.txt": "ad9c9190a494d906a7f08aedef95260e33c6574f227b7f86ba435b7b23181796"
+  },
+  "runtime_trial_numpy": "2.2.6",
+  "schema_version": 1,
+  "scope": "source_bound_dependency_preparation",
+  "separate_trial_excludes_legacy_extra": [
+    "eip712-structs"
+  ],
+  "source_requirement_count": 79,
+  "source_sha256": {
+    "api-environment.yml": "82131a516ad12161e74322082ddee9d9aecd3ab6db8c098ca2d9a5addfb66321",
+    "core-environment.yml": "e7c7f7cc3ad29a5dc95a52ed4f230d9bd2df47f8d8d675cf224b134bfe00928c",
+    "core-extra-requirements.txt": "6bfa6b389b6f2c00dec4443d7bfe50a177cd7ddf8b417221c7d5e3964ec55b17",
+    "core-setup.py": "ba4c5760e8ece5993a2e9bfc5d4381318b142674208bc65fc5a0649d209f6c6a"
+  },
+  "target": {
+    "arch": "x86_64",
+    "implementation": "CPython",
+    "os": "linux",
+    "python": "3.12"
+  }
+}

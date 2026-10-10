@@ -1,0 +1,43 @@
+test_all_source_mutations_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_all_source_mutations_refused) ... ok
+test_api_absent_core_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_api_absent_core_refused) ... ok
+test_api_core_removed_and_native_explicit (test_runtime_dependency_preparation.DependencyPreparationTest.test_api_core_removed_and_native_explicit) ... ok
+test_api_duplicate_core_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_api_duplicate_core_refused) ... ok
+test_api_wrong_python_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_api_wrong_python_refused) ... ok
+test_duplicate_literal_assignment_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_duplicate_literal_assignment_refused) ... ok
+test_executable_requirement_expression_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_executable_requirement_expression_refused) ... ok
+test_metadata_direct_reference_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_metadata_direct_reference_refused) ... ok
+test_metadata_normalization (test_runtime_dependency_preparation.DependencyPreparationTest.test_metadata_normalization) ... ok
+test_metadata_requirement_omission_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_metadata_requirement_omission_refused) ... ok
+test_missing_source_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_missing_source_refused) ... ok
+test_multiple_metadata_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_multiple_metadata_refused) ... ok
+test_output_symlink_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_output_symlink_refused) ... ok
+test_pinned_source_bundle (test_runtime_dependency_preparation.DependencyPreparationTest.test_pinned_source_bundle) ... ok
+test_prepare_deterministic_and_not_install_authority (test_runtime_dependency_preparation.DependencyPreparationTest.test_prepare_deterministic_and_not_install_authority) ... ok
+test_setup_is_never_executed (test_runtime_dependency_preparation.DependencyPreparationTest.test_setup_is_never_executed) ... ok
+test_symlink_source_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_symlink_source_refused) ... ok
+test_wheel_hash_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_wheel_hash_refused) ... ok
+test_wrong_host_refused_before_outputs (test_runtime_dependency_preparation.DependencyPreparationTest.test_wrong_host_refused_before_outputs) ... ok
+test_wrong_package_identity_refused (test_runtime_dependency_preparation.DependencyPreparationTest.test_wrong_package_identity_refused) ... ok
+test_duplicate_inheritance_declarations_refused (test_runtime_dependency_preparation.InstalledGuardRefusalTest.test_duplicate_inheritance_declarations_refused) ... usage: guard [-h] --spectra-root SPECTRA_ROOT
+guard: error: System package inheritance is prohibited
+ok
+test_missing_disposable_venv_refused (test_runtime_dependency_preparation.InstalledGuardRefusalTest.test_missing_disposable_venv_refused) ... usage: guard [-h] --spectra-root SPECTRA_ROOT
+guard: error: An explicit disposable dependency venv is required
+ok
+test_mutated_manifest_refused_before_import (test_runtime_dependency_preparation.InstalledGuardRefusalTest.test_mutated_manifest_refused_before_import) ... usage: guard [-h] --spectra-root SPECTRA_ROOT
+guard: error: Exact reviewed PR33 guard and manifest are required
+ok
+test_mutated_reviewed_guard_refused_before_import (test_runtime_dependency_preparation.InstalledGuardRefusalTest.test_mutated_reviewed_guard_refused_before_import) ... usage: guard [-h] --spectra-root SPECTRA_ROOT
+guard: error: Exact reviewed PR33 guard and manifest are required
+ok
+test_nonisolated_invocation_refused (test_runtime_dependency_preparation.InstalledGuardRefusalTest.test_nonisolated_invocation_refused) ... usage: guard [-h] --spectra-root SPECTRA_ROOT
+guard: error: Use disposable Python 3.12 with -I -S -B, without optimization
+ok
+test_system_inheritance_refused (test_runtime_dependency_preparation.InstalledGuardRefusalTest.test_system_inheritance_refused) ... usage: guard [-h] --spectra-root SPECTRA_ROOT
+guard: error: System package inheritance is prohibited
+ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.073s
+
+OK

@@ -1,0 +1,49 @@
+Collecting eth-utils
+  Using cached eth_utils-6.0.0-py3-none-any.whl.metadata (5.6 kB)
+Collecting setuptools==80.8.0
+  Using cached setuptools-80.8.0-py3-none-any.whl.metadata (6.6 kB)
+Collecting wheel==0.48.0
+  Using cached wheel-0.48.0-py3-none-any.whl.metadata (2.3 kB)
+Collecting Cython==3.0.12
+  Using cached Cython-3.0.12-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (3.3 kB)
+Collecting packaging>=24.0 (from wheel==0.48.0)
+  Using cached packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+Collecting eth-hash>=0.3.1 (from eth-utils)
+  Using cached eth_hash-0.8.0-py3-none-any.whl.metadata (4.1 kB)
+Collecting eth-typing>=5.0.0 (from eth-utils)
+  Using cached eth_typing-6.0.0-py3-none-any.whl.metadata (3.1 kB)
+Collecting cytoolz>=0.10.1 (from eth-utils)
+  Downloading cytoolz-1.2.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (5.3 kB)
+Collecting pydantic<3,>=2.0.0 (from eth-utils)
+  Using cached pydantic-2.14.0-py3-none-any.whl.metadata (131 kB)
+Collecting toolz>=0.8.0 (from cytoolz>=0.10.1->eth-utils)
+  Downloading toolz-1.2.0-py3-none-any.whl.metadata (5.2 kB)
+Collecting typing_extensions>=4.5.0 (from eth-typing>=5.0.0->eth-utils)
+  Using cached typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting annotated-types>=0.6.0 (from pydantic<3,>=2.0.0->eth-utils)
+  Using cached annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+Collecting pydantic-core==2.50.0 (from pydantic<3,>=2.0.0->eth-utils)
+  Using cached pydantic_core-2.50.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.5 kB)
+Collecting typing-inspection>=0.4.4 (from pydantic<3,>=2.0.0->eth-utils)
+  Using cached typing_inspection-0.4.4-py3-none-any.whl.metadata (2.6 kB)
+Using cached setuptools-80.8.0-py3-none-any.whl (1.2 MB)
+Downloading wheel-0.48.0-py3-none-any.whl (33 kB)
+Using cached Cython-3.0.12-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.5 MB)
+Downloading eth_utils-6.0.0-py3-none-any.whl (102 kB)
+Downloading cytoolz-1.2.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 33.4 MB/s eta 0:00:00
+Downloading eth_hash-0.8.0-py3-none-any.whl (8.0 kB)
+Downloading eth_typing-6.0.0-py3-none-any.whl (19 kB)
+Downloading packaging-26.3-py3-none-any.whl (129 kB)
+Downloading pydantic-2.14.0-py3-none-any.whl (487 kB)
+Downloading pydantic_core-2.50.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.2/2.2 MB 79.0 MB/s eta 0:00:00
+Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+Downloading toolz-1.2.0-py3-none-any.whl (60 kB)
+Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+Downloading typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+Installing collected packages: typing_extensions, toolz, setuptools, packaging, eth-hash, Cython, annotated-types, wheel, typing-inspection, pydantic-core, eth-typing, cytoolz, pydantic, eth-utils
+Successfully installed Cython-3.0.12 annotated-types-0.8.0 cytoolz-1.2.0 eth-hash-0.8.0 eth-typing-6.0.0 eth-utils-6.0.0 packaging-26.3 pydantic-2.14.0 pydantic-core-2.50.0 setuptools-80.8.0 toolz-1.2.0 typing-inspection-0.4.4 typing_extensions-4.16.0 wheel-0.48.0
+
+[notice] A new release of pip is available: 25.0.1 -> 26.2.1
+[notice] To update, run: python -m pip install --upgrade pip

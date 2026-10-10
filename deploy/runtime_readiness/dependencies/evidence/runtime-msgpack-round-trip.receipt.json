@@ -1,0 +1,13 @@
+{
+  "scope": "constructed_serializer_round_trip",
+  "installed_distributions": {
+    "msgpack": "1.2.3",
+    "msgpack-python": "0.5.6"
+  },
+  "imported_module_version": "1.2.3",
+  "module_is_in_disposable_venv": true,
+  "module_sha256": "422314cf8f068c7e3be9a5c3a2f8039cf133f5a2764216c09749224420ee5733",
+  "constructed_round_trip_passed": true,
+  "both_distributions_own_same_namespace": true,
+  "full_api_compatibility_verified": false
+}

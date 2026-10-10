@@ -1,0 +1,40 @@
+{
+  "scope": "one_compiled_data_module_abi_and_installed_patch_bytes",
+  "wheel_sha256": "b92048954145b055ac7bbf85cfdfa4e042c4153eb66aabc29740f4ec34a76dbc",
+  "distribution_version": "20260922",
+  "python_abi": "cp312",
+  "compiled_module": "hummingbot.core.data_type.order_book_query_result",
+  "compiled_module_sha256": "7c44be389c705332d558877dc7eaaaa3698e1f5425e44980a0a3e052d270ba96",
+  "elf_class": 64,
+  "elf_machine": "x86_64",
+  "data_class_round_trip_passed": true,
+  "five_installed_overlay_hashes_match": true,
+  "overlay_files": [
+    {
+      "path": "hummingbot/strategy_v2/executors/order_executor/order_executor.py",
+      "sha256": "d1ec8cbf68a54a2917f98e2263bcae60120f5f7d2c0c7d8613aeba7f872ecab0"
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_exchange.py",
+      "sha256": "164df576f47f15a2412f1fc03ca4de7e5667937785de7f3ca3a7e26dd59b87e9"
+    },
+    {
+      "path": "hummingbot/core/web_assistant/connections/rest_connection.py",
+      "sha256": "5fbd84aaed827615784e7275a9690d0aaabe030d4adc755111801e9a1225325a"
+    },
+    {
+      "path": "hummingbot/connector/client_order_tracker.py",
+      "sha256": "ea83dce5ef7ccf33f9901a2eacbf8096376ced0e737629b50c0be42f8be3ae8a"
+    },
+    {
+      "path": "hummingbot/strategy_v2/executors/order_executor/spectra_attempt_guard.py",
+      "sha256": "b2af358dde7403178cac0aebbd26c0a30170f90beba07007e3ebc014404ee69f"
+    }
+  ],
+  "network_and_process_audit_guard_enabled": true,
+  "connector_imported": false,
+  "executor_imported": false,
+  "api_started": false,
+  "full_installed_backend_guard_run": false,
+  "approved_for_live": false
+}

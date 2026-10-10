@@ -1,0 +1,492 @@
+{
+  "environment": {
+    "implementation_name": "cpython",
+    "implementation_version": "3.12.14",
+    "os_name": "posix",
+    "platform_machine": "x86_64",
+    "platform_python_implementation": "CPython",
+    "platform_release": "6.18.44",
+    "platform_system": "Linux",
+    "platform_version": "#1 SMP Sat Sep 26 20:02:31 UTC 2026",
+    "python_full_version": "3.12.14",
+    "python_version": "3.12",
+    "sys_platform": "linux"
+  },
+  "install": [
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=95a60484590d24103af13b686121328cc2736bee85de8936383111e421b9edc0",
+          "hashes": {
+            "sha256": "95a60484590d24103af13b686121328cc2736bee85de8936383111e421b9edc0"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "setuptools",
+        "provides_extra": [
+          "test",
+          "doc",
+          "ssl",
+          "certs",
+          "core",
+          "check",
+          "cover",
+          "enabler",
+          "type"
+        ],
+        "requires_dist": [
+          "pytest!=8.1.*,>=6; extra == \"test\"",
+          "virtualenv>=13.0.0; extra == \"test\"",
+          "wheel>=0.44.0; extra == \"test\"",
+          "pip>=19.1; extra == \"test\"",
+          "packaging>=24.2; extra == \"test\"",
+          "jaraco.envs>=2.2; extra == \"test\"",
+          "pytest-xdist>=3; extra == \"test\"",
+          "jaraco.path>=3.7.2; extra == \"test\"",
+          "build[virtualenv]>=1.0.3; extra == \"test\"",
+          "filelock>=3.4.0; extra == \"test\"",
+          "ini2toml[lite]>=0.14; extra == \"test\"",
+          "tomli-w>=1.0.0; extra == \"test\"",
+          "pytest-timeout; extra == \"test\"",
+          "pytest-perf; sys_platform != \"cygwin\" and extra == \"test\"",
+          "jaraco.develop>=7.21; (python_version >= \"3.9\" and sys_platform != \"cygwin\") and extra == \"test\"",
+          "pytest-home>=0.5; extra == \"test\"",
+          "pytest-subprocess; extra == \"test\"",
+          "pyproject-hooks!=1.1; extra == \"test\"",
+          "jaraco.test>=5.5; extra == \"test\"",
+          "sphinx>=3.5; extra == \"doc\"",
+          "jaraco.packaging>=9.3; extra == \"doc\"",
+          "rst.linker>=1.9; extra == \"doc\"",
+          "furo; extra == \"doc\"",
+          "sphinx-lint; extra == \"doc\"",
+          "jaraco.tidelift>=1.4; extra == \"doc\"",
+          "pygments-github-lexers==0.0.5; extra == \"doc\"",
+          "sphinx-favicon; extra == \"doc\"",
+          "sphinx-inline-tabs; extra == \"doc\"",
+          "sphinx-reredirects; extra == \"doc\"",
+          "sphinxcontrib-towncrier; extra == \"doc\"",
+          "sphinx-notfound-page<2,>=1; extra == \"doc\"",
+          "pyproject-hooks!=1.1; extra == \"doc\"",
+          "towncrier<24.7; extra == \"doc\"",
+          "packaging>=24.2; extra == \"core\"",
+          "more_itertools>=8.8; extra == \"core\"",
+          "jaraco.text>=3.7; extra == \"core\"",
+          "importlib_metadata>=6; python_version < \"3.10\" and extra == \"core\"",
+          "tomli>=2.0.1; python_version < \"3.11\" and extra == \"core\"",
+          "wheel>=0.43.0; extra == \"core\"",
+          "platformdirs>=4.2.2; extra == \"core\"",
+          "jaraco.functools>=4; extra == \"core\"",
+          "more_itertools; extra == \"core\"",
+          "pytest-checkdocs>=2.4; extra == \"check\"",
+          "pytest-ruff>=0.2.1; sys_platform != \"cygwin\" and extra == \"check\"",
+          "ruff>=0.8.0; sys_platform != \"cygwin\" and extra == \"check\"",
+          "pytest-cov; extra == \"cover\"",
+          "pytest-enabler>=2.2; extra == \"enabler\"",
+          "pytest-mypy; extra == \"type\"",
+          "mypy==1.14.*; extra == \"type\"",
+          "importlib_metadata>=7.0.2; python_version < \"3.10\" and extra == \"type\"",
+          "jaraco.develop>=7.21; sys_platform != \"cygwin\" and extra == \"type\""
+        ],
+        "requires_python": ">=3.9",
+        "version": "80.8.0"
+      },
+      "requested": true
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab",
+          "hashes": {
+            "sha256": "3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/2e/29/69cfbb602cd91690c55d38ba9fe53e6a7e76a6fa647bf38f19c138d25449/wheel-0.48.0-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.5",
+        "name": "wheel",
+        "requires_dist": [
+          "packaging >= 24.0"
+        ],
+        "requires_python": ">=3.9",
+        "version": "0.48.0"
+      },
+      "requested": true
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=0faa5e39e5c8cdf6f9c3b1c3f24972826e45911e7f5b99cf99453fca5432f45e",
+          "hashes": {
+            "sha256": "0faa5e39e5c8cdf6f9c3b1c3f24972826e45911e7f5b99cf99453fca5432f45e"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/0d/72/743730d7c46b4c85abefb93187cbbcb7aae8de288d7722b990db3d13499e/Cython-3.0.12-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.1",
+        "name": "Cython",
+        "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
+        "version": "3.0.12"
+      },
+      "requested": true
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=63cf48ee32c45541cb5748751909a8345c470432fb6f0fed4bd7c53fd6400469",
+          "hashes": {
+            "sha256": "63cf48ee32c45541cb5748751909a8345c470432fb6f0fed4bd7c53fd6400469"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/53/45/a20b907227b9d1aea2e36f7b12818d055629ca9bc65fc282b45738f28ca3/eth_utils-6.0.0-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "eth-utils",
+        "provides_extra": [
+          "dev",
+          "docs",
+          "test"
+        ],
+        "requires_dist": [
+          "eth-hash>=0.3.1",
+          "eth-typing>=5.0.0",
+          "toolz>0.8.2; implementation_name == \"pypy\"",
+          "cytoolz>=0.10.1; implementation_name == \"cpython\"",
+          "pydantic<3,>=2.0.0",
+          "build>=0.9.0; extra == \"dev\"",
+          "bump_my_version>=0.19.0; extra == \"dev\"",
+          "eth-hash[pycryptodome]; extra == \"dev\"",
+          "ipython; extra == \"dev\"",
+          "mypy==1.18.2; extra == \"dev\"",
+          "pre-commit>=3.4.0; extra == \"dev\"",
+          "tox>=4.0.0; extra == \"dev\"",
+          "twine; extra == \"dev\"",
+          "wheel>=0.38.1; extra == \"dev\"",
+          "sphinx>=6.0.0; extra == \"dev\"",
+          "sphinx-autobuild>=2021.3.14; extra == \"dev\"",
+          "sphinx_rtd_theme>=1.0.0; extra == \"dev\"",
+          "towncrier<25,>=24; extra == \"dev\"",
+          "hypothesis>=4.43.0; extra == \"dev\"",
+          "mypy==1.18.2; extra == \"dev\"",
+          "pytest>=7.0.0; extra == \"dev\"",
+          "pytest-xdist>=2.4.0; extra == \"dev\"",
+          "sphinx>=6.0.0; extra == \"docs\"",
+          "sphinx-autobuild>=2021.3.14; extra == \"docs\"",
+          "sphinx_rtd_theme>=1.0.0; extra == \"docs\"",
+          "towncrier<25,>=24; extra == \"docs\"",
+          "hypothesis>=4.43.0; extra == \"test\"",
+          "mypy==1.18.2; extra == \"test\"",
+          "pytest>=7.0.0; extra == \"test\"",
+          "pytest-xdist>=2.4.0; extra == \"test\""
+        ],
+        "requires_python": ">=3.10, <4",
+        "version": "6.0.0"
+      },
+      "requested": true
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=f99e8e1f1e84522257c4c762ed194106b6b40eeca5a5d181b180fdeb3e927ef5",
+          "hashes": {
+            "sha256": "f99e8e1f1e84522257c4c762ed194106b6b40eeca5a5d181b180fdeb3e927ef5"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/8a/25/d782900308fff1872ec5df44b2a2ec36eee97e442657038a2b7e9f25c58c/cytoolz-1.2.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "cytoolz",
+        "provides_extra": [
+          "cython"
+        ],
+        "requires_dist": [
+          "toolz>=0.8.0",
+          "toolz>=1.2.0; python_version >= \"3.15\"",
+          "cython>=0.29; extra == \"cython\""
+        ],
+        "requires_python": ">=3.9",
+        "version": "1.2.0"
+      },
+      "requested": false
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=523718a51b369ab89866b929a5c93c52978cd866ea309192ad980dd8271f9fac",
+          "hashes": {
+            "sha256": "523718a51b369ab89866b929a5c93c52978cd866ea309192ad980dd8271f9fac"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/87/87/b36792150ca0b28e4df683a34be15a61461ca0e349e5b5cf3ec8f694edb9/eth_hash-0.8.0-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "eth-hash",
+        "provides_extra": [
+          "dev",
+          "docs",
+          "test",
+          "pycryptodome",
+          "pysha3"
+        ],
+        "requires_dist": [
+          "build>=0.9.0; extra == \"dev\"",
+          "bump_my_version>=0.19.0; extra == \"dev\"",
+          "ipython; extra == \"dev\"",
+          "mypy==1.18.2; extra == \"dev\"",
+          "pre-commit>=3.4.0; extra == \"dev\"",
+          "tox>=4.0.0; extra == \"dev\"",
+          "twine; extra == \"dev\"",
+          "wheel>=0.38.1; extra == \"dev\"",
+          "sphinx>=6.0.0; extra == \"dev\"",
+          "sphinx-autobuild>=2021.3.14; extra == \"dev\"",
+          "sphinx_rtd_theme>=1.0.0; extra == \"dev\"",
+          "towncrier<25,>=24; extra == \"dev\"",
+          "pytest>=7.0.0; extra == \"dev\"",
+          "pytest-xdist>=2.4.0; extra == \"dev\"",
+          "sphinx>=6.0.0; extra == \"docs\"",
+          "sphinx-autobuild>=2021.3.14; extra == \"docs\"",
+          "sphinx_rtd_theme>=1.0.0; extra == \"docs\"",
+          "towncrier<25,>=24; extra == \"docs\"",
+          "pytest>=7.0.0; extra == \"test\"",
+          "pytest-xdist>=2.4.0; extra == \"test\"",
+          "pycryptodome<4,>=3.6.6; extra == \"pycryptodome\"",
+          "pysha3<2.0.0,>=1.0.0; python_version < \"3.9\" and extra == \"pysha3\"",
+          "safe-pysha3>=1.0.0; python_version >= \"3.9\" and extra == \"pysha3\""
+        ],
+        "requires_python": ">=3.10, <4",
+        "version": "0.8.0"
+      },
+      "requested": false
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=ee74fb641eb36dd885e1c42c2a3055314efa532b3e71480816df70a94d35cfb9",
+          "hashes": {
+            "sha256": "ee74fb641eb36dd885e1c42c2a3055314efa532b3e71480816df70a94d35cfb9"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/aa/0d/e756622fab29f404d846d7464f929d642a7ee6eff5b38bcc79e7c64ac630/eth_typing-6.0.0-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "eth-typing",
+        "provides_extra": [
+          "dev",
+          "docs",
+          "test"
+        ],
+        "requires_dist": [
+          "typing_extensions>=4.5.0",
+          "build>=0.9.0; extra == \"dev\"",
+          "bump_my_version>=0.19.0; extra == \"dev\"",
+          "ipython; extra == \"dev\"",
+          "mypy==1.18.2; extra == \"dev\"",
+          "pre-commit>=3.4.0; extra == \"dev\"",
+          "tox>=4.0.0; extra == \"dev\"",
+          "twine; extra == \"dev\"",
+          "wheel>=0.38.1; extra == \"dev\"",
+          "sphinx>=6.0.0; extra == \"dev\"",
+          "sphinx-autobuild>=2021.3.14; extra == \"dev\"",
+          "sphinx_rtd_theme>=1.0.0; extra == \"dev\"",
+          "towncrier<25,>=24; extra == \"dev\"",
+          "pytest>=7.0.0; extra == \"dev\"",
+          "pytest-xdist>=2.4.0; extra == \"dev\"",
+          "sphinx>=6.0.0; extra == \"docs\"",
+          "sphinx-autobuild>=2021.3.14; extra == \"docs\"",
+          "sphinx_rtd_theme>=1.0.0; extra == \"docs\"",
+          "towncrier<25,>=24; extra == \"docs\"",
+          "pytest>=7.0.0; extra == \"test\"",
+          "pytest-xdist>=2.4.0; extra == \"test\""
+        ],
+        "requires_python": ">=3.10, <4",
+        "version": "6.0.0"
+      },
+      "requested": false
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+          "hashes": {
+            "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "packaging",
+        "requires_python": ">=3.9",
+        "version": "26.3"
+      },
+      "requested": false
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=15fab1bea6f1dc5003b54fc2ecab230c1fd1dbade2acd4addc52d81e32416d4b",
+          "hashes": {
+            "sha256": "15fab1bea6f1dc5003b54fc2ecab230c1fd1dbade2acd4addc52d81e32416d4b"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/2d/eb/9146591cc819d040475bf7f2be786710c7f7eb8083693bf859728da2ca9c/pydantic-2.14.0-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.5",
+        "name": "pydantic",
+        "provides_extra": [
+          "email",
+          "timezone"
+        ],
+        "requires_dist": [
+          "annotated-types>=0.6.0",
+          "pydantic-core==2.50.0",
+          "typing-extensions>=4.16.0",
+          "typing-inspection>=0.4.4",
+          "email-validator>=2.0.0; extra == 'email'",
+          "tzdata; (platform_system == 'Windows') and extra == 'timezone'"
+        ],
+        "requires_python": ">=3.10",
+        "version": "2.14.0"
+      },
+      "requested": false
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=f187030fc3d62c668feb0f09e92852e0eb414d7fcefc4748f2e67d245aade37e",
+          "hashes": {
+            "sha256": "f187030fc3d62c668feb0f09e92852e0eb414d7fcefc4748f2e67d245aade37e"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/ca/e2/2f793fa2f1b338aa03124efd4362956c84d7bf1b331dc86050bc0151e67d/pydantic_core-2.50.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "pydantic_core",
+        "requires_dist": [
+          "typing-extensions>=4.16.0"
+        ],
+        "requires_python": ">=3.10",
+        "version": "2.50.0"
+      },
+      "requested": false
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0",
+          "hashes": {
+            "sha256": "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/99/91/8acff4f5e50511b911bbccb72b8628a49c68ce14148cd9f6431094859a90/annotated_types-0.8.0-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "annotated-types",
+        "requires_python": ">=3.10",
+        "version": "0.8.0"
+      },
+      "requested": false
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=890f820b1cb8152785aaf9386d8707770110809035800985ca65cb24ce1120ef",
+          "hashes": {
+            "sha256": "890f820b1cb8152785aaf9386d8707770110809035800985ca65cb24ce1120ef"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/db/17/4c8beb6c8c4176c6bf143bfd7e1e4dd6719b00ced90738c7ac471b71c1df/toolz-1.2.0-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "toolz",
+        "requires_python": ">=3.9",
+        "version": "1.2.0"
+      },
+      "requested": false
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+          "hashes": {
+            "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.4",
+        "name": "typing_extensions",
+        "requires_python": ">=3.9",
+        "version": "4.16.0"
+      },
+      "requested": false
+    },
+    {
+      "download_info": {
+        "archive_info": {
+          "hash": "sha256=65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147",
+          "hashes": {
+            "sha256": "65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147"
+          }
+        },
+        "url": "https://files.pythonhosted.org/packages/67/81/4add07e5172b7ac40d8ed5ff580409a7801a4fe26d529bdd915401dabfbe/typing_inspection-0.4.4-py3-none-any.whl"
+      },
+      "is_direct": false,
+      "is_yanked": false,
+      "metadata": {
+        "metadata_version": "2.5",
+        "name": "typing-inspection",
+        "requires_dist": [
+          "typing-extensions>=4.15.0"
+        ],
+        "requires_python": ">=3.10",
+        "version": "0.4.4"
+      },
+      "requested": false
+    }
+  ],
+  "original_report_bytes": 214185,
+  "original_report_sha256": "7765f7bd2d6fde927b86fe5c4df053d3cc749ad9a566ad2feb0f1c76a2f050f5",
+  "pip_version": "25.0.1",
+  "report_representation": "Dependency and artifact metadata retained; package descriptions/classifiers omitted. Original pip report is preserved outside the repository evidence packet.",
+  "version": "1"
+}

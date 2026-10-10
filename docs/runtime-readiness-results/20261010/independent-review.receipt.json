@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-10T17:05:24.266484+00:00",
+  "status": "PASS_WITH_EXPLICIT_RUNTIME_RELEASE_BLOCKERS",
+  "scope": "independent_review_of_additive_pre_machine_dependency_and_static_repair_preparation",
+  "base_commit": "dd80d15b0f556ceb3088e9a5daf276ba1ba3a37a",
+  "base_full_tree": "031d6a49344c390803d5bb02ba6a39820745a20c",
+  "inherited_full_tree_entry_count": 1536,
+  "all_materialized_inherited_files_preserved": true,
+  "materialized_inherited_file_count": 52,
+  "materialized_inherited_paths": [
+    ".github/workflows/isolated-core-build-preflight.yml",
+    ".github/workflows/spectra-execution-repair.yml",
+    "deploy/hummingbot_core/Dockerfile",
+    "deploy/hummingbot_core/README.md",
+    "deploy/hummingbot_core/apply_overlay.py",
+    "deploy/hummingbot_core/build.contract.json",
+    "deploy/hummingbot_core/licenses/NOTICE",
+    "deploy/hummingbot_core/licenses/hummingbot-api-LICENSE",
+    "deploy/hummingbot_core/licenses/hummingbot-core-LICENSE",
+    "deploy/hummingbot_core/overlay.manifest.json",
+    "deploy/hummingbot_core/patches/client_order_tracker.py",
+    "deploy/hummingbot_core/patches/kraken_exchange.py",
+    "deploy/hummingbot_core/patches/order_executor.py",
+    "deploy/hummingbot_core/patches/rest_connection.py",
+    "deploy/hummingbot_core/patches/spectra_attempt_guard.py",
+    "docs/build-results/core-wheel-20261010/README.md",
+    "docs/build-results/core-wheel-20261010/build-commands.receipt.json",
+    "docs/build-results/core-wheel-20261010/build-summary.receipt.json",
+    "docs/build-results/core-wheel-20261010/builder-prerequisites.receipt.json",
+    "docs/build-results/core-wheel-20261010/compiled-data-module.receipt.json",
+    "docs/build-results/core-wheel-20261010/core-checkout.receipt.json",
+    "docs/build-results/core-wheel-20261010/dependency-snapshot.json",
+    "docs/build-results/core-wheel-20261010/independent-review.receipt.json",
+    "docs/build-results/core-wheel-20261010/observed-build-preflight.json",
+    "docs/build-results/core-wheel-20261010/physical-source.receipt.json",
+    "docs/build-results/core-wheel-20261010/pinned-api-core-fragments.receipt.json",
+    "docs/build-results/core-wheel-20261010/portable-tools.receipt.json",
+    "docs/build-results/core-wheel-20261010/pr33-source-inputs.json",
+    "docs/build-results/core-wheel-20261010/wheel-identity.json",
+    "docs/spectra-execution-repair.md",
+    "mcp_servers/hummingbot_api/tools/executor_create.py",
+    "scripts/spectra_check_compiled_data_module.py",
+    "scripts/spectra_compile_isolated_core_wheel.py",
+    "scripts/spectra_isolated_build_preflight.py",
+    "scripts/spectra_runtime_attest.py",
+    "spectra-runtime.contract.json",
+    "spectra-stack.lock.json",
+    "spectra_core/capital_governor.py",
+    "tests/test_attempt_journal.py",
+    "tests/test_cash_scope_adapters.py",
+    "tests/test_core_overlay_build.py",
+    "tests/test_corrected_kraken_placement.py",
+    "tests/test_corrected_limit_executor.py",
+    "tests/test_entry_identity_submission.py",
+    "tests/test_integrated_entry_cash_authority.py",
+    "tests/test_integrated_runtime_restart.py",
+    "tests/test_isolated_build_preflight.py",
+    "tests/test_isolated_compile_wheel.py",
+    "tests/test_protected_attempt_identity.py",
+    "tests/test_spectra_kraken_execution_flow.py",
+    "tests/test_typed_executor_tools.py",
+    "tests/test_vcap_execution_loop.py"
+  ],
+  "remote_publication_tree_verification": "separate_independent_real_git_mktree_receipt_after_root_freeze",
+  "reviewed_source_sha256": {
+    "scripts/spectra_repair_runtime_attest.py": "ef0fa9b2249c3ff545718cb63f5a835dd7623fb009dd78553eb2977845d709c7",
+    "scripts/spectra_prepare_runtime_dependencies.py": "69e0b422ad8bd14b1751e4f3a90850ad0ff18453531fb0ecf280073c40265b1a",
+    "tests/test_repair_runtime_attestation.py": "91e00702c7521e391ed40cfb56a6a52e3c9770e4159824d6b3898c0b55adbb86",
+    "tests/test_runtime_dependency_preparation.py": "c2ec42d5fd130c9f1f5c74159039fae7d24f693e84d632e7e8b626d41e616e85",
+    "deploy/runtime_readiness/repair-attestation.contract.json": "6fcebcf62fcd85599c9a6b1afba171b104e0ced7b22566fa5bfef3e96290027d",
+    "deploy/runtime_readiness/dependencies/check_installed_guard.py": "95c817570aa3165f3c24ea4755699b532572c69d9738e925c517e34174ea21e7",
+    "deploy/runtime_readiness/dependencies/execution.receipt.json": "1eda27a8b6c1346777302fc77f4791e66b99607388a351dba7347ba8cdf10ec9",
+    "deploy/runtime_readiness/dependencies/preparation.receipt.json": "4b24d9499ec4a7b44e2c97922df03cc6962235771a56082f119fd84c7eef61b7",
+    "deploy/runtime_readiness/dependencies/wheelhouse.partial.manifest.json": "6474ea9b28019757ba8b2879402c9b6514f1f8cfbd6bcbb37234911b8e53109f",
+    "deploy/runtime_readiness/dependencies/requirements.python-wheelhouse.partial.lock": "009e58fbf813c77ff1c3496e684006de14b75bebbf0c87107cede9114c1e582d",
+    "deploy/runtime_readiness/dependencies/cleanup-proposal.receipt.json": "68ad8a29cd712f0686c27f0c5a120bccec14e34ab29ac6a0f874c0e9b1ba5585",
+    "deploy/runtime_readiness/dependencies/README.md": "053556f3de10dc5f3c572b7127d49c60ff4793cb276dd44faf0594efc9c35104",
+    "docs/spectra-machine-verification-runbook.md": "15f5d1d2884fcb22d9bdddc736c4827b0c4caa885c0696009b304d5b9f6b6322",
+    "docs/runtime-readiness-results/20261010/runbook-preparation.receipt.json": "61d15a02131a4a49b78e5fedb9ee47e0f40a0c688598e50e7c0d2909a3ea08a2",
+    ".github/workflows/spectra-runtime-readiness.yml": "3a0da0a91459465429d86c0e7b5665d653e0ad2388ae8abc0a16cb743f39b7d3",
+    "deploy/hummingbot_core/apply_overlay.py": "abf8790cb143256049ba3d9ecb3801515015fd71b58099536460310f7b3a4965",
+    "deploy/hummingbot_core/overlay.manifest.json": "c46ab17432c51297219eef692b93ab78f9c5450f22ad11f1677c448bb795ef77"
+  },
+  "independent_probes": {
+    "attestor_adversarial.receipt.json": {
+      "sha256": "6edab237acee7699e0677765311a1bf73522f8ee1540cf42ddb8a04b5c15156e",
+      "scope": "independent_repair_static_attestor_adversarial_probes"
+    },
+    "dependency_adversarial.receipt.json": {
+      "sha256": "0d5abdfe42ccf5405fadc806c1751b8e6a58cb33b0f06f4d32b050e0a2f78b84",
+      "scope": "independent_dependency_preparation_adversarial_probes"
+    },
+    "installed_guard_adversarial.receipt.json": {
+      "sha256": "78d61c8f52d2409da5c31f649657f846eb218b738c75fef66fe1c2e30442ecfb",
+      "scope": "independent_exact_installed_guard_refusals_and_audit_behavior"
+    },
+    "repair_contract.receipt.json": {
+      "sha256": "a106cb6bc7d10f056c30d220bad0a2f670f11491a9fac0817726613ad9844cad",
+      "scope": "repair_contract_selected_source_and_overlay_values_match_exact_inherited_base"
+    },
+    "dependency_sources.receipt.json": {
+      "sha256": "0cd2d7e9c7bd08a88e99ce76d2e3e67c90e7170469745582068eae5ab8084851",
+      "scope": "new_dependency_source_fragments_equal_inherited_independently_pinned_fragments"
+    },
+    "api_source.receipt.json": {
+      "sha256": "f7ce92c01fd52939122d5c9edc273b75a3878c524043f2b84f9e01646988ad25",
+      "scope": "physical_pinned_API_noncredential_source_and_Docker_COPY_set_review"
+    },
+    "dependency_packet.receipt.json": {
+      "sha256": "a7a1ad7c9fbb033c81da416561ba5d1c566370e722dc449ce53ec925a17ec430",
+      "scope": "independent_frozen_packet_actual_artifacts_and_offline_installation"
+    }
+  },
+  "local_source_tests": {
+    "repair_collector_pytest": {
+      "passed": 63,
+      "elapsed_seconds": 1.32
+    },
+    "dependency_stdlib_unittest": {
+      "passed": 26,
+      "elapsed_seconds": 0.099
+    },
+    "whole_historical_runtime_suite_repeated": false
+  },
+  "independent_adversarial_group_counts": {
+    "repair_collector": 12,
+    "dependency_preparation": 15,
+    "installed_guard": 9
+  },
+  "actual_source_only_collector": {
+    "exit_code": 2,
+    "overall_status": "INCOMPLETE",
+    "source_selected_file_count": 32,
+    "all_selected_source_bytes_match": true,
+    "receipt_sha256": "04a7d9263e61ef2a379ec372ad378ea87f1aaf1236bc6280b734e30de83bee79"
+  },
+  "fake_Docker_probe_limit": {
+    "real_daemon_connected": false,
+    "socket_metadata_injected_only_for_fake_runner": true,
+    "real_non_socket_selector_refusal_checked": true
+  },
+  "machine_runbook_review": {
+    "status": "PASS",
+    "private_venv_cache_and_fixture_paths": true,
+    "explicit_local_daemon_and_empty_config_required": true,
+    "image_pull_disabled": true,
+    "canonical_physical_selectors_documented": true,
+    "source_and_runtime_authority_separate": true
+  },
+  "workflow_review": {
+    "status": "PASS",
+    "permission": "contents:read",
+    "job_timeout_minutes": 5,
+    "python": "3.12",
+    "pytest_pin": "9.0.2",
+    "source_only_collector_exit_2_required": true,
+    "selected_32_matches_and_three_false_authority_flags_asserted": true,
+    "no_historical_data_or_holdout_opening": true,
+    "no_runtime_dependency_resolution_or_services": true
+  },
+  "pinned_API_source_review": {
+    "physical_noncredential_blobs_verified": 224,
+    "Docker_COPY_application_entries_verified": 136,
+    "credential_namespace_paths_excluded": 6,
+    "excluded_credentials_read": false,
+    "complete_repository_checkout_claimed": false
+  },
+  "frozen_dependency_packet_review": {
+    "status": "PASS",
+    "generated_products_and_receipt_reproduced_byte_for_byte": 6,
+    "source_and_product_hashes_checked": 22,
+    "evidence_hashes_checked": 32,
+    "artifact_count": 197,
+    "actual_artifact_bytes": 267835299,
+    "all_artifact_hashes_and_metadata_match_partial_lock": true,
+    "all_offline_installed_distribution_versions_match_partial_lock": true,
+    "offline_installed_preferred_wheel_exact_members": 1005,
+    "offline_installed_preferred_wheel_exact_ELF_payloads": 61,
+    "all_61_native_ABIs_exercised": false,
+    "compiler_binary_reproducibility_proven": false,
+    "proposed_cleanup_diff_matches_only_stated_changes": true,
+    "cleanup_applied": false,
+    "requires_new_six_overlay_compiler_provenance_and_wheel": true,
+    "physical_tracked_Python_AST_scan_count": 1855,
+    "Hyperliquid_msgpack_imports_found": 2,
+    "legacy_extra_generalized_unused_claimed": false,
+    "three_actual_offline_msgpack_collisions_have_modern_winner": true
+  },
+  "actual_offline_runtime_trial_checks": {
+    "pip_check": {
+      "exit_code": 0,
+      "stdout_stderr_sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09"
+    },
+    "bounded_compiled_data_module_ABI": {
+      "exit_code": 0,
+      "stdout_stderr_sha256": "e828891f41ff54bf8ed94f1e83fe20c45511f45fafc68bfeb8aff43bc08b6cdc"
+    }
+  },
+  "exact_PR33_installed_guard_independent_trial": {
+    "status": "PASS",
+    "venv_role": "non_inheriting_offline_reconstruction",
+    "numpy_runtime": "2.2.6",
+    "hummingbot_imported_module_count": 447,
+    "five_overlay_hashes_and_executor_fields_match": true,
+    "Python_audit_denied_actual_socket_and_process_events": true,
+    "Python_audit_hook_is_operating_system_sandbox": false,
+    "connector_or_executor_instantiated": false,
+    "API_started": false,
+    "journal_checked": false
+  },
+  "bounded_compiled_ABI_independent_trial": {
+    "status": "PASS",
+    "numpy_runtime": "2.2.6",
+    "module": "hummingbot.core.data_type.order_book_query_result",
+    "compiled_module_sha256": "7c44be389c705332d558877dc7eaaaa3698e1f5425e44980a0a3e052d270ba96",
+    "data_class_round_trip_verified": true,
+    "all_native_extensions_exercised": false
+  },
+  "release_blockers": [
+    "Three executable msgpack namespace paths have competing distribution ownership.",
+    "Original Docker recipe legacy eip712-structs extra is excluded only from the separately labeled trial.",
+    "Native conda libcxx/libta-lib environment is not locked or installed by the Python artifact lock.",
+    "Immutable base image reference, complete API image build, final image identity and installed image tests are absent.",
+    "Actual Bazzite host, runner isolation, daemon/image provenance and compatibility remain unverified.",
+    "New packaging cleanup requires separately reviewed provenance, rebuilt wheel and serializer/auth fixtures."
+  ],
+  "full_API_environment_compatibility_verified": false,
+  "full_API_image_built": false,
+  "installed_Bazzite_verified": false,
+  "account_connected": false,
+  "venue_requests_performed": false,
+  "credentials_read": false,
+  "private_journals_read": false,
+  "sealed_holdout_payloads_read": false,
+  "production_modified": false,
+  "runtime_attestation_complete": false,
+  "approved_for_live": false
+}
