@@ -1,0 +1,1481 @@
+{
+  "schema": "spectra.kraken.capabilities.v1",
+  "audited_at_utc": "2026-10-10T11:31:47.009585+00:00",
+  "scope": "Read-only official-source research for a presumed Ohio, United States resident; account eligibility and entitlements were not inspected.",
+  "live_ready": false,
+  "account_specific_eligibility_verified": false,
+  "production_changes": false,
+  "private_requests": 0,
+  "orders_submitted": 0,
+  "holdout_market_outcomes_read": false,
+  "headline": "U.S. retail spot-margin API routing is officially documented, but the pinned Hummingbot Kraken connector implements spot only. U.S. perpetuals use different instruments, costs and settlement; Kraken-mediated U.S. perpetual trading API support remains unverified.",
+  "sources": [
+    {
+      "id": "us_region",
+      "url": "https://support.kraken.com/articles/quick-start-for-clients-in-the-united-states",
+      "updated": "2026-03-30"
+    },
+    {
+      "id": "us_unlock",
+      "url": "https://support.kraken.com/articles/unlock-us-derivatives",
+      "updated": "2026-05-06"
+    },
+    {
+      "id": "product_eligibility",
+      "url": "https://support.kraken.com/articles/360023786632-kraken-derivatives-eligibility",
+      "updated": "2026-07-28"
+    },
+    {
+      "id": "margin_eligibility",
+      "url": "https://support.kraken.com/articles/4402532394260-client-eligibility-for-margin-trading-services-",
+      "updated": "2026-09-11"
+    },
+    {
+      "id": "us_margin",
+      "url": "https://support.kraken.com/articles/getting-started-us-margin",
+      "updated": "2026-08-11"
+    },
+    {
+      "id": "margin_api_routing",
+      "url": "https://support.kraken.com/articles/360001491786-api-error-messages",
+      "updated": "2026-06-26"
+    },
+    {
+      "id": "spot_add_order",
+      "url": "https://docs.kraken.com/api-reference/trading/add-order"
+    },
+    {
+      "id": "asset_pairs",
+      "url": "https://docs.kraken.com/api-reference/market-data/get-tradable-asset-pairs"
+    },
+    {
+      "id": "public_bitnomial_margin_pairs",
+      "url": "https://api.kraken.com/0/public/AssetPairs?execution_venue=bitnomial_exchange&country_code=US",
+      "local_receipt": "kraken_public_assetpairs_receipt.json",
+      "raw_receipt": "kraken_public_assetpairs_confirm_receipt.json"
+    },
+    {
+      "id": "us_margin_costs",
+      "url": "https://support.kraken.com/articles/us-margin-fees",
+      "updated": "2026-05-06"
+    },
+    {
+      "id": "fee_schedule",
+      "url": "https://www.kraken.com/features/fee-schedule"
+    },
+    {
+      "id": "us_margin_liquidation",
+      "url": "https://support.kraken.com/articles/liquidations-us-margin",
+      "updated": "2026-07-27"
+    },
+    {
+      "id": "us_perps_launch_list",
+      "url": "https://support.kraken.com/articles/us-perpetual-futures"
+    },
+    {
+      "id": "us_futures_overview",
+      "url": "https://support.kraken.com/articles/us-futures-101",
+      "updated": "2026-06-15"
+    },
+    {
+      "id": "us_futures_specs",
+      "url": "https://support.kraken.com/articles/contract-specifications",
+      "updated": "2026-06-15"
+    },
+    {
+      "id": "us_futures_costs",
+      "url": "https://support.kraken.com/articles/us-futures-fees",
+      "updated": "2026-06-15"
+    },
+    {
+      "id": "us_futures_margins",
+      "url": "https://support.kraken.com/articles/margin-on-us-futures",
+      "updated": "2026-06-15"
+    },
+    {
+      "id": "us_futures_liquidation",
+      "url": "https://support.kraken.com/articles/us-futures-liquidations",
+      "updated": "2026-07-23"
+    },
+    {
+      "id": "us_perps_maintenance",
+      "url": "https://support.kraken.com/articles/maintenance-windows-us-perpetual-futures"
+    },
+    {
+      "id": "global_futures_api",
+      "url": "https://support.kraken.com/articles/360022839491-api-urls-derivatives",
+      "updated": "2026-10-07"
+    },
+    {
+      "id": "global_futures_orders",
+      "url": "https://docs.kraken.com/api-reference/order-management/send-order"
+    },
+    {
+      "id": "global_perps_specs",
+      "url": "https://support.kraken.com/articles/4844359082772-linear-multi-collateral-derivatives-contract-specifications",
+      "updated": "2026-10-02"
+    },
+    {
+      "id": "global_equity_protection",
+      "url": "https://support.kraken.com/articles/360022835671-equity-protection-process-derivatives",
+      "updated": "2026-07-28"
+    },
+    {
+      "id": "bitnomial_btcuc_rulebook",
+      "url": "https://bitnomial.com/exchange/rulebook/product/crypto/pbtcuc/"
+    },
+    {
+      "id": "bitnomial_rest",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/overview/"
+    },
+    {
+      "id": "bitnomial_products",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/products/"
+    },
+    {
+      "id": "bitnomial_funding_api",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/funding-rates/"
+    },
+    {
+      "id": "bitnomial_funding_methodology",
+      "url": "https://bitnomial.com/exchange/docs/market-operations/settlements/digital-asset-perpetual-pricing"
+    },
+    {
+      "id": "bitnomial_charts",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/charts/"
+    },
+    {
+      "id": "bitnomial_btcuc_current_public_spec",
+      "url": "https://bitnomial.com/exchange/api/v1/prod/product/specs/?base_symbol=BTCUC&active=true",
+      "local_receipt": "btcuc_current.receipt.json"
+    },
+    {
+      "id": "bitnomial_btcuc_june30_public_spec",
+      "url": "https://bitnomial.com/exchange/api/v1/prod/product/specs/?base_symbol=BTCUC&day=2026-06-30",
+      "local_receipt": "btcuc_20260630.receipt.json"
+    },
+    {
+      "id": "hummingbot_exact_pin",
+      "url": "https://github.com/hummingbot/hummingbot/tree/9af100d6822da7d2d0291a906c730ef172284ee2",
+      "local_receipt": "connector_source_receipt.json"
+    }
+  ],
+  "product_matrix": [
+    {
+      "product": "Unleveraged Kraken spot",
+      "venue": "international spot",
+      "shorting": false,
+      "api": "Spot REST/WebSocket documented",
+      "hummingbot_pin_support": "Spot connector present; selling requires owned inventory.",
+      "sources": [
+        "spot_add_order",
+        "hummingbot_exact_pin"
+      ]
+    },
+    {
+      "product": "U.S. non-ECP retail spot margin",
+      "venue": "Bitnomial Exchange through Kraken Derivatives US; financing Payward Accredited LLC",
+      "shorting": "Documented leveraged sell routes, subject to approval, pair limits and borrow availability.",
+      "api": "Spot REST/WebSocket with venue-suffixed pair, e.g. XBT/USD:BTNL; not plain XBT/USD.",
+      "hummingbot_pin_support": false,
+      "sources": [
+        "us_margin",
+        "margin_api_routing",
+        "public_bitnomial_margin_pairs",
+        "hummingbot_exact_pin"
+      ]
+    },
+    {
+      "product": "U.S. Bitnomial perpetual futures",
+      "venue": "Bitnomial Exchange through NinjaTrader Clearing LLC d/b/a Kraken Derivatives US",
+      "shorting": "Futures long/short exposure documented; individual entitlement unverified.",
+      "api": "No official reviewed source establishes Kraken U.S. perpetual order/account API support. Do not substitute global derivatives API or standalone Bitnomial credentials.",
+      "hummingbot_pin_support": false,
+      "sources": [
+        "us_perps_launch_list",
+        "us_unlock",
+        "us_futures_overview",
+        "global_futures_api",
+        "hummingbot_exact_pin"
+      ]
+    },
+    {
+      "product": "U.S. CME futures",
+      "venue": "CME and Kraken Derivatives US",
+      "shorting": "Cash-settled futures long/short documented; individual entitlement unverified.",
+      "api": "Kraken-mediated U.S. futures API support unverified in reviewed official sources.",
+      "hummingbot_pin_support": false,
+      "sources": [
+        "us_futures_overview",
+        "us_futures_specs",
+        "hummingbot_exact_pin"
+      ]
+    },
+    {
+      "product": "Non-U.S. Kraken Derivatives (PF_/PI_/FF_)",
+      "venue": "Kraken Derivatives international product",
+      "shorting": true,
+      "api": "futures.kraken.com REST v3/WebSocket; order API includes reduceOnly.",
+      "eligible_for_this_user": "Not established; must not treat international product data or access as U.S. account capability.",
+      "hummingbot_pin_support": false,
+      "sources": [
+        "product_eligibility",
+        "global_futures_api",
+        "global_futures_orders",
+        "hummingbot_exact_pin"
+      ]
+    }
+  ],
+  "eligibility": [
+    {
+      "finding": "Ohio is not named among Kraken's general U.S. service exclusions (NY and ME), but general service access does not prove derivatives suitability, unlocked status or entitlements.",
+      "kind": "inference",
+      "sources": [
+        "us_region",
+        "us_unlock"
+      ]
+    },
+    {
+      "finding": "U.S. retail margin and self-certified ECP international margin are different programs. Do not require the old ECP $10m threshold for the new retail program, and do not claim the user qualifies as ECP.",
+      "kind": "official_fact",
+      "sources": [
+        "margin_eligibility",
+        "us_margin"
+      ]
+    },
+    {
+      "finding": "Unlock requires a verified account, financial/trading-experience answers and accepted agreements. None was inspected or changed.",
+      "kind": "official_fact",
+      "sources": [
+        "us_unlock"
+      ]
+    }
+  ],
+  "us_spot_margin": {
+    "current_public_pairs_count": 29,
+    "current_public_pairs_receipt": "kraken_public_assetpairs_receipt.json",
+    "current_public_pairs_raw": "kraken_public_assetpairs.raw.json",
+    "public_rule_timestamp": "2026-10-10; current rules cannot be projected backward into Jan\u2013Jun 2026",
+    "route_suffix": ":BTNL",
+    "discovery_query": "AssetPairs?execution_venue=bitnomial_exchange&country_code=US",
+    "discovery_default_venue": "international; explicitly request bitnomial_exchange",
+    "no_fee_inference_from_empty_arrays": true,
+    "account_allowance_verified": false,
+    "borrow_availability_verified": false,
+    "opening_and_rollover": "Opening charge on full margin extension; rollover every 4 hours, entry-time rollover rate locked but current rates dynamic.",
+    "retail_margin_call_percent": 80,
+    "retail_liquidation_percent": 40,
+    "liquidation_spread_percent": 2,
+    "collateral_conversion_percent": {
+      "cash_cash": 1.5,
+      "btc_eth_cash": 2.5,
+      "other": 5
+    },
+    "collateral_recourse": "Existing Kraken account collateral can be converted to settle obligations; internal HEDGE_BOOK allocation does not create venue isolation.",
+    "execution_validate_caveat": "validate=true checks order formatting and may pass while actual U.S. margin routing fails.",
+    "sources": [
+      "margin_api_routing",
+      "asset_pairs",
+      "public_bitnomial_margin_pairs",
+      "us_margin_costs",
+      "us_margin_liquidation"
+    ],
+    "current_public_pairs": [
+      {
+        "pair": "AAVEUSD:BTNL",
+        "wsname": "AAVE/USD:BTNL",
+        "ordermin": "0.05",
+        "costmin": "0.5",
+        "tick_size": "0.01",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 3600,
+        "short_position_limit": 2600,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "ADAUSD:BTNL",
+        "wsname": "ADA/USD:BTNL",
+        "ordermin": "20",
+        "costmin": "0.5",
+        "tick_size": "0.000001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 4000000,
+        "short_position_limit": 4000000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "ALGOUSD:BTNL",
+        "wsname": "ALGO/USD:BTNL",
+        "ordermin": "41",
+        "costmin": "0.5",
+        "tick_size": "0.00001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 3600000,
+        "short_position_limit": 1700000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "AVAXUSD:BTNL",
+        "wsname": "AVAX/USD:BTNL",
+        "ordermin": "0.5",
+        "costmin": "0.5",
+        "tick_size": "0.001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 88000,
+        "short_position_limit": 71000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "BCHUSD:BTNL",
+        "wsname": "BCH/USD:BTNL",
+        "ordermin": "0.01",
+        "costmin": "0.5",
+        "tick_size": "0.01",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 1500,
+        "short_position_limit": 1300,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "CRVUSD:BTNL",
+        "wsname": "CRV/USD:BTNL",
+        "ordermin": "20",
+        "costmin": "0.5",
+        "tick_size": "0.00001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 1700000,
+        "short_position_limit": 1300000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "DOTUSD:BTNL",
+        "wsname": "DOT/USD:BTNL",
+        "ordermin": "3.9",
+        "costmin": "0.5",
+        "tick_size": "0.0001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 390000,
+        "short_position_limit": 290000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "ETHUSD:BTNL",
+        "wsname": "ETH/USD:BTNL",
+        "ordermin": "0.001",
+        "costmin": "0.5",
+        "tick_size": "0.01",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 4000,
+        "short_position_limit": 4000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "HBARUSD:BTNL",
+        "wsname": "HBAR/USD:BTNL",
+        "ordermin": "55",
+        "costmin": "0.5",
+        "tick_size": "0.00001",
+        "lot_decimals": 5,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 3000000,
+        "short_position_limit": 2300000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "HYPEUSD:BTNL",
+        "wsname": "HYPE/USD:BTNL",
+        "ordermin": "0.1",
+        "costmin": "0.5",
+        "tick_size": "0.01",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 18000,
+        "short_position_limit": 16000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "LINKUSD:BTNL",
+        "wsname": "LINK/USD:BTNL",
+        "ordermin": "0.55",
+        "costmin": "0.5",
+        "tick_size": "0.00001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 110000,
+        "short_position_limit": 87000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "LTCUSD:BTNL",
+        "wsname": "LTC/USD:BTNL",
+        "ordermin": "0.1",
+        "costmin": "0.5",
+        "tick_size": "0.01",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 25000,
+        "short_position_limit": 20000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "NEARUSD:BTNL",
+        "wsname": "NEAR/USD:BTNL",
+        "ordermin": "4",
+        "costmin": "0.5",
+        "tick_size": "0.0001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 320000,
+        "short_position_limit": 200000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "PAXGUSD:BTNL",
+        "wsname": "PAXG/USD:BTNL",
+        "ordermin": "0.001",
+        "costmin": "0.5",
+        "tick_size": "0.01",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 330,
+        "short_position_limit": 390,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "PENGUUSD:BTNL",
+        "wsname": "PENGU/USD:BTNL",
+        "ordermin": "700",
+        "costmin": "0.5",
+        "tick_size": "0.000001",
+        "lot_decimals": 5,
+        "leverage_buy": [
+          2,
+          3
+        ],
+        "leverage_sell": [
+          2,
+          3
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 30000000,
+        "short_position_limit": 26000000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "PEPEUSD:BTNL",
+        "wsname": "PEPE/USD:BTNL",
+        "ordermin": "1500000",
+        "costmin": "0.5",
+        "tick_size": "0.000000001",
+        "lot_decimals": 5,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 130000000000,
+        "short_position_limit": 120000000000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "RENDERUSD:BTNL",
+        "wsname": "RENDER/USD:BTNL",
+        "ordermin": "2.5",
+        "costmin": "0.5",
+        "tick_size": "0.001",
+        "lot_decimals": 5,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 150000,
+        "short_position_limit": 98000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "SHIBUSD:BTNL",
+        "wsname": "SHIB/USD:BTNL",
+        "ordermin": "770000",
+        "costmin": "0.5",
+        "tick_size": "0.000000001",
+        "lot_decimals": 5,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 47000000000,
+        "short_position_limit": 42000000000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "SOLUSD:BTNL",
+        "wsname": "SOL/USD:BTNL",
+        "ordermin": "0.06",
+        "costmin": "0.5",
+        "tick_size": "0.01",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 37000,
+        "short_position_limit": 24000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "SUIUSD:BTNL",
+        "wsname": "SUI/USD:BTNL",
+        "ordermin": "5",
+        "costmin": "0.5",
+        "tick_size": "0.0001",
+        "lot_decimals": 5,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 1300000,
+        "short_position_limit": 980000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "TRXUSD:BTNL",
+        "wsname": "TRX/USD:BTNL",
+        "ordermin": "16",
+        "costmin": "0.5",
+        "tick_size": "0.000001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 3600000,
+        "short_position_limit": 3600000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "UNIUSD:BTNL",
+        "wsname": "UNI/USD:BTNL",
+        "ordermin": "1.5",
+        "costmin": "0.5",
+        "tick_size": "0.0001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 76000,
+        "short_position_limit": 59000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "USDCUSD:BTNL",
+        "wsname": "USDC/USD:BTNL",
+        "ordermin": "5",
+        "costmin": "0.5",
+        "tick_size": "0.0001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 15000000,
+        "short_position_limit": 15000000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "WLDUSD:BTNL",
+        "wsname": "WLD/USD:BTNL",
+        "ordermin": "11",
+        "costmin": "0.5",
+        "tick_size": "0.0001",
+        "lot_decimals": 5,
+        "leverage_buy": [
+          2,
+          3
+        ],
+        "leverage_sell": [
+          2,
+          3
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 260000,
+        "short_position_limit": 260000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "XBTUSD:BTNL",
+        "wsname": "XBT/USD:BTNL",
+        "ordermin": "0.00005",
+        "costmin": "0.5",
+        "tick_size": "0.1",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 350,
+        "short_position_limit": 250,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "XDGUSD:BTNL",
+        "wsname": "XDG/USD:BTNL",
+        "ordermin": "50",
+        "costmin": "0.5",
+        "tick_size": "0.0000001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 30000000,
+        "short_position_limit": 30000000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "XLMUSD:BTNL",
+        "wsname": "XLM/USD:BTNL",
+        "ordermin": "30",
+        "costmin": "0.5",
+        "tick_size": "0.000001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 3500000,
+        "short_position_limit": 2100000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "XRPUSD:BTNL",
+        "wsname": "XRP/USD:BTNL",
+        "ordermin": "1.65",
+        "costmin": "0.5",
+        "tick_size": "0.00001",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 3200000,
+        "short_position_limit": 1800000,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      },
+      {
+        "pair": "ZECUSD:BTNL",
+        "wsname": "ZEC/USD:BTNL",
+        "ordermin": "0.01",
+        "costmin": "0.5",
+        "tick_size": "0.01",
+        "lot_decimals": 8,
+        "leverage_buy": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "leverage_sell": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "margin_call": 80,
+        "margin_stop": 40,
+        "long_position_limit": 3400,
+        "short_position_limit": 3700,
+        "status": "online",
+        "execution_venue": "bitnomial_exchange"
+      }
+    ],
+    "public_response_sha256": "e8cabc1540fc8a8f943f01ebe54c70e8961e801db44e5ce42f1edcd89392c0e2"
+  },
+  "advertised_us_perpetuals": {
+    "list_status": "Dedicated Kraken article explicitly describes 16 contracts at launch; current active/access-approved catalog unverified.",
+    "contracts": [
+      [
+        "BTC",
+        "PBTCUC"
+      ],
+      [
+        "AAVE",
+        "PAVEUS"
+      ],
+      [
+        "AVAX",
+        "PAVXUD"
+      ],
+      [
+        "BCH",
+        "PBCHUS"
+      ],
+      [
+        "ADA",
+        "PADAUK"
+      ],
+      [
+        "LINK",
+        "PLNKUD"
+      ],
+      [
+        "DOGE",
+        "PDOGUK"
+      ],
+      [
+        "ETH",
+        "PETHUI"
+      ],
+      [
+        "HBAR",
+        "PHBRUK"
+      ],
+      [
+        "LTC",
+        "PLTCUS"
+      ],
+      [
+        "DOT",
+        "PDOTUH"
+      ],
+      [
+        "SHIB",
+        "PSHBUN"
+      ],
+      [
+        "SOL",
+        "PSOLUS"
+      ],
+      [
+        "XLM",
+        "PXLMUK"
+      ],
+      [
+        "XTZ",
+        "PXTZUK"
+      ],
+      [
+        "XRP",
+        "PXRPUH"
+      ]
+    ],
+    "list_verbatim_symbol_fidelity": "Codes preserved as printed, not reconciled into executable IDs. Other support examples include PETHIUZ50 and PBUCZ50; exact catalog must resolve inconsistencies.",
+    "contracts_are_whole_units": true,
+    "collateral": "USD at launch",
+    "expiration": "No ordinary expiration/rollover; symbol Z50 is perpetual convention, not ordinary near-term expiry.",
+    "funding_cash_settlement": "Kraken client cash adjustment aggregated at 15:00 America/Chicago daily; funding may debit position margin if available cash is insufficient.",
+    "per_side_fee_usd_per_contract": 0.15,
+    "per_side_breakdown_usd": {
+      "commission": 0.03,
+      "exchange_clearing": 0.1,
+      "nfa": 0.02
+    },
+    "round_trip_fee_usd_per_contract_excluding_funding": 0.3,
+    "liquidation_fee_usd": {
+      "perps_only": 10,
+      "cme_or_mixed_first": 25,
+      "cme_or_mixed_subsequent": 50
+    },
+    "time_in_force": [
+      "Day",
+      "IOC"
+    ],
+    "gtc_supported": false,
+    "reduce_only_us_perpetual_api_verified": false,
+    "margin_amounts_per_contract_verified": false,
+    "maintenance": "Friday 17:00\u201318:00 America/Chicago trading disabled; 18:00\u201319:00 rolling restart; funding and liquidation thresholds remain active.",
+    "initial_margin_daily_cutoff": "Kraken Margin on US Futures article says 15:45 America/Chicago even for perpetuals; do not assume continuous intraday margin permits indefinite carry.",
+    "sources": [
+      "us_perps_launch_list",
+      "us_futures_overview",
+      "us_futures_costs",
+      "us_futures_liquidation",
+      "us_perps_maintenance",
+      "us_futures_margins"
+    ]
+  },
+  "btc_perpetual_exchange_metadata": {
+    "product_id": 5614,
+    "symbol": "PBTCUCZ50",
+    "base_symbol": "BTCUC",
+    "first_trading_day": "2026-05-16",
+    "contract_size_btc": 0.01,
+    "price_increment_usd_per_btc": 5,
+    "tick_value_usd": 0.05,
+    "margin_unit": "USD",
+    "settlement_method": "Cash Settled",
+    "max_order_quantity": 10000,
+    "funding_interval_hours": 8,
+    "funding_rate_upper_bound": 0.0005,
+    "funding_rate_lower_bound": -0.0005,
+    "raw_current": "btcuc_current.raw.json",
+    "raw_june30": "btcuc_20260630.raw.json",
+    "limitations": "June30 and current responses identical; first_trading_day is exchange metadata, not proof of Kraken customer-access date or immutable historical margin/limit versions. No price, funding payment or holdout outcome read.",
+    "sources": [
+      "bitnomial_btcuc_current_public_spec",
+      "bitnomial_btcuc_june30_public_spec",
+      "bitnomial_btcuc_rulebook"
+    ]
+  },
+  "fees_current_snapshot": {
+    "spot_lowest_volume_maker_percent": 0.4,
+    "spot_lowest_volume_taker_percent": 0.8,
+    "btc_margin_opening_percent_range": [
+      0.01,
+      0.02
+    ],
+    "btc_rollover_percent_range_per_4h": [
+      0.01,
+      0.02
+    ],
+    "us_margin_fee_schedule_historical": false,
+    "account_fee_tier_verified": false,
+    "note": "Public Kraken fee page observation, not the user's private tier or Jan\u2013Jun fee proof. Do not silently substitute old maker/taker assumptions. Margin pair fee arrays were empty; they do not mean zero fees.",
+    "sources": [
+      "fee_schedule",
+      "us_margin_costs"
+    ]
+  },
+  "global_derivatives_reference_only": {
+    "example_btc_symbol": "PF_XBTUSD",
+    "min_lot_btc": 0.0001,
+    "tick_usd": 1,
+    "published_max_position_btc": 1200,
+    "published_btc_max_leverage": 100,
+    "settlement": "USD linear; collateral haircuts and optional profit conversion apply.",
+    "funding": "Hourly accrual/settlement, materially different from U.S. Bitnomial mechanics.",
+    "order_types": [
+      "lmt",
+      "post",
+      "mkt",
+      "stp",
+      "take_profit",
+      "ioc",
+      "trailing_stop",
+      "fok"
+    ],
+    "market_order_caveat": "Global mkt documented as IOC with 1% price protection; it does not guarantee full fill.",
+    "reduce_only": true,
+    "negative_balance_protection": "International EPP explicitly excludes Kraken Derivatives US. Do not transfer its no-negative-balance claim to U.S. simulations.",
+    "sources": [
+      "global_perps_specs",
+      "global_futures_orders",
+      "global_equity_protection"
+    ]
+  },
+  "historical_data_leads": {
+    "bitnomial_rest_base": "https://bitnomial.com/exchange/api/v1/prod/",
+    "public_product_specs": "/product/specs/ with day, active=true, base_symbol; includes product ID, first trading day, contract size and status",
+    "public_funding": "/funding-rates/ with product_id/base_symbol, begin_time, end_time, order and pagination cursor. begin_time is required for historical retrieval; no funding data fetched in this audit.",
+    "price_charts": "/web/charts endpoints are explicitly draft, without stability guarantees; intraday execution realism not established.",
+    "historical_us_product_availability": "Exchange BTC contract begins May16 2026 according to metadata; don't treat Jan\u2013earlyMay U.S. Bitnomial hedge as historically executable. Kraken user-access inception still unverified.",
+    "sources": [
+      "bitnomial_rest",
+      "bitnomial_products",
+      "bitnomial_funding_api",
+      "bitnomial_charts"
+    ]
+  },
+  "conflicts_and_unknowns": [
+    {
+      "issue": "16 launch perps versus17 perps in U.S. Futures101.",
+      "resolution": "Record both official claims; demand actual accessible catalog, do not invent17th.",
+      "sources": [
+        "us_perps_launch_list",
+        "us_futures_overview"
+      ]
+    },
+    {
+      "issue": "US margin support text says25 pairs, while its listed examples count28 and currentUS-filtered publicAPIreturns29.",
+      "resolution": "Treat observed29 as current public snapshot only; account entitlement and historical list remain separate.",
+      "sources": [
+        "us_margin",
+        "public_bitnomial_margin_pairs"
+      ]
+    },
+    {
+      "issue": "Support leverage tiers are stale relative to current margin metadata (e.g. ETH20x API versus10x examples, ALGO/XLM5x API versus2x text).",
+      "resolution": "Use versioned venue/pair metadata for current research feasibility; never maximum leverage as recommended hedge size.",
+      "sources": [
+        "us_margin",
+        "public_bitnomial_margin_pairs"
+      ]
+    },
+    {
+      "issue": "Bitnomial funding API docs stateUTC00/08/16 boundaries, methodology statesCT19/03/11, and productmetadata contains daily_first_funding_interval_end03:00 with no timezone.",
+      "resolution": "Do not infer settlement boundaries; validated timestamped funding records and broker accounting must govern. Broker15:00CT aggregation is distinct.",
+      "sources": [
+        "bitnomial_funding_api",
+        "bitnomial_funding_methodology",
+        "bitnomial_btcuc_current_public_spec",
+        "us_perps_launch_list"
+      ]
+    },
+    {
+      "issue": "U.S. perpetual exact accessible symbols, API support, per-contract initial/maintenance margin, broker risk maxima and reduce-only controls remain unverified.",
+      "resolution": "Block executable venue claims until official/account read-only evidence supplies these values."
+    }
+  ],
+  "research_recommendations": [
+    "Keep first hedge study in a separate research-only HEDGE_BOOK against an unchanged PARK control; BTC/ETH spot-selection exclusion does not itself establish authorization for either hedge instrument.",
+    "Separate economic proxy experiments from historically available U.S. venue simulations. Label missing venue/funding/borrow/spread/margin data explicitly.",
+    "For bounded BTC hedge, compute futures notional as integer contracts times0.01BTC timesprice; if onecontract exceeds hedge cap or available dedicated collateral, skip rather than raise leverage or round up.",
+    "Keep venue collateral, available USD, spot ownership, VCAP reserve and hedge recourse separately reported. Internal ledger books alone cannot protect spot collateral.",
+    "Model bid/ask, delay, partial fills and maker nonfill; exits use reduce-only where verified. MARKET is not a full-fill guarantee.",
+    "No production DTSS/DTSSR, connector activation, account unlock, collateral transfer or orders from this research."
+  ],
+  "blocking_gates": [
+    "Individual account geography/verification/product approval not inspected.",
+    "U.S. perpetual broker/API entitlement and installed connector unavailable/unverified.",
+    "Historical U.S. broker availability, fee tiers, borrow costs, fundings and executable depth not fully evidenced.",
+    "Venue collateral ring-fencing is not demonstrated.",
+    "Pinned core and PR33 overlay intentionally do not support margin/derivatives execution."
+  ],
+  "hummingbot_connector_audit": {
+    "commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+    "complete_tree_truncated": false,
+    "source_receipt": "connector_source_receipt.json",
+    "source_files": [
+      {
+        "path": "hummingbot/connector/exchange/kraken/kraken_exchange.py",
+        "url": "https://github.com/hummingbot/hummingbot/blob/9af100d6822da7d2d0291a906c730ef172284ee2/hummingbot/connector/exchange/kraken/kraken_exchange.py",
+        "git_blob_sha": "454c6bd4bf700e8d778f82af3d75b53e4417da0b",
+        "sha256": "8429899dec3d8eba902ecdab3e34fad6d26a1db730ef420b6dd4391ba83c0807",
+        "verified_git_blob": true,
+        "size": 29888
+      },
+      {
+        "path": "hummingbot/connector/exchange/kraken/kraken_constants.py",
+        "url": "https://github.com/hummingbot/hummingbot/blob/9af100d6822da7d2d0291a906c730ef172284ee2/hummingbot/connector/exchange/kraken/kraken_constants.py",
+        "git_blob_sha": "d8c00ffbc828f61de5981d20322af1310acacf48",
+        "sha256": "c054e5dec27a6e3a6b3531bfda91cf9a6deb69af487b16e786b8c460bd923c76",
+        "verified_git_blob": true,
+        "size": 4146
+      },
+      {
+        "path": "hummingbot/connector/exchange/kraken/kraken_utils.py",
+        "url": "https://github.com/hummingbot/hummingbot/blob/9af100d6822da7d2d0291a906c730ef172284ee2/hummingbot/connector/exchange/kraken/kraken_utils.py",
+        "git_blob_sha": "85ae01788e1328f953ef9afa68217a75d143756a",
+        "sha256": "c46b850d18e8e9600f166e3046f68b702c8c3bc98378077850a638faac52ed86",
+        "verified_git_blob": true,
+        "size": 7948
+      }
+    ],
+    "kraken_connector_kind": "exchange/kraken/KrakenExchange(ExchangePyBase)",
+    "supported_order_types": [
+      "LIMIT",
+      "LIMIT_MAKER",
+      "MARKET"
+    ],
+    "kraken_derivative_connector_present": false,
+    "kraken_candles": "kraken_spot_candles only",
+    "margin_api_options_forwarded": false,
+    "finding": "Pinned buy/sell accept kwargs but omit them from _create_order; _place_order payload has pair/type/ordertype/volume/userref/price and optionalpost flag, no leverage or reduce_only. AssetPairs is queried with defaultinternational venue; :BTNL is not handled as an execution-venue selector and quote-asset parsing retainsUSD:BTNL. No position/funding/derivative margin contract support. Existing PR33 protection explicitly rejects unsupportedleverage options.",
+    "line_evidence": {
+      "kraken_exchange.py": [
+        "36:classKrakenExchange(ExchangePyBase)",
+        "126:supported_order_types",
+        "219\u2013272:buy/sellkwargsnotforwarded",
+        "274\u2013284:get_asset_pairsdefaultvenue",
+        "286\u2013311:_place_orderpayload"
+      ],
+      "kraken_constants.py": [
+        "45:BASE_URLapi.kraken.com",
+        "48:ASSET_PAIRS_PATH_URL",
+        "51:ADD_ORDER_PATH_URL"
+      ],
+      "kraken_utils.py": [
+        "38\u201367:convert_from_exchange_trading_pair"
+      ]
+    }
+  }
+}

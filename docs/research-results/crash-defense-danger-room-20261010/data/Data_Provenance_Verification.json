@@ -1,0 +1,604 @@
+{
+  "pr26_commit": "931d296775425fbea26140ecf2a654767b691874",
+  "primary_github_file_bindings": [
+    {
+      "repository_path": "docs/research-protocols/activation-evidence-2026-10-09.json",
+      "git_blob_sha": "e1dd22e74181deffd7d0055c5baf677a1e2fd386",
+      "sha256": "6aebbbe09391b16804648cf46af6d8d9ffd6e665d8d5b472867065d4541ef456",
+      "size_bytes": 3107,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/docs/research-protocols/activation-evidence-2026-10-09.json"
+    },
+    {
+      "repository_path": "docs/research-results/capital-quality-20261009/Evidence_Package_Receipt.json",
+      "git_blob_sha": "e95a395167686da80281e679f7c8c00979b23b26",
+      "sha256": "ca77aa400d772d2ca8beb7d1e43ad5b02293676a8acaba5a07f77e08d728e456",
+      "size_bytes": 213,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/docs/research-results/capital-quality-20261009/Evidence_Package_Receipt.json"
+    },
+    {
+      "repository_path": "docs/research-results/capital-quality-20261009/Spectra_Capital_Quality_Summary_2026-10-09.json",
+      "git_blob_sha": "2a9a75f1d7c10a571c4384da0f840ad13111076b",
+      "sha256": "f8ab936dd8789906b4df20e36df9d0dcc8bf95e97b6462f9f0404b5e66bc7d20",
+      "size_bytes": 14246,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/docs/research-results/capital-quality-20261009/Spectra_Capital_Quality_Summary_2026-10-09.json"
+    },
+    {
+      "repository_path": "docs/research-results/parked-cash-july-2026-10-09.json",
+      "git_blob_sha": "7b83795702ee02e581909cde26095c2009f90f7c",
+      "sha256": "24bd6f4414baef07f7e82b2c540f400c5e9a2bcb1cac1667f4e4f473fa44dc0c",
+      "size_bytes": 10699,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/docs/research-results/parked-cash-july-2026-10-09.json"
+    },
+    {
+      "repository_path": "research/capital_quality/README.md",
+      "git_blob_sha": "0911d1b82f37d68de83a66ca0a902eefb81ecb54",
+      "sha256": "0ef16350fc4ab87512c556e7d00045113ce7c05e994af051c0bd306d591ca093",
+      "size_bytes": 3921,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/research/capital_quality/README.md"
+    },
+    {
+      "repository_path": "research/capital_quality/audit/Portability_Receipt.json",
+      "git_blob_sha": "4926a30f92570b485ace411f8ae7ea4522cb7e5f",
+      "sha256": "3a57d2a8a4f8aef7e9f2f511717f93e5132a1cb0226462fdf4a44f74ddeb8fd4",
+      "size_bytes": 4241,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/research/capital_quality/audit/Portability_Receipt.json"
+    },
+    {
+      "repository_path": "research/capital_quality/protocol.json",
+      "git_blob_sha": "9ba493de6ad7cf7f81fc0024e98be9ca89ccb649",
+      "sha256": "13685c9ce1fe7da0a2a721bb5648be2cb162ac455bfe76426d0625fae4b3c581",
+      "size_bytes": 6361,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/research/capital_quality/protocol.json"
+    },
+    {
+      "repository_path": "research/holdout/frozen-protocol.json",
+      "git_blob_sha": "b5cd30402b093448096cfa4c8f4f26059bf96299",
+      "sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+      "size_bytes": 2667,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/research/holdout/frozen-protocol.json"
+    },
+    {
+      "repository_path": "research/parked_cash/README.md",
+      "git_blob_sha": "92c4c57ea3c736be7a37a8b74df921af72f9727c",
+      "sha256": "cf0309ab3d5f00d4ae002fdd30a05c61f8688f6263223b0c9add033a3b50a3ec",
+      "size_bytes": 7811,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/research/parked_cash/README.md"
+    },
+    {
+      "repository_path": "research/parked_cash/protocol.json",
+      "git_blob_sha": "cd490213f77b96cc6b9eb9a098be95cf0b74aa3b",
+      "sha256": "3939a3740d697f6c7c587ffd392eef8a2eaf12ec398b516bdc9f9e0c12aa0e2f",
+      "size_bytes": 3833,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/research/parked_cash/protocol.json"
+    },
+    {
+      "repository_path": "spectra_core/strategy_dataset.py",
+      "git_blob_sha": "0ed84854fce319eb5430af6a923d0106064a0dd6",
+      "sha256": "f83b9e1e8c9b1618f9d073c6582df0fd9ce8ab7a7db9711c2772e6439f10d1fa",
+      "size_bytes": 9021,
+      "url": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/931d296775425fbea26140ecf2a654767b691874/spectra_core/strategy_dataset.py"
+    }
+  ],
+  "historical_package_sha256": "c48b03213408767c941a23af823ef8a1334ec538b70ce81f4a60dae5525ef1c6",
+  "non_holdout_local_members_verified": 85,
+  "local_members": [
+    {
+      "path": "Spectra_Capital_Quality_Report_2026-10-09.txt",
+      "sha256": "f47dd923bebd1596d8cf89f4bb34518032dee04e33fe2cd1a45392bccf9f9ff4",
+      "size_bytes": 8943
+    },
+    {
+      "path": "Spectra_Capital_Quality_Results_2026-10-09.csv",
+      "sha256": "d0eeac833140a5dadc876a5e44ee0929018b5f05125096f996b2d88f2bcced59",
+      "size_bytes": 1086
+    },
+    {
+      "path": "Spectra_Capital_Quality_Summary_2026-10-09.json",
+      "sha256": "f8ab936dd8789906b4df20e36df9d0dcc8bf95e97b6462f9f0404b5e66bc7d20",
+      "size_bytes": 14246
+    },
+    {
+      "path": "control_PARK/control_archive_audit.json",
+      "sha256": "2ee57a128b6af0511de9adb2169b7de7035be175905df1ba0e7f334dce50a457",
+      "size_bytes": 488
+    },
+    {
+      "path": "control_PARK/result.json",
+      "sha256": "d8448c4fbe3a7a36a156ff53f0ba7982f415d730c2dbea9e9d6a96cdfd3eb98d",
+      "size_bytes": 14837
+    },
+    {
+      "path": "control_PARK/source_receipt.json",
+      "sha256": "1aa4ba5b4a082c3d88df85ccc0d2f4c8fbb15724e91ae48485ac071f1a10ed5d",
+      "size_bytes": 549
+    },
+    {
+      "path": "control_PARK/window_accounts.csv",
+      "sha256": "a8f2cdd216c203cef7f6801356ac78e1d1ada5fa751fd3095392d1ce599aca13",
+      "size_bytes": 1903080
+    },
+    {
+      "path": "design_review/Actual_Tape_Gate_Cutoff_Review.json",
+      "sha256": "ccf14754942fdb7e07e247970f9882e1ac03fb0b6f521de58664a0ae9b8b9d9d",
+      "size_bytes": 2253
+    },
+    {
+      "path": "design_review/Factorial_Design_Review.json",
+      "sha256": "29edc28be9bb9e5e2f734565c670303160767e08c51b089bfae9f6d18febabe8",
+      "size_bytes": 1634
+    },
+    {
+      "path": "design_review/Factorial_Design_Review.txt",
+      "sha256": "b87105457b74ce5ec13697bbbfb6803e87ad65df8537801a89df922e0386d312",
+      "size_bytes": 7091
+    },
+    {
+      "path": "design_review/Reviewed_Source_Pins.json",
+      "sha256": "6305da241a50fd94ac1a7f029d7c821482a0e1502bef8405a52bffbfb83406ab",
+      "size_bytes": 1123
+    },
+    {
+      "path": "independent_review/Independent_All_Four_Quality_Output_Audit.json",
+      "sha256": "3247a8b48606e3c9983397e72e5a74fc9c0e4e75e2abb3423ffa0c553837f053",
+      "size_bytes": 12248
+    },
+    {
+      "path": "independent_review/Independent_All_Four_Terminal_And_Source_Attribution.json",
+      "sha256": "8bfa097395cd7865052c448804cac3095016c6ae44d55ca1f123dba9db3e0eec",
+      "size_bytes": 270066
+    },
+    {
+      "path": "independent_review/Independent_Causal_Gate_Test_Receipt.json",
+      "sha256": "ee921594ea538fffe683ce5e271ec21ff8f2ec1e05cb4120eb94650440a7fa15",
+      "size_bytes": 277
+    },
+    {
+      "path": "independent_review/Independent_Factorial_Validation_Verdict.json",
+      "sha256": "129ba5028da5c1934af3c391b05e367b1e6148e8e4a77720842c3a40e68859c0",
+      "size_bytes": 5437
+    },
+    {
+      "path": "independent_review/Independent_Purpose_Quality_Mechanics_Receipt.json",
+      "sha256": "2b0fd8a6484a56b2cd479bf6dd0c819950695ce437c0600e52d055d268e93c88",
+      "size_bytes": 387
+    },
+    {
+      "path": "independent_review/Independent_SHARED_QUALITY_Output_Audit.json",
+      "sha256": "1ddcb8af2b1da96840d9d20a17d74ab3cb02b8189d71272327f110dcf48c9bb8",
+      "size_bytes": 3195
+    },
+    {
+      "path": "independent_review/Independent_SHARED_QUALITY_Terminal_And_Attribution.json",
+      "sha256": "d63426ad41d1b539be25c614eeac7ff5b747c7a722eda147b49182522ec86bda",
+      "size_bytes": 70228
+    },
+    {
+      "path": "independent_review/Independent_SHARED_RAW_Output_Audit.json",
+      "sha256": "2ab62bb55c9a19f4da8d8039cd0eff9d8aa04695ec1c01345621d8dd4a598ade",
+      "size_bytes": 2858
+    },
+    {
+      "path": "independent_review/Independent_SHARED_RAW_Terminal_And_Attribution.json",
+      "sha256": "db56a68c09fc64ef26d7d700b0f1552e50733f99fc675504d17dd7239ec49169",
+      "size_bytes": 55791
+    },
+    {
+      "path": "independent_review/Independent_SPLIT_QUALITY_Output_Audit.json",
+      "sha256": "53b2426ed83972863217e580fd07d86a3581b37a3b7c323f2b4888fca81bb8d1",
+      "size_bytes": 3275
+    },
+    {
+      "path": "independent_review/Independent_SPLIT_QUALITY_Terminal_And_Attribution.json",
+      "sha256": "3b3053233c3ec5a2af959b9c275d84e6537d07fa5d93fb11fd812bbc4c89e6d7",
+      "size_bytes": 84402
+    },
+    {
+      "path": "independent_review/Independent_SPLIT_RAW_Output_Audit.json",
+      "sha256": "0929ba6eae383196898f14a2447bba7b28dfeff09f8147a62490a17f538c63e6",
+      "size_bytes": 2939
+    },
+    {
+      "path": "independent_review/Independent_SPLIT_RAW_Terminal_And_Attribution.json",
+      "sha256": "c86438fef73ce4e41ba1d2a909219a4a64c69e3529af8e6238a1a3b943526e9b",
+      "size_bytes": 61271
+    },
+    {
+      "path": "protocol/protocol-clarifications.json",
+      "sha256": "857c9badc5a3ea19dea4c98c3737b95c4bd0f42f22ecb78edcdefb2475cef8d8",
+      "size_bytes": 1015
+    },
+    {
+      "path": "protocol/protocol.json",
+      "sha256": "13685c9ce1fe7da0a2a721bb5648be2cb162ac455bfe76426d0625fae4b3c581",
+      "size_bytes": 6361
+    },
+    {
+      "path": "repository-receipt.json",
+      "sha256": "378a82aed2751164dcb1daa77202bcfda267c4c1f431b7e3c2b76b1b9319a414",
+      "size_bytes": 631
+    },
+    {
+      "path": "results/SHARED_QUALITY.log",
+      "sha256": "d6c4a4d9bc5d90370006c48e3a7172fc801261e47c105bcf0425a15e0663b3c8",
+      "size_bytes": 69034
+    },
+    {
+      "path": "results/SHARED_QUALITY/hydration_receipt.json",
+      "sha256": "871d633b7c48a3cd1a2d0ed7a8f4934b396b3fbaccc49befa825016814a15139",
+      "size_bytes": 2386
+    },
+    {
+      "path": "results/SHARED_QUALITY/initial_active_lots.json",
+      "sha256": "76342516a162a50935cd3f61490ac290530d58da276b57b580ecfd4f713ccad6",
+      "size_bytes": 36283
+    },
+    {
+      "path": "results/SHARED_QUALITY/native_new_events.json.gz",
+      "sha256": "caffd8d628aa298a0598c37fd37d360f623ddb7b3f790f6ad74da5f5e7f03ea6",
+      "size_bytes": 268571
+    },
+    {
+      "path": "results/SHARED_QUALITY/new_fills.json",
+      "sha256": "02ad25f1daeb8614fda3a9ffc4a93322f8e376c7ca9a638f8dfb51231ab7cfec",
+      "size_bytes": 105821
+    },
+    {
+      "path": "results/SHARED_QUALITY/quality_decisions.json",
+      "sha256": "05cc472faa75b55b2857386e0af325e28fc317a384e7b89c5252df1d5707db4c",
+      "size_bytes": 53222097
+    },
+    {
+      "path": "results/SHARED_QUALITY/release_events.json",
+      "sha256": "dd04c3a0ead24d4412de2a96f2432f0c1007ee4532a52bd6a8e52886866a44b9",
+      "size_bytes": 423022
+    },
+    {
+      "path": "results/SHARED_QUALITY/result.json",
+      "sha256": "6400069d140305b7fa26bc696cfd3e8416ea498bdbccbfe0ed18d46de356b6dd",
+      "size_bytes": 52541
+    },
+    {
+      "path": "results/SHARED_QUALITY/source_changes.json",
+      "sha256": "ae66512def55cc9bdf44e559590a3e14ac9a4e00b27e9da3a04dc2fedf16033b",
+      "size_bytes": 3619
+    },
+    {
+      "path": "results/SHARED_QUALITY/source_receipt.json",
+      "sha256": "360eee4f436803f1807411aba1eaf57b0d8b4d8e637fe1a834abd1bb68ad64df",
+      "size_bytes": 735
+    },
+    {
+      "path": "results/SHARED_QUALITY/terminal_active_lots.json",
+      "sha256": "e355a9002ce9dbc71e6b461511d51c045898dca407136a223d609de418974673",
+      "size_bytes": 47713
+    },
+    {
+      "path": "results/SHARED_QUALITY/terminal_positions.json",
+      "sha256": "68d49551c5432a4affc05105688164cfcaf121069f46dd9fbe235ed346ee019a",
+      "size_bytes": 7806
+    },
+    {
+      "path": "results/SHARED_QUALITY/terminal_release.json",
+      "sha256": "93264715444adcd1a6198e80b17b559811a4221ee0308b1890f470656bf9c0fd",
+      "size_bytes": 47249
+    },
+    {
+      "path": "results/SHARED_QUALITY/window_accounts.csv",
+      "sha256": "1ce0fd07b1991088ceb72d1cfd3427b33d69cbd40f92c86d82e2b77a1ddc0261",
+      "size_bytes": 1806856
+    },
+    {
+      "path": "results/SHARED_RAW.log",
+      "sha256": "9e5592fcfd4e891aa35b77c3d923d6a8f7f6d94ee37c698caec121f3cdb41990",
+      "size_bytes": 79242
+    },
+    {
+      "path": "results/SHARED_RAW/hydration_receipt.json",
+      "sha256": "871d633b7c48a3cd1a2d0ed7a8f4934b396b3fbaccc49befa825016814a15139",
+      "size_bytes": 2386
+    },
+    {
+      "path": "results/SHARED_RAW/initial_active_lots.json",
+      "sha256": "76342516a162a50935cd3f61490ac290530d58da276b57b580ecfd4f713ccad6",
+      "size_bytes": 36283
+    },
+    {
+      "path": "results/SHARED_RAW/native_new_events.json.gz",
+      "sha256": "f0adb0690c28318562beef8763241ba1d7c4a844041ba8a2dcb84ac87ce72b8a",
+      "size_bytes": 228658
+    },
+    {
+      "path": "results/SHARED_RAW/new_fills.json",
+      "sha256": "17112b089f3d63e76fa516a397482b2a21cb4d97dac831833dec5590afdb51ef",
+      "size_bytes": 78371
+    },
+    {
+      "path": "results/SHARED_RAW/previous_shared_raw_equivalence.json",
+      "sha256": "92e7712b9826124e8c3647c50f33e32e91baca60a753b6a2559c2da6e32794e2",
+      "size_bytes": 188
+    },
+    {
+      "path": "results/SHARED_RAW/quality_decisions.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "size_bytes": 3
+    },
+    {
+      "path": "results/SHARED_RAW/release_events.json",
+      "sha256": "4d3d561c7fc4ab9806980e60b5d8d923de71d276de95a5464fae550cbc8021be",
+      "size_bytes": 687544
+    },
+    {
+      "path": "results/SHARED_RAW/result.json",
+      "sha256": "d8cd9976ae101925178cc407e890cd57fd04c84f8500f8d70cfe066347cd58ce",
+      "size_bytes": 71840
+    },
+    {
+      "path": "results/SHARED_RAW/source_changes.json",
+      "sha256": "ae66512def55cc9bdf44e559590a3e14ac9a4e00b27e9da3a04dc2fedf16033b",
+      "size_bytes": 3619
+    },
+    {
+      "path": "results/SHARED_RAW/source_receipt.json",
+      "sha256": "360eee4f436803f1807411aba1eaf57b0d8b4d8e637fe1a834abd1bb68ad64df",
+      "size_bytes": 735
+    },
+    {
+      "path": "results/SHARED_RAW/terminal_active_lots.json",
+      "sha256": "0698a40c4dd3b0d9e6870cf7e789d5033232de875da72387e65d17d612296f03",
+      "size_bytes": 47120
+    },
+    {
+      "path": "results/SHARED_RAW/terminal_positions.json",
+      "sha256": "9dbe7acd4bba84cac4bd470bdbc29c59fa99068573d5a1d306cbe70bc4e7e8c4",
+      "size_bytes": 7600
+    },
+    {
+      "path": "results/SHARED_RAW/terminal_release.json",
+      "sha256": "1291be44f35a0a5d29761fc48a25b7be3410e5f5ec1d90a7810b45912458e843",
+      "size_bytes": 65257
+    },
+    {
+      "path": "results/SHARED_RAW/window_accounts.csv",
+      "sha256": "b2725d956ebdcb4a3000eacfe9b6f899637abb7ea08263105b7b63952add12c0",
+      "size_bytes": 1782859
+    },
+    {
+      "path": "results/SPLIT_QUALITY.log",
+      "sha256": "71de1dc04ef16b44fdaeadcbbe731a3be6eea0bc3203287e3515d9e65015f2f0",
+      "size_bytes": 78255
+    },
+    {
+      "path": "results/SPLIT_QUALITY/hydration_receipt.json",
+      "sha256": "871d633b7c48a3cd1a2d0ed7a8f4934b396b3fbaccc49befa825016814a15139",
+      "size_bytes": 2386
+    },
+    {
+      "path": "results/SPLIT_QUALITY/initial_active_lots.json",
+      "sha256": "76342516a162a50935cd3f61490ac290530d58da276b57b580ecfd4f713ccad6",
+      "size_bytes": 36283
+    },
+    {
+      "path": "results/SPLIT_QUALITY/native_new_events.json.gz",
+      "sha256": "914fe8f04fdcef76650c44667f292b012e0a9cfae8e6cb621f612a719f3f1dba",
+      "size_bytes": 247869
+    },
+    {
+      "path": "results/SPLIT_QUALITY/new_fills.json",
+      "sha256": "c5e18fe0cdf77b6f5a15612d57a57060e5b461c3e6966d1759be94dba59c5b4c",
+      "size_bytes": 114501
+    },
+    {
+      "path": "results/SPLIT_QUALITY/quality_decisions.json",
+      "sha256": "c54eb9abe35935cc97a80de4bd49f7c1b77ca53afc430b7381a1aa3bef52f2b0",
+      "size_bytes": 61983940
+    },
+    {
+      "path": "results/SPLIT_QUALITY/release_events.json",
+      "sha256": "3c255ad3b3c2eda70f136184cee0aa2fac7290a6f3d9820466a7e27d46f8b2a4",
+      "size_bytes": 508376
+    },
+    {
+      "path": "results/SPLIT_QUALITY/result.json",
+      "sha256": "7a013b6437d53b47561e9859d83ce5df21342fe660d1b857c054d44b93b1a5c2",
+      "size_bytes": 64301
+    },
+    {
+      "path": "results/SPLIT_QUALITY/source_changes.json",
+      "sha256": "ae66512def55cc9bdf44e559590a3e14ac9a4e00b27e9da3a04dc2fedf16033b",
+      "size_bytes": 3619
+    },
+    {
+      "path": "results/SPLIT_QUALITY/source_receipt.json",
+      "sha256": "360eee4f436803f1807411aba1eaf57b0d8b4d8e637fe1a834abd1bb68ad64df",
+      "size_bytes": 735
+    },
+    {
+      "path": "results/SPLIT_QUALITY/terminal_active_lots.json",
+      "sha256": "782181e07d8d42977391d9af5a7534750be24f4eb5abe02131d27e7bf7f12750",
+      "size_bytes": 45297
+    },
+    {
+      "path": "results/SPLIT_QUALITY/terminal_positions.json",
+      "sha256": "2a53777bd24fc4ef864886ba8582e79b39845180ce07f70e01bb10fbb08f590c",
+      "size_bytes": 8417
+    },
+    {
+      "path": "results/SPLIT_QUALITY/terminal_release.json",
+      "sha256": "d2a67557ab653600655473a4606dbd8f0938065faccfca94c3c216c30e4de83a",
+      "size_bytes": 58165
+    },
+    {
+      "path": "results/SPLIT_QUALITY/window_accounts.csv",
+      "sha256": "45ca366078b5b75204c76d5df542575c35a94b97de00ef530c528508cffd76bd",
+      "size_bytes": 1812083
+    },
+    {
+      "path": "results/SPLIT_RAW.log",
+      "sha256": "725f99243ad5204fbf18344de2083863f0a0f02dc642fc7eb06080234a6f9085",
+      "size_bytes": 73343
+    },
+    {
+      "path": "results/SPLIT_RAW/hydration_receipt.json",
+      "sha256": "871d633b7c48a3cd1a2d0ed7a8f4934b396b3fbaccc49befa825016814a15139",
+      "size_bytes": 2386
+    },
+    {
+      "path": "results/SPLIT_RAW/initial_active_lots.json",
+      "sha256": "76342516a162a50935cd3f61490ac290530d58da276b57b580ecfd4f713ccad6",
+      "size_bytes": 36283
+    },
+    {
+      "path": "results/SPLIT_RAW/native_new_events.json.gz",
+      "sha256": "1bb331416f7197ef89149eb0edb2fc85687c8358426535b20a1c83f4e22d6ee1",
+      "size_bytes": 250431
+    },
+    {
+      "path": "results/SPLIT_RAW/new_fills.json",
+      "sha256": "3b12dd265ecbb5ba4d520182c843316ed57efc3d8996aeb747bd34db61688277",
+      "size_bytes": 83573
+    },
+    {
+      "path": "results/SPLIT_RAW/quality_decisions.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "size_bytes": 3
+    },
+    {
+      "path": "results/SPLIT_RAW/release_events.json",
+      "sha256": "6440e7d09dac5290cbc7aa206d3b243d05c7c0d9ce297ea6da26087c239ec21b",
+      "size_bytes": 568662
+    },
+    {
+      "path": "results/SPLIT_RAW/result.json",
+      "sha256": "ed8d18c8480fc39793f2ec8672d595037ffa863c6e6aa89994e2c7b8c66b0a60",
+      "size_bytes": 64405
+    },
+    {
+      "path": "results/SPLIT_RAW/source_changes.json",
+      "sha256": "ae66512def55cc9bdf44e559590a3e14ac9a4e00b27e9da3a04dc2fedf16033b",
+      "size_bytes": 3619
+    },
+    {
+      "path": "results/SPLIT_RAW/source_receipt.json",
+      "sha256": "360eee4f436803f1807411aba1eaf57b0d8b4d8e637fe1a834abd1bb68ad64df",
+      "size_bytes": 735
+    },
+    {
+      "path": "results/SPLIT_RAW/terminal_active_lots.json",
+      "sha256": "ebf2365290bc0a05b1fb11a1337f964c00e5c583abe608ec7f605d77c80304fd",
+      "size_bytes": 45270
+    },
+    {
+      "path": "results/SPLIT_RAW/terminal_positions.json",
+      "sha256": "6cfd0555335860547096441c9699a108865e6d39fc35859a39e0ff45f997ecfc",
+      "size_bytes": 8623
+    },
+    {
+      "path": "results/SPLIT_RAW/terminal_release.json",
+      "sha256": "89af2847acb8c73d6aaa6d0d31cc44ae42b8120bb0d305c4c58023739961bd11",
+      "size_bytes": 58328
+    },
+    {
+      "path": "results/SPLIT_RAW/window_accounts.csv",
+      "sha256": "e0dd314446a208083530c1bca80cd8c25dd33fe37f9f38cc8ef8fa9e8d7700d9",
+      "size_bytes": 1794372
+    },
+    {
+      "path": "results/matrix_receipt.json",
+      "sha256": "a1d6db25795c9683061b122375b3968d37cdf1542235a82adec8b18eadd89bb8",
+      "size_bytes": 2148
+    }
+  ],
+  "selected_baseline_members_verified": [
+    {
+      "archive_member": "Baseline_README.txt",
+      "size_bytes": 2721,
+      "sha256": "bbf489347744e5a0a869edf5f5840f58417858bce65e00dbc68ece64dc380d9e"
+    },
+    {
+      "archive_member": "Baseline_Source_And_External_Dependency_Manifest.json",
+      "size_bytes": 60158,
+      "sha256": "01fc7540c03c72113aeefea5187cbaae5d14f559e8b6dc90da8cc7aa9d6b4d08"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/data/prepared/metadata.json",
+      "size_bytes": 21587,
+      "sha256": "cdcdc4ebc93150d6fa8f54fc9304edc8deb113633c0161ada4ccd412a12c68b8"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/data/canonical_source_integrity.json",
+      "size_bytes": 2533,
+      "sha256": "352ed683247466614b36cf4d3a23b8b71b4d229dbc941aeb1b30e1b1ea8fb141"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/data/canonical_restoration_receipt.json",
+      "size_bytes": 1883,
+      "sha256": "b0cd5b8442695dfc51095b316b33ff99d51f380392e1a142a4faf9fb5f684072"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/baselines/hard_100_park/boundary_inventory_plain.json",
+      "size_bytes": 47077,
+      "sha256": "95ef1d9eb5064ec5c5f17984c7bd6eddd92fb712a4f6b0e8d9169a80fcb36fe7"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/baselines/hard_100_park/boundary_summary.json",
+      "size_bytes": 1385,
+      "sha256": "daf34ca0621bf2ac4d44a9b0c3af2afe440cb8c03684173ac0df30dd599baacc"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/baselines/hard_100_park/hard_100_park_terminal.json",
+      "size_bytes": 10167,
+      "sha256": "b7d512ac335a8f92db22f6f080a549e899131a4237b7c17f28a18c03c203fb13"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/baselines/hard_100_park/hard_100_park_fills.csv",
+      "size_bytes": 346354,
+      "sha256": "8f915c169c48c708e67afa8e83c6997712f1b7c09acf13ea10e31814d6de1851"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/baselines/hard_100_park/hard_100_park_equity.csv",
+      "size_bytes": 904294,
+      "sha256": "d6c39e2c6843aabc57949856f462ab397e77b33ee38505644994c01ef7f283f7"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/baselines/hard_100_park/hard_100_park.json",
+      "size_bytes": 826797,
+      "sha256": "b901b4940ee6cfbe28d3a00f64c668f55f6e99e434b9bd88655aa610012c2614"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/baselines/hard_100_park/terminal_lots.json",
+      "size_bytes": 34345,
+      "sha256": "6a9d8e9de1d5c6bf0a8c41dc2e852f976889a902c6aea7cf3872b38192056b4b"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/baselines/hard_100_park/input_prefix_validation.json",
+      "size_bytes": 923,
+      "sha256": "4eba5e7b9f2f71f7a3a0909ac6311fd1de2c8afa032744b4b11dec0a36d1285c"
+    },
+    {
+      "archive_member": "campaign-20261008-rotation-followup/baselines/hard_100_park/june_reproduction_audit.json",
+      "size_bytes": 3136,
+      "sha256": "9aa1d3b63fefd9a62e82d31b46d97bdd1aef71e8195345dd4f599d03c90ba652"
+    }
+  ],
+  "baseline_archive_sha256": "440080615478a7d4974f347f6e9efda7efceb557adc20d92db75677f8f88459d",
+  "sealed_holdout_payloads_opened": false,
+  "holdout_market_outcomes_inspected": false,
+  "strategy_replay_performed": false,
+  "source_modified": false,
+  "github_writes_performed": false,
+  "production_commit_untouched": "6e894fa9c2b55384d0f6120f41ca91892e1fe207",
+  "historical_package_filename": "Spectra_Capital_Quality_Evidence_2026-10-09.zip",
+  "validated_baseline_filename": "Spectra_Exact_Baseline_Reproduction_Validated_2026-10-08.zip",
+  "reconstruction_algorithm": {
+    "PARK_January_June": "Start with saved $2,000 cash and zero positions. Restrict full historical modeled fills to January 1 < fill timestamp <= July 1 boundary. For each original canonical asset, purchases minus sales must equal exact June surviving lot quantity; all-in acquisition costs minus released fee-inclusive basis must equal the surviving lot basis. Reconcile cash, fees and realized P&L to the frozen checkpoint under exported source-rounding tolerances.",
+    "PARK_July": "Use exact June boundary active lots and 29 saved modeled fills with June boundary < fill timestamp <= July 31 boundary. Map each terminal lot:<buy order ID> to its unique genuine historical ENTRY/RECOVERY fill. Check original/current quantity and fee-inclusive basis, then reconcile each asset and total cash/basis/fees against the unchanged saved PARK control. Do not use a redeployment arm inventory as PARK.",
+    "PARK_July_marks": "Use the prior SHA-verified independent actual-tape terminal mark receipt at the identical frozen boundary. Require every shared asset price/timestamp/age to agree across arms, every mark timestamp <= cutoff, and age = cutoff minus timestamp. Multiply the exact PARK units by that asset market mark and require the aggregate to match saved PARK inventory within $1e-18. These are historical last closes, not current executable prices.",
+    "concentration": "Compute HHI from owned inventory market-value weights and effective holdings as 1/HHI. Compute acquisition-basis concentration separately. Report cash separately, preserve every owned residual and do not sum heterogeneous asset units."
+  },
+  "rounding_tolerances": {
+    "USD_absolute": "1e-18",
+    "base_quantity": "1e-20 + 1e-24 times the maximum same-asset quantity scale",
+    "original_native_decimal_precision": 28,
+    "independent_decimal_precision": 90
+  }
+}

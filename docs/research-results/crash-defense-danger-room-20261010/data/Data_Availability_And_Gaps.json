@@ -1,0 +1,180 @@
+{
+  "schema": "spectra-danger-room-evidence-availability-v1",
+  "generated_utc": "2026-10-10T11:35:27.086638+00:00",
+  "research_only": true,
+  "pr26_commit": "931d296775425fbea26140ecf2a654767b691874",
+  "production_commit_untouched": "6e894fa9c2b55384d0f6120f41ca91892e1fe207",
+  "no_strategy_replay": true,
+  "no_parameter_tuning": true,
+  "holdout_market_outcomes_inspected": false,
+  "holdout_nested_archives_opened": false,
+  "spot_data": {
+    "historical_archive_inventory": [
+      {
+        "name": "kraken-2026Q3-5m-fixed619-usd.zip",
+        "pinned_sha256": "e5b3720d12b3847b41108f972039103c21aa142ac68bafd7218186bb91b815c3",
+        "pinned_size_bytes": 76872020,
+        "historical_archive_resolved": true,
+        "recorded_size_matches_pinned": true,
+        "materialized_this_audit": false,
+        "bytes_hash_verified_this_audit": false,
+        "availability": "Historical file metadata matches the recorded filename and size; raw archive bytes were not downloaded or inspected in this audit."
+      },
+      {
+        "name": "kraken-2026-05-5m-usd.zip",
+        "pinned_sha256": "1085bb0a87980338d48811182d2b35695db11edcd467ccd5ba169467d4b6ef29",
+        "pinned_size_bytes": 27648109,
+        "historical_archive_resolved": true,
+        "recorded_size_matches_pinned": true,
+        "materialized_this_audit": false,
+        "bytes_hash_verified_this_audit": false,
+        "availability": "Historical file metadata matches the recorded filename and size; raw archive bytes were not downloaded or inspected in this audit."
+      },
+      {
+        "name": "kraken-2026-03-5m-usd.zip",
+        "pinned_sha256": "844e0209a036eb459ee04ccca0528ab1ff27245b5dde209b78f2eb672befe937",
+        "pinned_size_bytes": 23968069,
+        "historical_archive_resolved": true,
+        "recorded_size_matches_pinned": true,
+        "materialized_this_audit": false,
+        "bytes_hash_verified_this_audit": false,
+        "availability": "Historical file metadata matches the recorded filename and size; raw archive bytes were not downloaded or inspected in this audit."
+      },
+      {
+        "name": "kraken-2026-02-5m-usd.zip",
+        "pinned_sha256": "52c1ede050ff0e82f01834d274f7d1cf9591793fbb9cb80a8e089ed2e9690ba3",
+        "pinned_size_bytes": 23891213,
+        "historical_archive_resolved": true,
+        "recorded_size_matches_pinned": true,
+        "materialized_this_audit": false,
+        "bytes_hash_verified_this_audit": false,
+        "availability": "Historical file metadata matches the recorded filename and size; raw archive bytes were not downloaded or inspected in this audit."
+      },
+      {
+        "name": "kraken-2026-04-5m-usd.zip",
+        "pinned_sha256": "d25f458c5fc1c862ad9989af7e528a98c701b569913f42baab58ddd295eb232a",
+        "pinned_size_bytes": 24209403,
+        "historical_archive_resolved": true,
+        "recorded_size_matches_pinned": true,
+        "materialized_this_audit": false,
+        "bytes_hash_verified_this_audit": false,
+        "availability": "Historical file metadata matches the recorded filename and size; raw archive bytes were not downloaded or inspected in this audit."
+      },
+      {
+        "name": "kraken-2026-01-5m-usd.zip",
+        "pinned_sha256": "892e6f142267a4c6c2d52537d79738107bcf07b39410f3ed6437ad2a75850fb6",
+        "pinned_size_bytes": 25721797,
+        "historical_archive_resolved": true,
+        "recorded_size_matches_pinned": true,
+        "materialized_this_audit": false,
+        "bytes_hash_verified_this_audit": false,
+        "availability": "Historical file metadata matches the recorded filename and size; raw archive bytes were not downloaded or inspected in this audit."
+      },
+      {
+        "name": "kraken-2026-06-5m-usd.zip",
+        "pinned_sha256": "7229bfcfbd6327836c4ba6ac605205ae63e5fb1a1a76849fa1416f02f059b0c0",
+        "pinned_size_bytes": 27448598,
+        "historical_archive_resolved": true,
+        "recorded_size_matches_pinned": true,
+        "materialized_this_audit": false,
+        "bytes_hash_verified_this_audit": false,
+        "availability": "Historical file metadata matches the recorded filename and size; raw archive bytes were not downloaded or inspected in this audit."
+      }
+    ],
+    "prepared_tape_metadata_verified_from_pinned_archive": true,
+    "start_utc": "2026-01-01T00:00:00+00:00",
+    "end_exclusive_utc": "2026-10-01T00:00:00+00:00",
+    "interval_seconds": 300,
+    "fixed_symbol_count": 619,
+    "shape": [
+      78624,
+      619,
+      6
+    ],
+    "recorded_array_size_bytes": 2336076416,
+    "recorded_array_sha256": "dde300cb04c5f8c85aafba3924f74e70df1477ce26ca4c1597d295202d047938",
+    "array_present_in_baseline_archive": false,
+    "array_verified_locally_this_task": false,
+    "reference_january_june_array_recorded_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+    "reference_january_june_array_size_bytes": 1548827264,
+    "BTC_USD_present_in_prepared_pairs": false,
+    "ETH_USD_present_in_prepared_pairs": false,
+    "SOL_USD_present_in_prepared_pairs": true,
+    "raw_archive_BTC_ETH_members_checked": false,
+    "full_quarter_archive_metadata": {
+      "bytes": 576348633,
+      "filename": "Kraken_OHLCVT_2026Q3.zip",
+      "full_crc_verified": true,
+      "members": 10054,
+      "sha256": "96daae63c7b3acb522892e1f602f9c564d1a3fb659089d9b0699282f30d41226"
+    },
+    "benchmark_limit": "BTC/ETH benchmark history must be obtained and hashed separately. Their exclusion from the trading universe remains intact; a benchmark does not authorize an active BTC/ETH position.",
+    "no_forward_fill": true,
+    "original_symbols_only": true,
+    "point_in_time_lifecycle_coverage_complete": false,
+    "missing_original_Q3_symbols": [
+      "ICXUSD",
+      "MONAUSD",
+      "REPUSD",
+      "REPV2USD"
+    ],
+    "point_in_time_limitation": "Fixed 619 historical symbols and actual-row presence are known. Historical listing, delisting, renamed-asset identity, margin eligibility and instrument availability at each decision cutoff are not complete; current Kraken eligibility cannot be retrofitted.",
+    "subminute_quotes_depth_spread_queue_available": false,
+    "timeframe_aggregation": "15m/1h/4h may aggregate genuine completed 5m bars only. Missing rows remain missing; completion cutoff and lookback coverage must be declared.",
+    "standalone_array_resolution": "No standalone canonical array artifact was resolved during the audit. Its recorded size and SHA256 remain known; reconstruct from the pinned raw archives or resolve and verify the exact saved array.",
+    "full_quarter_resolution": "No exact full-quarter Q1/Q2/Q3 archive artifact was resolved during this audit. The located Q3 fixed619 derivative does not prove BTC/ETH benchmark members. Full Q3 metadata is recorded, but its bytes were not read.",
+    "reconstruction_algorithm": "Verify each monthly and fixed-universe Q3 source ZIP against its pinned SHA256; use the preserved canonical converter and metadata to rebuild the same fixed619, 300-second grid. Preserve original symbol identities and genuine absent rows; never forward fill or join renamed successor series. Require exact reference-prefix equality and expected whole-array SHA256 before any replay. Reconstructing this tape does not supply omitted BTC/ETH benchmarks or point-in-time lifecycle/derivative eligibility."
+  },
+  "PARK_ownership": {
+    "january_initial_account": "2000 quote cash; first saved sample has zero committed basis and zero positions",
+    "june_checkpoint_timestamp_utc": "2026-07-01T00:00:00Z",
+    "checkpoint_sha256_verified_as_opaque_historical_gzip": "727b663e91021bb09e063fea916b89972d5bd7d685062bacdec0f925381a2e1c",
+    "june_complete_parent_and_active_lot_ledger": true,
+    "july_terminal_lot_quantity_and_basis_available": true,
+    "july_terminal_pair_identity_gap_closed": true,
+    "identity_method": "Exact immutable lot:<buy order ID> to unique historical ENTRY/RECOVERY fill identity, with equal original/current quantity and fee-inclusive basis tolerance; 57/57 lots mapped. July fill count and ending account equal the saved PARK control.",
+    "july_start_end_units_and_basis_artifacts": [
+      "PARK_July_Asset_Inventory.csv",
+      "PARK_July_Exact_Lot_Ownership.csv",
+      "PARK_July_Inventory_Summary.json"
+    ],
+    "july_terminal_per_asset_mark_prices": true,
+    "july_market_value_concentration": true,
+    "july_market_mark_source": "Saved independent actual-tape terminal mark receipt, SHA2568bfa097395cd7865052c448804cac3095016c6ae44d55ca1f123dba9db3e0eec, applied to actual PARK units at identical cutoff; all36 assets covered and aggregate matches within1e-18. No raw price tape re-read in this task.",
+    "july_basis_concentration": true,
+    "july_cash_purpose_partition_available": true,
+    "time_indexed_spot_unit_exposure_reconstructible_from_fills": true,
+    "time_indexed_marked_exposure_requires_real_price_tape": true,
+    "retained_inventory_recovery_contribution_not_yet_measured": true,
+    "dust_and_reentry_finality_not_established": true,
+    "ownership_policy": "All residual and retained units stay owned and included in basis/exposure. No lot is classified as dust, liquidated, strategic, released or inactive by this descriptive audit.",
+    "future_checkpoint_censoring": "July descriptive audit uses exact June boundary plus fills with June boundary < fill time <= July31 boundary. A January hedge experiment must use its declared January account/history, never this future June inventory or July/September metrics. Stored future tape rows must not enter decisions before their completed-bar cutoff.",
+    "venue_truth_limit": "These are historical simulator quantities, fees and gross proceeds; not venue-confirmed fills, account balances, realized fee currency or current executable liquidation values.",
+    "January_June_saved_fill_prefix_accounting_available": true,
+    "January_June_saved_descriptive_artifacts": [
+      "PARK_January_June_Asset_Inventory.csv",
+      "PARK_January_June_Saved_Accounting_Summary.json"
+    ],
+    "January_June_new_replay_performed": false,
+    "January_June_hedge_simulation_ready": false
+  },
+  "hedge_inputs": {
+    "time_indexed_contract_mark_index_history": false,
+    "funding_rate_and_payment_history": false,
+    "historical_borrow_availability_rates_and_rollover_costs": false,
+    "historical_contract_specs_tiers_margin_haircuts_liquidation_rules": false,
+    "point_in_time_account_and_jurisdiction_eligibility": false,
+    "liquidation_fill_slippage_depth_gap_history": false,
+    "hedge_book_and_separate_collateral_ledger": "Must be implemented and tested in isolated research; not supplied by historical spot evidence.",
+    "permitted_next_step": "Freeze separate protocol and retrieve genuine missing benchmark and instrument histories; toy/cost-stress mechanics must be labelled assumption-based and cannot establish hedge profitability.",
+    "performance_run_gate": "No historical hedge performance claim or production shorting before genuine inputs, point-in-time eligibility, immutable sources, causal cutoff and complete cost/collateral accounting pass."
+  },
+  "provenance_artifact": "Data_Provenance_Verification.json",
+  "changes": {
+    "github_writes": false,
+    "production_source_modified": false,
+    "live_order_calls": false,
+    "holdout_schedule_modified": false,
+    "holdout_scoring": false
+  }
+}

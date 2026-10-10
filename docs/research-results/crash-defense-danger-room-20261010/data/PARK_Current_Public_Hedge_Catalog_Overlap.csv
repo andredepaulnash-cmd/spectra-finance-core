@@ -1,0 +1,5 @@
+historical_PARK_pair,historical_PARK_units,historical_PARK_marked_value,current_US_margin_online_short_catalog_overlap,current_margin_symbol,current_margin_leverage_sell,current_margin_short_position_limit,advertised_US_perpetual_launch_catalog_overlap,advertised_perpetual_code,historical_shortability_or_current_account_approval_proven
+ALGO-USD,241.16410299731591100482828265,19.0374942906081180147211446323910,True,ALGOUSD:BTNL,"[2, 3, 4, 5]",1700000,False,,False
+BCH-USD,0.02723677493793273676830127356,5.904932806543817331367716107808,True,BCHUSD:BTNL,"[2, 3, 4, 5]",1300,True,PBCHUS,False
+HBAR-USD,76.88412685319144087339292778,5.2565677529526988125138744723186,True,HBARUSD:BTNL,"[2, 3, 4, 5]",2300000,True,PHBRUK,False
+RENDER-USD,3.926149024992523290772108263,5.555500870364420456442533192145,True,RENDERUSD:BTNL,"[2, 3, 4, 5]",98000,False,,False

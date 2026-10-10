@@ -1,0 +1,72 @@
+{
+  "scope": "PARK saved June checkpoint to July 31 boundary; historical modeled fills; no strategy replay",
+  "start_utc": "2026-07-01T00:00:00Z",
+  "end_utc": "2026-07-31T00:00:00Z",
+  "initial_owned_assets": 37,
+  "ending_owned_assets": 36,
+  "ending_lots": 57,
+  "window_fill_count": 29,
+  "fill_counts": {
+    "EXIT": 13,
+    "ENTRY": 12,
+    "RECOVERY": 3,
+    "PARTIAL_RECYCLE": 1
+  },
+  "same_asset_unit_increases": 1,
+  "same_asset_unit_decreases": 3,
+  "same_asset_units_unchanged": 33,
+  "new_terminal_assets": [
+    "KTA-USD",
+    "RAILS-USD"
+  ],
+  "fully_disposed_starting_assets": [
+    "ESPORTS-USD",
+    "FORTH-USD",
+    "PACT-USD"
+  ],
+  "ending_cash": "1707.659514487834020320225698",
+  "parked_cash": "1707.659514487833998378453361",
+  "ordinary_cash": "2.1941772337E-14",
+  "ending_basis": "503.226472434184139657863893486",
+  "ending_marked_inventory": "195.7626187038313546713693151",
+  "ending_marked_equity": "1903.422133191665374991595013",
+  "remaining_open_pnl": "-307.4638537303527849864945784",
+  "window_realized_pnl": "8.858839954797079040732558875",
+  "window_fees": "1.16799225957608676238826483693",
+  "cash_spent": "143.58566157955077300902682001104",
+  "cash_returned": "148.38851991210240670620113888711",
+  "cash_residual": "-1.2393E-25",
+  "basis_concentration_hhi": "0.0352898286394939498272443188880713558362290864763442629812785425868593171958484957807892087",
+  "basis_effective_holdings": "28.3367768717604016915196202628460363675339356622179005900920438813923206733549809978527015",
+  "top5_basis_share": "0.290432580229687496576471313935154170979337252187931276636054706761075615593719026636597365",
+  "top5_basis_assets": [
+    "BONK-USD",
+    "RARI-USD",
+    "ALGO-USD",
+    "REN-USD",
+    "AIXBT-USD"
+  ],
+  "market_value_concentration_hhi": "0.0377350968520021798733576859046988091188579869365760417021726101020528115763355615229063137",
+  "market_value_effective_holdings": "26.5005282462112238016447288852501241844822985807384196249220760785330858987815345808310047",
+  "top5_market_value_share": "0.292317122886351271933574906655797406989249012726290958739259910007228467753675425865427091",
+  "top5_market_value_assets": [
+    "ALGO-USD",
+    "BONK-USD",
+    "KTA-USD",
+    "AIXBT-USD",
+    "RARI-USD"
+  ],
+  "stale_marked_inventory_over_300_seconds": "91.7488342363060529355526834855685",
+  "stale_asset_count_over_300_seconds": 18,
+  "market_mark_reconciliation_residual": "-1.468215E-25",
+  "mark_source": "Verified prior independent actual-tape mark receipt at identical frozen July boundary; all shared price/timestamp/age observations agree across arms; applied to exact PARK units, not enabled-arm quantities.",
+  "mark_source_sha256": "8bfa097395cd7865052c448804cac3095016c6ae44d55ca1f123dba9db3e0eec",
+  "concentration_limit": "HHI uses owned inventory value alone; cash is disclosed separately. These historical last actual closes are stale for some assets and exclude liquidation fees/slippage. No current sellability, dust threshold, price impact, historical shortability or risk beta is asserted.",
+  "USD_absolute_reconciliation_tolerance": "1e-18",
+  "all_asset_units_reconciled": true,
+  "all_asset_basis_reconciled": true,
+  "every_terminal_lot_mapped_by_exact_buy_order": true,
+  "native_full_baseline_july_end_matches_saved_control": true,
+  "no_heterogeneous_unit_total": true,
+  "ownership_reclassification_performed": false
+}

@@ -1,0 +1,153 @@
+{
+  "scope": "Exact historical PARK terminal symbols intersect the current public catalog only; no aliases inferred and no historical eligibility retrofit.",
+  "capability_audit_utc": "2026-10-10T11:31:47.009585+00:00",
+  "PARK_held_asset_count": 36,
+  "current_US_margin_advertised_short_overlap_assets": [
+    "ALGO-USD",
+    "BCH-USD",
+    "HBAR-USD",
+    "RENDER-USD"
+  ],
+  "current_US_margin_overlap_count": 4,
+  "current_US_margin_historical_inventory_mark_share": "0.182642099687897605515722199451195717552093964481478658375781",
+  "advertised_US_perpetual_launch_overlap_assets": [
+    "BCH-USD",
+    "HBAR-USD"
+  ],
+  "advertised_US_perpetual_launch_overlap_count": 2,
+  "historical_eligibility_proven": false,
+  "current_account_approval_proven": false,
+  "borrow_availability_proven": false,
+  "BTC_aliases_inferred": false,
+  "live_or_historical_hedge_feasibility_proven": false,
+  "matched_current_public_margin_records": [
+    {
+      "pair": "ALGOUSD:BTNL",
+      "wsname": "ALGO/USD:BTNL",
+      "ordermin": "41",
+      "costmin": "0.5",
+      "tick_size": "0.00001",
+      "lot_decimals": 8,
+      "leverage_buy": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "leverage_sell": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "margin_call": 80,
+      "margin_stop": 40,
+      "long_position_limit": 3600000,
+      "short_position_limit": 1700000,
+      "status": "online",
+      "execution_venue": "bitnomial_exchange"
+    },
+    {
+      "pair": "BCHUSD:BTNL",
+      "wsname": "BCH/USD:BTNL",
+      "ordermin": "0.01",
+      "costmin": "0.5",
+      "tick_size": "0.01",
+      "lot_decimals": 8,
+      "leverage_buy": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "leverage_sell": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "margin_call": 80,
+      "margin_stop": 40,
+      "long_position_limit": 1500,
+      "short_position_limit": 1300,
+      "status": "online",
+      "execution_venue": "bitnomial_exchange"
+    },
+    {
+      "pair": "HBARUSD:BTNL",
+      "wsname": "HBAR/USD:BTNL",
+      "ordermin": "55",
+      "costmin": "0.5",
+      "tick_size": "0.00001",
+      "lot_decimals": 5,
+      "leverage_buy": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "leverage_sell": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "margin_call": 80,
+      "margin_stop": 40,
+      "long_position_limit": 3000000,
+      "short_position_limit": 2300000,
+      "status": "online",
+      "execution_venue": "bitnomial_exchange"
+    },
+    {
+      "pair": "RENDERUSD:BTNL",
+      "wsname": "RENDER/USD:BTNL",
+      "ordermin": "2.5",
+      "costmin": "0.5",
+      "tick_size": "0.001",
+      "lot_decimals": 5,
+      "leverage_buy": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "leverage_sell": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "margin_call": 80,
+      "margin_stop": 40,
+      "long_position_limit": 150000,
+      "short_position_limit": 98000,
+      "status": "online",
+      "execution_venue": "bitnomial_exchange"
+    }
+  ],
+  "public_margin_response_sha256": "e8cabc1540fc8a8f943f01ebe54c70e8961e801db44e5ce42f1edcd89392c0e2",
+  "public_sources": [
+    {
+      "id": "margin_eligibility",
+      "url": "https://support.kraken.com/articles/4402532394260-client-eligibility-for-margin-trading-services-"
+    },
+    {
+      "id": "asset_pairs",
+      "url": "https://docs.kraken.com/api-reference/market-data/get-tradable-asset-pairs"
+    },
+    {
+      "id": "public_bitnomial_margin_pairs",
+      "url": "https://api.kraken.com/0/public/AssetPairs?execution_venue=bitnomial_exchange&country_code=US"
+    },
+    {
+      "id": "us_perps_launch_list",
+      "url": "https://support.kraken.com/articles/us-perpetual-futures"
+    }
+  ],
+  "current_margin_overlap_rule": "Exact asset symbol, explicit USD:BTNL route suffix, online status, nonempty leverage_sell and positive short_position_limit. No XBT/BTC, XDG/DOGE, renamed or successor aliases are inferred.",
+  "advertised_perpetual_limit": "Only the dedicated article launch list is compared. It is not verified current active catalog, historical shortability or account permission.",
+  "original_audit_before_path_sanitization_sha256": "e1ea6ef154bb2440d89d90f07eeb6937a62517ebb669001c6f9f10f54c923e3d",
+  "capability_receipt_path": "../capabilities/kraken_capabilities.json",
+  "capability_receipt_sha256": "9ee4b2129229aa640343e9a1b4eeaae13bb54b022050753a2af842253f4d345f"
+}

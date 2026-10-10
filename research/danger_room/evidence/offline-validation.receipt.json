@@ -1,0 +1,20 @@
+{
+  "schema": "spectra-danger-room-offline-validation-v1",
+  "unit_tests_passed": 47,
+  "independent_probes_passed": 45,
+  "actual_template_status": "BLOCKED",
+  "actual_template_cli_exit": 1,
+  "actual_template_blockers": 271,
+  "source_hashes": {
+    "research/danger_room/validate_run_manifest.py": "68b510b5c7ea071b5c29357dd43ac59ea415a36d3ca4acb4544512e3fa0b5273",
+    "research/danger_room/run-manifest.template.json": "db1748f5b4ecffddcfa4124adc9847f88036df87bf97988bd281bcf681699289",
+    "research/danger_room/tests/test_validate_run_manifest.py": "3fbf323911a3e9c7a3d7552d8327b7aa0d8ae27fa0893fd879d50447b3faae51"
+  },
+  "validation_scope": "DECLARATION_AND_LOCAL_HASH_COHERENCE_ONLY",
+  "external_facts_verified": false,
+  "approved_for_strategy_execution": false,
+  "approved_for_live": false,
+  "strategy_executed": false,
+  "holdout_market_outcomes_read": false,
+  "limitations": "Fictional test fixtures verify declaration, local-hash and artifact-read boundaries. They do not prove real causal contents, independent provenance, cash/trace feasibility, venue access or legal recourse."
+}

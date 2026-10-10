@@ -1,0 +1,9 @@
+{
+  "url": "https://api.kraken.com/0/public/AssetPairs?execution_venue=bitnomial_exchange&country_code=US",
+  "retrieved_at": "2026-10-10T11:28:56.384102+00:00",
+  "sha256": "e8cabc1540fc8a8f943f01ebe54c70e8961e801db44e5ce42f1edcd89392c0e2",
+  "raw_file": "kraken_public_assetpairs.raw.json",
+  "pair_count": 29,
+  "matches_original_response": true,
+  "account_specific": false
+}

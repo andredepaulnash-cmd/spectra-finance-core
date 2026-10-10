@@ -1,0 +1,39 @@
+{
+  "scope": "Descriptive saved January 1\u2013June 30 PARK fill-prefix accounting; no new six-month replay or hedge simulation. January starts with $2,000 cash and zero owned units; June ends at the exact frozen checkpoint.",
+  "initial_cash": "2000",
+  "initial_owned_assets": 0,
+  "ending_owned_assets": 37,
+  "all_acquired_distinct_assets": 224,
+  "fill_counts": {
+    "ENTRY": 576,
+    "EXIT": 539,
+    "RECOVERY": 310,
+    "PARTIAL_RECYCLE": 205
+  },
+  "modeled_fill_count": 1630,
+  "ending_account_summary": {
+    "cash": "1702.856656155282386623051379",
+    "committed_basis": "499.1704908119386943143056535",
+    "marked_inventory": "195.4205269366615707581776165",
+    "equity": "1898.277183091943957381228996",
+    "realized_pnl": "202.0271469672210809373570312",
+    "unrealized_pnl": "-303.7499638752771235561280370",
+    "fees": "61.74908694121042276608230565",
+    "turnover": "15437.27173530260569152057718",
+    "parents": 37,
+    "pending_orders": 2,
+    "parked_cash": "1701.314697008937781013999490",
+    "deployable_cash": "1.541959146344605609051889",
+    "open_manifests": 5
+  },
+  "reconciled_fees": "61.74908694121042276608230612902",
+  "reconciled_realized_pnl": "202.027146967221080937357031192",
+  "cash_residual": "-1.87402E-24",
+  "USD_tolerance": "1e-18",
+  "all_same_asset_units_and_basis_reconciled": true,
+  "per_asset_June_marks_available_in_selected_exports": false,
+  "raw_tape_available_locally": false,
+  "no_cross_asset_quantity_sum": true,
+  "no_hedge_performance_run": true,
+  "no_holdout_read": true
+}

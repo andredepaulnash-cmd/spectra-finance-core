@@ -1,0 +1,31 @@
+name: Danger Room Research Preflight
+
+on:
+  pull_request:
+    branches: ["research/parked-cash-workflow-20261009"]
+    paths:
+      - "research/danger_room/**"
+      - "docs/research-protocols/crash-defense-danger-room-20261010.md"
+      - "docs/research-results/pr26-closeout-20261010.md"
+      - "docs/research-results/crash-defense-danger-room-20261010/**"
+      - ".github/workflows/danger-room-research.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-preflight:
+    name: Offline Danger Room manifest checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Record source identity
+        run: |
+          git rev-parse HEAD
+          git rev-parse HEAD^{tree}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Run isolated manifest tests without market data or orders
+        run: python3 -B -m unittest discover -s research/danger_room/tests -p 'test_*.py' -v
