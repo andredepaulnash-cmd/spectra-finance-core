@@ -1,0 +1,36 @@
+{
+  "status": "INDEPENDENT_SYNTHETIC_INTEGRATION_PASS",
+  "passed": true,
+  "recorded_at": "2026-10-10T21:29:40.788118+00:00",
+  "strategy_evaluations_added": 0,
+  "historical_owner_outcomes_read": 0,
+  "source_bound_synthetic_receipt_sha256": "286845bb165a9483293ce586bf06f2c69a4e132c7c4d7767e8b6ede3bb3a2209",
+  "research_adapter_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+  "policy_sources": {
+    "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+    "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+    "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+    "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+    "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554"
+  },
+  "tests_sha256": "7eec767f81ba8c4092827927bfa498d3d115243608be4e8944e874340a8669bc",
+  "tests_passed": 33,
+  "independent_rerun_seconds": 4.832,
+  "command": "PYTHONPATH=profitability_candidate python3 -B -m unittest discover -s profitability_candidate/tests -p test_profitability_campaign.py -v",
+  "verified": [
+    "exact native source import pins and generated body",
+    "per-owner principal and per-lot positive profit/loss source math",
+    "current owner cash and pending holds before native buys",
+    "confirmed whole/partial disposal quantity and basis agreement",
+    "no anticipated exit cash or slot admission",
+    "ENTRY pair cap at proposal and execution",
+    "50 funded active/pending asset claims maximum",
+    "immutable ladder rung commits only on confirmed fills",
+    "productive sizing frozen at new proposal; held inventory unchanged",
+    "native DTTP mode hard_target false/no execution floor",
+    "armed profit floor suppresses independently eligible deep rung; unguarded fixture demonstrates conflict"
+  ],
+  "scope": "Admits separately frozen owned/native-DTTP paper evaluations; subsequent historical account/journal audit still required; no live authority, full API lifecycle, orderbook, production persistence or profitability proof",
+  "sealed_holdout_read": false,
+  "production_activation": false
+}

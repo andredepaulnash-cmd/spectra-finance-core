@@ -1,0 +1,52 @@
+[
+  {
+    "file": "account_5m.csv.gz",
+    "bytes": 2195874,
+    "sha256": "0cfe2fad9ad3d43f2b20c38bf1d56ef329ea55ba02ed75ca68e6524f10de715a"
+  },
+  {
+    "file": "fills.csv",
+    "bytes": 277408,
+    "sha256": "2f4aa1f95cfe0e3690228eab007b8bb8aa47f066dbd4792bb04edb32c0f7ba5e"
+  },
+  {
+    "file": "generated_campaign_body.py",
+    "bytes": 30478,
+    "sha256": "80c5fe4e693b38d1742e19dd3dba32adc6250f80a1041a19afa5a03e9036fc5c"
+  },
+  {
+    "file": "ownership_events.json.gz",
+    "bytes": 2615799,
+    "sha256": "dc5776b5521ee6073a5444cdb257594f3ca20fbaf3c1edb4f5179ab501efee01"
+  },
+  {
+    "file": "pending_orders.jsonl.gz",
+    "bytes": 1935933,
+    "sha256": "2eb9cd789e6d4f6f7b70c6cb44da780ae1f87531bd319344a0000af72ed8ce27"
+  },
+  {
+    "file": "results.json",
+    "bytes": 10385,
+    "sha256": "4a0ffd67a2e0ee3fe1d2422499f4921f59cccd1b3e992554ec60fd7b555594be"
+  },
+  {
+    "file": "run_admission.receipt.json",
+    "bytes": 881,
+    "sha256": "851353756749e1a3ec7dcd4c28facfd1764f2a3c0aa3828e1ecbc774bee085f5"
+  },
+  {
+    "file": "terminal.json",
+    "bytes": 12154,
+    "sha256": "b4ce6ff2d6b4261b3a536075b219cb2f227014200fe243313a22ead71c2b1504"
+  },
+  {
+    "file": "terminal_lots.json",
+    "bytes": 503409,
+    "sha256": "e1a810e18da8b30e7c81a245ed9b8dc08f90482354c6aa4c16d340d951a28d7c"
+  },
+  {
+    "file": "watchlist_updates.jsonl.gz",
+    "bytes": 49,
+    "sha256": "460a8aaddf7c8baec01d9ace7e5912e469bf287e569a22f10a9aef5ff39f8961"
+  }
+]

@@ -2,7 +2,7 @@
 
 Architect identified three missing economic ingredients: a list of coins with frequent usable moves, coin-specific funded recovery ladders, and keeping up to 50 distinct trading positions productive through appropriate replacement. This campaign tests those ideas causally against the preserved native January–June five-minute research bridge.
 
-The first original-control reproductions are running. No new campaign profit result is established by this preparation commit. CI verifies fictional causal and accounting fixtures; a passing CI run does not prove financial profitability.
+Both original controls reproduced exactly and passed independent audits of all 104,256 five-minute samples and every serialized fill. They ended at $1,898.28 and $1,941.81 from $2,000. No profitable new campaign candidate is established yet. CI verifies fictional causal and accounting fixtures; a passing CI run does not prove financial profitability. The first three audited comparisons—seven-day warmup, directional filtering and recovery-quality filtering—all lost money and ended below the 1.74% control. Their exact account results are retained in `completed-development-results.json`.
 
 The unchanged $2,000 control realized $202.03 through June while its remaining inventory was $303.75 underwater, leaving $1,898.28 marked equity. Its 37 terminal positions had a median age of about 175 days. Much of its $1,702.86 cash was deliberately parked; only $1.54 was deployable at that boundary. Replacing an absolute-volatility rank with recurring cost-adjusted opportunities and attributing capital ownership are therefore substantive hypotheses, not cosmetic changes.
 
@@ -17,7 +17,9 @@ The unchanged $2,000 control realized $202.03 through June while its remaining i
 | Two frozen finalists, three genuinely unseen periods each | 6 |
 | Matched owner-account control | 1 |
 | Current-cost owner control and fixed full combination | 2 |
-| Total cap | 35 |
+| Funded productive sizing and its current-cost counterpart | 2 |
+| Native DTTP policy and matched owner full-combination policy | 2 |
+| Total cap | 39 |
 
 Blocked arms and unit tests are not completed strategy runs. Fresh data is not yet identified. The October 9–November 9 sealed holdout remains unread. January–September already inspected data cannot become independent validation by renaming it. The six fresh evaluations test absolute profitability; additional comparative fresh controls need a separately declared budget before new outcomes.
 

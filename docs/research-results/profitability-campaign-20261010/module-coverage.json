@@ -1,0 +1,1131 @@
+{
+  "all_modules_pass": false,
+  "created_at_utc": "2026-10-10T21:16:12.014260+00:00",
+  "data_boundaries": {
+    "code_modified": false,
+    "financial_outcome_payloads_read": false,
+    "orders_placed": false,
+    "private_account_accessed": false,
+    "sealed_holdout_payload_read": false
+  },
+  "features": [
+    {
+      "campaign_hook": "HARD_TARGET and dataset.hard_target override EXTEND/earned-DTTP; no DTTP-on financial arm in the reviewed driver.",
+      "conflict": "A native protective EXIT after current profit falls below174bps becomes WAIT under preserved hard-target controls; recovery can then be considered. New controller must explicitly test protected-profit precedence without changing historical controls.",
+      "feature": "DTTP / DTSL protected-profit continuation",
+      "functions": [
+        "vcap_profit_exit.plan_vcap_profit_exit",
+        "vcap_profit_exit._continuation_support",
+        "rotating_fleet.FleetExitMode.DTTP",
+        "rotating_fleet.FleetExitMode.EARNED_DTTP"
+      ],
+      "pending_comparison_arms": [
+        "native_dttp_174_park",
+        "owned_full_dttp"
+      ],
+      "pending_comparison_status": "PENDING_SOURCE_INTEGRATION_AND_ACTUAL_BRANCH_RECEIPT",
+      "status": "PLANNER_REAL_CONTINUATION_DISABLED_IN_LEGACY_CAMPAIGN"
+    },
+    {
+      "campaign_hook": "No exact DTSS source path or hook; emitted declaration false. Generic Action.HEDGE/spot_risk_allowed cannot stand in for DTSS.",
+      "feature": "DTSS",
+      "functions": [],
+      "status": "NO_NAMED_IMPLEMENTATION_FOUND_DISABLED"
+    },
+    {
+      "campaign_hook": "No exact DTSSR source path or hook; emitted declaration false. No genuine reverse/short execution replay admitted.",
+      "feature": "DTSSR",
+      "functions": [],
+      "status": "NO_NAMED_IMPLEMENTATION_FOUND_DISABLED"
+    },
+    {
+      "campaign_hook": "No exact PSSM source path or hook; emitted declaration false. Generic defensive breaker or risk boolean is insufficient proof.",
+      "feature": "PSSM",
+      "functions": [],
+      "status": "NO_NAMED_IMPLEMENTATION_FOUND_DISABLED"
+    },
+    {
+      "campaign_hook": "Inline generic3% trigger, forecast proposal throttle/geometry, first tranche only; new RecoveryLadder/LadderBook hooks predeclared but blocked for owner integration.",
+      "conflict": "No durable lifecycle checkpoint or exactly authorized owner bucket in legacy driver; actual root per-coin original mappings still missing.",
+      "feature": "VCAP recovery and tranches",
+      "functions": [
+        "plan_vcap_recovery",
+        "plan_vcap_tranches"
+      ],
+      "status": "NATIVE_PLANNERS_REAL_LIFECYCLE_SURROGATE"
+    },
+    {
+      "campaign_hook": "Source-scoped RECOVERY lots are planned by native code; modeled next-open FOK fills quarantine proceeds under control. Helper unlock is separate and not imported by legacy driver.",
+      "conflict": "Unfilled sale cannot fund replacement. Recovery principal must remain recovery-owned; shared fungible reuse cannot certify productive/VCAP owners. Exact owner replay integration receipt pending.",
+      "feature": "Partial recycle / PARK / redeployment",
+      "functions": [
+        "plan_partial_recycle",
+        "Dataset.recycle_manifest",
+        "Dataset.fill_partial",
+        "MemoryLedger.consume",
+        "unlock_confirmed_recycle"
+      ],
+      "status": "NATIVE_PLANNER_MODEL_FILL_OWNER_ADAPTER_PENDING"
+    },
+    {
+      "campaign_hook": "Legacy uses inline reserve/pair checks and MemoryGovernor. module_coordination.decide_batch gives typed research reservations independently.",
+      "conflict": "PRODUCTIVE/VCAP/HEDGE/PARK locks/floors and exact financial governor integration require new receipt; helper acceptance is not a native reserve or fill.",
+      "feature": "Capital governor and owner authorization",
+      "functions": [
+        "CapitalGovernor.reserve",
+        "CapitalGovernor.commit_entry_submission_if_matches",
+        "CapitalGovernor.commit_recovery_submission_if_matches",
+        "CapitalGovernor.carve_reserved_recovery_tranche",
+        "cash_authority.authority_rejection",
+        "cash_authority.spend_headroom",
+        "cash_authority.burn"
+      ],
+      "status": "NATIVE_GOVERNOR_NOT_EXERCISED_OWNER_ADAPTER_PENDING"
+    },
+    {
+      "campaign_hook": "Legacy numeric parent IDs and exact stale-order checks; helper canonical base, pending slot/parent/retirement guards are unit exercised but not imported into driver.",
+      "conflict": "Canceled/pending/flat-looking/dust parent remains claimed until native retirement proof; helper-supplied retired state does not create a certificate.",
+      "feature": "Economic identity and admission",
+      "functions": [
+        "module_coordination.base_asset",
+        "module_coordination.decide_batch",
+        "EconomicPositionLedger.open_position",
+        "EconomicPositionLedger.retire_terminal_position",
+        "CapitalGovernor.commit_entry_submission_if_matches"
+      ],
+      "status": "LEGACY_POSITION_ID_PLUS_HELPER_RESEARCH_GATES"
+    },
+    {
+      "campaign_hook": "In-memory modeled fills update cash/basis/lots and provenance. No real order/trade evidence, settlement clock, fresh accounting supervisor or durable terminal repair path.",
+      "conflict": "A simulated FOK accepted fill cannot certify live restart, partial fill, cancellation, unknown receipt or cash settlement.",
+      "feature": "Execution reconciliation and accounting health",
+      "functions": [
+        "LiveFillLedgerReconciler.reconcile_trade_fill",
+        "LiveFillLedgerReconciler.reconcile_trade_fills",
+        "synchronize_executor_evidence",
+        "AccountingHealthSupervisor.assess",
+        "CapitalGovernor.reconcile_executor_accounting"
+      ],
+      "status": "NATIVE_INFRASTRUCTURE_IMPORTED_NOT_EXERCISED"
+    },
+    {
+      "campaign_hook": "Completed-bar selector can replace native ranking; native shared-cash shortfall repair/dependent alternatives retained. Max50 remains subject to causal eligibility, minima/reserve/volume. Helper typed shortfall diagnostics are separate.",
+      "conflict": "Native pair universe has oneUSDpair perasset; this does not itself exercise crossquote normalized admission or guarantee50 profitable funded positions.",
+      "feature": "Causal opportunity list and50-slot replenishment",
+      "functions": [
+        "MatrixOpportunitySelector.rank_at_index",
+        "CampaignDataset.rank_candidates",
+        "rotating_fleet movement_rank",
+        "module_coordination.slot_shortfall"
+      ],
+      "status": "SOURCE_BOUND_RESEARCH_HOOKS"
+    },
+    {
+      "campaign_hook": "Protocol hash/research authority/no holdout guard, exact23source hashes, input identity and isolated loader; each hook boundary replaces exactly once.",
+      "conflict": "Source/input admission is distinct from financial strategy efficacy and production order permission.",
+      "feature": "Protocol/source/input admission",
+      "functions": [
+        "validate_declaration",
+        "verify_native",
+        "verify_reference",
+        "load_native",
+        "replace_once"
+      ],
+      "status": "REAL_RESEARCH_ADMISSION_FUNCTIONS"
+    },
+    {
+      "campaign_hook": "42 authored adversarial helper tests inspect priority, identity, typed budgets, reserve locks and receipt replay. No integration claim from their existence/pass count.",
+      "conflict": "Exit/cancel/hedge/recovery/entry arbitration requires actual intents/state supplied from each module and modeled receipt reconciliation in the same campaign run.",
+      "feature": "All-module coordination",
+      "functions": [
+        "decide_batch",
+        "confirm_recovery",
+        "unlock_confirmed_recycle",
+        "slot_shortfall"
+      ],
+      "status": "RESEARCH_HELPER_ONLY_OWNER_FINANCIAL_INTEGRATION_PENDING"
+    }
+  ],
+  "financial_profitability_certified": false,
+  "module_coordination_helper": {
+    "authored_unit_test_count": 42,
+    "integration_status": "PENDING_FINANCIAL_CAMPAIGN_HOOK_RECEIPT",
+    "legacy_driver_imports_helper": false,
+    "passed_generic_tests_certify_all_product_modules": false,
+    "source": {
+      "bytes": 25662,
+      "git_blob_sha1": "96ee91f79f70ede5d6d0eecba61768c034d7ffdc",
+      "path": "profitability_candidate/research/danger_room/module_coordination.py",
+      "sha256": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9"
+    },
+    "test_functions": [
+      "test_exit_always_precedes_patch_and_one_intent_per_parent",
+      "test_accounting_missing_or_unhealthy_rejects_all_new_decisions",
+      "test_protected_profit_blocks_recovery_without_consuming_cash",
+      "test_consumed_rung_not_reused",
+      "test_planning_only_reserves_cost_and_does_not_consume_a_rung",
+      "test_recovery_missing_receipt_or_zero_fill_never_consumes_rung",
+      "test_positive_partial_fill_consumes_rung_once_with_no_cash_refund",
+      "test_recovery_confirmation_rejects_scope_or_overspend",
+      "test_confirmed_rung_cannot_be_replayed_under_a_different_proposal",
+      "test_new_slot_cannot_use_requested_exit_or_future_proceeds",
+      "test_pending_entry_claim_counts_before_fill",
+      "test_pending_asset_blocks_other_pair_for_same_coin",
+      "test_active_asset_blocks_other_quote_pair",
+      "test_cancel_request_does_not_release_cash_identity_or_slot",
+      "test_cancel_without_exact_pending_scope_rejected",
+      "test_pending_existing_parent_prevents_patch_and_exit",
+      "test_dust_classification_requires_terminal_confirmation",
+      "test_proven_residual_retirement_allows_new_identity_without_erasing_old",
+      "test_fill50_target_uses_distinct_reserved_slots_only",
+      "test_fundability_can_leave_slots_short_without_borrowing_from_vcap_or_park",
+      "test_wrong_owner_cannot_fund_recovery_entry_or_hedge",
+      "test_disjoint_owner_cash_hold_and_protection_preserved",
+      "test_absolute_physical_floor_uses_total_cash_after_existing_holds",
+      "test_tiny_reserve_is_not_rounded_away_in_wide_cash",
+      "test_deterministic_reservations_ignore_input_order",
+      "test_explicit_defensive_hedge_blocks_spot_increases_across_other_parents",
+      "test_nondefensive_hedge_does_not_silently_rewrite_spot_policy",
+      "test_hedge_not_admitted_cannot_pause_or_spend_spot",
+      "test_portfolio_hedge_identity_cannot_be_split_to_bypass_one_intent",
+      "test_pending_hedge_blocks_replacement_and_does_not_occupy_spot_slot",
+      "test_authoritative_risk_gate_blocks_all_spot_increases",
+      "test_btc_eth_spot_exclusion_and_btc_alias",
+      "test_bad_cash_values_and_inconsistent_physical_cash_fail",
+      "test_overlapping_locks_unknown_owner_and_bad_intent_cost_fail",
+      "test_invalid_state_or_pair_scope_is_rejected",
+      "test_duplicate_proposal_ids_fail_before_any_reservation",
+      "test_slot_shortfall_keeps_typed_reasons_and_rejected_ids",
+      "test_control_does_not_unlock_confirmed_recycle",
+      "test_declared_recycle_unlocks_vcap_only_and_preserves_cash_protection",
+      "test_recycle_release_exact_replay_and_conflicting_identity",
+      "test_recycle_unconfirmed_oversized_or_owner_transfer_refused",
+      "test_unlocked_recovery_proceeds_cannot_fund_new_productive_slot"
+    ],
+    "test_source": {
+      "bytes": 22444,
+      "git_blob_sha1": "a80b058cfd7e355b55fe3e7e15d9518127c66a84",
+      "path": "profitability_candidate/tests/test_module_coordination.py",
+      "sha256": "31f1f35f08a5d2989a8b3faa40b08a0d2e82a612cc6a602a4333517e6699babf"
+    },
+    "unit_results_read_or_rerun_in_this_review": false
+  },
+  "native_modules": [
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 5216,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "Umbrella exports import infrastructure; import success does not execute its money or lifecycle functions.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "bd69f930c5d84cbed2ac16fe2fcce8b4c8266dd1",
+      "module": "spectra_core",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/__init__.py",
+      "pr37_top_level": {
+        "bytes": 5215,
+        "git_blob_sha1": "d03fd2e939c649bcc9aa230dc4c9282d608cea4d",
+        "path": "integration_pinned/base/spectra_core/__init__.py",
+        "sha256": "c9a6f5bb98d46c8b794bb470069615863a71fa3ffb5c45ecaca845be477d69da"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "f7abdf61344bfb6d1bb17c2629d9773fa376fc2096a3ddde21869605310660ec"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 15352,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "AccountingHealthSupervisor.assess/record_reports and mutation freshness gates are not invoked by the legacy campaign.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "0f519e36bdaeb9692bebebad471a2684b0d0900f",
+      "module": "spectra_core.accounting_health",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/accounting_health.py",
+      "pr37_top_level": {
+        "bytes": 15351,
+        "git_blob_sha1": "46f9c2f1d6d0002bce6032fb7ba402d167c444dd",
+        "path": "integration_pinned/base/spectra_core/accounting_health.py",
+        "sha256": "65b989efa827f52e8b2d61ff0aefc1f8895cef50e3820bb9931238a009bf3c25"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "703932720a5fe09962b2337d39f6c4ee62b29404352ba7060dfe9fce0d787397"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 23026,
+      "campaign_source_path_grade": "NATIVE_PLANNER_PATH_SOURCE_CONFIRMED",
+      "coverage_limit": "Recorded completed 5m observations drive fingerprint windows; no historical microstructure data is supplied.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [
+        {
+          "function": "AssetFingerprint.cold_start",
+          "line": 500
+        },
+        {
+          "function": "AssetFingerprint.update",
+          "line": 522
+        }
+      ],
+      "git_blob_sha1": "2cbb695d1ceb846ef92578d60a8cbcb68aa4b67f",
+      "module": "spectra_core.asset_fingerprint",
+      "native_function_paths": [
+        "AssetFingerprint.cold_start",
+        "AssetFingerprint.update"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/asset_fingerprint.py",
+      "pr37_top_level": {
+        "bytes": 23025,
+        "git_blob_sha1": "75f003ee5478257053e5fb1678ec11afc891d549",
+        "path": "integration_pinned/base/spectra_core/asset_fingerprint.py",
+        "sha256": "884106e1c7556618937032ff1b6445414457326fc864ccb03d7434ff53a9751a"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "93fed948aa8670b3ba1fea8f1df93b99b3ad42fe9f4df666fc355b1799684fc2"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 8988,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "MinuteBar/KlineDataset names are imported; the sparse Kraken adapter supplies custom RecordedBar/SparseDataset instead of load_archives.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "30975dcb868d0e0efea41d5521f398522e173a3c",
+      "module": "spectra_core.binance_kline_import",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/binance_kline_import.py",
+      "pr37_top_level": {
+        "bytes": 8988,
+        "git_blob_sha1": "30975dcb868d0e0efea41d5521f398522e173a3c",
+        "path": "integration_pinned/base/spectra_core/binance_kline_import.py",
+        "sha256": "e97d371eb424a2fed47d95af238f8ef50784fb9b44f0dcdf884b28bf25ed4813"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "e97d371eb424a2fed47d95af238f8ef50784fb9b44f0dcdf884b28bf25ed4813"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 78935,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "CapitalGovernor.reserve, commit_entry_submission_if_matches, carve_reserved_recovery_tranche, reconcile_execution and cash authority are not used. Inline shared-cash arithmetic and MemoryGovernor substitute.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "08496659074d2303a57951fff9179d9b190b77ef",
+      "module": "spectra_core.capital_governor",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/capital_governor.py",
+      "pr37_top_level": {
+        "bytes": 78934,
+        "git_blob_sha1": "be1a8b2984a167aa3cf9a505ea1eaae2c961da51",
+        "path": "integration_pinned/base/spectra_core/capital_governor.py",
+        "sha256": "7f84424d7a6688859e0a25d97eeb55a7d008ce700193ea6b03b4e1b0daf09646"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "93a4a6abb48eb94123aaf2529e7d55b1d9059a1a2a96ad00ef5c41f11c29896f"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 27437,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "Unified durable position-exit manifests, exact fill coverage and assess_position_exit_manifest are not invoked.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "6e3e3896268dc67cdc70ae1ec0725d3c2cb6e919",
+      "module": "spectra_core.economic_exit",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_exit.py",
+      "pr37_top_level": {
+        "bytes": 27436,
+        "git_blob_sha1": "6b62fe2240c7520ef30572ad61248090e89cdfcc",
+        "path": "integration_pinned/base/spectra_core/economic_exit.py",
+        "sha256": "8e55191c8bf109b873f5b3a0c7e9bcddf002888040970fc147d5038afe2a0a93"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "54d42d99867d4db9509b093a4d69f191db9a7df7e8d78f0643a13ddb570572d3"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 45745,
+      "campaign_source_path_grade": "NATIVE_DATATYPES_WITH_SURROGATE_LEDGER",
+      "coverage_limit": "Native lot and snapshot data structures feed MemoryLedger. EconomicPositionLedger durable methods, terminal certificates and canonical submission admission are not exercised.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "872b0ac40d41a1228be4c213e249977985249f38",
+      "module": "spectra_core.economic_position",
+      "native_function_paths": [
+        "EconomicLot",
+        "EconomicPositionSnapshot"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/economic_position.py",
+      "pr37_top_level": {
+        "bytes": 45744,
+        "git_blob_sha1": "5d81eadae7bf702817be97081af9ce76b7ee8a8e",
+        "path": "integration_pinned/base/spectra_core/economic_position.py",
+        "sha256": "51108c8d1253c33a95fb02c34d7518d433ad22991473087cd5a1db93761beb56"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "28b8a06bbbeba31cf46ccff98183e8087f101d3bf288e6e99ea4b0360089d63a"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 13697,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "Executor accounting, committed exposure and position-hold reconciliation are not invoked.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "31dddfdedff97708d213f36a6637cab578421015",
+      "module": "spectra_core.executor_accounting",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_accounting.py",
+      "pr37_top_level": {
+        "bytes": 13696,
+        "git_blob_sha1": "6c17beacfd89833843269f38a2c4d809a34617b9",
+        "path": "integration_pinned/base/spectra_core/executor_accounting.py",
+        "sha256": "4fff4d1e03dcf6241331d360315654af4a12a77ef08458fc5a5f113862ac5ff5"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "0400ce13205c90eaa13dbeed19aaac4b6f584be9cc56b37055b6031fa8e2734b"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 18025,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "synchronize_executor_evidence and parsing/coverage functions are not invoked; research provenance is constructed from modeled fills.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "69af729bc4212515dd903f340314fd4421a13ee9",
+      "module": "spectra_core.executor_provenance_bridge",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/executor_provenance_bridge.py",
+      "pr37_top_level": {
+        "bytes": 18024,
+        "git_blob_sha1": "89809a80ed723db38cab8861ff3561be0096dbc4",
+        "path": "integration_pinned/base/spectra_core/executor_provenance_bridge.py",
+        "sha256": "d44681b936b15d691d318e680d977841996dcc8953369b6edb70b00d54a30b52"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "96bdfc94d9c33685bb2d83c2ef3f4376eba9f5adf14af8d7b0155ca529789a83"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 25168,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "LiveFillLedgerReconciler.reconcile_trade_fill/reconcile_trade_fills are not invoked. Fill updates are custom in-memory arithmetic.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "a409671fd62fd75f242efd3c57e6c5a3c959a2fc",
+      "module": "spectra_core.fill_reconciliation",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/fill_reconciliation.py",
+      "pr37_top_level": {
+        "bytes": 25167,
+        "git_blob_sha1": "f669f797d277874cbe460efc73444af7b97b7f03",
+        "path": "integration_pinned/base/spectra_core/fill_reconciliation.py",
+        "sha256": "d07dbd56ddd4fccd0af9782361655a08d1a276898eef412e30c9b5ec6d070638"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "ffde14ee3d667300205a3f0d0a3e6c842a6cccfa2001d75e60d1a8b2b8bc79ac"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 13190,
+      "campaign_source_path_grade": "NATIVE_RULE_DATATYPE_WITH_SIMULATED_INPUTS",
+      "coverage_limit": "Trading-rule data class is real; min_notional, base step and availability are synthetic fixed research rules, not date-specific venue metadata.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "3ef0f288867727f6264fcc8690ee53d0412269a9",
+      "module": "spectra_core.kraken_market_fabric",
+      "native_function_paths": [
+        "KrakenTradingRule"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/kraken_market_fabric.py",
+      "pr37_top_level": {
+        "bytes": 13189,
+        "git_blob_sha1": "8cd76a6655c9a38c2111da3063d3d4e7d972674f",
+        "path": "integration_pinned/base/spectra_core/kraken_market_fabric.py",
+        "sha256": "784ec7f9a5b5d3e2ea2e854bea978ff19fab9dec29f89f4f1afd858c9e460bd8"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "1787d100bbf7241d065d212db0c084c600e7e6ffd185211988ca4d6699210d46"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 2921,
+      "campaign_source_path_grade": "NATIVE_DATATYPES",
+      "coverage_limit": "Proposal/provenance objects are real; no native capital decision/reservation path follows the proposal.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "a6224ed2ffdff5f7bb9e2f0981743cd4aa0bdab5",
+      "module": "spectra_core.models",
+      "native_function_paths": [
+        "CapitalProposal",
+        "ExecutionProvenance",
+        "IntentKind"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/models.py",
+      "pr37_top_level": {
+        "bytes": 2920,
+        "git_blob_sha1": "e0527521602668bbf296646a7a87b767c1b2c9d7",
+        "path": "integration_pinned/base/spectra_core/models.py",
+        "sha256": "6ad0e6d336b0eabefc4f6a90d3ab190a05d9d3da531a041acb10a27b47f6891e"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "155f72a31bcd707ac5277a5f41ddc7dd090a76b585c225f4ed246307a2837d03"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 31434,
+      "campaign_source_path_grade": "NATIVE_PLANNER_PATH_SOURCE_CONFIRMED",
+      "coverage_limit": "Real source-scoped planner uses MemoryLedger/MemoryGovernor/MemoryStore. Native SQLite PartialRecycleStore and exact executor fill reconciliation are not used.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [
+        {
+          "function": "_owner_from_lots",
+          "line": 500
+        },
+        {
+          "function": "_owner_geometry",
+          "line": 547
+        },
+        {
+          "function": "_aggregate_geometry",
+          "line": 572
+        },
+        {
+          "function": "plan_partial_recycle",
+          "line": 713
+        }
+      ],
+      "git_blob_sha1": "d4cb26bfda4368971b368307666581b4f72b2003",
+      "module": "spectra_core.partial_recycle",
+      "native_function_paths": [
+        "plan_partial_recycle",
+        "_owner_from_lots",
+        "_owner_geometry",
+        "_aggregate_geometry"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/partial_recycle.py",
+      "pr37_top_level": {
+        "bytes": 31433,
+        "git_blob_sha1": "45d33de8b1145d9cd83fe3d619b12d975ec9f525",
+        "path": "integration_pinned/base/spectra_core/partial_recycle.py",
+        "sha256": "f9f0892ff1eab33e5f073d9028d80212b84411ad37d42926c66d29884c4f1e3c"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "eab2b61bd4c11ad7424fcfed09403a3d397dd6db695841bbd5230b48f9001417"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 5837,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "position_hold_accounting_from_raw and exact hold freshness/coverage evidence are not invoked.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "6cf8d8288e48b8cfd0f9e741be8cfe4e10c2b8df",
+      "module": "spectra_core.position_hold_accounting",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/position_hold_accounting.py",
+      "pr37_top_level": {
+        "bytes": 5836,
+        "git_blob_sha1": "bb5eb74500d9af2f89ba677bdb488db1d4f5bb2d",
+        "path": "integration_pinned/base/spectra_core/position_hold_accounting.py",
+        "sha256": "7b9dcc6287776964b4c7e72244ae35ae0a930f925079fd51d6108191d2a1c33e"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "86d15cd7b8986da79636b2465b2c34c566a15f36164e69043433b33c81b4bcd3"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 20267,
+      "campaign_source_path_grade": "NATIVE_PLANNER_PATH_SOURCE_CONFIRMED",
+      "coverage_limit": "Generic recovery geometry and fingerprint throttle are real. Exact original per-coin ladders remain unrecovered; standing owner allocation is not proved by this path. shape_recovery_proposal is a separate public helper, not called by this plan_vcap_recovery path.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [
+        {
+          "function": "assess_recovery_fingerprint",
+          "line": 120
+        },
+        {
+          "function": "plan_vcap_recovery",
+          "line": 476
+        }
+      ],
+      "git_blob_sha1": "db17b8eed6f651c002edc2382918485595668678",
+      "module": "spectra_core.recovery_fingerprint",
+      "native_function_paths": [
+        "plan_vcap_recovery",
+        "assess_recovery_fingerprint"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/recovery_fingerprint.py",
+      "pr37_top_level": {
+        "bytes": 20266,
+        "git_blob_sha1": "d039661b216fc3024cb725e069e0cffaa55cb31a",
+        "path": "integration_pinned/base/spectra_core/recovery_fingerprint.py",
+        "sha256": "e9f06fe779a359606b266cc8c1714af118e4ce63d84a4a62875387145322a36b"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "6afb839f0e081d127c8dcd8ce8230670517a73142e12d96da18a4104d88bdd66"
+    },
+    {
+      "ast_identical_to_pr37_top_level": false,
+      "bytes": 42818,
+      "campaign_source_path_grade": "GENERATED_NATIVE_RESEARCH_BODY",
+      "coverage_limit": "Generated source derives from the archived run with explicit sparse/execution/partial/controller hooks; it is not the current PR37 top-level run.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [
+        {
+          "function": "RotatingFleetSimulator.__init__",
+          "line": 268
+        }
+      ],
+      "git_blob_sha1": "0fb70dacaecc1ea1ccb226596f0ac52b4d487748",
+      "module": "spectra_core.rotating_fleet",
+      "native_function_paths": [
+        "FleetConfig",
+        "FleetExitStrategy",
+        "RotatingFleetSimulator.__init__",
+        "generated run"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/rotating_fleet.py",
+      "pr37_top_level": {
+        "bytes": 33202,
+        "git_blob_sha1": "3958b1284b0984a93548122e7db3f232146e6169",
+        "path": "integration_pinned/base/spectra_core/rotating_fleet.py",
+        "sha256": "6a49c674e3b353e389b61818090a6851db2a81cd3f70dbeca307417ad84fadb6"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "58b484118f8be69ebf0ae45fe95482b3b2abecd4b4f4c0ec2d9d7c7cf3948247"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 23416,
+      "campaign_source_path_grade": "NATIVE_SMALL_UTILITY_ONLY",
+      "coverage_limit": "Base-label utility is called for fleet diagnostics/ranking scope. Native opportunity_auction/allocation suite is not the new causal selector.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [
+        {
+          "function": "base_asset",
+          "line": 43
+        }
+      ],
+      "git_blob_sha1": "05e00ca8d760e6647f69bd11539d909f5c810698",
+      "module": "spectra_core.strategy_lab",
+      "native_function_paths": [
+        "base_asset"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/strategy_lab.py",
+      "pr37_top_level": {
+        "bytes": 23415,
+        "git_blob_sha1": "87b871afc345f8a0ef1bac853e5d214c654261e8",
+        "path": "integration_pinned/base/spectra_core/strategy_lab.py",
+        "sha256": "ce1176d8c3eff4bc56debeab4002c0db59dd65659d418cadd08a24949c5a657e"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "841b519e2e50b4d4ef1d6eb440ad5485d9ccca959230e19bcd74a79fe12b4d51"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 8530,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "replan_vcap_sequence, carve_next_vcap_tranche and vcap_tranche_proposal_id are not invoked; only the first newly planned tranche is submitted.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "deb8062c330d2a32c8ca5ad1ca85a7623ff7e1c4",
+      "module": "spectra_core.vcap_execution",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_execution.py",
+      "pr37_top_level": {
+        "bytes": 8529,
+        "git_blob_sha1": "ba59778b94e67c140f40b2a0abb20c1c8cb63ead",
+        "path": "integration_pinned/base/spectra_core/vcap_execution.py",
+        "sha256": "afef2261001bce95f6a87c79cd108c236a0e4d0e0645a696c230fcc1dca53d7a"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "80981cb4d4caa84615e79755b159beae4919d0eb9a3c77bd381872c4ef2cddd6"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 16164,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "plan_vcap_lifecycle, plan_vcap_lifecycle_from_ledger, checkpoint_vcap_tranche_execution and checkpoint_vcap_exit_result are not invoked.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "b763a7609a01c081243b1fab7f2c47321e4c17f7",
+      "module": "spectra_core.vcap_lifecycle",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_lifecycle.py",
+      "pr37_top_level": {
+        "bytes": 16163,
+        "git_blob_sha1": "215065bf44a0891eec62ea8999da3234e1b22af3",
+        "path": "integration_pinned/base/spectra_core/vcap_lifecycle.py",
+        "sha256": "bd4d5c992ee0221cde5ea6f043b39f2374f3df2392f60f02897f577c3488de62"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "91795d5ca1de0ccaa280888a77980199334971538c0d34a2207ff4732cb48f86"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 14086,
+      "campaign_source_path_grade": "NATIVE_PLANNER_PATH_WITH_HARD_TARGET_OVERRIDE",
+      "coverage_limit": "The real planner calculates costs, state, floor, peak, giveback and stagnation. Campaign HARD_TARGET plus hard_target overrides its action: EXIT only at current target, otherwise WAIT; EXTEND/earned DTTP not active.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [
+        {
+          "function": "_continuation_support",
+          "line": 158
+        },
+        {
+          "function": "plan_vcap_profit_exit",
+          "line": 242
+        }
+      ],
+      "git_blob_sha1": "4cb5ee782eebcbad234efc1c135ece6a808d0875",
+      "module": "spectra_core.vcap_profit_exit",
+      "native_function_paths": [
+        "plan_vcap_profit_exit",
+        "_continuation_support"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_profit_exit.py",
+      "pr37_top_level": {
+        "bytes": 14085,
+        "git_blob_sha1": "1cde8f9da5f22670234c71f51f873291eb0a4288",
+        "path": "integration_pinned/base/spectra_core/vcap_profit_exit.py",
+        "sha256": "360d40d403224722fad484d8a111808c7937b8784f9cd4d647300a046244786b"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "0803bc2f168704e2b0258a88172e6e24ca15ea942a1ab76361dad9715a0269da"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 16258,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "VCAPRuntimeStore.begin_or_resume/transition/save_fingerprint/load_fingerprint are not invoked; no restart/persistence claim.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "5b75367090d8d6e0a93ce8274f04c6495e4577e4",
+      "module": "spectra_core.vcap_runtime",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_runtime.py",
+      "pr37_top_level": {
+        "bytes": 16257,
+        "git_blob_sha1": "09e3a5f31c9acf0fdaccdc7f93a414ba7912b676",
+        "path": "integration_pinned/base/spectra_core/vcap_runtime.py",
+        "sha256": "5b4f30cf8e74bb4564af16b67d0b827a6cee953b5d96b593ccc28cbb0ae9cee2"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "1529a65dbbd3756197d2263d3143541ebc7940a4fba5b208d5b17c126cbd7eff"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 15766,
+      "campaign_source_path_grade": "IMPORT_IDENTITY_ONLY",
+      "coverage_limit": "reconcile_vcap_restart and persistent sequence checkpoint methods are not invoked.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [],
+      "git_blob_sha1": "4b53c410e1fcf2e6d8921b172e78368b96eed9d0",
+      "module": "spectra_core.vcap_state",
+      "native_function_paths": [],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_state.py",
+      "pr37_top_level": {
+        "bytes": 15765,
+        "git_blob_sha1": "fb51b5bbc67d6ee9c9f484c5e52ce490b42c7787",
+        "path": "integration_pinned/base/spectra_core/vcap_state.py",
+        "sha256": "76963c509f6598739809fdca3ed6b84569756fabb2ba55c8c83f1e5f746bff9e"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "cc6a182c16fd25c61d86bf9cdab2e65f9ae5a6328135fcaec5cdfe558712d60f"
+    },
+    {
+      "ast_identical_to_pr37_top_level": true,
+      "bytes": 11596,
+      "campaign_source_path_grade": "NATIVE_PLANNER_PATH_SOURCE_CONFIRMED",
+      "coverage_limit": "Native tranche geometry/minimum rounding is called with an inline authorization estimate; lifecycle sequencing and owner-specific governor authorization remain separate.",
+      "declared_import_receipt_scope": "Actually imported native module in read-only loader probe; required external preserved core",
+      "function_definitions": [
+        {
+          "function": "plan_vcap_tranches",
+          "line": 219
+        }
+      ],
+      "git_blob_sha1": "5dd99c2be6fff7880ef34383f1452e6d2cc7c73a",
+      "module": "spectra_core.vcap_tranches",
+      "native_function_paths": [
+        "plan_vcap_tranches"
+      ],
+      "native_manifest_sha256_match": true,
+      "path": "profitability_candidate/research/holdout_replay/vendor/Spectra_2000_Recovery_Recycling_Evidence/recovered/original-plan/Spectra_Exit_Strategy_Evidence/Spectra_Exit_Strategy_Evidence/spectra-finance-core/spectra_core/vcap_tranches.py",
+      "pr37_top_level": {
+        "bytes": 11595,
+        "git_blob_sha1": "afeceac81838c805d7d34e5a91496a2b6b1e9579",
+        "path": "integration_pinned/base/spectra_core/vcap_tranches.py",
+        "sha256": "966d21756cc0d1c728262e2bc7e62a7596fd1e1368df9b87f545516b2487fb9d"
+      },
+      "runtime_branch_coverage_measured": false,
+      "sha256": "74da3fb7e2f2ae679915b4801bf43df99f3daade1fe3eefecce768cfae641111"
+    }
+  ],
+  "pending_native_profit_policy": {
+    "arms": [
+      "native_dttp_174_park",
+      "owned_full_dttp"
+    ],
+    "exact_required_exit_mode": "FleetExitMode.DTTP",
+    "frozen_at": "2026-10-10T21:15:14.537137+00:00",
+    "legacy_control_driver_mode": "FleetExitMode.HARD_TARGET",
+    "maximum_cumulative_strategy_evaluations": 39,
+    "no_outcomes_read": true,
+    "path": "profitability_candidate/research/danger_room/native_profit_policy_protocol.json",
+    "protected_profit_excludes_new_recovery_after_floor_armed": true,
+    "sha256": "f622c1ce307adb7bb25fcb5f6a1726aab0b15cd664bd6c6fe764180c2afcbaa7",
+    "source_coverage_limit": "Protocol declares real native continuation/protection comparison but does not itself exercise it. Existing admitted hard-target controls intentionally retain their action override.",
+    "status": "PENDING_SOURCE_INTEGRATION_AND_ACTUAL_BRANCH_RECEIPT"
+  },
+  "production_activation": false,
+  "production_code_changed": false,
+  "repaired_execution_source": {
+    "coverage": "Source rules reviewed as desired safety contract; these repaired sources are not imported by the archived legacy campaign. New owner/controller integration pending.",
+    "files": [
+      {
+        "bytes": 16163,
+        "git_blob_sha1": "215065bf44a0891eec62ea8999da3234e1b22af3",
+        "path": "execution_repair_candidate/spectra_core/vcap_lifecycle.py",
+        "repository_path": "spectra_core/vcap_lifecycle.py",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "bd4d5c992ee0221cde5ea6f043b39f2374f3df2392f60f02897f577c3488de62",
+        "source_function_definitions": [
+          {
+            "function": "plan_vcap_lifecycle",
+            "line": 106
+          },
+          {
+            "function": "checkpoint_vcap_tranche_execution",
+            "line": 262
+          },
+          {
+            "function": "checkpoint_vcap_exit_result",
+            "line": 321
+          },
+          {
+            "function": "plan_vcap_lifecycle_from_ledger",
+            "line": 354
+          }
+        ]
+      },
+      {
+        "bytes": 8529,
+        "git_blob_sha1": "ba59778b94e67c140f40b2a0abb20c1c8cb63ead",
+        "path": "execution_repair_candidate/spectra_core/vcap_execution.py",
+        "repository_path": "spectra_core/vcap_execution.py",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "afef2261001bce95f6a87c79cd108c236a0e4d0e0645a696c230fcc1dca53d7a",
+        "source_function_definitions": [
+          {
+            "function": "replan_vcap_sequence",
+            "line": 78
+          },
+          {
+            "function": "carve_next_vcap_tranche",
+            "line": 244
+          }
+        ]
+      },
+      {
+        "bytes": 14926,
+        "git_blob_sha1": "6b01b2125590ba3a1ced6b278f15a564a55e6492",
+        "path": "execution_repair_candidate/spectra_core/vcap_profit_exit.py",
+        "repository_path": "spectra_core/vcap_profit_exit.py",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "1b884633a330121b49d572c36a0264f0af095aea98fc6f63caa1a56974a56e2f",
+        "source_function_definitions": [
+          {
+            "function": "plan_vcap_profit_exit",
+            "line": 245
+          }
+        ]
+      },
+      {
+        "bytes": 11595,
+        "git_blob_sha1": "afeceac81838c805d7d34e5a91496a2b6b1e9579",
+        "path": "execution_repair_candidate/spectra_core/vcap_tranches.py",
+        "repository_path": "spectra_core/vcap_tranches.py",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "966d21756cc0d1c728262e2bc7e62a7596fd1e1368df9b87f545516b2487fb9d",
+        "source_function_definitions": [
+          {
+            "function": "plan_vcap_tranches",
+            "line": 219
+          }
+        ]
+      },
+      {
+        "bytes": 85061,
+        "git_blob_sha1": "0e7affd4757625ad4a725c38b562d0910ad4ef7e",
+        "path": "execution_repair_candidate/spectra_core/economic_position.py",
+        "repository_path": "spectra_core/economic_position.py",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "719e8a1ef574eb0399e35d620a57a539403bc5857c4044ec7af3dba4a7eaa60d",
+        "source_function_definitions": [
+          {
+            "function": "normalized_base_asset",
+            "line": 45
+          },
+          {
+            "function": "validate_protected_buy_terminal_evidence",
+            "line": 182
+          },
+          {
+            "function": "EconomicPositionLedger.open_position",
+            "line": 466
+          },
+          {
+            "function": "EconomicPositionLedger.record_entry_fill",
+            "line": 812
+          },
+          {
+            "function": "EconomicPositionLedger.record_vcap_fill",
+            "line": 849
+          },
+          {
+            "function": "EconomicPositionLedger.record_partial_exit",
+            "line": 1004
+          },
+          {
+            "function": "EconomicPositionLedger.snapshot",
+            "line": 1500
+          },
+          {
+            "function": "EconomicPositionLedger.retire_terminal_position",
+            "line": 1565
+          }
+        ]
+      },
+      {
+        "bytes": 166591,
+        "git_blob_sha1": "72a9e9633d582515e96dabb3672b0d1d0ca248b9",
+        "path": "execution_repair_candidate/spectra_core/capital_governor.py",
+        "repository_path": "spectra_core/capital_governor.py",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "892efffa1a731e088983a4d9401047ef19a7aca96448b7ce6af52cd81245436c",
+        "source_function_definitions": [
+          {
+            "function": "CapitalGovernor.begin_cash_fill",
+            "line": 562
+          },
+          {
+            "function": "CapitalGovernor.settle_cash_fill",
+            "line": 714
+          },
+          {
+            "function": "CapitalGovernor.record_cash_buy_fill",
+            "line": 757
+          },
+          {
+            "function": "CapitalGovernor.reserve",
+            "line": 1049
+          },
+          {
+            "function": "CapitalGovernor.commit_entry_submission_if_matches",
+            "line": 2060
+          },
+          {
+            "function": "CapitalGovernor.commit_recovery_submission_if_matches",
+            "line": 2372
+          },
+          {
+            "function": "CapitalGovernor.carve_reserved_recovery_tranche",
+            "line": 2395
+          },
+          {
+            "function": "CapitalGovernor.reconcile_execution",
+            "line": 2798
+          },
+          {
+            "function": "CapitalGovernor.reconcile_executor_accounting",
+            "line": 3269
+          },
+          {
+            "function": "CapitalGovernor.record_recovery_recycle_release",
+            "line": 3866
+          }
+        ]
+      },
+      {
+        "bytes": 11746,
+        "git_blob_sha1": "583b92da0fbc2bdafb35d8743c0f74f8bbc4bd57",
+        "path": "execution_repair_candidate/spectra_core/cash_authority.py",
+        "repository_path": "spectra_core/cash_authority.py",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "60f19bda77b12fd6af1d71526ef8960a3c9f0934bbde94fb3fb8b252628dcde1",
+        "source_function_definitions": [
+          {
+            "function": "snapshot",
+            "line": 185
+          },
+          {
+            "function": "authority_rejection",
+            "line": 245
+          },
+          {
+            "function": "spend_headroom",
+            "line": 292
+          },
+          {
+            "function": "burn",
+            "line": 321
+          }
+        ]
+      },
+      {
+        "bytes": 980,
+        "git_blob_sha1": "ad1fc63e863ccd62138208ee3d9db2848c3e74d5",
+        "path": "execution_repair_candidate/spectra_core/decimal_math.py",
+        "repository_path": "spectra_core/decimal_math.py",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "547f8c874f4cc8272b47e658be03a4f5e808275fae3bb67fd5a905835754a2df",
+        "source_function_definitions": []
+      },
+      {
+        "bytes": 20266,
+        "git_blob_sha1": "d039661b216fc3024cb725e069e0cffaa55cb31a",
+        "path": "execution_repair_candidate/spectra_core/recovery_fingerprint.py",
+        "repository_path": "spectra_core/recovery_fingerprint.py",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "e9f06fe779a359606b266cc8c1714af118e4ce63d84a4a62875387145322a36b",
+        "source_function_definitions": [
+          {
+            "function": "plan_vcap_recovery",
+            "line": 476
+          }
+        ]
+      },
+      {
+        "bytes": 5239,
+        "git_blob_sha1": "31989d4c9d18e36577c9e31288b70f7b0af42ac8",
+        "path": "execution_repair_candidate/docs/spectra-integrated-execution-safety.md",
+        "repository_path": "docs/spectra-integrated-execution-safety.md",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "a36ab21181cb5e61846a3ab02513487deb942d51c969569d9b07070e729823c1",
+        "source_function_definitions": []
+      },
+      {
+        "bytes": 6838,
+        "git_blob_sha1": "773b48fa0ebc6776dc25ba450ce51c8f1b9023b6",
+        "path": "execution_repair_candidate/docs/spectra-execution-repair.md",
+        "repository_path": "docs/spectra-execution-repair.md",
+        "reviewed_repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+        "sha256": "41c41e96f09f46601ac0cffbebd5dda69abc92879465f0b568a327126953b727",
+        "source_function_definitions": []
+      }
+    ],
+    "parent_commit": "7f0798b5975adb292272aec318c569c1fb25076d",
+    "repair_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+    "review_receipt": {
+      "bytes": 3009,
+      "git_blob_sha1": "6eb65135d45ed1debb104e2553b9c74fb2379755",
+      "path": "analysis_outputs/profitability_campaign_20261010/coordination/repair_source_review.receipt.json",
+      "sha256": "01c9e856bbd346aa978b607d3af9d7abb52dbd7b778cf2e1012412d06bc0561d"
+    },
+    "separate_from_pr37_top_level_base": true
+  },
+  "required_integration_evidence": [
+    "Exact frozen source/hash/arm identity for new controller adapter, leaving preserved controls unchanged.",
+    "Native governor/ledger paths or explicitly labeled research surrogates for owner reservation, confirmation, release and reset; no silent substitution.",
+    "Trace actual proposal parent/action/owner and accepted/rejected decision per real campaign step; source-defined helper unit checks alone are insufficient.",
+    "Trace modeled confirmed fills with exact proposal/order/rung/lot scope, owner cash before/after, pending lock preservation and reconciliation.",
+    "Conflict assertions for protected profit versus patch/partial, partial versus full, exit proceeds versus replacement, canceled pending buy versus admission, and risk defense versus spot increase.",
+    "Separate DTTP-on and genuine short/DTSS/DTSSR/PSSM admitted implementations/history before claiming those modules work or increase profitability.",
+    "Keep runtime/module coverage receipt separate from strategy economic audit and any profitability recommendation."
+  ],
+  "research_base": {
+    "commit": "51385b5ef71a25b38e82cf3927aebc671c6939c7",
+    "inventory_untruncated": true,
+    "tree": "45ee53c5380b3946395585e65f84463b6fcabd07"
+  },
+  "research_only": true,
+  "runtime_branch_coverage_measured": false,
+  "schema": 1,
+  "scope": "Read-only source coverage comparison; no financial outcome or sealed holdout payload inspected.",
+  "source_layers": {
+    "archived_native_manifest": {
+      "bytes": 60158,
+      "git_blob_sha1": "f15fb5bbdc11a209c6e2c90166988e1734969a5d",
+      "path": "profitability_candidate/research/danger_room/native_prerequisites/native_source_manifest.json",
+      "sha256": "01fc7540c03c72113aeefea5187cbaae5d14f559e8b6dc90da8cc7aa9d6b4d08"
+    },
+    "ast_comparison_limit": "Syntax trees omit locations/comments/formatting; identity is not complete execution-equivalence or branch evidence.",
+    "generated_native_body": {
+      "bytes": 30436,
+      "git_blob_sha1": "29525acb915c73fa6bd32cbee7e2c42b3a7b7add",
+      "path": "analysis_outputs/profitability_campaign_20261010/engine/campaign-20261008-rotation-followup/baselines/hard_174_park/generated_recycle_body.py",
+      "sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838"
+    },
+    "immutable_legacy_copy_expected": "research/danger_room/preserved_native_profitability_campaign_v1.py (parent integration in progress; not certified here)",
+    "legacy_driver_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+    "native_adapter": {
+      "bytes": 18449,
+      "git_blob_sha1": "d795399bc8204f9bc701f6f3f1e5d2289c5b1813",
+      "path": "analysis_outputs/profitability_campaign_20261010/engine/campaign-20261008/native/danger-room-20261006/restored/evidence/baseline-recovery-20261001/adapter/sparse_adapter.py",
+      "sha256": "45249e0273bfa4b15cfc54db2bede37b81c0488239fab1503c8911584127583e"
+    },
+    "native_bridge": {
+      "bytes": 24734,
+      "git_blob_sha1": "5bd1b9c7370b20baa725f294bd0df67bc754d965",
+      "path": "analysis_outputs/profitability_campaign_20261010/engine/campaign-20261008/native/danger-room-20261006/restored/evidence/one-percent-research-20261006/one_percent_test.py",
+      "sha256": "87247fd166775c3230445ed06e29f5a4ba2ad0e9253a9a52e3ff5e085f7db6c7"
+    },
+    "native_verified_modules": 23,
+    "new_owner_adapter_status": "PENDING_INTEGRATION_RECEIPT",
+    "pr37_top_level_ast_identical_modules": 22,
+    "research_files": [
+      {
+        "bytes": 34547,
+        "git_blob_sha1": "17d6ad3ae33242e4e81290b6caef49c908d1015b",
+        "path": "profitability_candidate/research/danger_room/profitability_campaign.py",
+        "sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451"
+      },
+      {
+        "bytes": 25662,
+        "git_blob_sha1": "96ee91f79f70ede5d6d0eecba61768c034d7ffdc",
+        "path": "profitability_candidate/research/danger_room/module_coordination.py",
+        "sha256": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9"
+      },
+      {
+        "bytes": 21321,
+        "git_blob_sha1": "19d3c5551a96a8fb3b0bae103d705c6358b116fe",
+        "path": "profitability_candidate/research/danger_room/opportunity_selector.py",
+        "sha256": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305"
+      },
+      {
+        "bytes": 3909,
+        "git_blob_sha1": "0a4a1c4125fcd06cafd6544ff8508aa8787db0da",
+        "path": "profitability_candidate/research/danger_room/market_regime.py",
+        "sha256": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554"
+      }
+    ],
+    "snapshot_limit": "Parent may replace campaign entrypoint after this review. Reconcile new exact hashes/hook receipts before changing any PENDING row. Existing admitted legacy controls keep their admitted driver pin.",
+    "sole_nonidentical_top_level_ast": "spectra_core.rotating_fleet"
+  },
+  "status": "STATIC_SOURCE_COVERAGE_REVIEW_OWNER_INTEGRATION_PENDING"
+}

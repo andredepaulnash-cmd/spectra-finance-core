@@ -7,6 +7,8 @@ inspect the sealed October–November holdout, or establish profitability.
 The campaign is bound to PR #37 commit
 `51385b5ef71a25b38e82cf3927aebc671c6939c7` and the frozen campaign protocol
 SHA-256 `a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374`.
+The separately frozen owned-cash supplement is SHA-256
+`29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9`.
 Production remains outside this research branch. January–June prices are
 previously inspected development evidence, not a fresh validation period.
 
@@ -82,7 +84,7 @@ Negative, non-finite, non-Decimal or inconsistent cash states are rejected.
 Exact arithmetic preserves small locks even when total balances span many
 decimal orders of magnitude. No balance is transferred between owners.
 
-The campaign's 25% reserve target, 20% floor, bootstrap floor, 5% pair cap,
+For the generic arbiter, the campaign's 25% reserve target, 20% floor, bootstrap floor, 5% pair cap,
 exchange minima, price/fee protection and other exposure limits remain
 upstream native/adaptor responsibilities. This helper consumes their exact
 allowed owner budgets; it does not infer them from OHLC or silently replace
@@ -128,7 +130,71 @@ release journal must persist continuously; exact replay is idempotent and a
 conflicting reuse of a receipt ID fails. It cannot refund a canceled buy,
 unlock PARK, invent proceeds, or reassign VCAP proceeds to productive entries.
 
-## Current integration boundary and blocked evaluations
+## True owned-cash paper ledger
+
+The supplemental implementation in `research/danger_room/owned_cash.py`
+separately models the exact cash owners instead of asserting that a fungible
+replay proves ownership. At $2,000 it starts with $1,500 PRODUCTIVE and $500
+VCAP. It preserves native source lot quantities, gross basis and entry fees.
+
+`reserve_buy` locks an all-in limit in the proper owner before accepting a
+proposal. `confirm_buy` spends that same hold for the actual quantity, gross
+and fee, and binds a provisional ENTRY parent to its confirmed identity.
+Positive partial fills leave unused cash held. Confirmed terminal no-remaining
+order proof releases only the unfilled hold; queued cancellation and an
+unbacked FILLED status cannot do so. Duplicate receipt replay never adds
+inventory, spends cash or charges fees twice. A pending recovery claim blocks
+both another patch and new entry identity for the same coin.
+
+Owner funding is rechecked before the native fill mutates quantity. Both the
+25% pretrade-equity target and the 20%/$40 hard floor apply, including all
+pending and parked holds. The historical dependent-entry reserve exception is
+not used. No expected sale proceeds fund a pending replacement. `health`
+reports subsequent target/floor pressure without allocating cash or pretending
+a mark is settled money. Exchange minimums and the native 5% pair limit remain
+in the engine's source-bound execution/planning path.
+
+`settle_sale` selects exact lot IDs from one parent and pair. It checks native
+fill totals, a common sale price and proportional exit fees, retains remaining
+quantity/basis/entry fees, and refuses duplicate disposal. Fee-inclusive
+principal returns to the originating lot owner. Each disposed lot's positive
+realized profit, after its entry and exit costs, is allocated 75% PRODUCTIVE
+and 25% VCAP; a negative result stays with its original owner. Mixed profitable
+and losing lots remain visible in account and owner attribution.
+
+Control partial proceeds remain nondeployable under their established owner.
+The explicit `release_confirmed_partial` research arm can release only an
+already recorded confirmed partial-sale receipt. It never moves principal
+between owners or creates cash. A productive share of actual positive profit
+is available only through the separately frozen 75/25 allocation; recovery
+principal is never renamed as productive cash. Whole proceeds and candidate
+partial deployability follow the supplemental control/arm specification.
+
+The public `allocate_sale_proceeds` helper preserves native selected lot order,
+uses archived precision-28 HALF_EVEN quantity proration, and assigns the final
+decimal remainder to the last lot so gross proceeds and exit fees sum exactly
+to the confirmed fill. The source-compatible allocation comparison tolerance
+is $1e-18; it does not clamp or rewrite any actual amount. `all_in_quote`
+reserves the exact source gross-plus-fee components, including a possible
+native decimal ULP, without changing the native quantity or fill.
+
+The ledger enforces cash plus remaining fee-inclusive basis equals initial
+capital plus realized P&L, independently for each owner and the account.
+Entry fees live in basis and sale P&L; reporting fees does not subtract them
+again from equity. `checkpoint` exports full reservations, original requests,
+lot state, used identities, receipts, held sale proceeds, owner allocations and
+fees. Restore requires an externally bound SHA-256 plus the frozen protocol,
+checks state/invariants, and retains exact replay behavior. A checkpoint hash
+is an integrity link, not exchange provenance or live approval.
+
+Thirty-nine synthetic owned-cash tests additionally cover mixed owner losses
+and profits, actual partial buy fills, positive-profit allocation, no pending
+cash borrowing, fee accounting, delayed proof, lot scope, common sale price,
+exact source fill totals, tiny Decimal claims, final residual proration and
+checkpoint/restore replay. These are monetary and quantity invariants, not
+historical profitability evaluations.
+
+## Native adapter boundary and matched comparisons
 
 The exact archived historical bridge has a shared fungible cash ledger and
 colored parked recovery proceeds. It does not independently prove the
@@ -136,8 +202,10 @@ separate cash owners modeled by this helper. Native partial recycled parcels
 are recovery-owned. Therefore, unlocking those proceeds cannot establish
 funding authority for new productive slots. The campaign's
 `confirmed_principal_redeployment` and `combined_full_supported` evaluations
-remain blocked until a true owner adapter exists. Their absence is not a
-completed run or evidence of an economic win or loss.
+require this true owner ledger plus source-bound native hooks and independent
+reconciliation before valid results. Their unmatched fungible form remains
+blocked. An absent evaluation is not a completed run or evidence of an
+economic win or loss.
 
 The native rotating-fleet source also has a historical replacement dependency
 exception to its shared reserve check. Preserving the exact archived control
@@ -145,8 +213,8 @@ does not authorize carrying that exception into a new owner-preserving
 release model. An approved research policy would have to state exact owners,
 principal, profit, held proceeds and protected floors explicitly.
 
-A future owner adapter can preserve the frozen policy by maintaining a
-continuous, receipt-bound cash and lot journal with:
+The source-bound adapter must preserve the following continuous journal
+interfaces, in addition to the implemented owner ledger:
 
 1. Explicit opening PRODUCTIVE/VCAP/PARK ownership that matches total cash.
 2. Owner-tagged entry and recovery reservations, pending burns and confirmed
@@ -158,10 +226,29 @@ continuous, receipt-bound cash and lot journal with:
 5. Exact unchanged-control reproduction and independent mixed-owner,
    partial-fill, cancellation, dust, replay and month-boundary audits.
 
-This is additional engineering and audit work, not a small cash-toggle. Its
-effort should be estimated after the exact owner initialization and protected
-source interfaces are mapped. It need not hold up causal selector and frozen
-ladder development runs that do not claim this absent integration.
+The original native controls remain unchanged. The supplement supplies a
+separate `owned_control_174` for matching ladder/redeployment/full combinations.
+The owner adapter does not preauthorize dependent ENTRY while fifty old parents
+still hold their slots. It first records the exact confirmed close, then plans
+refill from observed eligible candidates for the next observed execution bar.
+The matched owner control includes this latency. An expected exit creates
+neither a loan against future owner cash nor a promise that the slot is open.
+Comparisons against the fungible control disclose the architectural changes;
+they cannot be called an isolated ladder effect. The higher-cost 80 bps fee
+and 15 bps slippage arms are fixed present-cost sensitivities, not claimed
+historical January–June fees or proven account-specific execution costs.
+
+The read-only source hook audit binds sixteen exact anchors in the archived
+continuous body SHA-256
+`e18adaad068b4b950d972c0330651bdca17755f1d48f408ced8b59fa3acb217a`.
+It identifies proposal creation, pending acceptance, future-bar FOK rejection,
+pre-fill owner validation, actual buy identity binding, and snapshots of
+native selected economic lots before partial/whole sale consumption. The
+owner journal must not debit the native cash or fees again. At each five-minute
+observation, reconciliation compares actual native cash, remaining quantities,
+gross basis, entry fees, realized P&L and total fees, with the source's $1e-18
+tolerance. The exact run receipt must state which hooks were exercised and
+which product modules remain outside this paper engine.
 
 ## Verification and interpretation
 

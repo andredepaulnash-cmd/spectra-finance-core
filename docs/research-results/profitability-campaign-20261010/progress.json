@@ -1,21 +1,42 @@
 {
   "schema": 1,
   "campaign": "profitability-campaign-20261010",
-  "updated_at": "2026-10-10T21:09:00Z",
-  "status": "CONTROLS_RUNNING",
-  "original_controls_running": 2,
-  "new_strategy_evaluations_completed": 0,
-  "mechanics_tests_passed": 102,
+  "updated_at": "2026-10-10T21:30:50.337316+00:00",
+  "status": "NATIVE_COMPARISONS_RUNNING_OWNER_INTEGRATION",
+  "original_controls_running": 0,
+  "new_strategy_evaluations_completed": 3,
+  "mechanics_tests_passed": 196,
   "canonical_six_month_tape_restored": true,
   "original_core_modules_verified": 23,
-  "maximum_cumulative_strategy_evaluations": 35,
+  "maximum_cumulative_strategy_evaluations": 39,
   "verified_profitable_candidate": false,
-  "owner_adapter": "IMPLEMENTING",
+  "owner_adapter": "SYNTHETICALLY_AUDITED_HISTORICAL_CONTROLS_RUNNING",
   "real_hedge_route": "BLOCKED_ACTUAL_INSTRUMENT_HISTORY",
   "fresh_validation": "BLOCKED_UNSEEN_TAPE_NOT_IDENTIFIED",
   "dot_controller": "PREPARED_NOT_PROVISIONED",
   "kraken_app_callable_in_this_session": false,
   "production_activation": false,
   "holdout_payload_accessed": false,
-  "production_head": "6e894fa9c2b55384d0f6120f41ca91892e1fe207"
+  "production_head": "6e894fa9c2b55384d0f6120f41ca91892e1fe207",
+  "original_controls_independently_audited": 2,
+  "original_control_ending_equity": {
+    "control_100_park": "1898.277183091943957381228996",
+    "control_174_park": "1941.810623175947518508197294"
+  },
+  "native_comparison_arms_running": [
+    "recurring_opportunity",
+    "weekly_list_refresh",
+    "combined_selector_directional"
+  ],
+  "completed_strategy_evaluations": 5,
+  "independently_audited_evaluations": 5,
+  "mechanics_test_count": 196,
+  "profitability_established": false,
+  "owner_control_arms_running": [
+    "owned_control_174",
+    "current_cost_owned_control_174"
+  ],
+  "native_exit_policy_arms_running": [
+    "native_dttp_174_park"
+  ]
 }

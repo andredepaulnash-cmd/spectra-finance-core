@@ -1,0 +1,46 @@
+{
+  "updated_at": "2026-10-10T21:25:24.658296+00:00",
+  "interpretation": "Previously inspected development tape; accounting PASS is not proof of profitability. No partial outcomes included.",
+  "results": [
+    {
+      "arm": "control_100_park",
+      "ending_equity": "1898.277183091943957381228996",
+      "total_pnl": "-101.722816908056042618771004",
+      "max_drawdown_fraction": "0.09838186948880725067816859027",
+      "accounting_audit_passed": true,
+      "result_sha256": "4a0ffd67a2e0ee3fe1d2422499f4921f59cccd1b3e992554ec60fd7b555594be"
+    },
+    {
+      "arm": "control_174_park",
+      "ending_equity": "1941.810623175947518508197294",
+      "total_pnl": "-58.189376824052481491802706",
+      "max_drawdown_fraction": "0.1055417438326701702803624498",
+      "accounting_audit_passed": true,
+      "result_sha256": "085aacd8b93e7b7bf575c95038d8031cf018763618ec06d9aaf35b71e7681893"
+    },
+    {
+      "arm": "directional_strength",
+      "ending_equity": "1856.822209807027294136235884",
+      "total_pnl": "-143.177790192972705863764116",
+      "max_drawdown_fraction": "0.1068128627062082639953095941",
+      "accounting_audit_passed": true,
+      "result_sha256": "3013fe46a45d7477913a8911fef01e8c3b29cb0c0c3189f4f45d97feb4e59c6a"
+    },
+    {
+      "arm": "recovery_quality",
+      "ending_equity": "1888.059349086325117537315526",
+      "total_pnl": "-111.940650913674882462684474",
+      "max_drawdown_fraction": "0.1019412782221268821689363880",
+      "accounting_audit_passed": true,
+      "result_sha256": "51e5b20cfb587b3e77d18fa85d75bf1141555850ac667516f06f277fe6a81232"
+    },
+    {
+      "arm": "warmup_7_days",
+      "ending_equity": "1696.472258056135282877652410",
+      "total_pnl": "-303.527741943864717122347590",
+      "max_drawdown_fraction": "0.1584739020412534411368834288",
+      "accounting_audit_passed": true,
+      "result_sha256": "fbe46629edad9489476b430918b90ac942f8428dab2bb9b791fdff8f7cb27476"
+    }
+  ]
+}

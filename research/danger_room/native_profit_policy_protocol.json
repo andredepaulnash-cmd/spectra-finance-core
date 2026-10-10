@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "campaign": "profitability-campaign-20261010/native-profit-policy",
+  "frozen_at": "2026-10-10T21:15:14.537137+00:00",
+  "research_only": true,
+  "production_activation": false,
+  "holdout_access": false,
+  "maximum_cumulative_strategy_evaluations": 39,
+  "additional_evaluations": 2,
+  "parent_protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "owner_protocol_sha256": "29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9",
+  "sizing_protocol_sha256": "de40c6ec9d865175dd6ecd9d59cb9af0bbc4a79d9bfa589dbc2fe406a0a23575",
+  "reason": "Hard-targetresearchcontrols overrideactualnativeDTTP profit-floor/givebackdecisions; allmodulecoordination requiresa separatelydeclaredactualplannercomparison",
+  "policy": {
+    "native_planner_source": "exact archived vcap_profit_exit and native FleetExitMode.DTTP",
+    "whole_target_bps": "174",
+    "partial_target_bps": "174",
+    "hard_target": false,
+    "execution_floor_bps": null,
+    "allow_below_target_protection_exit": true,
+    "no_fake_intrabar_or_automatic_targetfills": true,
+    "fill_next_observed_open_subjecttofees_slip_capacity": true,
+    "protected_profit_excludes_new_recovery_after_floor_armed": true,
+    "planning_floor_is_not_guaranteed_execution_price": true,
+    "entry_budget": "10.25",
+    "no_new_ladder_or_selector_parameters": true
+  },
+  "arms": [
+    {
+      "name": "native_dttp_174_park",
+      "case": "legacy_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "owned_cash": false,
+      "matched_control": "control_174_park"
+    },
+    {
+      "name": "owned_full_dttp",
+      "case": "legacy_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": true,
+      "directional": true,
+      "recovery_quality": true,
+      "owned_cash": true,
+      "redeploy_confirmed_partial": true,
+      "ladder_assignment": "prior_completed_drawdown",
+      "matched_control": "combined_full_supported"
+    }
+  ],
+  "interpretation": "Native plannercomparisonplusresearchownerhooks doesnotproveactualdurableproductionlifecycle,DTSS,DTSSR,PSSMorvenueexecution; no universallyprofitableclaim"
+}

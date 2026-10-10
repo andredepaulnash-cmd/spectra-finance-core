@@ -7,14 +7,23 @@ on:
       - 'research/danger_room/opportunity_selector.py'
       - 'research/danger_room/module_coordination.py'
       - 'research/danger_room/market_regime.py'
+      - 'research/danger_room/terminal_valuation.py'
+      - 'research/danger_room/terminal_valuation_protocol.json'
       - 'research/danger_room/owned_cash.py'
+      - 'research/danger_room/productive_sizing.py'
+      - 'research/danger_room/native_profitability_campaign_v1.py'
+      - 'research/danger_room/owned_profitability_campaign_v2.py'
+      - 'research/danger_room/productive_sizing_protocol.json'
+      - 'research/danger_room/native_profit_policy_protocol.json'
       - 'research/danger_room/*profitability*protocol.json'
       - 'research/danger_room/owned_cash_protocol.json'
       - 'tests/test_profitability_campaign.py'
       - 'tests/test_opportunity_selector.py'
       - 'tests/test_module_coordination.py'
       - 'tests/test_market_regime.py'
+      - 'tests/test_terminal_valuation.py'
       - 'tests/test_owned_cash.py'
+      - 'tests/test_productive_sizing.py'
       - 'docs/research-results/profitability-campaign-20261010/**'
       - '.github/workflows/profitability-research.yml'
 permissions:
@@ -42,13 +51,18 @@ jobs:
           python -B -m unittest discover -s tests -p 'test_module_coordination.py'
           python -B -m unittest discover -s tests -p 'test_profitability_campaign.py'
           python -B -m unittest discover -s tests -p 'test_owned_cash.py'
+          python -B -m unittest discover -s tests -p 'test_productive_sizing.py'
+          python -B -m unittest discover -s tests -p 'test_terminal_valuation.py'
       - name: Verify protocol identities without evaluating strategy
         run: |
           python - <<'PY'
           import hashlib,pathlib
           root=pathlib.Path('research/danger_room')
           pins={'profitability_protocol.json':'a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374',
-                'owned_cash_protocol.json':'29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9'}
+                'owned_cash_protocol.json':'29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9',
+                'productive_sizing_protocol.json':'de40c6ec9d865175dd6ecd9d59cb9af0bbc4a79d9bfa589dbc2fe406a0a23575',
+                'native_profit_policy_protocol.json':'f622c1ce307adb7bb25fcb5f6a1726aab0b15cd664bd6c6fe764180c2afcbaa7',
+                'terminal_valuation_protocol.json':'a0de80a3022c3e918f69d4565e7463a032f408dcf551ac598e876862f184e909'}
           for name,wanted in pins.items():
               assert hashlib.sha256((root/name).read_bytes()).hexdigest()==wanted,name
           print('Frozen protocols exact; CI tests fictional mechanics only')

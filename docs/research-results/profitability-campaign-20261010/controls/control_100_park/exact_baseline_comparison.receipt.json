@@ -1,0 +1,67 @@
+{
+  "arm": "control_100_park",
+  "status": "PASS",
+  "checks": {
+    "equity": {
+      "expected": "1898.277183091943957381228996",
+      "actual": "1898.277183091943957381228996",
+      "passed": true
+    },
+    "cash": {
+      "expected": "1702.856656155282386623051379",
+      "actual": "1702.856656155282386623051379",
+      "passed": true
+    },
+    "realized_pnl": {
+      "expected": "202.0271469672210809373570312",
+      "actual": "202.0271469672210809373570312",
+      "passed": true
+    },
+    "unrealized_pnl": {
+      "expected": "-303.7499638752771235561280370",
+      "actual": "-303.7499638752771235561280370",
+      "passed": true
+    },
+    "fees": {
+      "expected": "61.74908694121042276608230565",
+      "actual": "61.74908694121042276608230565",
+      "passed": true
+    },
+    "parents": {
+      "expected": 37,
+      "actual": 37,
+      "passed": true
+    },
+    "whole_exits": {
+      "expected": 539,
+      "actual": 539,
+      "passed": true
+    },
+    "entry_fills": {
+      "expected": 576,
+      "actual": 576,
+      "passed": true
+    },
+    "recovery_fills": {
+      "expected": 310,
+      "actual": 310,
+      "passed": true
+    },
+    "max_drawdown_fraction": {
+      "expected": "0.09838186948880725067816859027",
+      "actual": "0.09838186948880725067816859027",
+      "passed": true
+    },
+    "decision_digest_sha256": {
+      "expected": "5e44a670538a1ea0e4392af1f20055a3e434ab0ad1d0e2273ba386e72a202090",
+      "actual": "5e44a670538a1ea0e4392af1f20055a3e434ab0ad1d0e2273ba386e72a202090",
+      "passed": true
+    },
+    "partial_exits": {
+      "expected": 205,
+      "actual": 205,
+      "passed": true
+    }
+  },
+  "elapsed_seconds": 384.56574845199975
+}
