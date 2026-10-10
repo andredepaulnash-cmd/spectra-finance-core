@@ -1,0 +1,22 @@
+{
+  "schema": "spectra-holdout-assembly-validation-v1",
+  "tests_passed": true,
+  "tests_count": 20,
+  "duration_seconds": 2.513,
+  "files_sha256": {
+    "research/holdout_replay/assemble_captures.py": "9261fbb32b23be443c344371c4308d48172694e3592bb79fc9c1eccd6bf2fce1",
+    "research/holdout_replay/tests/test_assemble_captures.py": "83fbd11518860c03744fe7d66bb8a16481262211d8e2d90b148979b97884c53d"
+  },
+  "frozen_protocol_sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+  "collector_sha256": "2e6393f0a6692200b573a680fd813e23a8c6de7010b5156e907f25a79e804248",
+  "real_capture_payloads_opened": false,
+  "fictional_collector_fixture_pages_only": true,
+  "strategy_evaluated": false,
+  "new_market_data_acquired": false,
+  "limits": [
+    "Captured earliest-online gate is not complete historical listing/delisting/offline status reconstruction.",
+    "Fixed619 membership retained; scoring status is never backdated; warmup is separate first-page pre-freeze completed history.",
+    "Missing bars remain all-NaN and untradeable; absent bars do not distinguish no-trade from provider unavailable.",
+    "Self-consistent prepared hashes do not independently authenticate external capture snapshots or establish raw-to-tape semantics; assembler provenance and independent source review remain necessary."
+  ]
+}

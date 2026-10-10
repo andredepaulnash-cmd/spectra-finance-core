@@ -1,0 +1,62 @@
+{
+  "schema": "spectra-research-preparation-independent-review-v1",
+  "status": "PASS",
+  "review_scope": "PINNED_SOURCE_CONSTRUCTED_MECHANICS_AND_PREVIOUSLY_VIEWED_SAVED_CASH_ONLY",
+  "source_sha256": {
+    "research/danger_room/funding_feasibility.py": "b01fb93eb6e72728bab84dad37259bbf12869e72b0fae917ae8f0c4421eb89ab",
+    "research/danger_room/funding_findings.py": "293ad6c1de9f0949debbcc58b7a3bb06a5742521c5f3e008d155a7fbd77be3ad",
+    "research/danger_room/hedge_replay.py": "eea257333fdf76116e3ca053316485611bdac23eb4a267b57e619329b8fa3ba8",
+    "research/danger_room/tests/test_funding_feasibility.py": "b0cefc218b19b86250853576727ce35dcfb81fe8397d00ddd7ed6c7311e31525",
+    "research/danger_room/tests/test_hedge_replay.py": "70221488a880efc65e0184ef40884a3d1d451e13f7eefe2caa8773b681b66557",
+    "research/holdout_replay/assemble_captures.py": "9261fbb32b23be443c344371c4308d48172694e3592bb79fc9c1eccd6bf2fce1",
+    "research/holdout_replay/fixture.py": "a0d060279479931cec48dc8e998f0d1bbc5f1fe345f5a2436234c88bce9ad9c4",
+    "research/holdout_replay/pins.py": "9f840b2fa3b45d9ac1e2eaa6ae565f287cd5640b26a8aab76e60d614fe70b252",
+    "research/holdout_replay/replay.py": "c3707c45d5e60dd6527d35631c2d8d76cba309abde9d8efce59a1ff775068368",
+    "research/holdout_replay/tests/test_assemble_captures.py": "83fbd11518860c03744fe7d66bb8a16481262211d8e2d90b148979b97884c53d",
+    "research/holdout_replay/tests/test_fresh_replay.py": "0a255afd2e9a60a42baac85cf922ecc4bf1cf0f0cad29121d4450ca2839aa299",
+    "research/holdout_replay/README.md": "368cb26f64cc895cb5d53ce151d114def8f8e83cf536d8b429619c4f211a9ca9",
+    "docs/research-results/danger-room-preparation-20261010/funding.md": "3a4d6a9649c145c358e399b56730ca5bff251b20966a9f4de81083c039dafda1",
+    "docs/research-results/danger-room-preparation-20261010/hedge-replay-preparation.md": "6beb4445e8d36f93f36d9d5b33590a23038077fc97d6bf5fbd0079573602ff49"
+  },
+  "independent_validation": {
+    "funding_exact_rational_oracle_constructed_cases": 1500,
+    "previously_viewed_July_cash_frames_reconciled": 8640,
+    "fresh_native_constructed_fills_independently_folded": 5577,
+    "fresh_native_constructed_account_frames_reconciled": 1280,
+    "fresh_native_constructed_arms": 5,
+    "fresh_immutable_source_candidates_individually_mutated_and_rejected": 11,
+    "malformed_or_future_fixture_timelines_rejected_before_tape_reads": 6,
+    "matrix_failure_or_timeout_receipts_independently_probed": 2,
+    "hedge_causal_prefix_arm_comparisons": 175,
+    "hedge_rational_PnL_event_folds": 25,
+    "hedge_historical_mode_refusals": 5,
+    "hedge_pending_target_latency_and_stale_cancel_regressions": 2,
+    "assembly_constructed_capture_order_permutations": 2,
+    "assembly_constructed_pair_admission_checks": 3,
+    "assembly_fixed_identities_retained": 619,
+    "assembly_actual_clock_guard_precedes_source_and_payload_reads": true
+  },
+  "verified_mechanics": [
+    "Exact fresh $2000 ordinary/$0 PARK financial seed after 288 passive warmup frames; no June checkpoint hydration.",
+    "Fill/owner cash, equity, native per-lot basis, PARK-source retirement and terminal units independently reconcile using exact rational arithmetic at 1e-18 tolerance.",
+    "Whole protective contract sizing floors without notional overshoot and reserves finite cash once.",
+    "Hedge pending target cancellation preserves original latency when unchanged and cancels obsolete/UNKNOWN targets.",
+    "Assembly is invariant to capture argument ordering, excludes the cross-freeze warmup candle and does not backdate first captured online status."
+  ],
+  "limitations": [
+    "Constructed prices and returns do not prove profitable hedging, actual historical feasibility, account eligibility, venue isolation or execution finality.",
+    "Saved close-row cash cannot prove uncommitted event-level cash; original hedge book has no allocated budget.",
+    "Earliest captured online eligibility does not reconstruct every historical listing, delisting or offline interval.",
+    "Prepared receipt hashes attest consistency, not venue authenticity or independent raw-to-tape semantic provenance; original capture review remains required after embargo.",
+    "Prospective capture coverage and actual all-arm scoring remain untested until the embargo ends."
+  ],
+  "new_item3_market_data_acquisition": false,
+  "actual_prospective_payloads_read": false,
+  "actual_prospective_outcomes_scored": false,
+  "production_source_modified_by_review": false,
+  "approved_for_live": false,
+  "supporting_accounting_receipt": {
+    "path": "docs/research-results/danger-room-preparation-20261010/independent-native-accounting.receipt.json",
+    "sha256": "a6b7137a7a1d4e2181411b2e2522bb9110858d5854e52a44b3d531fd2e1beb2d"
+  }
+}

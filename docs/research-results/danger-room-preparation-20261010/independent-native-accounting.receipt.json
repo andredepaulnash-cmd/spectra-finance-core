@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "scope": "CONSTRUCTED_FIXTURE_ONLY",
+  "oracle": "fractions.Fraction independent fill fold and candle marks",
+  "arms": [
+    {
+      "arm": "OFF",
+      "fills_folded": 999,
+      "account_frames_independently_reconciled": 256,
+      "result_sha256": "b08fc17c187f06b62f52851e2545e9d7ae34dbd9cfe9f214504568e73b29a777"
+    },
+    {
+      "arm": "SHARED_RAW",
+      "fills_folded": 1178,
+      "account_frames_independently_reconciled": 256,
+      "result_sha256": "72cd8269a55e8d0f02d6c22c30ca9948915bea15d0dcf43b3ce0f2500d17566f"
+    },
+    {
+      "arm": "SPLIT_RAW",
+      "fills_folded": 1089,
+      "account_frames_independently_reconciled": 256,
+      "result_sha256": "dc8258f4c81f01f36004a164f85b74503e67f9acbca682f281bdd6e4f3dcffca"
+    },
+    {
+      "arm": "SHARED_QUALITY",
+      "fills_folded": 1202,
+      "account_frames_independently_reconciled": 256,
+      "result_sha256": "7fa0f46b8b76e02f9e1ec78a734113ded37b014993563e066a29013184926bfa"
+    },
+    {
+      "arm": "SPLIT_QUALITY",
+      "fills_folded": 1109,
+      "account_frames_independently_reconciled": 256,
+      "result_sha256": "6fcfc49a0728a2e1c11188e0639a46478afa4df7c24aff402539c0acee5ac41e"
+    }
+  ],
+  "frames": 1280,
+  "fills": 5577,
+  "tolerance": "1e-18"
+}

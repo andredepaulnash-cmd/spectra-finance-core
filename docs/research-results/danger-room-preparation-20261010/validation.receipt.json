@@ -1,0 +1,43 @@
+{
+  "schema": "spectra-replay-preparation-validation-v1",
+  "status": "PASS_RESEARCH_PREPARATION_ONLY",
+  "test_suites": [
+    {
+      "suite": "danger_room_unittest_discovery",
+      "passed": 95,
+      "retained_manifest_tests": 47,
+      "funding_tests": 21,
+      "hedge_mechanics_tests": 27
+    },
+    {
+      "suite": "holdout_replay_unittest_discovery",
+      "passed": 44,
+      "native_fixture_tests": 24,
+      "fictional_capture_assembly_tests": 20
+    }
+  ],
+  "total_local_tests_passed": 139,
+  "independent_review_receipt_sha256": "67e4a80d92c9e85eae2de5b29c0a6fdb968e471eb410a59be88f13c442ea8851",
+  "research_base_commit": "b6015c504a3bd24576f000d72dddd7208f55815c",
+  "research_base_tree": "ab70538f76b030a296ce725f2573b71571c7623b",
+  "production_commit_observed_unchanged": "6e894fa9c2b55384d0f6120f41ca91892e1fe207",
+  "latest_holdout_capture_metadata": {
+    "run_id": 38051481669,
+    "conclusion": "success",
+    "payloads_opened": false
+  },
+  "native_and_hedge_inputs": "CONSTRUCTED_ONLY",
+  "new_item3_market_history_acquisition": false,
+  "actual_prospective_captures_read": false,
+  "actual_prospective_results_scored": false,
+  "historical_hedge_matrix_run": false,
+  "production_modified": false,
+  "merged_or_deployed": false,
+  "approved_for_live": false,
+  "limits": [
+    "Synthetic mechanics do not establish profitability or actual venue/account eligibility.",
+    "Saved cash frames do not establish uncommitted event-level hedge cash.",
+    "Actual holdout provenance, coverage and economic scoring require the frozen November 9 endpoint.",
+    "Historical hedge inputs remain deferred by Architect."
+  ]
+}

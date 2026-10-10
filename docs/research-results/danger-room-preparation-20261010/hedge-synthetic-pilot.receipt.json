@@ -1,0 +1,307 @@
+{
+  "schema": "spectra-constructed-hedge-pilot-receipt-v1",
+  "scope": "MECHANICAL_SYNTHETIC_ONLY",
+  "historical_execution_allowed": false,
+  "approved_for_live": false,
+  "economic_edge_claim": false,
+  "market_data_acquisition_performed": false,
+  "sealed_holdout_outcomes_read": false,
+  "unit_tests_passed": 27,
+  "total_matrices": 5,
+  "total_arms": 25,
+  "total_arm_observations": 300,
+  "source_sha256": {
+    "research/danger_room/hedge_replay.py": "eea257333fdf76116e3ca053316485611bdac23eb4a267b57e619329b8fa3ba8",
+    "research/danger_room/funding_feasibility.py": "b01fb93eb6e72728bab84dad37259bbf12869e72b0fae917ae8f0c4421eb89ab",
+    "research/danger_room/tests/test_hedge_replay.py": "70221488a880efc65e0184ef40884a3d1d451e13f7eefe2caa8773b681b66557"
+  },
+  "pilots": [
+    {
+      "fixture": "docs/research-results/danger-room-preparation-20261010/hedge-synthetic-base.fixture.json",
+      "fixture_file_sha256": "b3400c9a883b0c1d32bba094c2fe22ebead00bb7dfa9a450cea761a951acd9f7",
+      "canonical_manifest_sha256": "f67eccf0d5491b5421d94e11bf2e45a2d4f6c3d67e4e8ffe7fd293bb2461a6f2",
+      "canonical_result_sha256": "7016823b21948bc9bbd1e2cb3674e398f546a6771cdf1f7946d7ebb26b97c45d",
+      "wall_seconds_observed": 0.010979138998663984,
+      "repeat_exact": true,
+      "bars_per_arm": 12,
+      "arms": 5,
+      "summary": [
+        {
+          "arm": "PARK_OFF",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19500.1500020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_25",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19491.4806020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0E-7",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_50",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19482.8112020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0E-7",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_75",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19474.1418020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0E-7",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_100",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19465.4724020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0E-7",
+          "conservation_checks_passed": true
+        }
+      ]
+    },
+    {
+      "fixture": "docs/research-results/danger-room-preparation-20261010/hedge-synthetic-gap-cash-only.fixture.json",
+      "fixture_file_sha256": "9736893b8184f806c0b2c499a19a1e139fa8a3d887533456be8577dbe7a90260",
+      "canonical_manifest_sha256": "682eae770d72ed740a2f9e84f22ca807aadeeedc574a1f971f4deb8af41d133a",
+      "canonical_result_sha256": "4299fcfded30c95c6389fc21456120b1def39f5f7b3a6b1ce1bf9e90a8b4e931",
+      "wall_seconds_observed": 0.01461359100358095,
+      "repeat_exact": true,
+      "bars_per_arm": 12,
+      "arms": 5,
+      "summary": [
+        {
+          "arm": "PARK_OFF",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19500.0000020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_25",
+          "starting_equity": "19500.000002",
+          "ending_equity": "14385.2255020",
+          "liquidations": 1,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "114.7745000",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_50",
+          "starting_equity": "19500.000002",
+          "ending_equity": "9280.4510020",
+          "liquidations": 1,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "5219.5490000",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_75",
+          "starting_equity": "19500.000002",
+          "ending_equity": "4175.6765020",
+          "liquidations": 1,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "10324.3235000",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_100",
+          "starting_equity": "19500.000002",
+          "ending_equity": "-929.0979980",
+          "liquidations": 1,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "15429.0980000",
+          "conservation_checks_passed": true
+        }
+      ]
+    },
+    {
+      "fixture": "docs/research-results/danger-room-preparation-20261010/hedge-synthetic-gap-same-account.fixture.json",
+      "fixture_file_sha256": "48cfe4c1f4443e668bd435a186a668db2a45e70640d0a33b64e51dc66934ceaa",
+      "canonical_manifest_sha256": "90227d8b574d9e8c0d263abe49c6428e7ec7932d694c0360f382e2b8a66f9d92",
+      "canonical_result_sha256": "a98cd446cd75cec3b39e5d37c59dedd85b9a03683b464f486bde22c418441f20",
+      "wall_seconds_observed": 0.009641811993787996,
+      "repeat_exact": true,
+      "bars_per_arm": 12,
+      "arms": 5,
+      "summary": [
+        {
+          "arm": "PARK_OFF",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19500.0000020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_25",
+          "starting_equity": "19500.000002",
+          "ending_equity": "14343.0970628339029391660970608339029391660970608339029391661",
+          "liquidations": 1,
+          "spot_trace_diverged_by_recourse": true,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_50",
+          "starting_equity": "19500.000002",
+          "ending_equity": "7364.59467048940533151059466848940533151059466848940533151059",
+          "liquidations": 1,
+          "spot_trace_diverged_by_recourse": true,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_75",
+          "starting_equity": "19500.000002",
+          "ending_equity": "819.4265014630",
+          "liquidations": 1,
+          "spot_trace_diverged_by_recourse": true,
+          "unpaid_liability": "0E-10",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_100",
+          "starting_equity": "19500.000002",
+          "ending_equity": "-4285.3479985370",
+          "liquidations": 1,
+          "spot_trace_diverged_by_recourse": true,
+          "unpaid_liability": "4285.3479985370",
+          "conservation_checks_passed": true
+        }
+      ]
+    },
+    {
+      "fixture": "docs/research-results/danger-room-preparation-20261010/hedge-synthetic-no-fill.fixture.json",
+      "fixture_file_sha256": "56f9e322bfe71939216dc5a9be3741a8b42bff10b2f2f34166cd29eb7045b21d",
+      "canonical_manifest_sha256": "19bbdb630ed198b96054eee30a2d5f20ea4b5ba5078cb0701f7f7d13c63a4015",
+      "canonical_result_sha256": "78ea99aeecf6ccde2051b0273fe190ae1375e6a8d34821ba80f85cc5e8bea195",
+      "wall_seconds_observed": 0.008967795001808554,
+      "repeat_exact": true,
+      "bars_per_arm": 12,
+      "arms": 5,
+      "summary": [
+        {
+          "arm": "PARK_OFF",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19500.1500020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_25",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19500.1500020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_50",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19500.1500020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_75",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19500.1500020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_100",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19500.1500020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        }
+      ]
+    },
+    {
+      "fixture": "docs/research-results/danger-room-preparation-20261010/hedge-synthetic-partial.fixture.json",
+      "fixture_file_sha256": "2103120df3fed788d26df77b35752e5841c125329aecbf17649e6a92b29531be",
+      "canonical_manifest_sha256": "292c5c2849b8597bd71af3735cfa284a1563f466d15b5599af00d219b57560c9",
+      "canonical_result_sha256": "e74424f2722b3afa36ab35b91f1e6f87e38e6adeae548c3cb0053a834bff21ad",
+      "wall_seconds_observed": 0.010988522990373895,
+      "repeat_exact": true,
+      "bars_per_arm": 12,
+      "arms": 5,
+      "summary": [
+        {
+          "arm": "PARK_OFF",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19500.1500020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_25",
+          "starting_equity": "19500.000002",
+          "ending_equity": "19295.8609020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0E-7",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_50",
+          "starting_equity": "19500.000002",
+          "ending_equity": "18958.5765020",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0E-7",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_75",
+          "starting_equity": "19500.000002",
+          "ending_equity": "18709.9913020000000000000000000000000000000000000000000000000",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0E-56",
+          "conservation_checks_passed": true
+        },
+        {
+          "arm": "PARK_BTC_100",
+          "starting_equity": "19500.000002",
+          "ending_equity": "18402.6539019999999999999999999999999999999999999999999999999",
+          "liquidations": 0,
+          "spot_trace_diverged_by_recourse": false,
+          "unpaid_liability": "0E-57",
+          "conservation_checks_passed": true
+        }
+      ]
+    }
+  ],
+  "runtime_extrapolation_permitted": false,
+  "account_equity_note": "All equity values are constructed ledger outcomes, not historical results."
+}
