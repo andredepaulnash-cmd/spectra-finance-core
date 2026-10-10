@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
-from dataclasses import dataclass
-from decimal import Decimal
+from dataclasses import asdict, dataclass
+from decimal import Decimal, ROUND_DOWN
 from enum import StrEnum
 from math import isfinite
 from pathlib import Path
@@ -10,6 +12,7 @@ from pathlib import Path
 from .capital_governor import CapitalGovernor
 from .models import IntentKind
 from .recovery_fingerprint import VCAPPositionState
+from .kraken_market_fabric import KrakenTradingRule
 
 
 ZERO = Decimal("0")
@@ -64,6 +67,8 @@ def _decimal(
 
 
 def _time(value: float, field: str) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"{field} must be numeric")
     try:
         result = float(value)
     except (TypeError, ValueError) as exc:
@@ -88,7 +93,22 @@ class EconomicLotSource(StrEnum):
 
 class EconomicPositionStatus(StrEnum):
     ACTIVE = "ACTIVE"
+    RESIDUAL = "RESIDUAL"
     CLOSED = "CLOSED"
+
+
+@dataclass(frozen=True)
+class TerminalExecutorEvidence:
+    """Complete exact-order/trade snapshots fetched after executor termination.
+
+    Snapshots must already be reconciled; this evidence never invents a fill or
+    releases money. Types are validated locally to avoid bridge import cycles.
+    """
+
+    proposal_id: str
+    order_snapshot: object
+    trade_snapshot: object
+    observed_at: float
 
 
 @dataclass(frozen=True)
@@ -239,6 +259,13 @@ class EconomicPositionLedger:
                     FOREIGN KEY(position_id)
                         REFERENCES economic_positions(position_id)
                 );
+
+                CREATE TABLE IF NOT EXISTS economic_position_retirements (
+                    position_id TEXT PRIMARY KEY,
+                    event_id TEXT UNIQUE NOT NULL,
+                    certificate_json TEXT NOT NULL,
+                    occurred_at REAL NOT NULL
+                );
                 """
             )
 
@@ -373,11 +400,13 @@ class EconomicPositionLedger:
         self,
         conn: sqlite3.Connection,
         position_id: str,
+        *,
+        schema: str = 'main',
     ) -> sqlite3.Row:
         row = conn.execute(
-            """
+            f"""
             SELECT *
-            FROM economic_positions
+            FROM {schema}.economic_positions
             WHERE position_id = ?
             """,
             (position_id,),
@@ -1089,14 +1118,16 @@ class EconomicPositionLedger:
         self,
         conn: sqlite3.Connection,
         position_id: str,
+        *,
+        schema: str = 'main',
     ) -> EconomicPositionSnapshot:
-        position = self._position_row(conn, position_id)
+        position = self._position_row(conn, position_id, schema=schema)
         pair = str(position["pair"])
 
         active_rows = conn.execute(
-            """
+            f"""
             SELECT *
-            FROM economic_lots
+            FROM {schema}.economic_lots
             WHERE position_id = ?
               AND ownership = ?
             ORDER BY created_at, lot_id
@@ -1116,9 +1147,9 @@ class EconomicPositionLedger:
         )
 
         realized_row = conn.execute(
-            """
+            f"""
             SELECT realized_pnl_quote
-            FROM economic_position_events
+            FROM {schema}.economic_position_events
             WHERE position_id = ?
             """,
             (position_id,),
@@ -1129,9 +1160,9 @@ class EconomicPositionLedger:
         )
 
         strategic = conn.execute(
-            """
+            f"""
             SELECT base_remaining
-            FROM economic_lots
+            FROM {schema}.economic_lots
             WHERE pair = ?
               AND ownership = ?
             """,
@@ -1143,9 +1174,9 @@ class EconomicPositionLedger:
         )
 
         unattributed = conn.execute(
-            """
+            f"""
             SELECT base_remaining
-            FROM economic_lots
+            FROM {schema}.economic_lots
             WHERE pair = ?
               AND ownership = ?
             """,
@@ -1303,3 +1334,298 @@ class EconomicPositionLedger:
         pid = _text(position_id, "position_id")
         with self._connect() as conn:
             return self._snapshot_with_conn(conn, pid)
+
+    def list_residual_position_ids(self) -> tuple[str, ...]:
+        """Owned residuals remain visible, distinct from tradable ACTIVE slots."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT position_id FROM economic_positions WHERE status = ? "
+                "ORDER BY created_at, position_id",
+                (EconomicPositionStatus.RESIDUAL.value,),
+            ).fetchall()
+        return tuple(str(row['position_id']) for row in rows)
+
+    def bound_proposal_ids(self, position_id: str) -> tuple[str, ...]:
+        """Exact bound owners, including terminal zero-fill ENTRY attempts."""
+        pid = _text(position_id, 'position_id')
+        with self._connect() as conn:
+            self._position_row(conn, pid)
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='economic_fill_bindings'").fetchone() is None:
+                return ()
+            rows = conn.execute('SELECT DISTINCT proposal_id FROM economic_fill_bindings WHERE position_id = ? ORDER BY proposal_id', (pid,)).fetchall()
+        return tuple(str(row['proposal_id']) for row in rows)
+
+    def list_pending_retirement_position_ids(self) -> tuple[str, ...]:
+        """Flat positions still need terminal proof before ENTRY claim release."""
+        with self._connect() as conn:
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='economic_fill_bindings'").fetchone() is None:
+                return ()
+            rows = conn.execute(
+                'SELECT p.position_id FROM economic_positions p WHERE p.status IN (?, ?) '
+                'AND NOT EXISTS (SELECT 1 FROM economic_position_retirements r WHERE r.position_id = p.position_id) '
+                'AND EXISTS (SELECT 1 FROM economic_fill_bindings b WHERE b.position_id = p.position_id) '
+                'ORDER BY p.created_at, p.position_id',
+                (EconomicPositionStatus.ACTIVE.value, EconomicPositionStatus.CLOSED.value),
+            ).fetchall()
+        return tuple(str(row['position_id']) for row in rows)
+
+    def get_retirement_certificate(self, position_id: str) -> dict | None:
+        pid = _text(position_id, 'position_id')
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT certificate_json FROM economic_position_retirements "
+                "WHERE position_id = ?", (pid,),
+            ).fetchone()
+        return None if row is None else json.loads(str(row['certificate_json']))
+
+    def retire_terminal_position(
+        self,
+        *,
+        event_id: str,
+        position_id: str,
+        governor: CapitalGovernor,
+        executor_evidence: tuple[TerminalExecutorEvidence, ...],
+        trading_rule: KrakenTradingRule,
+        current_price: Decimal,
+        rules_observed_at: float,
+        price_observed_at: float,
+        now: float,
+        max_age_seconds: float = 30.0,
+    ) -> dict:
+        """Archive only proven terminal dust or a terminal flat/empty owner.
+
+        The active slot can rotate, but every base unit, basis, entry fee and
+        original ENTRY/VCAP lot owner remains untouched. This transition does
+        not reconcile a capital proposal, release exposure, or credit cash.
+        Unknown orders, missing fills and partial-dispatch ambiguity fail closed.
+        """
+        from .executor_provenance_bridge import (
+            ExecutorOrderSnapshot, ExecutorTradeSnapshot,
+        )
+
+        eid = _text(event_id, 'event_id')
+        pid = _text(position_id, 'position_id')
+        timestamp = _time(now, 'now')
+        age = _time(max_age_seconds, 'max_age_seconds')
+        if age > 30:
+            raise ValueError('terminal retirement freshness cannot exceed 30 seconds')
+
+        def fresh(value: float, label: str) -> float:
+            observed = _time(value, label)
+            if observed > timestamp or timestamp - observed > age:
+                raise ValueError(f'{label} is stale or future-dated')
+            return observed
+
+        fresh(rules_observed_at, 'rules_observed_at')
+        fresh(price_observed_at, 'price_observed_at')
+        price = _decimal(current_price, 'current_price', positive=True)
+        if not isinstance(trading_rule, KrakenTradingRule):
+            raise TypeError('trading_rule must be KrakenTradingRule')
+        increment = _decimal(trading_rule.min_base_amount_increment, 'min_base_amount_increment', positive=True)
+        min_base = _decimal(trading_rule.min_order_size, 'min_order_size', non_negative=True)
+        min_quote = _decimal(trading_rule.effective_min_quote, 'effective_min_quote', non_negative=True)
+        if not (trading_rule.supports_limit_orders or trading_rule.supports_market_orders):
+            raise ValueError('venue sell support is unproven')
+        if not executor_evidence:
+            raise ValueError('exact terminal executor evidence is required')
+
+        # Match scoped submission lock order: governor MAIN, actual ownership
+        # ledger ATTACHED. BEGIN IMMEDIATE locks both before checking ambiguity,
+        # so a RECOVERY create cannot commit between the check and certificate.
+        with governor._connect() as conn:
+            schema = 'main' if self.path.resolve() == Path(governor.db_path).resolve() else 'economic_ledger'
+            if schema != 'main':
+                conn.execute('ATTACH DATABASE ? AS economic_ledger', (str(self.path.resolve()),))
+            conn.execute('BEGIN IMMEDIATE')
+            try:
+                position = self._position_row(conn, pid, schema=schema)
+                snapshot = self._snapshot_with_conn(conn, pid, schema=schema)
+                if trading_rule.trading_pair.strip().upper() != snapshot.pair:
+                    raise ValueError('fresh trading rule does not match position pair')
+                old = conn.execute(
+                    f'SELECT event_id, certificate_json FROM {schema}.economic_position_retirements WHERE position_id = ?',
+                    (pid,),
+                ).fetchone()
+                if old is not None:
+                    if str(old['event_id']) != eid:
+                        raise RuntimeError('terminal retirement replay conflicts with existing event')
+                    conn.rollback()
+                    return json.loads(str(old['certificate_json']))
+                tables = {str(row['name']) for row in conn.execute(f"SELECT name FROM {schema}.sqlite_master WHERE type='table'")}
+                partial_certificates = []
+                if 'partial_recycle_manifests' in tables:
+                    if conn.execute(f"SELECT 1 FROM {schema}.partial_recycle_manifests WHERE position_id = ? AND status = 'OPEN' LIMIT 1", (pid,)).fetchone():
+                        raise ValueError('open partial manifest blocks terminal retirement')
+                    if 'partial_recycle_dispatch_claims' in tables:
+                        from .partial_recycle import partial_dispatch_terminal_certificate
+                        claims = conn.execute(
+                            f'SELECT d.manifest_id FROM {schema}.partial_recycle_dispatch_claims d JOIN {schema}.partial_recycle_manifests m '
+                            'ON m.manifest_id = d.manifest_id WHERE m.position_id = ?', (pid,),
+                        ).fetchall()
+                        for claim in claims:
+                            certificate = partial_dispatch_terminal_certificate(conn, str(claim['manifest_id']), schema=schema)
+                            if certificate is None:
+                                raise ValueError('partial dispatch has no terminal safety proof')
+                            partial_certificates.append(certificate)
+                bindings = (conn.execute(f'SELECT * FROM {schema}.economic_fill_bindings WHERE position_id = ?', (pid,)).fetchall()
+                            if 'economic_fill_bindings' in tables else [])
+                by_proposal: dict[str, list[sqlite3.Row]] = {}
+                for binding in bindings:
+                    by_proposal.setdefault(str(binding['proposal_id']), []).append(binding)
+                entry_claims = governor.get_entry_submissions_for_position(position_id=pid, ledger_path=self.path)
+                scoped_claims = {}
+                for claim in entry_claims:
+                    if claim['state'] == 'RETIRED':
+                        continue
+                    if (claim['state'] != 'DISPATCHED' or not claim['executor_id']
+                            or str(claim['pair']) != snapshot.pair):
+                        raise ValueError('ENTRY dispatch has ambiguous or unscoped execution identity')
+                    proposal_id = str(claim['proposal_id'])
+                    by_proposal.setdefault(proposal_id, [])
+                    scoped_claims[proposal_id] = claim
+                if not by_proposal:
+                    raise ValueError('position has no exact bound executor orders or receipt-bound ENTRY claim')
+                supplied: dict[str, TerminalExecutorEvidence] = {}
+                for evidence in executor_evidence:
+                    if not isinstance(evidence, TerminalExecutorEvidence):
+                        raise TypeError('executor_evidence must contain TerminalExecutorEvidence')
+                    proposal_id = _text(evidence.proposal_id, 'proposal_id')
+                    if proposal_id in supplied:
+                        raise ValueError('duplicate terminal proposal evidence')
+                    supplied[proposal_id] = evidence
+                if set(supplied) != set(by_proposal):
+                    raise ValueError('terminal evidence does not cover every bound owner')
+
+                # Orders/lots do not reveal a create call that failed before a
+                # receipt. Keep the slot locked when protected capital could
+                # still create an unbound buy for this canonical asset.
+                certified = set()
+                for row in conn.execute(f'SELECT certificate_json FROM {schema}.economic_position_retirements'):
+                    certified.update(json.loads(str(row['certificate_json']))['proposal_ids'])
+                for proposal in governor.get_asset_submission_proposals(normalized_base_asset(snapshot.pair)):
+                    proposal_id = str(proposal['proposal_id'])
+                    if proposal_id in supplied:
+                        if proposal['status'] != 'RECONCILED':
+                            raise ValueError('bound terminal owner still has an unsettled capital submission')
+                    elif proposal_id not in certified:
+                        raise ValueError('unbound or uncertified protected asset submission blocks retirement')
+
+                proof_owners = []
+                executor_ids = []
+                for proposal_id, owner_bindings in sorted(by_proposal.items()):
+                    evidence = supplied[proposal_id]
+                    evidence_time = fresh(evidence.observed_at, 'executor_evidence.observed_at')
+                    if evidence_time < float(position['updated_at']):
+                        raise ValueError('terminal evidence predates latest ledger mutation')
+                    provenance = governor.get_execution_provenance(proposal_id)
+                    receipt = governor.get_execution_receipt(proposal_id)
+                    if provenance is None or receipt != provenance.executor_id:
+                        raise ValueError('terminal owner lacks exact execution provenance')
+                    if provenance.pair.strip().upper() != snapshot.pair or provenance.intent not in {IntentKind.ENTRY, IntentKind.RECOVERY}:
+                        raise ValueError('terminal owner provenance crosses position scope')
+                    if provenance.account_name is None or provenance.connector_name is None:
+                        raise ValueError('terminal owner has unscoped execution provenance')
+                    latest = governor.get_latest_executor_accounting(provenance.executor_id)
+                    if latest is None:
+                        raise ValueError('persisted terminal executor accounting is missing')
+                    observation, accounting_time = latest
+                    fresh(accounting_time, 'executor_accounting.observed_at')
+                    if observation.status != 'TERMINATED':
+                        raise ValueError('executor is not proven TERMINATED')
+                    if observation.executor_type not in {'grid_executor', 'dca_executor'}:
+                        raise ValueError('terminal executor type is unproven')
+                    if not isinstance(evidence.order_snapshot, ExecutorOrderSnapshot) or not isinstance(evidence.trade_snapshot, ExecutorTradeSnapshot):
+                        raise TypeError('terminal evidence must use validated executor snapshots')
+                    orders = evidence.order_snapshot
+                    trades = evidence.trade_snapshot
+                    if orders.executor_id != provenance.executor_id or trades.executor_id != provenance.executor_id:
+                        raise ValueError('terminal snapshots belong to another executor')
+                    known = {order.order_id: order for order in orders.orders}
+                    if len(known) != len(orders.orders) or set(known) != {str(row['order_id']) for row in owner_bindings}:
+                        raise ValueError('terminal snapshot omits or adds bound orders')
+                    for binding in owner_bindings:
+                        if (str(binding['executor_id']) != provenance.executor_id or str(binding['pair']) != snapshot.pair
+                                or str(binding['account_name']) != provenance.account_name
+                                or str(binding['connector_name']) != provenance.connector_name.lower()):
+                            raise ValueError('terminal bound order scope differs from provenance')
+                    recorded = conn.execute(
+                        f'SELECT * FROM {schema}.economic_trade_fill_reconciliation WHERE position_id = ? '
+                        'AND order_id IN (' + ','.join('?' for _ in known) + ')',
+                        (pid, *known),
+                    ).fetchall() if known and 'economic_trade_fill_reconciliation' in tables else []
+                    recorded_by_id = {str(row['trade_id']): row for row in recorded}
+                    observed_by_id = {trade.trade_id: trade for trade in trades.trades}
+                    if len(observed_by_id) != len(trades.trades) or set(recorded_by_id) != set(observed_by_id):
+                        raise ValueError('terminal trades are missing or not durably reconciled')
+                    fills_by_order: dict[str, Decimal] = {}
+                    for trade in trades.trades:
+                        row = recorded_by_id[trade.trade_id]
+                        if trade.order_id not in known:
+                            raise ValueError('terminal trade refers to unknown order')
+                        signature = (trade.order_id, trade.account_name, trade.connector_name, trade.pair, trade.side,
+                                     trade.amount_base, trade.price, trade.fee_paid, trade.fee_currency, trade.occurred_at)
+                        actual = (str(row['order_id']), str(row['account_name']), str(row['connector_name']), str(row['pair']), str(row['side']),
+                                  Decimal(str(row['amount_base'])), Decimal(str(row['price'])), Decimal(str(row['fee_paid'])), row['fee_currency'], float(row['occurred_at']))
+                        if signature != actual or trade.side != known[trade.order_id].side:
+                            raise ValueError('terminal trade differs from exact ledger receipt')
+                        if (trade.account_name != provenance.account_name or trade.connector_name != provenance.connector_name.lower()
+                                or trade.pair != snapshot.pair or trade.occurred_at > evidence_time):
+                            raise ValueError('terminal trade scope or time is invalid')
+                        fills_by_order[trade.order_id] = fills_by_order.get(trade.order_id, ZERO) + trade.amount_base
+                    for order in orders.orders:
+                        if order.executor_id != provenance.executor_id or order.status not in {'FILLED', 'CANCELED', 'CANCELLED', 'FAILED'}:
+                            raise ValueError('bound order is not proven terminal')
+                        if order.filled_amount < ZERO or order.filled_amount > order.amount or order.amount <= ZERO:
+                            raise ValueError('terminal order fill amount is invalid')
+                        if order.status == 'FILLED' and order.filled_amount != order.amount:
+                            raise ValueError('FILLED order has incomplete cumulative fill amount')
+                        if order.filled_amount != fills_by_order.get(order.order_id, ZERO):
+                            raise ValueError('terminal cumulative fill amount differs from reconciled trades')
+                        if order.created_at > evidence_time or (order.updated_at is not None and order.updated_at > evidence_time):
+                            raise ValueError('terminal order evidence is future-dated')
+                    executor_ids.append(provenance.executor_id)
+                    proof_owners.append({'proposal_id': proposal_id, 'provenance': asdict(provenance), 'accounting': asdict(observation),
+                                         'accounting_observed_at': accounting_time, 'evidence': asdict(evidence)})
+                all_lots = conn.execute(f'SELECT * FROM {schema}.economic_lots WHERE position_id = ?', (pid,)).fetchall()
+                for lot in all_lots:
+                    proposal_id = lot['proposal_id']
+                    if proposal_id not in supplied or lot['executor_id'] != governor.get_execution_receipt(str(proposal_id)):
+                        raise ValueError('economic lot lacks covered exact terminal owner')
+                quantized = (snapshot.active_base / increment).to_integral_value(rounding=ROUND_DOWN) * increment
+                if snapshot.active_base > ZERO:
+                    if snapshot.status != EconomicPositionStatus.ACTIVE:
+                        raise ValueError('residual retirement requires an ACTIVE position')
+                    if quantized > ZERO and quantized >= min_base and quantized * price >= min_quote:
+                        raise ValueError('remaining owned inventory is tradable, not residual')
+                    kind = 'RESIDUAL'
+                    status = EconomicPositionStatus.RESIDUAL
+                else:
+                    if not all_lots:
+                        if any(owner['provenance']['intent'] != IntentKind.ENTRY for owner in proof_owners):
+                            raise ValueError('empty terminal cleanup requires exact ENTRY ownership')
+                        if any(owner['accounting']['filled_amount_quote'] != ZERO or owner['accounting']['cum_fees_quote'] != ZERO
+                               or owner['accounting']['position_size_quote'] not in {None, ZERO} for owner in proof_owners):
+                            raise ValueError('empty terminal executor has unledgered activity')
+                        kind = 'EMPTY_TERMINAL'
+                    else:
+                        kind = 'FLAT_TERMINAL'
+                    status = EconomicPositionStatus.CLOSED
+                proof = {'owners': proof_owners, 'trading_rule': asdict(trading_rule), 'current_price': str(price),
+                         'rules_observed_at': rules_observed_at, 'price_observed_at': price_observed_at,
+                         'quantized_sell_base': str(quantized), 'lots': [dict(row) for row in all_lots],
+                         'partial_terminal_certificates': partial_certificates}
+                certificate = {'event_id': eid, 'position_id': pid, 'ledger_path': str(self.path.resolve()),
+                               'pair': snapshot.pair, 'base_asset': normalized_base_asset(snapshot.pair), 'kind': kind,
+                               'proposal_ids': sorted(supplied), 'executor_ids': sorted(executor_ids),
+                               'remaining_base': str(snapshot.active_base), 'cost_basis': str(snapshot.active_cost_basis_quote),
+                               'entry_fees': str(snapshot.active_entry_fees_quote), 'occurred_at': timestamp,
+                               'proof_sha256': hashlib.sha256(json.dumps(proof, sort_keys=True, default=str).encode()).hexdigest(),
+                               'proof': proof, 'capital_released_quote': '0'}
+                conn.execute(f'UPDATE {schema}.economic_positions SET status = ?, updated_at = ? WHERE position_id = ?', (status.value, timestamp, pid))
+                conn.execute(f'INSERT INTO {schema}.economic_position_retirements (position_id,event_id,certificate_json,occurred_at) VALUES (?,?,?,?)',
+                             (pid, eid, json.dumps(certificate, sort_keys=True, default=str), timestamp))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return self.get_retirement_certificate(pid)

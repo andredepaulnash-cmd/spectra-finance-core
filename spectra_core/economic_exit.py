@@ -68,6 +68,7 @@ class EconomicExitProgressState(StrEnum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
     DUST_BLOCKED = "DUST_BLOCKED"
+    RESIDUAL_RETAINED = "RESIDUAL_RETAINED"
 
 
 @dataclass(frozen=True)
@@ -362,6 +363,38 @@ class EconomicExitManifestStore:
                     conn.rollback()
                     return self._from_row(open_row)
 
+                # Whole-position and partial sells share one ownership ledger.
+                # Recheck both scope and dispatch exclusions inside the same
+                # write transaction used to install the immutable manifest.
+                tables = {str(row['name']) for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                if 'partial_recycle_manifests' in tables:
+                    if conn.execute("SELECT 1 FROM partial_recycle_manifests WHERE position_id = ? AND status = 'OPEN' LIMIT 1", (manifest.position_id,)).fetchone():
+                        raise ValueError('open partial manifest blocks whole-position exit')
+                    if 'partial_recycle_dispatch_claims' in tables:
+                        from .partial_recycle import partial_dispatch_terminal_certificate
+                        claims = conn.execute(
+                            'SELECT d.manifest_id FROM partial_recycle_dispatch_claims d JOIN partial_recycle_manifests m '
+                            'ON m.manifest_id = d.manifest_id WHERE m.position_id = ?', (manifest.position_id,),
+                        ).fetchall()
+                        for claim in claims:
+                            if partial_dispatch_terminal_certificate(conn, str(claim['manifest_id']), schema='main') is None:
+                                raise ValueError('unproven partial dispatch blocks whole-position exit')
+                position = conn.execute('SELECT pair,status FROM economic_positions WHERE position_id = ?', (manifest.position_id,)).fetchone()
+                if position is None or str(position['status']) != EconomicPositionStatus.ACTIVE.value or str(position['pair']) != manifest.pair:
+                    raise ValueError('whole-position exit requires unchanged ACTIVE ownership')
+                lots = conn.execute("SELECT * FROM economic_lots WHERE position_id = ? AND ownership = 'ACTIVE_TRADE'", (manifest.position_id,)).fetchall()
+                remaining = {str(row['lot_id']): row for row in lots if Decimal(str(row['base_remaining'])) > ZERO}
+                if set(remaining) != set(manifest.lot_ids):
+                    raise ValueError('whole-position exit lot scope changed before manifest claim')
+                for owner in manifest.owners:
+                    scoped = [remaining[lot_id] for lot_id in owner.lot_ids]
+                    if any(str(row['proposal_id']) != owner.proposal_id or str(row['executor_id']) != owner.executor_id for row in scoped):
+                        raise ValueError('whole-position exit owner changed before manifest claim')
+                    if (sum((Decimal(str(row['base_remaining'])) for row in scoped), ZERO) != owner.target_base
+                            or sum((Decimal(str(row['cost_basis_remaining_quote'])) for row in scoped), ZERO) != owner.target_cost_basis_quote
+                            or sum((Decimal(str(row['entry_fees_remaining_quote'])) for row in scoped), ZERO) != owner.target_entry_fees_quote):
+                        raise ValueError('whole-position exit geometry changed before manifest claim')
+
                 conn.execute(
                     """
                     INSERT INTO economic_exit_manifests (
@@ -631,6 +664,9 @@ def create_or_load_position_exit_manifest(
     timestamp = _time(now, "now")
     manifest_store = store or EconomicExitManifestStore(ledger.path)
 
+    if ledger.snapshot(pid).status == EconomicPositionStatus.RESIDUAL:
+        raise ValueError("retired residual ownership cannot dispatch another exit")
+
     existing = manifest_store.open_for_position(pid)
     if existing is not None:
         validate_manifest_against_ledger(existing, ledger=ledger)
@@ -744,6 +780,16 @@ def assess_position_exit_manifest(
         - manifest.realized_pnl_before_quote
     )
     retained = snapshot.strategic_retained_base_same_pair
+
+    if snapshot.status == EconomicPositionStatus.RESIDUAL:
+        return EconomicExitProgress(
+            manifest_id=manifest.manifest_id,
+            state=EconomicExitProgressState.RESIDUAL_RETAINED,
+            remaining_active_base=snapshot.active_base,
+            realized_pnl_quote=realized,
+            strategic_retained_base=retained,
+            reasons=("terminal_residual_exact_ownership_retained", "no_capital_released_for_residual"),
+        )
 
     if snapshot.active_base == ZERO:
         if snapshot.status != EconomicPositionStatus.CLOSED:

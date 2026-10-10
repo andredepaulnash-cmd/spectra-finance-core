@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import sqlite3
 import time
@@ -109,6 +110,42 @@ class CapitalGovernor:
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 )
+                """
+            )
+
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS entry_submission_claims (
+                    proposal_id TEXT PRIMARY KEY,
+                    base_asset TEXT NOT NULL,
+                    position_id TEXT NOT NULL,
+                    ledger_path TEXT NOT NULL,
+                    pair TEXT NOT NULL,
+                    account_name TEXT NOT NULL,
+                    connector_name TEXT NOT NULL,
+                    controller_id TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    executor_id TEXT,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS entry_submission_active_asset
+                ON entry_submission_claims(base_asset)
+                WHERE state IN ('COMMITTED', 'DISPATCHED');
+                CREATE TABLE IF NOT EXISTS position_submission_bindings (
+                    proposal_id TEXT PRIMARY KEY,
+                    base_asset TEXT NOT NULL,
+                    position_id TEXT NOT NULL,
+                    ledger_path TEXT NOT NULL,
+                    pair TEXT NOT NULL,
+                    account_name TEXT NOT NULL,
+                    connector_name TEXT NOT NULL,
+                    controller_id TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    executor_id TEXT,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                );
                 """
             )
 
@@ -467,6 +504,7 @@ class CapitalGovernor:
             raise ValueError("pair is required")
 
         with self._connect() as conn:
+            recovery_ledgers = self._attach_recovery_exposure_ledgers(conn)
             conn.execute("BEGIN IMMEDIATE")
 
             try:
@@ -504,7 +542,7 @@ class CapitalGovernor:
                 # COMMITTED -> RECONCILED handoff could briefly disappear
                 # from both buckets between two separate reads.
                 reconciled_recovery = (
-                    self._current_recovery_exposure_quote(conn)
+                    self._current_recovery_exposure_quote(conn, recovery_ledgers)
                 )
 
                 amount = proposal.amount_quote
@@ -715,6 +753,9 @@ class CapitalGovernor:
         self,
         proposal: CapitalProposal,
         reason: str = "committed for matched execution",
+        *,
+        recovery_scope: tuple[str, str, str] | None = None,
+        position_id: str | None = None,
     ) -> bool:
         """Atomically verify and consume an exact RESERVED capital claim."""
         proposal_id = proposal.proposal_id.strip()
@@ -726,6 +767,22 @@ class CapitalGovernor:
             raise ValueError("pair is required")
 
         with self._connect() as conn:
+            recovery_ledger = None
+            if recovery_scope is not None:
+                from .economic_position import normalized_base_asset
+                owner = conn.execute(
+                    "SELECT ledger_path FROM entry_submission_claims WHERE base_asset = ? "
+                    "AND state IN ('COMMITTED', 'DISPATCHED')",
+                    (normalized_base_asset(pair),),
+                ).fetchone()
+                if owner is not None:
+                    path = Path(owner["ledger_path"]).resolve()
+                    if not path.is_file():
+                        raise ValueError("protected RECOVERY economic ledger is unavailable")
+                    schema = "main" if path == self.db_path.resolve() else "economic"
+                    if schema != "main":
+                        conn.execute("ATTACH DATABASE ? AS economic", (str(path),))
+                    recovery_ledger = (schema, str(path))
             conn.execute("BEGIN IMMEDIATE")
             try:
                 self._expire_stale(conn)
@@ -755,6 +812,23 @@ class CapitalGovernor:
                     conn.commit()
                     return False
 
+                if recovery_scope is not None:
+                    if proposal.intent != IntentKind.RECOVERY:
+                        raise ValueError("recovery scope requires RECOVERY intent")
+                    owner = self._validate_recovery_scope(
+                        conn, proposal, recovery_scope, position_id, recovery_ledger
+                    )
+                    if owner is not None:
+                        now = time.time()
+                        conn.execute(
+                            """INSERT INTO position_submission_bindings (
+                                proposal_id,base_asset,position_id,ledger_path,pair,
+                                account_name,connector_name,controller_id,state,created_at,updated_at
+                            ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?)""",
+                            (proposal_id,owner["base_asset"],owner["position_id"],
+                             owner["ledger_path"],pair,*recovery_scope,now,now),
+                        )
+
                 cursor = conn.execute(
                     """
                     UPDATE capital_reservations
@@ -777,6 +851,354 @@ class CapitalGovernor:
             except Exception:
                 conn.rollback()
                 raise
+
+    @staticmethod
+    def _submission_scope(
+        account_name: str, connector_name: str, controller_id: str
+    ) -> tuple[str, str, str]:
+        values = (account_name, connector_name, controller_id)
+        if any(not isinstance(value, str) or not value.strip() for value in values):
+            raise ValueError("submission account, connector and controller are required")
+        return (account_name.strip(), connector_name.strip().lower(), controller_id.strip())
+
+    def get_entry_submission_claim(self, proposal_id: str) -> dict | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM entry_submission_claims WHERE proposal_id = ?",
+                (proposal_id,),
+            ).fetchone()
+        return None if row is None else dict(row)
+
+    def get_entry_submissions_for_position(
+        self, *, position_id: str, ledger_path: str | Path
+    ) -> tuple[dict, ...]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT * FROM entry_submission_claims
+                WHERE position_id = ? AND ledger_path = ?
+                ORDER BY created_at, proposal_id""",
+                (position_id, str(Path(ledger_path).resolve())),
+            ).fetchall()
+        return tuple(dict(row) for row in rows)
+
+    def get_asset_submission_proposals(self, base_asset: str) -> tuple[dict, ...]:
+        """Expose all potentially live capital owners for terminal retirement.
+
+        Canonical identity covers aliases and quote pairs, including legacy
+        proposals that predate durable position binding. Unbound/uncertain
+        claims must never disappear merely because they have no confirmed lot.
+        """
+        from .economic_position import normalized_base_asset
+        base = normalized_base_asset(f"{base_asset}-USD")
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT c.*, r.executor_id FROM capital_reservations c
+                LEFT JOIN execution_receipts r ON r.proposal_id = c.proposal_id
+                WHERE c.status IN ('RESERVED','COMMITTED','RECONCILED')
+                ORDER BY c.created_at, c.proposal_id"""
+            ).fetchall()
+            bindings = {
+                row["proposal_id"]: dict(row)
+                for row in conn.execute(
+                    "SELECT * FROM entry_submission_claims UNION ALL "
+                    "SELECT * FROM position_submission_bindings"
+                ).fetchall()
+            }
+        result = []
+        for row in rows:
+            if normalized_base_asset(row["pair"]) != base:
+                continue
+            item = dict(row)
+            binding = bindings.get(row["proposal_id"])
+            item.update(
+                position_id=None if binding is None else binding["position_id"],
+                ledger_path=None if binding is None else binding["ledger_path"],
+                submission_state=None if binding is None else binding["state"],
+            )
+            result.append(item)
+        return tuple(result)
+
+    @staticmethod
+    def _entry_retirement_proven(conn, schema: str, claim: sqlite3.Row) -> bool:
+        # CLOSED inventory alone is insufficient: an old BUY may still fill.
+        # The ledger writes this certificate only after complete terminal
+        # executor/order/trade evidence has been reconciled.
+        if claim["executor_id"] is None:
+            return False
+        exists = conn.execute(
+            f"SELECT 1 FROM {schema}.sqlite_master WHERE type = 'table' "
+            "AND name = 'economic_position_retirements'"
+        ).fetchone()
+        if exists is None:
+            return False
+        row = conn.execute(
+            f"SELECT event_id, certificate_json FROM {schema}.economic_position_retirements "
+            "WHERE position_id = ?", (claim["position_id"],)
+        ).fetchone()
+        position = conn.execute(
+            f"SELECT status, pair, base_asset FROM {schema}.economic_positions WHERE position_id = ?",
+            (claim["position_id"],),
+        ).fetchone()
+        if row is None or position is None or position["status"] not in {"CLOSED", "RESIDUAL"}:
+            return False
+        certificate = json.loads(row["certificate_json"])
+        if not isinstance(certificate, dict):
+            return False
+        for field in ("proposal_ids", "executor_ids"):
+            values = certificate.get(field)
+            if not isinstance(values, list) or any(
+                not isinstance(value, str) or not value for value in values
+            ) or len(set(values)) != len(values):
+                return False
+        proof = certificate.get("proof_sha256")
+        if not isinstance(proof, str) or len(proof) != 64 or any(
+            char not in "0123456789abcdef" for char in proof
+        ):
+            return False
+        payload = certificate.get("proof")
+        if not isinstance(payload, dict) or hashlib.sha256(
+            json.dumps(payload, sort_keys=True, default=str).encode()
+        ).hexdigest() != proof:
+            return False
+        owners = payload.get("owners")
+        if not isinstance(owners, list) or any(not isinstance(owner, dict) for owner in owners):
+            return False
+        if {owner.get("proposal_id") for owner in owners} != set(certificate["proposal_ids"]):
+            return False
+        proven_executors = {
+            owner.get("provenance", {}).get("executor_id") for owner in owners
+        }
+        if proven_executors != set(certificate["executor_ids"]):
+            return False
+        if (certificate.get("kind") == "RESIDUAL") != (position["status"] == "RESIDUAL"):
+            return False
+        lots = conn.execute(
+            f"SELECT base_remaining, cost_basis_remaining_quote, entry_fees_remaining_quote "
+            f"FROM {schema}.economic_lots WHERE position_id = ? AND ownership = 'ACTIVE_TRADE'",
+            (claim["position_id"],),
+        ).fetchall()
+        for field, column in (
+            ("remaining_base", "base_remaining"),
+            ("cost_basis", "cost_basis_remaining_quote"),
+            ("entry_fees", "entry_fees_remaining_quote"),
+        ):
+            expected = Decimal(certificate[field])
+            actual = sum((Decimal(lot[column]) for lot in lots), ZERO)
+            if not expected.is_finite() or expected < ZERO or actual != expected:
+                return False
+        return (
+            certificate.get("event_id") == row["event_id"]
+            and certificate.get("kind") in {"RESIDUAL", "EMPTY_TERMINAL", "FLAT_TERMINAL"}
+            and position["pair"] == claim["pair"]
+            and position["base_asset"] == claim["base_asset"]
+            and certificate.get("position_id") == claim["position_id"]
+            and certificate.get("ledger_path") == claim["ledger_path"]
+            and certificate.get("pair") == claim["pair"]
+            and certificate.get("base_asset") == claim["base_asset"]
+            and claim["proposal_id"] in certificate.get("proposal_ids", [])
+            and claim["executor_id"] in certificate.get("executor_ids", [])
+        )
+
+    def commit_entry_submission_if_matches(
+        self, proposal: CapitalProposal, *, position_id: str,
+        ledger_path: str | Path, account_name: str, connector_name: str,
+        controller_id: str,
+    ) -> bool:
+        """Claim canonical ENTRY identity and capital before external submission.
+
+        The caller must already own a zero-inventory ACTIVE prefill position.
+        The attached economic ledger is read under the same SQLite write lock;
+        only the capital database is mutated. Uncertain submissions keep their
+        canonical identity through restart until terminal retirement is proven.
+        """
+        from .economic_position import normalized_base_asset
+
+        if proposal.intent != IntentKind.ENTRY:
+            raise ValueError("ENTRY identity claim requires ENTRY intent")
+        if not isinstance(position_id, str) or not position_id.strip():
+            raise ValueError("ENTRY submission requires an exact position_id")
+        pid = position_id.strip()
+        path = Path(ledger_path).resolve()
+        if not path.is_file():
+            raise ValueError("ENTRY economic ledger does not exist")
+        scope = self._submission_scope(account_name, connector_name, controller_id)
+        pair = proposal.pair.strip().upper()
+        base = normalized_base_asset(pair)
+        with self._connect() as conn:
+            schema = "main" if path == self.db_path.resolve() else "economic"
+            if schema == "economic":
+                conn.execute("ATTACH DATABASE ? AS economic", (str(path),))
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                self._expire_stale(conn)
+                reservation = conn.execute(
+                    "SELECT * FROM capital_reservations WHERE proposal_id = ?",
+                    (proposal.proposal_id.strip(),),
+                ).fetchone()
+                if reservation is None or not (
+                    reservation["status"] == DecisionStatus.RESERVED.value
+                    and reservation["pair"] == pair
+                    and reservation["intent"] == IntentKind.ENTRY.value
+                    and Decimal(reservation["amount_quote"]) == proposal.amount_quote
+                    and Decimal(reservation["leverage"]) == proposal.leverage
+                ):
+                    conn.rollback()
+                    return False
+                position = conn.execute(
+                    f"SELECT * FROM {schema}.economic_positions WHERE position_id = ?",
+                    (pid,),
+                ).fetchone()
+                if position is None or position["status"] != "ACTIVE" or position["pair"] != pair or position["base_asset"] != base:
+                    raise ValueError("ENTRY requires its exact ACTIVE prefill position")
+                active = conn.execute(
+                    f"SELECT position_id FROM {schema}.economic_positions "
+                    "WHERE base_asset = ? AND status = 'ACTIVE'", (base,),
+                ).fetchall()
+                if len(active) != 1 or active[0]["position_id"] != pid:
+                    raise ValueError("canonical asset already has another ACTIVE position")
+                lots = conn.execute(
+                    f"SELECT base_remaining FROM {schema}.economic_lots "
+                    "WHERE position_id = ? AND ownership = 'ACTIVE_TRADE'", (pid,),
+                ).fetchall()
+                if any(Decimal(row["base_remaining"]) != ZERO for row in lots):
+                    raise ValueError("ENTRY cannot add a new submission to held active inventory")
+                claims = conn.execute(
+                    "SELECT * FROM entry_submission_claims WHERE base_asset = ? "
+                    "AND state IN ('COMMITTED', 'DISPATCHED')", (base,),
+                ).fetchall()
+                for claim in claims:
+                    if claim["ledger_path"] != str(path) or not self._entry_retirement_proven(conn, schema, claim):
+                        raise ValueError("canonical asset already has a protected ENTRY submission")
+                    conn.execute(
+                        "UPDATE entry_submission_claims SET state = 'RETIRED', updated_at = ? "
+                        "WHERE proposal_id = ?", (time.time(), claim["proposal_id"]),
+                    )
+                owners = conn.execute(
+                    """SELECT c.*, r.executor_id FROM capital_reservations c
+                    LEFT JOIN execution_receipts r ON r.proposal_id = c.proposal_id
+                    WHERE c.status IN ('COMMITTED', 'RECONCILED')
+                      AND c.proposal_id != ?""",
+                    (proposal.proposal_id.strip(),),
+                ).fetchall()
+                for owner in owners:
+                    if normalized_base_asset(owner["pair"]) != base:
+                        continue
+                    if not self._capital_submission_retirement_proven(
+                        conn, schema, str(path), owner
+                    ):
+                        raise ValueError(
+                            "canonical asset has an uncertified protected submission"
+                        )
+                now = time.time()
+                conn.execute(
+                    """INSERT INTO entry_submission_claims (
+                        proposal_id,base_asset,position_id,ledger_path,pair,
+                        account_name,connector_name,controller_id,state,created_at,updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?)""",
+                    (proposal.proposal_id.strip(),base,pid,str(path),pair,*scope,now,now),
+                )
+                cursor = conn.execute(
+                    "UPDATE capital_reservations SET status = ?, reason = ?, updated_at = ? "
+                    "WHERE proposal_id = ? AND status = ?",
+                    (DecisionStatus.COMMITTED.value,"committed with canonical ENTRY identity",now,
+                     proposal.proposal_id.strip(),DecisionStatus.RESERVED.value),
+                )
+                if cursor.rowcount != 1:
+                    raise RuntimeError("ENTRY capital claim changed during identity submission")
+                conn.commit()
+                return True
+            except Exception:
+                conn.rollback()
+                raise
+
+    def _capital_submission_retirement_proven(
+        self, conn: sqlite3.Connection, schema: str, ledger_path: str,
+        owner: sqlite3.Row,
+    ) -> bool:
+        """Cover legacy/RECOVERY owners as well as canonical ENTRY claims."""
+        from .economic_position import normalized_base_asset
+
+        if owner["executor_id"] is None:
+            return False
+        binding = conn.execute(
+            "SELECT * FROM entry_submission_claims WHERE proposal_id = ? "
+            "UNION ALL SELECT * FROM position_submission_bindings WHERE proposal_id = ?",
+            (owner["proposal_id"], owner["proposal_id"]),
+        ).fetchone()
+        if binding is not None:
+            return (
+                binding["ledger_path"] == ledger_path
+                and binding["pair"] == owner["pair"]
+                and binding["executor_id"] == owner["executor_id"]
+                and self._entry_retirement_proven(conn, schema, binding)
+            )
+        exists = conn.execute(
+            f"SELECT 1 FROM {schema}.sqlite_master WHERE type = 'table' "
+            "AND name = 'economic_position_retirements'"
+        ).fetchone()
+        if exists is None:
+            return False
+        # Historical proposals did not persist a submission position. Only an
+        # exact terminal certificate in the actual runtime ledger can prove
+        # their ownership; a flat label or an empty lot query is insufficient.
+        base = normalized_base_asset(owner["pair"])
+        positions = conn.execute(
+            f"SELECT r.position_id FROM {schema}.economic_position_retirements r "
+            f"JOIN {schema}.economic_positions p ON p.position_id = r.position_id "
+            "WHERE p.base_asset = ?", (base,),
+        ).fetchall()
+        for position in positions:
+            claim = dict(owner)
+            claim.update(position_id=position["position_id"], ledger_path=ledger_path,
+                         base_asset=base)
+            if self._entry_retirement_proven(conn, schema, claim):
+                return True
+        return False
+
+    @staticmethod
+    def _validate_recovery_scope(conn, proposal, scope, position_id, recovery_ledger):
+        from .economic_position import normalized_base_asset
+        claim = conn.execute(
+            "SELECT * FROM entry_submission_claims WHERE base_asset = ? "
+            "AND state IN ('COMMITTED', 'DISPATCHED')",
+            (normalized_base_asset(proposal.pair),),
+        ).fetchone()
+        if claim is not None and (
+            tuple(claim[name] for name in ("account_name","connector_name","controller_id")) != scope
+            or claim["pair"] != proposal.pair.strip().upper()
+            or claim["position_id"] != position_id
+        ):
+            raise ValueError("RECOVERY scope does not match the protected ENTRY position")
+        if claim is not None:
+            if recovery_ledger is None or recovery_ledger[1] != claim["ledger_path"]:
+                raise ValueError("RECOVERY economic identity changed before commit")
+            schema = recovery_ledger[0]
+            position = conn.execute(
+                f"SELECT status, pair, base_asset FROM {schema}.economic_positions "
+                "WHERE position_id = ?", (claim["position_id"],),
+            ).fetchone()
+            if position is None or position["status"] != "ACTIVE" or position["pair"] != claim["pair"] or position["base_asset"] != claim["base_asset"]:
+                raise ValueError("RECOVERY requires its exact ACTIVE economic position")
+            certificate_table = conn.execute(
+                f"SELECT 1 FROM {schema}.sqlite_master WHERE type = 'table' "
+                "AND name = 'economic_position_retirements'"
+            ).fetchone()
+            if certificate_table is not None and conn.execute(
+                f"SELECT 1 FROM {schema}.economic_position_retirements WHERE position_id = ?",
+                (claim["position_id"],),
+            ).fetchone() is not None:
+                raise ValueError("RECOVERY position has already been terminally retired")
+        return claim
+
+    def commit_recovery_submission_if_matches(
+        self, proposal: CapitalProposal, *, account_name: str,
+        connector_name: str, controller_id: str, position_id: str | None = None,
+    ) -> bool:
+        """Preserve legacy recovery while preventing scoped ENTRY ownership drift."""
+        scope = self._submission_scope(account_name, connector_name, controller_id)
+        return self.commit_if_matches(
+            proposal, recovery_scope=scope, position_id=position_id
+        )
 
     def carve_reserved_recovery_tranche(
         self,
@@ -1148,6 +1570,22 @@ class CapitalGovernor:
             conn.execute("BEGIN IMMEDIATE")
 
             try:
+                entry_claim = conn.execute(
+                    "SELECT * FROM entry_submission_claims WHERE proposal_id = ?",
+                    (proposal_id,),
+                ).fetchone()
+                if entry_claim is not None and normalized_scope != tuple(
+                    entry_claim[name] for name in ("account_name", "connector_name", "controller_id")
+                ):
+                    raise RuntimeError("execution receipt scope conflicts with ENTRY submission")
+                position_claim = conn.execute(
+                    "SELECT * FROM position_submission_bindings WHERE proposal_id = ?",
+                    (proposal_id,),
+                ).fetchone()
+                if position_claim is not None and normalized_scope != tuple(
+                    position_claim[name] for name in ("account_name", "connector_name", "controller_id")
+                ):
+                    raise RuntimeError("execution receipt scope conflicts with position submission")
                 reservation = conn.execute(
                     """
                     SELECT
@@ -1348,6 +1786,19 @@ class CapitalGovernor:
                 if cursor.rowcount != 1:
                     raise RuntimeError(
                         "proposal changed state during execution reconciliation"
+                    )
+
+                if entry_claim is not None:
+                    conn.execute(
+                        "UPDATE entry_submission_claims SET state = 'DISPATCHED', "
+                        "executor_id = ?, updated_at = ? WHERE proposal_id = ?",
+                        (executor_id, now, proposal_id),
+                    )
+                if position_claim is not None:
+                    conn.execute(
+                        "UPDATE position_submission_bindings SET state = 'DISPATCHED', "
+                        "executor_id = ?, updated_at = ? WHERE proposal_id = ?",
+                        (executor_id, now, proposal_id),
                     )
 
                 conn.commit()
@@ -1615,6 +2066,14 @@ class CapitalGovernor:
                     )
 
                     if comparable == previous_comparable:
+                        # A successful exact-scope refresh is new freshness
+                        # evidence, even when counters and terminal state are
+                        # unchanged. Keep one observation and zero deltas.
+                        conn.execute(
+                            "UPDATE executor_accounting_observations SET observed_at = ? "
+                            "WHERE observation_id = ?",
+                            (time.time(), previous["observation_id"]),
+                        )
                         conn.commit()
                         return ExecutorAccountingDelta(
                             proposal_id=str(provenance["proposal_id"]),
@@ -1704,6 +2163,28 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
+
+    def get_latest_executor_accounting(
+        self, executor_id: str
+    ) -> tuple[ExecutorAccountingObservation, float] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM executor_accounting_observations WHERE executor_id = ? "
+                "ORDER BY observation_id DESC LIMIT 1", (executor_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        optional = lambda name: None if row[name] is None else Decimal(row[name])
+        observation = ExecutorAccountingObservation(
+            executor_id=row["executor_id"], executor_type=row["executor_type"],
+            status=row["status"], close_type=row["close_type"],
+            filled_amount_quote=Decimal(row["filled_amount_quote"]),
+            cum_fees_quote=Decimal(row["cum_fees_quote"]),
+            position_size_quote=optional("position_size_quote"),
+            net_pnl_quote=optional("net_pnl_quote"),
+            realized_pnl_quote=optional("realized_pnl_quote"),
+        )
+        return observation, float(row["observed_at"])
 
     @staticmethod
     def _position_hold_scope(
@@ -2113,9 +2594,101 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
+    def _attach_recovery_exposure_ledgers(
+        self, conn: sqlite3.Connection
+    ) -> dict[str, str]:
+        """Attach scoped ledgers before the governor/ledger write-lock boundary.
+
+        An unavailable or unattachable ledger is omitted deliberately: its
+        scoped owner retains full authorization in the exposure calculation.
+        """
+        schemas = {
+            str(Path(row["file"]).resolve()): str(row["name"])
+            for row in conn.execute("PRAGMA database_list").fetchall()
+            if row["file"]
+        }
+        rows = conn.execute(
+            "SELECT DISTINCT ledger_path FROM position_submission_bindings"
+        ).fetchall()
+        for index, row in enumerate(rows):
+            path = Path(row["ledger_path"]).resolve()
+            if str(path) in schemas or not path.is_file():
+                continue
+            schema = f"recovery_ledger_{index}"
+            try:
+                conn.execute(f"ATTACH DATABASE ? AS {schema}", (str(path),))
+            except sqlite3.Error:
+                continue
+            schemas[str(path)] = schema
+        return schemas
+
+    def _scoped_recovery_basis_floor(
+        self,
+        conn: sqlite3.Connection,
+        provenance: ExecutionProvenance,
+        recovery_ledgers: dict[str, str],
+    ) -> Decimal:
+        """Preserve exact remaining lot basis for guarded RECOVERY ownership."""
+        binding = conn.execute(
+            "SELECT * FROM position_submission_bindings WHERE proposal_id = ?",
+            (provenance.proposal_id,),
+        ).fetchone()
+        if binding is None:
+            # Historical unbound executions keep their existing semantics.
+            return ZERO
+        fallback = provenance.authorized_quote
+        exact_scope = (
+            binding["executor_id"] == provenance.executor_id
+            and binding["pair"] == provenance.pair
+            and binding["account_name"] == provenance.account_name
+            and binding["connector_name"] == provenance.connector_name
+            and binding["controller_id"] == provenance.controller_id
+            and binding["state"] == "DISPATCHED"
+        )
+        schema = recovery_ledgers.get(str(Path(binding["ledger_path"]).resolve()))
+        if not exact_scope or schema is None:
+            return fallback
+        try:
+            position = conn.execute(
+                f"SELECT pair, base_asset, status FROM {schema}.economic_positions "
+                "WHERE position_id = ?",
+                (binding["position_id"],),
+            ).fetchone()
+            if (
+                position is None
+                or position["pair"] != binding["pair"]
+                or position["base_asset"] != binding["base_asset"]
+                or position["status"] not in {"ACTIVE", "RESIDUAL", "CLOSED"}
+            ):
+                return fallback
+            # Inspect every lot for this owner so a conflicting position or
+            # executor can never be silently excluded by a narrow SQL filter.
+            lots = conn.execute(
+                f"SELECT * FROM {schema}.economic_lots WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchall()
+            basis = ZERO
+            for lot in lots:
+                if (
+                    lot["position_id"] != binding["position_id"]
+                    or lot["pair"] != binding["pair"]
+                    or lot["executor_id"] != provenance.executor_id
+                    or lot["source"] != "VCAP_RECOVERY"
+                    or lot["ownership"] != "ACTIVE_TRADE"
+                ):
+                    return fallback
+                remaining = Decimal(lot["cost_basis_remaining_quote"])
+                if not remaining.is_finite() or remaining < ZERO:
+                    return fallback
+                basis += remaining
+            return basis
+        except (sqlite3.Error, ValueError, TypeError, ArithmeticError):
+            return fallback
+
     def _current_recovery_exposure_quote(
         self,
         conn: sqlite3.Connection,
+        recovery_ledgers: dict[str, str],
     ) -> Decimal:
         """Compute reconciled RECOVERY exposure using one DB transaction."""
         rows = conn.execute(
@@ -2179,6 +2752,9 @@ class CapitalGovernor:
                     else str(row["controller_id"])
                 ),
             )
+            basis_floor = self._scoped_recovery_basis_floor(
+                conn, provenance, recovery_ledgers
+            )
 
             if row["observation_id"] is None:
                 released = self._recovery_recycle_release_quote(
@@ -2187,6 +2763,7 @@ class CapitalGovernor:
                 )
                 total += max(
                     provenance.authorized_quote - released,
+                    basis_floor,
                     ZERO,
                 )
                 continue
@@ -2248,6 +2825,7 @@ class CapitalGovernor:
                     )
                     total += max(
                         assessment.exposure_quote - released,
+                        basis_floor,
                         ZERO,
                     )
                     continue
@@ -2275,14 +2853,22 @@ class CapitalGovernor:
                 conn,
                 provenance.proposal_id,
             )
-            total += max(assessment.exposure_quote - released, ZERO)
+            total += max(assessment.exposure_quote - released, basis_floor, ZERO)
 
         return total
 
     def current_recovery_exposure_quote(self) -> Decimal:
         """Return current quote capital attributable to RECOVERY executors."""
         with self._connect() as conn:
-            return self._current_recovery_exposure_quote(conn)
+            recovery_ledgers = self._attach_recovery_exposure_ledgers(conn)
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                exposure = self._current_recovery_exposure_quote(conn, recovery_ledgers)
+                conn.commit()
+                return exposure
+            except Exception:
+                conn.rollback()
+                raise
 
     def protected_quote(self) -> Decimal:
         """

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+import time
 from typing import Any
 
 from spectra_core.capital_governor import CapitalGovernor
@@ -9,7 +11,10 @@ from spectra_core.economic_exit import (
     assess_position_exit_manifest,
     create_or_load_position_exit_manifest,
 )
-from spectra_core.economic_position import EconomicPositionLedger
+from spectra_core.economic_position import (
+    EconomicPositionLedger,
+    TerminalExecutorEvidence,
+)
 from spectra_core.executor_accounting import (
     assess_recovery_exposure,
     executor_accounting_observation_from_raw,
@@ -20,6 +25,64 @@ from spectra_core.vcap_profit_exit import (
     VCAPProfitExitAction,
     VCAPProfitExitDecision,
 )
+from mcp_servers.hummingbot_api.tools.executor_provenance import (
+    fetch_executor_order_snapshot,
+    fetch_executor_trade_snapshot,
+)
+
+
+async def retire_terminal_economic_position(
+    client: Any,
+    *,
+    position_id: str,
+    proposal_ids: tuple[str, ...],
+    governor: CapitalGovernor,
+    ledger: EconomicPositionLedger,
+    trading_rule: KrakenTradingRule,
+    current_price: Decimal,
+    market_observed_at: float,
+    now: float,
+    max_age_seconds: float = 30,
+) -> dict[str, Any]:
+    """Certify terminal inventory after exact fills have been reconciled.
+
+    A fresh terminal snapshot does not apply fills or release capital here.
+    The ledger rejects any discrepancy with persisted ownership and receipts.
+    """
+    evidence = []
+    for proposal_id in proposal_ids:
+        provenance = governor.get_execution_provenance(proposal_id)
+        if provenance is None:
+            raise RuntimeError("terminal owner has no execution provenance")
+        raw = await client.executors.get_executor(provenance.executor_id)
+        observation = executor_accounting_observation_from_raw(
+            raw, expected_executor_id=provenance.executor_id,
+        )
+        governor.reconcile_executor_accounting(observation)
+        trades = await fetch_executor_trade_snapshot(
+            client, executor_id=provenance.executor_id,
+        )
+        orders = await fetch_executor_order_snapshot(
+            client, executor_id=provenance.executor_id,
+        )
+        evidence.append(TerminalExecutorEvidence(
+            proposal_id=proposal_id,
+            order_snapshot=orders,
+            trade_snapshot=trades,
+            observed_at=time.time(),
+        ))
+    return ledger.retire_terminal_position(
+        event_id=f"terminal-retirement:{position_id}",
+        position_id=position_id,
+        governor=governor,
+        executor_evidence=tuple(evidence),
+        trading_rule=trading_rule,
+        current_price=current_price,
+        rules_observed_at=market_observed_at,
+        price_observed_at=market_observed_at,
+        now=time.time(),
+        max_age_seconds=max_age_seconds,
+    )
 
 
 
