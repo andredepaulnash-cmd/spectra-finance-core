@@ -71,6 +71,12 @@ jobs:
             tests/test_unified_economic_exit.py \
             tests/test_multi_position_runtime_scheduler.py \
             tests/test_partial_recovery_recycling.py \
+            tests/test_entry_identity_submission.py \
+            tests/test_residual_position_lifecycle.py \
+            tests/test_terminal_retirement_runtime.py \
+            tests/test_terminal_retirement_scheduler.py \
+            tests/test_partial_recycle_dispatch_guards.py \
+            tests/test_partial_residual_runtime.py \
             tests/test_strategy_laboratory.py \
             tests/test_strategy_replay.py \
             tests/test_strategy_replay_vcap.py \

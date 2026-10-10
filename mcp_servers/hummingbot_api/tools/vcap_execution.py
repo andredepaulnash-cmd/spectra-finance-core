@@ -19,6 +19,7 @@ async def execute_vcap_decision(
     governor: CapitalGovernor,
     account_name: str = "master_account",
     controller_id: str = "spectra",
+    position_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute one prevalidated VCAP tranche through the Spectra DCA path.
 
@@ -71,6 +72,7 @@ async def execute_vcap_decision(
         controller_id=controller_id,
         spectra_proposal_id=proposal.proposal_id,
         spectra_intent="RECOVERY",
+        spectra_position_id=position_id,
     )
 
     return {

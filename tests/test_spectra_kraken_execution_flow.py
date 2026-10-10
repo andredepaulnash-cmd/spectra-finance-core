@@ -6,6 +6,7 @@ from spectra_core import (
     CapitalGovernor,
     CapitalPolicy,
     DecisionStatus,
+    EconomicPositionLedger,
 )
 from spectra_core.kraken_authorization import reserve_kraken_capital
 
@@ -121,6 +122,9 @@ def governor(tmp_path):
 def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
     g = governor(tmp_path)
     client = Client()
+    ledger = EconomicPositionLedger(tmp_path / "economic-e2e.sqlite3")
+    ledger.open_position(position_id="e2e-entry", pair="BTC-USD", created_at=1000)
+    monkeypatch.setattr(executor_create, "get_economic_position_ledger", lambda: ledger)
 
     # Prevent any cached answer from another test from affecting
     # this integration path.
@@ -177,6 +181,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
             account_name="master_account",
             spectra_proposal_id=proposal.proposal_id,
             spectra_intent="ENTRY",
+            spectra_position_id="e2e-entry",
         )
     )
 

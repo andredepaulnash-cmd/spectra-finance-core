@@ -39,6 +39,8 @@ async def execute_vcap_lifecycle_decision(
     ledger: EconomicPositionLedger | None = None,
     trading_rule: KrakenTradingRule | None = None,
     current_price: Decimal | None = None,
+    expected_exit_cost_bps: Decimal | None = None,
+    market_observed_at: float | None = None,
     accounting_health: AccountingHealthDecision | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
@@ -95,6 +97,7 @@ async def execute_vcap_lifecycle_decision(
             governor=governor,
             account_name=account_name,
             controller_id=controller_id,
+            position_id=position_id,
         )
 
         checkpoint = checkpoint_vcap_tranche_execution(
@@ -148,6 +151,8 @@ async def execute_vcap_lifecycle_decision(
             ledger=ledger,
             trading_rule=trading_rule,
             current_price=current_price,
+            expected_exit_cost_bps=expected_exit_cost_bps,
+            market_observed_at=market_observed_at,
             now=now,
             account_name=account_name,
             controller_id=controller_id,

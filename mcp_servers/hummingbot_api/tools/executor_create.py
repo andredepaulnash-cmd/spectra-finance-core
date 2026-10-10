@@ -30,7 +30,9 @@ from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
 from mcp_servers.hummingbot_api.settings import settings
 from spectra_core import CapitalProposal, IntentKind
 from spectra_core.models import BreakerMode
-from spectra_core.runtime import get_breaker_mode, get_capital_governor
+from spectra_core.runtime import (
+    get_breaker_mode, get_capital_governor, get_economic_position_ledger,
+)
 
 logger = logging.getLogger("hummingbot-mcp")
 
@@ -398,6 +400,10 @@ def _authorize_spectra_execution(
     config: dict[str, Any],
     proposal_id: str | None,
     intent: str | None,
+    *,
+    position_id: str | None = None,
+    account_name: str = "master_account",
+    controller_id: str = "spectra",
 ) -> str | None:
     """Commit the exact Spectra capital claim before any external mutation."""
     if settings.agent_slug != "spectra":
@@ -495,7 +501,20 @@ def _authorize_spectra_execution(
 
     try:
         governor = get_capital_governor()
-        committed = governor.commit_if_matches(proposal)
+        if intent_kind == IntentKind.ENTRY:
+            if not (position_id or "").strip():
+                return "Spectra ENTRY requires its exact spectra_position_id"
+            ledger = get_economic_position_ledger()
+            committed = governor.commit_entry_submission_if_matches(
+                proposal, position_id=position_id, ledger_path=ledger.path,
+                account_name=account_name, connector_name=connector,
+                controller_id=controller_id,
+            )
+        else:
+            committed = governor.commit_recovery_submission_if_matches(
+                proposal, position_id=position_id, account_name=account_name,
+                connector_name=connector, controller_id=controller_id,
+            )
     except Exception as exc:
         return f"Spectra capital governor unavailable: {exc}"
 
@@ -518,6 +537,7 @@ async def create_executor(
     save_as_default: bool = False,
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
+    spectra_position_id: str | None = None,
 ) -> dict[str, Any]:
     """Merge saved defaults, stamp the type, and create the executor.
 
@@ -565,6 +585,9 @@ async def create_executor(
         merged_config,
         spectra_proposal_id,
         spectra_intent,
+        position_id=spectra_position_id,
+        account_name=account,
+        controller_id=tag,
     )
     if spectra_error:
         logger.warning("create_%s refused by Spectra Core: %s", executor_type, spectra_error)
@@ -765,6 +788,7 @@ async def create_grid_executor(
     save_as_default: bool = False,
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
+    spectra_position_id: str | None = None,
 ) -> dict[str, Any]:
     """Run a grid of limit orders across a price range.
 
@@ -826,6 +850,7 @@ async def create_grid_executor(
         save_as_default=save_as_default,
         spectra_proposal_id=spectra_proposal_id,
         spectra_intent=spectra_intent,
+        spectra_position_id=spectra_position_id,
     )
 
 
@@ -850,6 +875,7 @@ async def create_dca_executor(
     save_as_default: bool = False,
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
+    spectra_position_id: str | None = None,
 ) -> dict[str, Any]:
     """Average into a position over a ladder of price levels.
 
@@ -898,6 +924,7 @@ async def create_dca_executor(
         save_as_default=save_as_default,
         spectra_proposal_id=spectra_proposal_id,
         spectra_intent=spectra_intent,
+        spectra_position_id=spectra_position_id,
     )
 
 
