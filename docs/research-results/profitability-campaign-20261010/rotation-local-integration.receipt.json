@@ -1,0 +1,43 @@
+{
+  "status": "LOCAL_SYNTHETIC_PASS_AWAITING_INDEPENDENT_ADMISSION",
+  "recorded_at": "2026-10-10T21:45:18.803684+00:00",
+  "research_adapter_sha256": "833307c97cda0bf31b3ef4afc4082973cb6aa6621491feaf969c536781286a5d",
+  "policy_sources": {
+    "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+    "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+    "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+    "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+    "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+    "rotation_policy": "f716728c80d014b4d4baae8163a3edf659c34d6582b23f543955bdbc837f44ec",
+    "parent_v2": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024"
+  },
+  "rotation_protocol_sha256": "6b6b3a83a159e09d0df8d9407d169cd85bf1b800c6462644a3c30d6a06e91da2",
+  "parent_v2_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+  "neutral_v2_financial_body_identical": true,
+  "neutral_generated_financial_body_sha256": "df36360d54e0f000531c46180d9c570df48971e372b31b84f58ab5ccf7d38dce",
+  "rotation_generated_variants": {
+    "stale": {
+      "generated_financial_body_sha256": "14227b3bd02b8824623d69dbca2a308cdf16342556782edbe849a44ff1a82d01",
+      "declared_source_boundaries": 10
+    },
+    "fee_hurdle": {
+      "generated_financial_body_sha256": "14227b3bd02b8824623d69dbca2a308cdf16342556782edbe849a44ff1a82d01",
+      "declared_source_boundaries": 10
+    }
+  },
+  "test_source_sha256": "3fe16abb4233e85b11ba611e2085b6f3d2a71ae547e190796470dc43eda9f10a",
+  "tests_passed": 16,
+  "actual_preserved_native_synthetic_scenarios": 11,
+  "synthetic_trigger_injection_explicit": true,
+  "historical_outcomes_read": false,
+  "holdout_accessed": false,
+  "historical_admission_granted": false,
+  "command": "python -m unittest discover -s tests -p test_rotation_campaign.py -v",
+  "test_elapsed_seconds": 7.312,
+  "boundary_notes": [
+    "Actual preserved native controller executes synthetic OHLC. Only the research trigger is injected for mechanics fixtures.",
+    "Independent rotation_policy tests exercise the genuine causal evidence tracker and exact fee hurdle.",
+    "No native, v1, v2, selector, owner or protocol source was edited.",
+    "Historical candidates require an independently audited v3 rotation_owned_control_174 receipt."
+  ]
+}

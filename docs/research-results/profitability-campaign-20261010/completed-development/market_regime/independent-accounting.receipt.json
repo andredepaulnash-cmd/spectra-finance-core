@@ -1,0 +1,106 @@
+{
+  "passed": true,
+  "status": "PASS",
+  "arm": "market_regime",
+  "strategy_imported": false,
+  "scope": "Independent actual serialized-fill accounting, immutable lot disposal, entire native-five-minute equity/basis/marks path, strict exit floor, immediate actual-next-open prices and declared FOK volume surrogate; not venue or full product ownership proof",
+  "arithmetic_precision": 60,
+  "arithmetic_tolerance": "1E-18",
+  "samples_checked": 52128,
+  "execution_fee_bps": "40",
+  "execution_slippage_bps": "5",
+  "execution_exit_floor_bps": "174",
+  "sample_scalar_checks": {
+    "cash": 52128,
+    "parked_cash": 52128,
+    "deployable_cash": 52128,
+    "committed_basis": 52128,
+    "marked_value": 52128,
+    "equity": 52128,
+    "cumulative_realized": 52128,
+    "cumulative_fees": 52128
+  },
+  "fills_checked": {
+    "ENTRY": 310,
+    "RECOVERY": 336,
+    "EXIT": 284,
+    "PARTIAL_RECYCLE": 193
+  },
+  "fill_price_capacity_checks": 1123,
+  "surviving_lots": 45,
+  "disposed_lots": 601,
+  "surviving_parents": 26,
+  "independent_cash": "1791.48197602801900602033281339308",
+  "independent_parked_cash": "1791.48197602801887748366567814188",
+  "minimum_deployable_cash": "1.20506230288E-18",
+  "independent_marked_inventory": "161.41637526903149139922339349948188",
+  "independent_equity": "1952.89835129705049741955620689256188",
+  "independent_realized_pnl": "178.62001127980244221877913435700",
+  "independent_unrealized_pnl": "-225.72165998275194479922292746443812",
+  "independent_fees": "41.46634940629305478760295174292",
+  "native_5m_drawdown": "0.0772157000603913820651674668717275219619821926622301861377720",
+  "capital_dollar_days": "74664.8225305249823757972777005051826388888888888888888888889",
+  "occupied_slot_fraction": "0.623985190300798035604665438919582565991405770411295273173726",
+  "all_minutes_below50_including_initialization": 257400,
+  "maximum_mark_age_seconds": 1062600,
+  "sealed_holdout_read": false,
+  "full_cash_owner_adapter_verified": false,
+  "owner_proof": null,
+  "research_adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+  "policy_sources": null,
+  "input_array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+  "input_metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+  "results_sha256": "fc5be0a59433c3334bf2712d67c1a17f3c1d686f24d6f75b951ce3f789bba2b2",
+  "artifacts": [
+    {
+      "file": "account_5m.csv.gz",
+      "bytes": 2112707,
+      "sha256": "24ed3450f5e883f350b03bf8ad7a30408390e444b8e429e436ea75432fcd378b"
+    },
+    {
+      "file": "fills.csv",
+      "bytes": 186067,
+      "sha256": "dad352016f96448a416e5edcfe28f1934ef4a76c876d44290f522b30cec7eab5"
+    },
+    {
+      "file": "generated_campaign_body.py",
+      "bytes": 30528,
+      "sha256": "4fa962d96cb8065195121aff39719e68648414069f68a04f6b6d04379946cd0f"
+    },
+    {
+      "file": "ownership_events.json.gz",
+      "bytes": 942654,
+      "sha256": "64677b0ae581b686d2fa4895afd1db82a4b5358f3f692441f3a7ad5fc9a33e28"
+    },
+    {
+      "file": "pending_orders.jsonl.gz",
+      "bytes": 728348,
+      "sha256": "226ed308fc58c7fb7a1033ae73e5b17765d471d81b5346842c37aab598f40648"
+    },
+    {
+      "file": "results.json",
+      "bytes": 10088,
+      "sha256": "fc5be0a59433c3334bf2712d67c1a17f3c1d686f24d6f75b951ce3f789bba2b2"
+    },
+    {
+      "file": "run_admission.receipt.json",
+      "bytes": 878,
+      "sha256": "40f9ccab2b9dce397ba8b9f8045899a56afe5e48e2a639c57cd85e71d9c34ddd"
+    },
+    {
+      "file": "terminal.json",
+      "bytes": 8544,
+      "sha256": "e0b4f6bd8a0418fb777def78070d33374ebe8c9edd509797be7dc99281ea05a8"
+    },
+    {
+      "file": "terminal_lots.json",
+      "bytes": 364522,
+      "sha256": "89609a12d0cd1b28cc42dc742106276e99611bc823d6a436e5c20a2bdc462e6e"
+    },
+    {
+      "file": "watchlist_updates.jsonl.gz",
+      "bytes": 49,
+      "sha256": "12619e6d7377c6a1dfaa75e3ecb5bf062ad52628690c6da07b79ff5ba87725de"
+    }
+  ]
+}

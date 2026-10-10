@@ -1,0 +1,107 @@
+{
+  "passed": true,
+  "status": "PASS",
+  "arm": "weekly_list_refresh",
+  "strategy_imported": false,
+  "scope": "Independent actual serialized-fill accounting, immutable lot disposal, entire native-five-minute equity/basis/marks path, declared exit-floor behavior, immediate actual-next-open prices and declared FOK volume surrogate; not venue or full production ownership proof",
+  "arithmetic_precision": 60,
+  "arithmetic_tolerance": "1E-18",
+  "samples_checked": 52128,
+  "execution_fee_bps": "40",
+  "execution_slippage_bps": "5",
+  "execution_exit_floor_bps": "174",
+  "sample_scalar_checks": {
+    "cash": 52128,
+    "parked_cash": 52128,
+    "deployable_cash": 52128,
+    "committed_basis": 52128,
+    "marked_value": 52128,
+    "equity": 52128,
+    "cumulative_realized": 52128,
+    "cumulative_fees": 52128
+  },
+  "fills_checked": {
+    "ENTRY": 55,
+    "EXIT": 41,
+    "RECOVERY": 309,
+    "PARTIAL_RECYCLE": 210
+  },
+  "fill_price_capacity_checks": 615,
+  "surviving_lots": 24,
+  "disposed_lots": 340,
+  "surviving_parents": 14,
+  "independent_cash": "1840.49034623743759661795347278470",
+  "independent_parked_cash": "1837.98443864931124803879818448442",
+  "minimum_deployable_cash": "3.072070225128888E-14",
+  "independent_marked_inventory": "97.878124995717715050934768354307899",
+  "independent_equity": "1938.368471233155311668888241139007899",
+  "independent_realized_pnl": "48.66798292332700616858577279758",
+  "independent_unrealized_pnl": "-110.299511690171694499697531658572101",
+  "independent_fees": "19.29266692909299571109707221730",
+  "native_5m_drawdown": "0.0664949363403276910920427573779687249413484180493388859833103",
+  "capital_dollar_days": "47333.7770444121709887183703932637809722222222222222222222222",
+  "occupied_slot_fraction": "0.270488413136893799877225291589932473910374462860650705954573",
+  "all_minutes_below50_including_initialization": 260640,
+  "maximum_mark_age_seconds": 2100,
+  "sealed_holdout_read": false,
+  "full_cash_owner_adapter_verified": false,
+  "owner_proof": null,
+  "rotation_proof": null,
+  "research_adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+  "policy_sources": null,
+  "input_array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+  "input_metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+  "results_sha256": "d5ac3f8675773b3d9ed287b71109f36dfc4f8ecec9d15f7fca985fd619cc45d6",
+  "artifacts": [
+    {
+      "file": "account_5m.csv.gz",
+      "bytes": 1995540,
+      "sha256": "436d5cd74d076323634508768fe21eaff54b58b0b10ddf35c2ba0b21e187e35f"
+    },
+    {
+      "file": "fills.csv",
+      "bytes": 100193,
+      "sha256": "3059794c3d97a864cf5ba1eb00c489114f7bd32c2cfcf037f232f61ea733eaa4"
+    },
+    {
+      "file": "generated_campaign_body.py",
+      "bytes": 30503,
+      "sha256": "57d9652b1017c6a4b0a40e22f3681626a43b20e50642e7bb7a2a0b294b3410a6"
+    },
+    {
+      "file": "ownership_events.json.gz",
+      "bytes": 690842,
+      "sha256": "9c79c25c68468afa9f116a99c7cc92c779795969f0e0de7aac833cb9daab1c97"
+    },
+    {
+      "file": "pending_orders.jsonl.gz",
+      "bytes": 526266,
+      "sha256": "bb16aaec83b3ab29eca7d73cbdd55f1c28f9905e0edc01ff385a4cbf8ccc17f3"
+    },
+    {
+      "file": "results.json",
+      "bytes": 9987,
+      "sha256": "d5ac3f8675773b3d9ed287b71109f36dfc4f8ecec9d15f7fca985fd619cc45d6"
+    },
+    {
+      "file": "run_admission.receipt.json",
+      "bytes": 884,
+      "sha256": "28a85dc6d361f5e3f8496fae63e7b80ffbde4acc616566e219d0adbf9d525d4c"
+    },
+    {
+      "file": "terminal.json",
+      "bytes": 4571,
+      "sha256": "0b07dfb6057751c8850dab75b1b245fd6bee5a7aa2f9302c38031318e71d8af3"
+    },
+    {
+      "file": "terminal_lots.json",
+      "bytes": 203460,
+      "sha256": "820588f849573b3e29379fca5057c9bf216bc4d79f97d48dcad36eff3dceabf0"
+    },
+    {
+      "file": "watchlist_updates.jsonl.gz",
+      "bytes": 8202398,
+      "sha256": "da963c356a9359b43eade29ca7a25476221d3caa5d1546c6f5b720e68327c669"
+    }
+  ]
+}

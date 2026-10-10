@@ -1,46 +1,728 @@
 {
-  "updated_at": "2026-10-10T21:25:24.658296+00:00",
-  "interpretation": "Previously inspected development tape; accounting PASS is not proof of profitability. No partial outcomes included.",
+  "updated_at": "2026-10-10T21:56:02.477943+00:00",
+  "interpretation": "Previously inspected development tape; accounting PASS is not proof of profitability. Only finalized source-bound independently audited outcomes included.",
   "results": [
     {
+      "arm": "combined_selector_directional",
+      "declared_arm": {
+        "name": "combined_selector_directional",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": true,
+        "directional": true,
+        "recovery_quality": false,
+        "ladder_profiles": {},
+        "kind": "combination"
+      },
+      "ending_equity": "1862.643911511740341036241749",
+      "total_pnl": "-137.356088488259658963758251",
+      "realized_pnl": "47.95749655480724554941235708",
+      "unrealized_pnl": "-185.3135850430669045131706017",
+      "max_drawdown_fraction": "0.08548477701033155112748154237",
+      "ending_positions": 12,
+      "accounting_audit_passed": true,
+      "result_sha256": "6b13eff058bcbf3b3564859fb0ca632fb8e7cc5367b00866c75ef5afb105bef1",
+      "adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+      "audit_sha256": "f5923ef43d5c67e622f7d0bd32cc31429dcba81462de7e2770229b53a0bd4057",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1862.643911511740341036241749189160625",
+          "pnl": "-137.356088488259658963758250810839375",
+          "return_fraction": "-0.0686780442441298294818791254054196875"
+        },
+        "modeled_exit_cost": {
+          "equity": "1861.9242555916121923683743959543297805087500",
+          "pnl": "-138.0757444083878076316256040456702194912500",
+          "return_fraction": "-0.069037872204193903815812802022835109745625"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1861.9242555916121923683743959543297805087500",
+          "pnl": "-138.0757444083878076316256040456702194912500",
+          "return_fraction": "-0.069037872204193903815812802022835109745625"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1861.9242555916121923683743959543297805087500",
+          "pnl": "-138.0757444083878076316256040456702194912500",
+          "return_fraction": "-0.069037872204193903815812802022835109745625"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "bdbd949aee575d2ab5f800ee0e976fd25da3ceeb912c859240ff49f7a81d67a2"
+    },
+    {
       "arm": "control_100_park",
+      "declared_arm": {
+        "name": "control_100_park",
+        "case": "hard_100_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": false,
+        "directional": false,
+        "recovery_quality": false,
+        "ladder_profiles": {},
+        "kind": "control"
+      },
       "ending_equity": "1898.277183091943957381228996",
       "total_pnl": "-101.722816908056042618771004",
+      "realized_pnl": "202.0271469672210809373570312",
+      "unrealized_pnl": "-303.7499638752771235561280370",
       "max_drawdown_fraction": "0.09838186948880725067816859027",
+      "ending_positions": 37,
       "accounting_audit_passed": true,
-      "result_sha256": "4a0ffd67a2e0ee3fe1d2422499f4921f59cccd1b3e992554ec60fd7b555594be"
+      "result_sha256": "4a0ffd67a2e0ee3fe1d2422499f4921f59cccd1b3e992554ec60fd7b555594be",
+      "adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+      "audit_sha256": "74b64284faf7bf789d48fc30cabb84e5b93acf786e77c77f8d35a81f003df6db",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1898.2771830919439573812289957278086",
+          "pnl": "-101.7228169080560426187710042721914",
+          "return_fraction": "-0.0508614084540280213093855021360957"
+        },
+        "modeled_exit_cost": {
+          "equity": "1897.39818156178285363595871280776691691720",
+          "pnl": "-102.60181843821714636404128719223308308280",
+          "return_fraction": "-0.0513009092191085731820206435961165415414"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1897.39818156178285363595871280776691691720",
+          "pnl": "-102.60181843821714636404128719223308308280",
+          "return_fraction": "-0.0513009092191085731820206435961165415414"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1897.39818156178285363595871280776691691720",
+          "pnl": "-102.60181843821714636404128719223308308280",
+          "return_fraction": "-0.0513009092191085731820206435961165415414"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "2c08466ee8f0ad4ec1d0fa544831575ae227e7c05779714af86f64ad19df3e60"
     },
     {
       "arm": "control_174_park",
+      "declared_arm": {
+        "name": "control_174_park",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": false,
+        "directional": false,
+        "recovery_quality": false,
+        "ladder_profiles": {},
+        "kind": "control"
+      },
       "ending_equity": "1941.810623175947518508197294",
       "total_pnl": "-58.189376824052481491802706",
+      "realized_pnl": "252.8376402096573657566677240",
+      "unrealized_pnl": "-311.0270170337098472484704259",
       "max_drawdown_fraction": "0.1055417438326701702803624498",
+      "ending_positions": 44,
       "accounting_audit_passed": true,
-      "result_sha256": "085aacd8b93e7b7bf575c95038d8031cf018763618ec06d9aaf35b71e7681893"
+      "result_sha256": "085aacd8b93e7b7bf575c95038d8031cf018763618ec06d9aaf35b71e7681893",
+      "adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+      "audit_sha256": "80d5ac2ad69b968867a0efbf3a775010cf73c711c3f2a665a9bede12e58835e4",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1941.8106231759475185081972932141744",
+          "pnl": "-58.1893768240524814918027067858256",
+          "return_fraction": "-0.0290946884120262407459013533929128"
+        },
+        "modeled_exit_cost": {
+          "equity": "1940.82279795993153113591647781755504354880",
+          "pnl": "-59.17720204006846886408352218244495645120",
+          "return_fraction": "-0.0295886010200342344320417610912224782256"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1940.82279795993153113591647781755504354880",
+          "pnl": "-59.17720204006846886408352218244495645120",
+          "return_fraction": "-0.0295886010200342344320417610912224782256"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1940.82279795993153113591647781755504354880",
+          "pnl": "-59.17720204006846886408352218244495645120",
+          "return_fraction": "-0.0295886010200342344320417610912224782256"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "f8c40cedcd47b19d697f376bb06046c9fc8d8cdae2f88ec1a99c13aede0788d6"
+    },
+    {
+      "arm": "current_cost_owned_control_174",
+      "declared_arm": {
+        "name": "current_cost_owned_control_174",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "80",
+        "slippage_bps": "15",
+        "owned_cash": true,
+        "selection": false,
+        "directional": false,
+        "recovery_quality": false,
+        "redeploy_confirmed_partial": false,
+        "ladder_assignment": null,
+        "counterfactual": true
+      },
+      "ending_equity": "1846.890383887019104497889854",
+      "total_pnl": "-153.109616112980895502110146",
+      "realized_pnl": "217.8742052820174956214481098",
+      "unrealized_pnl": "-370.9838213949983911235582534",
+      "max_drawdown_fraction": "0.1225298973752483137319539998",
+      "ending_positions": 50,
+      "accounting_audit_passed": true,
+      "result_sha256": "9f28f5a194b2909afd9663d235ff67ded3dc5fc88286691085893c09a4c9fc82",
+      "adapter_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+      "audit_sha256": "920804797a65b46cf35db8e0746eecd6e4de7d3689802b2efca138b89557163c",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1846.8903838870191044978898537590149",
+          "pnl": "-153.1096161129808955021101462409851",
+          "return_fraction": "-0.07655480805649044775105507312049255"
+        },
+        "modeled_exit_cost": {
+          "equity": "1845.18073367463234588444368053614936662880",
+          "pnl": "-154.81926632536765411555631946385063337120",
+          "return_fraction": "-0.0774096331626838270577781597319253166856"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1845.18073367463234588444368053614936662880",
+          "pnl": "-154.81926632536765411555631946385063337120",
+          "return_fraction": "-0.0774096331626838270577781597319253166856"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1845.18073367463234588444368053614936662880",
+          "pnl": "-154.81926632536765411555631946385063337120",
+          "return_fraction": "-0.0774096331626838270577781597319253166856"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "3829f3e05dc07f263e6a9b48a3c74714f171fee95ddbeb88a0ec80e50a28ffdf"
     },
     {
       "arm": "directional_strength",
+      "declared_arm": {
+        "name": "directional_strength",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": false,
+        "directional": true,
+        "recovery_quality": false,
+        "ladder_profiles": {}
+      },
       "ending_equity": "1856.822209807027294136235884",
       "total_pnl": "-143.177790192972705863764116",
+      "realized_pnl": "137.1566993848754273953922312",
+      "unrealized_pnl": "-280.3344895778481332591563462",
       "max_drawdown_fraction": "0.1068128627062082639953095941",
+      "ending_positions": 33,
       "accounting_audit_passed": true,
-      "result_sha256": "3013fe46a45d7477913a8911fef01e8c3b29cb0c0c3189f4f45d97feb4e59c6a"
+      "result_sha256": "3013fe46a45d7477913a8911fef01e8c3b29cb0c0c3189f4f45d97feb4e59c6a",
+      "adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+      "audit_sha256": "d58955607abd95a65fbaada9e765b2d8a1377514397ecfc9748113cd3b988db4",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1856.822209807027294136235883972325767",
+          "pnl": "-143.177790192972705863764116027674233",
+          "return_fraction": "-0.0715888950964863529318820580138371165"
+        },
+        "modeled_exit_cost": {
+          "equity": "1856.0305681198955112589532743305902457000340",
+          "pnl": "-143.9694318801044887410467256694097542999660",
+          "return_fraction": "-0.071984715940052244370523362834704877149983"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1856.0305681198955112589532743305902457000340",
+          "pnl": "-143.9694318801044887410467256694097542999660",
+          "return_fraction": "-0.071984715940052244370523362834704877149983"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1856.0305681198955112589532743305902457000340",
+          "pnl": "-143.9694318801044887410467256694097542999660",
+          "return_fraction": "-0.071984715940052244370523362834704877149983"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "49db043f6b65d9a72b606ccb2adc930f69f0729b8cc79ef658c3598b879f6c8d"
+    },
+    {
+      "arm": "market_regime",
+      "declared_arm": {
+        "name": "market_regime",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": false,
+        "directional": false,
+        "recovery_quality": false,
+        "ladder_profiles": {},
+        "regime_gate": true,
+        "implementation_gate": "causal cross-sectional 24h positive return fraction >=0.5; minimum50 valid assets"
+      },
+      "ending_equity": "1952.898351297050497419556209",
+      "total_pnl": "-47.101648702949502580443791",
+      "realized_pnl": "178.6200112798024422187791350",
+      "unrealized_pnl": "-225.7216599827519447992229276",
+      "max_drawdown_fraction": "0.07721570006039138206516746492",
+      "ending_positions": 26,
+      "accounting_audit_passed": true,
+      "result_sha256": "fc5be0a59433c3334bf2712d67c1a17f3c1d686f24d6f75b951ce3f789bba2b2",
+      "adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+      "audit_sha256": "af5393eb1e14752fa75b68c3d25b8cae8a4eba13a4be329ebc3ab9bb61fe1047",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1952.8983512970504974195562095104114",
+          "pnl": "-47.1016487029495025804437904895886",
+          "return_fraction": "-0.0235508243514747512902218952447943"
+        },
+        "modeled_exit_cost": {
+          "equity": "1952.17230044109039377124250268640156952280",
+          "pnl": "-47.82769955890960622875749731359843047720",
+          "return_fraction": "-0.0239138497794548031143787486567992152386"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1952.17230044109039377124250268640156952280",
+          "pnl": "-47.82769955890960622875749731359843047720",
+          "return_fraction": "-0.0239138497794548031143787486567992152386"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1952.17230044109039377124250268640156952280",
+          "pnl": "-47.82769955890960622875749731359843047720",
+          "return_fraction": "-0.0239138497794548031143787486567992152386"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "1853355ac73e311eedc66741e26589aba87d2caad428fd641ddb57dbe94c94af"
+    },
+    {
+      "arm": "native_dttp_174_park",
+      "declared_arm": {
+        "name": "native_dttp_174_park",
+        "case": "legacy_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": false,
+        "directional": false,
+        "recovery_quality": false,
+        "owned_cash": false,
+        "matched_control": "control_174_park",
+        "native_dttp": true
+      },
+      "ending_equity": "1855.036794824119969115033974",
+      "total_pnl": "-144.963205175880030884966026",
+      "realized_pnl": "152.5404691338822476391631057",
+      "unrealized_pnl": "-297.5036743097622785241291407",
+      "max_drawdown_fraction": "0.1111790952494385908908061957",
+      "ending_positions": 33,
+      "accounting_audit_passed": true,
+      "result_sha256": "4f1fca84e097c046abb3f823ffc740add6e06ed10adaad04729ca9470fc20262",
+      "adapter_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+      "audit_sha256": "e4fb2881e0ce513b8716e4760aa8c15be380eeed27c4bb58bb3b288af38bbcca",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1855.036794824119969115033973998921887",
+          "pnl": "-144.963205175880030884966026001078113",
+          "return_fraction": "-0.0724816025879400154424830130005390565"
+        },
+        "modeled_exit_cost": {
+          "equity": "1854.1703960520877400536379757391807363522740",
+          "pnl": "-145.8296039479122599463620242608192636477260",
+          "return_fraction": "-0.072914801973956129973181012130409631823863"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1854.1703960520877400536379757391807363522740",
+          "pnl": "-145.8296039479122599463620242608192636477260",
+          "return_fraction": "-0.072914801973956129973181012130409631823863"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1854.1703960520877400536379757391807363522740",
+          "pnl": "-145.8296039479122599463620242608192636477260",
+          "return_fraction": "-0.072914801973956129973181012130409631823863"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "1be51bddb94368ddee0330f4a57fcf26a83ece3f4ee0083e661b1fdf04d84ca6"
+    },
+    {
+      "arm": "owned_control_174",
+      "declared_arm": {
+        "name": "owned_control_174",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "owned_cash": true,
+        "selection": false,
+        "directional": false,
+        "recovery_quality": false,
+        "redeploy_confirmed_partial": false,
+        "ladder_assignment": null
+      },
+      "ending_equity": "1836.832507244617396075770741",
+      "total_pnl": "-163.167492755382603924229259",
+      "realized_pnl": "203.9201640685725544147145658",
+      "unrealized_pnl": "-367.0876568239551583389438303",
+      "max_drawdown_fraction": "0.1140391321499748049229022417",
+      "ending_positions": 50,
+      "accounting_audit_passed": true,
+      "result_sha256": "dee4efab7626dc2e5d4e1715f32c419e3e5e7b2de700a791315e69265527d6c5",
+      "adapter_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+      "audit_sha256": "92a9cba9d03d5eadf1e5f00eb0b8f69a8619d157963961da614a86f03be1c04a",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1836.83250724461739607577074061336026",
+          "pnl": "-163.16749275538260392422925938663974",
+          "return_fraction": "-0.08158374637769130196211462969331987"
+        },
+        "modeled_exit_cost": {
+          "equity": "1836.039922349943863599904321475079365550520",
+          "pnl": "-163.960077650056136400095678524920634449480",
+          "return_fraction": "-0.08198003882502806820004783926246031722474"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1836.039922349943863599904321475079365550520",
+          "pnl": "-163.960077650056136400095678524920634449480",
+          "return_fraction": "-0.08198003882502806820004783926246031722474"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1836.039922349943863599904321475079365550520",
+          "pnl": "-163.960077650056136400095678524920634449480",
+          "return_fraction": "-0.08198003882502806820004783926246031722474"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "01f4e2e211db66529829ab19574879142636326b4c20dc6bbaa8a1f04e23355b"
     },
     {
       "arm": "recovery_quality",
+      "declared_arm": {
+        "name": "recovery_quality",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": false,
+        "directional": false,
+        "recovery_quality": true,
+        "ladder_profiles": {}
+      },
       "ending_equity": "1888.059349086325117537315526",
       "total_pnl": "-111.940650913674882462684474",
+      "realized_pnl": "260.2491942199009904961718639",
+      "unrealized_pnl": "-372.1898451335758729588563369",
       "max_drawdown_fraction": "0.1019412782221268821689363880",
+      "ending_positions": 46,
       "accounting_audit_passed": true,
-      "result_sha256": "51e5b20cfb587b3e77d18fa85d75bf1141555850ac667516f06f277fe6a81232"
+      "result_sha256": "51e5b20cfb587b3e77d18fa85d75bf1141555850ac667516f06f277fe6a81232",
+      "adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+      "audit_sha256": "4776463cd6157b832e6065bba0e1a5e7f0a624cd188bcc4a4694b47448f1e77c",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1888.059349086325117537315526666196063",
+          "pnl": "-111.940650913674882462684473333803937",
+          "return_fraction": "-0.0559703254568374412313422366669019685"
+        },
+        "modeled_exit_cost": {
+          "equity": "1887.1817757069342326289988967805695131086260",
+          "pnl": "-112.8182242930657673710011032194304868913740",
+          "return_fraction": "-0.056409112146532883685500551609715243445687"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1887.1817757069342326289988967805695131086260",
+          "pnl": "-112.8182242930657673710011032194304868913740",
+          "return_fraction": "-0.056409112146532883685500551609715243445687"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1887.1817757069342326289988967805695131086260",
+          "pnl": "-112.8182242930657673710011032194304868913740",
+          "return_fraction": "-0.056409112146532883685500551609715243445687"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "b7e3132b0ec989feef7f25c810a8ee9be745b4fb26de1396eabfd691d8c8ea48"
+    },
+    {
+      "arm": "recurring_opportunity",
+      "declared_arm": {
+        "name": "recurring_opportunity",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": true,
+        "directional": false,
+        "recovery_quality": false,
+        "ladder_profiles": {}
+      },
+      "ending_equity": "1848.460139982620571602139746",
+      "total_pnl": "-151.539860017379428397860254",
+      "realized_pnl": "52.73298463456748456183222654",
+      "unrealized_pnl": "-204.2728446519469129596924751",
+      "max_drawdown_fraction": "0.1132235134792337921164921052",
+      "ending_positions": 18,
+      "accounting_audit_passed": true,
+      "result_sha256": "6b485a338de91a5a6fd9ae2032ac91b637096f7e79d3d76c8f1c04c78e06afba",
+      "adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+      "audit_sha256": "79d58f00a37587f360e94965cc07715845ff719d2150ad4c0499850357c290f0",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1848.460139982620571602139745973002089",
+          "pnl": "-151.539860017379428397860254026997911",
+          "return_fraction": "-0.0757699300086897141989301270134989555"
+        },
+        "modeled_exit_cost": {
+          "equity": "1847.6282241414916617792077603594335256036780",
+          "pnl": "-152.3717758585083382207922396405664743963220",
+          "return_fraction": "-0.076185887929254169110396119820283237198161"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1847.6282241414916617792077603594335256036780",
+          "pnl": "-152.3717758585083382207922396405664743963220",
+          "return_fraction": "-0.076185887929254169110396119820283237198161"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1847.6282241414916617792077603594335256036780",
+          "pnl": "-152.3717758585083382207922396405664743963220",
+          "return_fraction": "-0.076185887929254169110396119820283237198161"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "28b9d9fdc82db1bf0e517c24f1c52393a03b15b870cfd83f88a36a8a54d15155"
     },
     {
       "arm": "warmup_7_days",
+      "declared_arm": {
+        "name": "warmup_7_days",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": false,
+        "directional": false,
+        "recovery_quality": false,
+        "ladder_profiles": {},
+        "warmup_days": 7
+      },
       "ending_equity": "1696.472258056135282877652410",
       "total_pnl": "-303.527741943864717122347590",
+      "realized_pnl": "150.0498285652530631139859101",
+      "unrealized_pnl": "-453.5775705091177802363334965",
       "max_drawdown_fraction": "0.1584739020412534411368834288",
+      "ending_positions": 45,
       "accounting_audit_passed": true,
-      "result_sha256": "fbe46629edad9489476b430918b90ac942f8428dab2bb9b791fdff8f7cb27476"
+      "result_sha256": "fbe46629edad9489476b430918b90ac942f8428dab2bb9b791fdff8f7cb27476",
+      "adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+      "audit_sha256": "9efcd7aaadb8b6be7f3c4a7eb56871b4dd6972a95fa416dcc6401822c3660895",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1696.47225805613528287765241049152552",
+          "pnl": "-303.52774194386471712234758950847448",
+          "return_fraction": "-0.15176387097193235856117379475423724"
+        },
+        "modeled_exit_cost": {
+          "equity": "1695.415607869402391098105904595980638211040",
+          "pnl": "-304.584392130597608901894095404019361788960",
+          "return_fraction": "-0.15229219606529880445094704770200968089448"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1691.612470500643674122319872243445677435040",
+          "pnl": "-308.387529499356325877680127756554322564960",
+          "return_fraction": "-0.15419376474967816293884006387827716128248"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1695.415607869402391098105904595980638211040",
+          "pnl": "-304.584392130597608901894095404019361788960",
+          "return_fraction": "-0.15229219606529880445094704770200968089448"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 1,
+          "marked_value": "3.820321173396655130563306103388",
+          "modeled_exit_cost_value": "3.8031373687587169757860323525349607760"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "4428c8bd2b0ef60e8e6ee922d29f8e6a456f89f544c2d339529a487fdfd97000"
+    },
+    {
+      "arm": "weekly_list_refresh",
+      "declared_arm": {
+        "name": "weekly_list_refresh",
+        "case": "hard_174_park",
+        "capital": "2000",
+        "fee_bps": "40",
+        "slippage_bps": "5",
+        "selection": true,
+        "directional": false,
+        "recovery_quality": false,
+        "ladder_profiles": {},
+        "list_refresh_days": 7
+      },
+      "ending_equity": "1938.368471233155311668888232",
+      "total_pnl": "-61.631528766844688331111768",
+      "realized_pnl": "48.66798292332700616858577284",
+      "unrealized_pnl": "-110.2995116901716944996975317",
+      "max_drawdown_fraction": "0.06649493634032769109204275746",
+      "ending_positions": 14,
+      "accounting_audit_passed": true,
+      "result_sha256": "d5ac3f8675773b3d9ed287b71109f36dfc4f8ecec9d15f7fca985fd619cc45d6",
+      "adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+      "audit_sha256": "12516d79ae91db3e4d4327028b803ac895502101e9deba06f8e7df484ccd3018",
+      "terminal_valuation": {
+        "marked": {
+          "equity": "1938.368471233155311668888232293960559",
+          "pnl": "-61.631528766844688331111767706039441",
+          "return_fraction": "-0.0308157643834223441655558838530197205"
+        },
+        "modeled_exit_cost": {
+          "equity": "1937.9282154269245733865891277061743244056180",
+          "pnl": "-62.0717845730754266134108722938256755943820",
+          "return_fraction": "-0.031035892286537713306705436146912837797191"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1937.9282154269245733865891277061743244056180",
+          "pnl": "-62.0717845730754266134108722938256755943820",
+          "return_fraction": "-0.031035892286537713306705436146912837797191"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1937.9282154269245733865891277061743244056180",
+          "pnl": "-62.0717845730754266134108722938256755943820",
+          "return_fraction": "-0.031035892286537713306705436146912837797191"
+        }
+      },
+      "terminal_stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      },
+      "terminal_report_sha256": "cd6e3b0fb0a9175436c1b376ff0ae60722e592795bec992e146d2799d2138de5"
     }
   ]
 }

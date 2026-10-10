@@ -1,0 +1,106 @@
+{
+  "passed": true,
+  "status": "PASS",
+  "arm": "recurring_opportunity",
+  "strategy_imported": false,
+  "scope": "Independent actual serialized-fill accounting, immutable lot disposal, entire native-five-minute equity/basis/marks path, declared exit-floor behavior, immediate actual-next-open prices and declared FOK volume surrogate; not venue or full production ownership proof",
+  "arithmetic_precision": 60,
+  "arithmetic_tolerance": "1E-18",
+  "samples_checked": 52128,
+  "execution_fee_bps": "40",
+  "execution_slippage_bps": "5",
+  "execution_exit_floor_bps": "174",
+  "sample_scalar_checks": {
+    "cash": 52128,
+    "parked_cash": 52128,
+    "deployable_cash": 52128,
+    "committed_basis": 52128,
+    "marked_value": 52128,
+    "equity": 52128,
+    "cumulative_realized": 52128,
+    "cumulative_fees": 52128
+  },
+  "fills_checked": {
+    "ENTRY": 89,
+    "EXIT": 71,
+    "RECOVERY": 300,
+    "PARTIAL_RECYCLE": 196
+  },
+  "fill_price_capacity_checks": 656,
+  "surviving_lots": 51,
+  "disposed_lots": 338,
+  "surviving_parents": 18,
+  "independent_cash": "1663.50775200376111786003534648845",
+  "independent_parked_cash": "1658.58788896159113621524530156517",
+  "minimum_deployable_cash": "1.337880026437024E-14",
+  "independent_marked_inventory": "184.952387978859453742104404955395449",
+  "independent_equity": "1848.460139982620571602139751443845449",
+  "independent_realized_pnl": "52.73298463456748456183222650501",
+  "independent_unrealized_pnl": "-204.272844651946912959692475061164551",
+  "independent_fees": "20.71911222273966068523396924655",
+  "native_5m_drawdown": "0.113223513479233792116492104416732818484384904833295961859559",
+  "capital_dollar_days": "78674.0488752643040448445619209612023611111111111111111111111",
+  "occupied_slot_fraction": "0.348031384284837323511356660527931246163290362185389809699202",
+  "all_minutes_below50_including_initialization": 260640,
+  "maximum_mark_age_seconds": 6300,
+  "sealed_holdout_read": false,
+  "full_cash_owner_adapter_verified": false,
+  "owner_proof": null,
+  "research_adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+  "policy_sources": null,
+  "input_array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+  "input_metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+  "results_sha256": "6b485a338de91a5a6fd9ae2032ac91b637096f7e79d3d76c8f1c04c78e06afba",
+  "artifacts": [
+    {
+      "file": "account_5m.csv.gz",
+      "bytes": 2043125,
+      "sha256": "29fb29310200fb38bd37080018cc2a89fe2e92322d485d8accb596dbb42d14ea"
+    },
+    {
+      "file": "fills.csv",
+      "bytes": 106972,
+      "sha256": "bdb7bf807d671cedaa88879024f308863679f1d9b187350367f6b6395d279edb"
+    },
+    {
+      "file": "generated_campaign_body.py",
+      "bytes": 30503,
+      "sha256": "57d9652b1017c6a4b0a40e22f3681626a43b20e50642e7bb7a2a0b294b3410a6"
+    },
+    {
+      "file": "ownership_events.json.gz",
+      "bytes": 1234390,
+      "sha256": "6441689cd059a6edc788ce52ffd3d3c38d5df5d46c3e7beb29f6074e644e8c79"
+    },
+    {
+      "file": "pending_orders.jsonl.gz",
+      "bytes": 835905,
+      "sha256": "6bae1b1f8828450d3b8fd7eebd0522c171753356d13f65d3dae801a668a75232"
+    },
+    {
+      "file": "results.json",
+      "bytes": 10212,
+      "sha256": "6b485a338de91a5a6fd9ae2032ac91b637096f7e79d3d76c8f1c04c78e06afba"
+    },
+    {
+      "file": "run_admission.receipt.json",
+      "bytes": 886,
+      "sha256": "46d21c8e4740d483109217cc7301525431204e343a63676f2e4feebdfbc292fa"
+    },
+    {
+      "file": "terminal.json",
+      "bytes": 5873,
+      "sha256": "3b0e84678725d5231285358839effe36e0c9aed1500f451cc4f56c9a63a8be95"
+    },
+    {
+      "file": "terminal_lots.json",
+      "bytes": 219699,
+      "sha256": "aa4d9200ee789a88fbda2ef277f23f015a0302386989973318efb3dbc800d704"
+    },
+    {
+      "file": "watchlist_updates.jsonl.gz",
+      "bytes": 8206038,
+      "sha256": "a008f80bb381d34755e4f1646836932c3a95b49ee0203822f7c17af00f4f75ce"
+    }
+  ]
+}

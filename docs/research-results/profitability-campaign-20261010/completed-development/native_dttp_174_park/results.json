@@ -1,0 +1,296 @@
+{
+  "arm": "native_dttp_174_park",
+  "status": "COMPLETED",
+  "completed_strategy_evaluation": true,
+  "research_only": true,
+  "production_activation": false,
+  "holdout_accessed": false,
+  "protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "input_identity": {
+    "metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+    "array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+    "shape": [
+      52128,
+      619,
+      6
+    ],
+    "observed_only": true,
+    "holdout_accessed": false
+  },
+  "native_sources": [
+    {
+      "file": "__init__.py",
+      "sha256": "f7abdf61344bfb6d1bb17c2629d9773fa376fc2096a3ddde21869605310660ec"
+    },
+    {
+      "file": "accounting_health.py",
+      "sha256": "703932720a5fe09962b2337d39f6c4ee62b29404352ba7060dfe9fce0d787397"
+    },
+    {
+      "file": "asset_fingerprint.py",
+      "sha256": "93fed948aa8670b3ba1fea8f1df93b99b3ad42fe9f4df666fc355b1799684fc2"
+    },
+    {
+      "file": "binance_kline_import.py",
+      "sha256": "e97d371eb424a2fed47d95af238f8ef50784fb9b44f0dcdf884b28bf25ed4813"
+    },
+    {
+      "file": "capital_governor.py",
+      "sha256": "93a4a6abb48eb94123aaf2529e7d55b1d9059a1a2a96ad00ef5c41f11c29896f"
+    },
+    {
+      "file": "economic_exit.py",
+      "sha256": "54d42d99867d4db9509b093a4d69f191db9a7df7e8d78f0643a13ddb570572d3"
+    },
+    {
+      "file": "economic_position.py",
+      "sha256": "28b8a06bbbeba31cf46ccff98183e8087f101d3bf288e6e99ea4b0360089d63a"
+    },
+    {
+      "file": "executor_accounting.py",
+      "sha256": "0400ce13205c90eaa13dbeed19aaac4b6f584be9cc56b37055b6031fa8e2734b"
+    },
+    {
+      "file": "executor_provenance_bridge.py",
+      "sha256": "96bdfc94d9c33685bb2d83c2ef3f4376eba9f5adf14af8d7b0155ca529789a83"
+    },
+    {
+      "file": "fill_reconciliation.py",
+      "sha256": "ffde14ee3d667300205a3f0d0a3e6c842a6cccfa2001d75e60d1a8b2b8bc79ac"
+    },
+    {
+      "file": "kraken_market_fabric.py",
+      "sha256": "1787d100bbf7241d065d212db0c084c600e7e6ffd185211988ca4d6699210d46"
+    },
+    {
+      "file": "models.py",
+      "sha256": "155f72a31bcd707ac5277a5f41ddc7dd090a76b585c225f4ed246307a2837d03"
+    },
+    {
+      "file": "partial_recycle.py",
+      "sha256": "eab2b61bd4c11ad7424fcfed09403a3d397dd6db695841bbd5230b48f9001417"
+    },
+    {
+      "file": "position_hold_accounting.py",
+      "sha256": "86d15cd7b8986da79636b2465b2c34c566a15f36164e69043433b33c81b4bcd3"
+    },
+    {
+      "file": "recovery_fingerprint.py",
+      "sha256": "6afb839f0e081d127c8dcd8ce8230670517a73142e12d96da18a4104d88bdd66"
+    },
+    {
+      "file": "rotating_fleet.py",
+      "sha256": "58b484118f8be69ebf0ae45fe95482b3b2abecd4b4f4c0ec2d9d7c7cf3948247"
+    },
+    {
+      "file": "strategy_lab.py",
+      "sha256": "841b519e2e50b4d4ef1d6eb440ad5485d9ccca959230e19bcd74a79fe12b4d51"
+    },
+    {
+      "file": "vcap_execution.py",
+      "sha256": "80981cb4d4caa84615e79755b159beae4919d0eb9a3c77bd381872c4ef2cddd6"
+    },
+    {
+      "file": "vcap_lifecycle.py",
+      "sha256": "91795d5ca1de0ccaa280888a77980199334971538c0d34a2207ff4732cb48f86"
+    },
+    {
+      "file": "vcap_profit_exit.py",
+      "sha256": "0803bc2f168704e2b0258a88172e6e24ca15ea942a1ab76361dad9715a0269da"
+    },
+    {
+      "file": "vcap_runtime.py",
+      "sha256": "1529a65dbbd3756197d2263d3143541ebc7940a4fba5b208d5b17c126cbd7eff"
+    },
+    {
+      "file": "vcap_state.py",
+      "sha256": "cc6a182c16fd25c61d86bf9cdab2e65f9ae5a6328135fcaec5cdfe558712d60f"
+    },
+    {
+      "file": "vcap_tranches.py",
+      "sha256": "74da3fb7e2f2ae679915b4801bf43df99f3daade1fe3eefecce768cfae641111"
+    }
+  ],
+  "native_manifest_sha256": "01fc7540c03c72113aeefea5187cbaae5d14f559e8b6dc90da8cc7aa9d6b4d08",
+  "native_generated_body_sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
+  "research_generated_body_sha256": "be7c0f805810dbeed8d8f91edf6bf57dcf82135cbfeacf23bcdf7299e885134e",
+  "research_adapter_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+  "declared_changes": [
+    {
+      "before": "        pending = exit_orders + partial_orders + recovery_orders + entry_orders",
+      "after": "        pending = exit_orders + partial_orders + recovery_orders + entry_orders\n        dataset.observe_account(locals())"
+    },
+    {
+      "before": "            average = position.basis / position.quantity\n",
+      "after": "            if exit_plan.state.profit_floor_reached_at is not None:\n                dataset.research_counts['armed_profit_floor_blocks_recovery'] += 1\n                continue\n            average = position.basis / position.quantity\n"
+    }
+  ],
+  "policy_sources": {
+    "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+    "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+    "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+    "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+    "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554"
+  },
+  "supplement_sha256s": {
+    "owned": "29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9",
+    "sizing": "de40c6ec9d865175dd6ecd9d59cb9af0bbc4a79d9bfa589dbc2fe406a0a23575",
+    "profit_policy": "f622c1ce307adb7bb25fcb5f6a1726aab0b15cd664bd6c6fe764180c2afcbaa7"
+  },
+  "declared_arm": {
+    "name": "native_dttp_174_park",
+    "case": "legacy_174_park",
+    "capital": "2000",
+    "fee_bps": "40",
+    "slippage_bps": "5",
+    "selection": false,
+    "directional": false,
+    "recovery_quality": false,
+    "owned_cash": false,
+    "matched_control": "control_174_park",
+    "native_dttp": true
+  },
+  "effective_profit_policy": {
+    "mode": "dttp",
+    "hard_target": false,
+    "execution_floor_bps": null,
+    "armed_profit_floor_blocks_recovery": true
+  },
+  "owner_model": null,
+  "financial_metrics": {
+    "starting_cash": "2000",
+    "ending_cash": "1662.418126075291809622815597",
+    "ending_equity": "1855.036794824119969115033974",
+    "realized_pnl": "152.5404691338822476391631057",
+    "unrealized_pnl": "-297.5036743097622785241291407",
+    "total_pnl": "-144.963205175880030884966026",
+    "fees": "57.71931579046759509724994492",
+    "turnover_quote": "14429.82894761689877431248679",
+    "max_drawdown_fraction": "0.1111790952494385908908061957",
+    "open_basis": "490.1223430585904380163475176",
+    "peak_committed_basis": "1060.375364489740461489655270",
+    "ending_positions": 33,
+    "target_positions": 50,
+    "fleet_initialized": true,
+    "first_target_timestamp": 1767229500,
+    "minimum_positions_after_initialization": 33,
+    "minutes_below_target_after_initialization": 255765,
+    "fleet_position_minute_fill_ratio": "0.7542276703499079189686924494",
+    "entry_fills": 498,
+    "rotations": 448,
+    "completed_positions": 465,
+    "recovery_fills": 362,
+    "linked_replacements_filled": 416,
+    "linked_replacements_funded_from_released_capital": 0,
+    "unique_position_ids": 498,
+    "unique_assets_ever_entered": 210,
+    "minimum_entry_basis": "10.25000000000000000000000000",
+    "maximum_simultaneous_positions": 50,
+    "duplicate_asset_violations": 0,
+    "expired_orders": 0,
+    "planner_exit_signals": 16789,
+    "planner_recovery_signals": 3051,
+    "exit_mode": "dttp",
+    "target_net_profit_bps": "174",
+    "hard_target_exit_signals": 0,
+    "exit_signal_reasons": {
+      "protected_profit_floor_breached": 11232,
+      "recycle_profitable_capital": 5557
+    },
+    "qualifying_hard_wins": 0,
+    "earned_dttp_activation_events": 0,
+    "earned_dttp_assets_activated": 0,
+    "earned_dttp_deactivation_events": 0,
+    "earned_dttp_extension_decisions": 0,
+    "earned_dttp_extended_positions": 0,
+    "execution_model": "next immediate actual 5m open plus adverse slippage; FOK cap 1% of minimum of previous observed decision-bar and actual execution-bar close*base-volume; expire on absent next candle",
+    "evidence_class": "recorded OHLCV; estimated execution; not top-of-book"
+  },
+  "elapsed_seconds": 397.0060622619985,
+  "decision_digest_sha256": "4a9667555451059b9dab35ad9476311865db148441197707f6919527e46691b1",
+  "rejection_counts": {
+    "absent_immediate_next_candle": 20915,
+    "dependency_not_filled": 67012,
+    "insufficient_shared_cash_for_fleet": 640341,
+    "no_distinct_replacement_candidate": 410,
+    "pair_basis_cap": 644,
+    "parked_partial_proceeds": 33,
+    "replacement_fallback_not_needed": 1061,
+    "volume_participation_fok": 11997
+  },
+  "research_counts": {
+    "armed_profit_floor_blocks_recovery": 3536
+  },
+  "ending_parked_cash": "1662.418126075291754779816275",
+  "ending_deployable_cash": "5.4842999322E-14",
+  "partial_fills": 202,
+  "partial_principal_reused": "0",
+  "capital_dollar_days": "99156.35415763631677251000167",
+  "pending_terminal": [],
+  "monthly": {
+    "2026-01": {
+      "starting_equity": "2000",
+      "ending_equity": "1926.216053590203903637500516",
+      "realized_pnl": "139.5693896642641734312000716",
+      "fees": "51.93299940977670487490546490",
+      "frames": 8928,
+      "marked_pnl": "-73.783946409796096362499484"
+    },
+    "2026-02": {
+      "starting_equity": "1926.216053590203903637500516",
+      "ending_equity": "1904.810666911508537092033061",
+      "realized_pnl": "-11.26785244941969784405370442",
+      "fees": "0.4704614808155013338785438997",
+      "frames": 8064,
+      "marked_pnl": "-21.405386678695366545467455"
+    },
+    "2026-03": {
+      "starting_equity": "1904.810666911508537092033061",
+      "ending_equity": "1894.575339498131969692712419",
+      "realized_pnl": "-5.027917921869711177721583013",
+      "fees": "0.7193838113485537658178109626",
+      "frames": 8928,
+      "marked_pnl": "-10.235327413376567399320642"
+    },
+    "2026-04": {
+      "starting_equity": "1894.575339498131969692712419",
+      "ending_equity": "1911.431298049892050575265903",
+      "realized_pnl": "21.77366800904857198299189462",
+      "fees": "2.676540346854128140686208705",
+      "frames": 8640,
+      "marked_pnl": "16.855958551760080882553484"
+    },
+    "2026-05": {
+      "starting_equity": "1911.431298049892050575265903",
+      "ending_equity": "1914.551927372144350105645080",
+      "realized_pnl": "7.493181831858911246746426980",
+      "fees": "1.919930741672706981961916500",
+      "frames": 8928,
+      "marked_pnl": "3.120629322252299530379177"
+    },
+    "2026-06": {
+      "starting_equity": "1914.551927372144350105645080",
+      "ending_equity": "1855.036794824119969115033974",
+      "realized_pnl": "0",
+      "fees": "0",
+      "frames": 8640,
+      "marked_pnl": "-59.515132548024380990611106"
+    }
+  },
+  "coverage": {
+    "native_spot_selection": true,
+    "native_recovery_planners": true,
+    "native_partial_lot_recycling": true,
+    "native_protected_net_exit_surrogate": true,
+    "continuous_finite_cash_and_inventory": true,
+    "recorded_volume_fok_surrogate": true,
+    "productive_VCAP_cash_owner_integration": false,
+    "full_API_lifecycle": false,
+    "live_orderbook_or_pair_specific_historical_minima": false,
+    "actual_hedge_route": false,
+    "DTSS_enabled": false,
+    "DTSSR_enabled": false,
+    "PSSM_enabled": false
+  },
+  "interpretation": "Previously inspected development history; recorded OHLC, estimated next-open FOK execution and historical marks. Positive development PnL does not establish independent or live profitability."
+}

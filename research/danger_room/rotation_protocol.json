@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-10T21:35:32.985077+00:00",
+  "research_only": true,
+  "production_activation": false,
+  "holdout_access": false,
+  "original_protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "owned_protocol_sha256": "29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9",
+  "parent_adapter_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+  "selector_source_sha256": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+  "budget": {
+    "previous_cap": 39,
+    "additional_matched_adapter_control": 1,
+    "maximum_cumulative_strategy_evaluations": 40,
+    "existing_rotation_arms_not_new_evaluations": 2
+  },
+  "chronology": "Operational clarification of two originally gated rotation hypotheses after native controls/early mechanism results, before any rotation-arm outcome. This is development research, not fresh confirmation.",
+  "arms": [
+    {
+      "name": "rotation_owned_control_174",
+      "matched_to": "owned_control_174",
+      "case": "hard_174_park",
+      "rotation": null,
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "owned_cash": true,
+      "kind": "additional_matched_adapter_control"
+    },
+    {
+      "name": "stale_inventory_rotation",
+      "matched_to": "rotation_owned_control_174",
+      "case": "hard_174_park",
+      "rotation": "stale",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "owned_cash": true
+    },
+    {
+      "name": "fee_hurdle_rotation",
+      "matched_to": "rotation_owned_control_174",
+      "case": "hard_174_park",
+      "rotation": "fee_hurdle",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "owned_cash": true
+    }
+  ],
+  "stale_gate": {
+    "age_seconds_at_least": 1209600,
+    "clock": "exact inherited parent opened_at",
+    "recovery_episode": "Completed observed nonoverlapping close-to-close price recovery using exact frozen selector validity, trough/reset, gross_recovery_ratio and maximum7dayrules. Includes completions in current partial UTC day. Not a confirmed sale or proof of obtainable profit.",
+    "completion_absent_interval": "(decision_completed_at-604800, decision_completed_at]",
+    "missing_history": "Require a fully tracked prior7dayinterval with >=274 valid actual bars in each of latest7 completedUTCdays; unavailable evidence denies. Gaps reset troughs and remain missing.",
+    "signed_24h": "Exact finite positive completed closes at t and t-86400; current/anchor-1 <0"
+  },
+  "daily_forecast": {
+    "days": 7,
+    "intervals": "Latest7 completed UTC daily intervals; exact positive finite boundary closes, seven returns require8boundaries.",
+    "minimum_valid_rows_each_day": 274,
+    "bar_seconds": 300,
+    "mean": "Arithmetic mean of ALL seven signed simple gross boundary-close-to-close returns, including negative/zero days. No fitted weights, successful-cycle conditioning or forward-fill.",
+    "missing": "Any missing boundary or undercovered required day denies forecast.",
+    "horizon_seconds": 86400,
+    "interpretation": "Causal historical one-day marked-return estimator, not guaranteed future or liquidated profit."
+  },
+  "fee_gate": {
+    "requires_fully_occupied_slots": 50,
+    "candidate": "First distinct normalized-base native-eligible candidate in original deterministic ranking with valid seven-return forecast, positive modeled new one-day marked gain and positive dollar delta. Ordinary spot exclusion, route/liquidity/native guard constraints remain.",
+    "replacement_budget_B": "Fixed10.25 all-in forecast input; it is not cash authorization. Actual post-confirmation available owner cash, paircap, reserve and route minima determine admission; no external top-up.",
+    "formula": {
+      "M": "old_remaining_quantity * current_completed_close",
+      "E": "M * (1-slippage_rate) * (1-fee_rate)",
+      "k": "1 / ((1+slippage_rate)*(1+fee_rate))",
+      "new_gain": "B*k*(1+mean_new)-B; must be strictly positive",
+      "delta_USD": "E-B+B*k*(1+mean_new)-M*(1+mean_old); must be strictly positive"
+    },
+    "loss": "Full actual signed old-parent loss is recorded in realizedPnl. Existing unrealized loss is not subtracted again from the marked-equity dollar hurdle. No future exit price is used.",
+    "candidate_identity": "Persist forecast candidate identity as an unfunded conditional replacement intention. After confirmed old-parent closure, admit only if still distinct/nativeeligible and all current guards pass; otherwise expire intention and report failure. Never claim a replacement fill from the forecast."
+  },
+  "priority": [
+    "ordinary native effective whole profit/protective exit",
+    "ordinary profitable partial RECOVERY harvest",
+    "tagged research whole-parent rotation",
+    "recovery patch",
+    "ordinary fresh entry"
+  ],
+  "protected_state": "An armed native profit floor always vetoes research loss rotation, including HARD_TARGET cases that otherwise override DTTP exits. Control behavior is unchanged when rotation is disabled.",
+  "execution": {
+    "sell": "Whole remaining parent quantity, tagged immutable order/parent; bypass174bps profit-floor only for this research-tagged order. No guaranteed fill.",
+    "timing": "Preserve native immediate next five-minute actual open; missing immediate candle expires intent. Do not wait across missing bars.",
+    "price": "Actual execution open*(1-slippage); realized fee at executed gross quote.",
+    "capacity": "Same native1% FOK minimum of decision-bar and execution-bar actual quote-volume; missing/minimum/identity guards remain.",
+    "pending": "Parent identity/quantity remain claimed until confirmed whole sale; no partial or hypothetical close releases a slot. Rejected/expired order leaves parent/lots/owner principal intact.",
+    "replacement": "Confirmed close first, then current-frame proposal if eligible/funded, then a subsequent modeled open. No anticipation or same-open replacement."
+  },
+  "ownership": {
+    "control_and_ordinary_sales": "Same reviewedv2 PARK behavior and exact PRODUCTIVE/VCAP principal/loss and75/25 positive disposed-lot profit rules.",
+    "tagged_rotation_sales": "After confirmed full-sale receipt, release exactly that receipt owned proceeds from any parking into their same owners. VCAP principal never becomes PRODUCTIVE cash. No unrelated parked receipt is released.",
+    "matched_adapter_gate": "Separate immutablev3 adapter, source-bound synthetic review, and additional matchedcontrol. Neutral rotation-disabled financial source/body must equalv2; independently auditedv3 matchedcontrol precedes rotation candidates. All activev1/v2sources remain unchanged."
+  },
+  "reporting": [
+    "attempted/confirmed/rejected rotation counts/reasons",
+    "full actual signed old-parent realized loss and exitfees/slippage",
+    "forecast mean/candidate/budget/delta recorded atdecisiontime",
+    "confirmed closure and replacement order/fill linkage or explicitfailure",
+    "owner available cash afterpendingholds",
+    "whole account marked PnL/openlosses/drawdown andterminalvaluations"
+  ]
+}

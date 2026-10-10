@@ -1,0 +1,230 @@
+{
+  "analyzer_sha256": "40f1e183582643e5a4f6f2dfd69576e7a7b8706789daa537692780dbb9692709",
+  "arm": "combined_selector_directional",
+  "cost_binding": {
+    "name": "combined_selector_directional",
+    "path": "/workspace/scratch/82bd120b042e/profitability_candidate/research/danger_room/profitability_protocol.json",
+    "sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+    "source": "frozen_strategy_protocol#/arms"
+  },
+  "decimal_precision": 60,
+  "declared_modeled_exit_costs": {
+    "actual_venue_execution_proven": false,
+    "fee_bps": "40",
+    "multiplicative_value_factor": "0.9955020",
+    "slippage_bps": "5"
+  },
+  "disclosure": "Valuation sensitivities only: no orders, fills, released cash or realizable liquidation are established. Pair minima, quantity increments, volume, order-book availability and historical listing/delisting completeness remain unverified. Stale-zero cases are hypothetical markdowns. The original frozen strategy-selection gate is unchanged.",
+  "ending_cash": "1702.649264973690392644211239",
+  "holdout_accessed": false,
+  "oldest_mark_age_seconds": 300,
+  "orders_or_fills_created": false,
+  "parents": [
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "14.870706174503083538241916587378",
+      "modeled_exit_cost_value": "14.8038177381301686684869044465679737560",
+      "pair": "NIGHT-USD",
+      "position_id": 3,
+      "quantity": "479.3909147164114615809773239",
+      "recorded_mark": "0.03102",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "8.770280449570584048510218411775",
+      "modeled_exit_cost_value": "8.7308317281084155614600194493588360500",
+      "pair": "LTC-USD",
+      "position_id": 12,
+      "quantity": "0.2092646253774894786091677025",
+      "recorded_mark": "41.91",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "4.97106944322755212716840761756550",
+      "modeled_exit_cost_value": "4.948709572871914597700404120101690381000",
+      "pair": "XRP-USD",
+      "position_id": 20,
+      "quantity": "4.786594106368124604895726325",
+      "recorded_mark": "1.03854",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "39.331391674600572523707577713218",
+      "modeled_exit_cost_value": "39.1544790748482191484959410286639454360",
+      "pair": "POL-USD",
+      "position_id": 39,
+      "quantity": "574.8522606635570377624609429",
+      "recorded_mark": "0.06842",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "59.81735928661681326953529471129",
+      "modeled_exit_cost_value": "59.548300804545610843448924955678617580",
+      "pair": "RENDER-USD",
+      "position_id": 46,
+      "quantity": "39.64039714156183781944022181",
+      "recorded_mark": "1.509",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "5.67439254112690484615034073297857",
+      "modeled_exit_cost_value": "5.648869123476916028152356500361632392140",
+      "pair": "ADA-USD",
+      "position_id": 58,
+      "quantity": "39.35548948993227250196167879",
+      "recorded_mark": "0.144183",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "4.911126418030549110997064743628955",
+      "modeled_exit_cost_value": "4.8890361714022477010957999464121119604100",
+      "pair": "XDG-USD",
+      "position_id": 60,
+      "quantity": "68.20809973640420364124191855",
+      "recorded_mark": "0.0720021",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "5.0933755201309057778831589987228",
+      "modeled_exit_cost_value": "5.07046551704135696369424054954654484560",
+      "pair": "SOL-USD",
+      "position_id": 61,
+      "quantity": "0.06924110277502590780156551113",
+      "recorded_mark": "73.56",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 300,
+      "mark_timestamp": 1782863700,
+      "marked_value": "3.7037281751403926101476490947988",
+      "modeled_exit_cost_value": "3.68706880580861112418720496917039499760",
+      "pair": "SUI-USD",
+      "position_id": 62,
+      "quantity": "5.373952662710958517335532639",
+      "recorded_mark": "0.6892",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "5.326506568808828408440411335900",
+      "modeled_exit_cost_value": "5.3025479422623262982592463657111218000",
+      "pair": "PEPE-USD",
+      "position_id": 63,
+      "quantity": "2290970.567229603616533510252",
+      "recorded_mark": "0.000002325",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "3.212346283392671360012539277655",
+      "modeled_exit_cost_value": "3.1978971498099711242352028759841078100",
+      "pair": "FARTCOIN-USD",
+      "position_id": 65,
+      "quantity": "23.43068040403115506938394805",
+      "recorded_mark": "0.1371",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "4.31236400290109077123593096425",
+      "modeled_exit_cost_value": "4.292966989616041664946911746772803500",
+      "pair": "XCN-USD",
+      "position_id": 66,
+      "quantity": "1120.094546208075524996345705",
+      "recorded_mark": "0.00385",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    }
+  ],
+  "production_activation": false,
+  "reconciliation": {
+    "difference": "1.89160625E-25",
+    "independently_marked_equity": "1862.643911511740341036241749189160625",
+    "recorded_basis": "345.3082315811168529052011118",
+    "recorded_equity": "1862.643911511740341036241749",
+    "status": "PASS",
+    "terminal_basis": "345.30823158111685290520111177"
+  },
+  "reconciliation_tolerance": "1E-18",
+  "reconciliation_tolerance_basis": "Same absolute1e-18 as source-bound native cash/quantity accounting; Decimal60 recomputation avoids inherited28digit product rounding.",
+  "research_only": true,
+  "schema_version": 1,
+  "source_files": {
+    "/workspace/scratch/82bd120b042e/analysis_outputs/profitability_campaign_20261010/engine/runs/combined_selector_directional/artifact_manifest.json": "f3f0b0638dcb4bcca632f801c0f56284b2c294b2ae320510d9cae3ac1ac9b7a8",
+    "/workspace/scratch/82bd120b042e/analysis_outputs/profitability_campaign_20261010/engine/runs/combined_selector_directional/results.json": "6b13eff058bcbf3b3564859fb0ca632fb8e7cc5367b00866c75ef5afb105bef1",
+    "/workspace/scratch/82bd120b042e/analysis_outputs/profitability_campaign_20261010/engine/runs/combined_selector_directional/terminal.json": "ff2e8d2bcdfbdeadf73d65a79046b42721a1dcc81b51281aad2ffeeb8282fe1e",
+    "/workspace/scratch/82bd120b042e/profitability_candidate/research/danger_room/profitability_protocol.json": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+    "/workspace/scratch/82bd120b042e/profitability_candidate/research/danger_room/terminal_valuation_protocol.json": "a0de80a3022c3e918f69d4565e7463a032f408dcf551ac598e876862f184e909"
+  },
+  "stale_marks": {
+    "over_24h": {
+      "count": 0,
+      "marked_value": "0",
+      "modeled_exit_cost_value": "0"
+    },
+    "over_7d": {
+      "count": 0,
+      "marked_value": "0",
+      "modeled_exit_cost_value": "0"
+    }
+  },
+  "starting_cash": "2000",
+  "status": "ANALYZED_COMPLETED_ARM",
+  "strategy_evaluations_added": 0,
+  "strategy_finalist_gate_changed": false,
+  "terminal_marked_inventory_value": "159.994646538049948392030510189160625",
+  "terminal_parent_count": 12,
+  "terminal_timestamp": 1782864000,
+  "valuation_sensitivities": {
+    "marked": {
+      "equity": "1862.643911511740341036241749189160625",
+      "pnl": "-137.356088488259658963758250810839375",
+      "return_fraction": "-0.0686780442441298294818791254054196875"
+    },
+    "modeled_exit_cost": {
+      "equity": "1861.9242555916121923683743959543297805087500",
+      "pnl": "-138.0757444083878076316256040456702194912500",
+      "return_fraction": "-0.069037872204193903815812802022835109745625"
+    },
+    "stale_over_24h_zero_value": {
+      "equity": "1861.9242555916121923683743959543297805087500",
+      "pnl": "-138.0757444083878076316256040456702194912500",
+      "return_fraction": "-0.069037872204193903815812802022835109745625"
+    },
+    "stale_over_7d_zero_value": {
+      "equity": "1861.9242555916121923683743959543297805087500",
+      "pnl": "-138.0757444083878076316256040456702194912500",
+      "return_fraction": "-0.069037872204193903815812802022835109745625"
+    }
+  },
+  "zero_mark_parent_count": 0
+}
