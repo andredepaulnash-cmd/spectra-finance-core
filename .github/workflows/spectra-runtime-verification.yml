@@ -1,0 +1,46 @@
+name: Spectra Runtime Verification
+
+on:
+  pull_request:
+    branches:
+      - spectra-core-phase2
+      - integrate/execution-cash-safety-20261010
+    paths:
+      - scripts/spectra_runtime_attest.py
+      - scripts/probe_limit_lifecycle.py
+      - tests/test_runtime_attestation.py
+      - tests/test_pinned_limit_lifecycle.py
+      - tests/fixtures/hummingbot_limit_contract/**
+      - spectra-runtime.contract.json
+      - docs/spectra-runtime-attestation.md
+      - docs/spectra-limit-runtime-readiness.md
+      - .github/workflows/spectra-runtime-verification.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spectra-runtime-verification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  no-order-verification:
+    name: Read-only attestation and pinned LIMIT source probes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+      - name: Install locked dependencies
+        run: uv sync --dev --frozen
+      - name: Verify collector and pinned source logic without orders
+        run: uv run pytest -q tests/test_runtime_attestation.py tests/test_pinned_limit_lifecycle.py

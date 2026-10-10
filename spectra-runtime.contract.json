@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "purpose": "Source reference for read-only installed-stack verification",
+  "verification_only": true,
+  "installed_stack_attested": false,
+  "approved_for_live": false,
+  "source_references": {
+    "spectra_execution_candidate": {
+      "repository": "andredepaulnash-cmd/spectra-finance-core",
+      "revision": "24b152457d9a8b3e007e69e7879bab38d1beb254",
+      "tree": "bfa6842a37b2b8472dc31a9089de7375551a38c3",
+      "pull_request": 31
+    },
+    "spectra_hummingbot_api": {
+      "repository": "andredepaulnash-cmd/spectra-hummingbot-api",
+      "revision": "84426ffbf9ba09522b4444664f9770236205ae29",
+      "installed_image_digest": null,
+      "build_to_source_binding_verified": false
+    },
+    "hummingbot_core": {
+      "repository": "hummingbot/hummingbot",
+      "revision": "9af100d6822da7d2d0291a906c730ef172284ee2",
+      "reference_only": true,
+      "approved_deployment_target": false,
+      "file_sha256": {
+        "hummingbot/strategy_v2/executors/order_executor/data_types.py": "ff62fbd7c774754ba872d9692129f06e473821638277d850d80480f1cd67b409",
+        "hummingbot/strategy_v2/executors/order_executor/order_executor.py": "7ba680564d3b68edf78f8d80a885d599598035c7c6748abd9a37c89c293a4b09",
+        "hummingbot/connector/exchange/kraken/kraken_exchange.py": "8429899dec3d8eba902ecdab3e34fad6d26a1db730ef420b6dd4391ba83c0807",
+        "hummingbot/strategy_v2/models/executors.py": "bb567313b858df2f908f7570199ff661b3f353d51fa6692ec40476ddeda584d6",
+        "hummingbot/core/data_type/common.py": "b06a787e9ca30d07d9a319a1daa8bcdced727d5be84cacef32893c76e07b680b"
+      }
+    }
+  },
+  "execution_contract": {
+    "new_buy_strategy": "LIMIT",
+    "market_fallback": false,
+    "native_ioc_verified": false,
+    "production_profit_target_bps": 174,
+    "cancel_order_is_not_executor_stop": true,
+    "price_and_fee_allowances_must_be_explicit": true
+  },
+  "required_before_activation": [
+    "Actual Bazzite deployment and immutable running image evidence",
+    "Build-to-source binding for exact API and installed core",
+    "Required executor/config/connector surface validated in the installed environment",
+    "Late fills, cancellation, placement ambiguity, outages and restart reconciled without duplicate exposure",
+    "Installed account taker fee profile verified without sharing credentials",
+    "Exact orders/trades/held-position evidence agrees with durable Spectra journals"
+  ],
+  "known_source_blockers": [
+    "A running OrderExecutor can recreate a canceled order; cancellation does not mean expiry.",
+    "Late fills after cancellation can make replacement sizing exceed the original aggregate parcel.",
+    "Executor stop/cancel and indeterminate shutdown do not prove that no further venue fill exists.",
+    "Ambiguous AddOrder recovery based only on OpenOrders can miss filled accepted orders and retry placement.",
+    "The API core compatibility startup guard currently requires no fields.",
+    "The Kraken connector fee updater is a no-op; configured fee estimates do not attest the account tier.",
+    "Cached orders expire after 30 seconds; later fill updates require authoritative trade-history reconciliation.",
+    "The connector drops validate=True; it cannot be used as a no-order safeguard through the executor path."
+  ]
+}
