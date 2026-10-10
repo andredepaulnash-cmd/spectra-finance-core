@@ -1,0 +1,88 @@
+{
+  "schema": "spectra-paper-hedge-validation-v1",
+  "generated_utc": "2026-10-10T16:49:36.188948+00:00",
+  "research_only": true,
+  "final_run_version": "v3",
+  "unit_checks_passed": 19,
+  "actual_scenarios_completed": 135,
+  "btc_calendar_rows": 52128,
+  "observed_btc_rows": 52122,
+  "spot_observation_rows": 4345,
+  "frozen_protocol_sha256": "952aa51955da1feaca9e0b09245ce1ef7dd156a97c5f9db714ceec9617a81dd0",
+  "protocol_root_freeze_receipt_sha256": "1b5ac9b647958b6d8ddc38ad6cd28590de344cb37912e9e1ee721bee1f9ef3c4",
+  "source_sha256": "b5ee6481ff778a2a96a2a3635686ba3f89359e545c9276fab248bfd76e498819",
+  "test_sha256": "8931ea6a29e84f26f76f9c86da64e2be994a5f0f7165c947d97f3909efa21bc5",
+  "results_sha256": "d045cd8eba7f13014955ab52a23fe2757692fc8bb2ffe7edcb0dbb74992c06d1",
+  "clarification_sha256": "b323b9732dc7dd7c3994d47b565f656ae9cb29d464ee3c8740a38484faadf6e3",
+  "original_frozen_protocol_bytes_retained": true,
+  "financial_parameters_tuned_after_outcomes": false,
+  "engineering_open_gap_order_correction_after_v1": true,
+  "all135_scenario_financial_fields_v2_equals_v3": true,
+  "independent_math_review_status": "PASS under declared conditional-paper assumptions",
+  "original_whole_contract_historical_gate_changed": false,
+  "original_spot_cash_touched": false,
+  "production_changed": false,
+  "holdout_payloads_opened": false,
+  "venue_profitability_proven": false,
+  "funded_original2000_system_profit_proven": false,
+  "primary_event_and_observation_artifacts": [
+    {
+      "file": "primary_0_25_events.json",
+      "sha256": "832415f474fde0659fd26bf8629e672ae0218530304de78f2213a8003084048c",
+      "bytes": 1495759
+    },
+    {
+      "file": "primary_0_25_observations.csv",
+      "sha256": "8dbe11934c7a3d3b4aeca7c8b73c8ac906f8195f9fb3ef85db4ab0f2feb01a27",
+      "bytes": 1321553
+    },
+    {
+      "file": "primary_0_50_events.json",
+      "sha256": "e15bf848816fc816a6081fee84ba35dcd7ed2f8ebac45c5cbd2581ae94ee651c",
+      "bytes": 1492847
+    },
+    {
+      "file": "primary_0_50_observations.csv",
+      "sha256": "92cb5b5afaf23e05c8f6461e35cf874b594f0e9343149959a9b13d1c8ddf8406",
+      "bytes": 1319403
+    },
+    {
+      "file": "primary_0_75_events.json",
+      "sha256": "45874ae97343d2c190e3b9d3f9aeaca4ae052222ae9cf337a2dbb62776fb84f9",
+      "bytes": 1492204
+    },
+    {
+      "file": "primary_0_75_observations.csv",
+      "sha256": "576454a5d57314c947e1028c1e1d33f612cf06a21825bb57297bbeb7350a88f8",
+      "bytes": 1319465
+    },
+    {
+      "file": "primary_0_events.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "file": "primary_0_observations.csv",
+      "sha256": "da8224c9144fd27e54cee7d5d6071dee3f6446cc97e7d46eeb74245ac8d20112",
+      "bytes": 797831
+    },
+    {
+      "file": "primary_1_00_events.json",
+      "sha256": "a64a43dbeccd8200c2e8281712c80e2596d796835eb4447fb473b5ddd13d5e14",
+      "bytes": 1491435
+    },
+    {
+      "file": "primary_1_00_observations.csv",
+      "sha256": "fc02eddb5f43d6e5077e77d33e2566711b5b1a723efc72eb37be0a8cd5efa686",
+      "bytes": 1319892
+    }
+  ],
+  "independent_review_receipt_sha256": "bdfae33248ab62ca318e0e217ac65aa8d9593250a54b410bd34c37da41ece519",
+  "independent_primary_observation_rows_checked": 21725,
+  "independent_causal_fills_checked": 17360,
+  "independent_scenario_cash_folds": 135,
+  "independent_actual_future_prefix_checks": 10,
+  "independent_fraction_cash_max_absolute_discrepancy": "1.82e-44",
+  "independent_constructed_financial_cases": 16,
+  "independent_liquidation_cases": 3
+}

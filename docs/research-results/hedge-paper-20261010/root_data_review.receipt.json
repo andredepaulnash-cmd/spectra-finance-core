@@ -1,0 +1,51 @@
+{
+  "schema": "root-independent-raw-btc-canonical-review-v1",
+  "status": "PASS",
+  "observed_at": "2026-10-10T16:41:25.680325+00:00",
+  "canonical_sha256": "a27fbaa17e5a5a92ebb354f8e24aed5faf522db220238765dd1e932527c12114",
+  "calendar_rows": 52128,
+  "all_observed_raw_rows_exact": 52122,
+  "missing_bars_explicit": [
+    1770204600,
+    1770204900,
+    1770205200,
+    1770206100,
+    1773043500,
+    1778137500
+  ],
+  "archives_verified_independently": [
+    {
+      "archive": "kraken-2026-01-5m-usd.zip",
+      "sha256": "892e6f142267a4c6c2d52537d79738107bcf07b39410f3ed6437ad2a75850fb6",
+      "member_sha256": "0f45a1a57d64331556e88a673579553694388f46de43e2fe19ada9076acfe000"
+    },
+    {
+      "archive": "kraken-2026-02-5m-usd.zip",
+      "sha256": "52c1ede050ff0e82f01834d274f7d1cf9591793fbb9cb80a8e089ed2e9690ba3",
+      "member_sha256": "b082eefc5b40145d91d76b05944a073913c9806bac8bb1bb70bf73a3453816d7"
+    },
+    {
+      "archive": "kraken-2026-03-5m-usd.zip",
+      "sha256": "844e0209a036eb459ee04ccca0528ab1ff27245b5dde209b78f2eb672befe937",
+      "member_sha256": "80bf19ef5cc0017391c1ce4547daf88d450b1193ba4f7f9ed48e90b26635068b"
+    },
+    {
+      "archive": "kraken-2026-04-5m-usd.zip",
+      "sha256": "d25f458c5fc1c862ad9989af7e528a98c701b569913f42baab58ddd295eb232a",
+      "member_sha256": "52a7275291587171dac4ef3253ca3899cdd8479b77dbfeca735668cc4168d48b"
+    },
+    {
+      "archive": "kraken-2026-05-5m-usd.zip",
+      "sha256": "1085bb0a87980338d48811182d2b35695db11edcd467ccd5ba169467d4b6ef29",
+      "member_sha256": "605029bc46ad4702024bfb3aef7a996f89c1f7ce9c586d73bed731a6969f1e03"
+    },
+    {
+      "archive": "kraken-2026-06-5m-usd.zip",
+      "sha256": "7229bfcfbd6327836c4ba6ac605205ae63e5fb1a1a76849fa1416f02f059b0c0",
+      "member_sha256": "4ab512a4986920cb94fd86f8197a11d772f3c8571c79b2db009f679b74e63e69"
+    }
+  ],
+  "other_market_members_read": false,
+  "sealed_holdout_read": false,
+  "external_market_data_acquired": false
+}

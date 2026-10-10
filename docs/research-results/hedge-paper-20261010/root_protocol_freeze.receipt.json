@@ -1,0 +1,8 @@
+{
+  "observed_at": "2026-10-10T16:38:44.631801+00:00",
+  "protocol_sha256": "952aa51955da1feaca9e0b09245ce1ef7dd156a97c5f9db714ceec9617a81dd0",
+  "protocol_bytes": 3527,
+  "reviewer": "root",
+  "btc_prices_read_by_root": false,
+  "purpose": "Record fixed paper pilot assumptions before first agent BTC outcome read; historical development data, not sealed holdout."
+}

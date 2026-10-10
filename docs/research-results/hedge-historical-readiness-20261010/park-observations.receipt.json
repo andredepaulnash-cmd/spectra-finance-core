@@ -1,0 +1,52 @@
+{
+  "schema": "spectra-saved-park-h1-observations-v1",
+  "scope": "SAVED_HISTORICAL_MODEL_OBSERVATIONS_ONLY",
+  "sources": {
+    "hard_100_park_equity.csv": {
+      "sha256": "d6c39e2c6843aabc57949856f462ab397e77b33ee38505644994c01ef7f283f7",
+      "size_bytes": 904294,
+      "matches_prior_research_pin": true
+    },
+    "boundary_inventory_plain.json": {
+      "sha256": "95ef1d9eb5064ec5c5f17984c7bd6eddd92fb712a4f6b0e8d9169a80fcb36fe7",
+      "size_bytes": 47077,
+      "matches_prior_research_pin": true
+    },
+    "boundary_summary.json": {
+      "sha256": "daf34ca0621bf2ac4d44a9b0c3af2afe440cb8c03684173ac0df30dd599baacc",
+      "size_bytes": 1385,
+      "matches_prior_research_pin": true
+    }
+  },
+  "source_research_commit": "b6015c504a3bd24576f000d72dddd7208f55815c",
+  "source_research_provenance_path": "docs/research-results/crash-defense-danger-room-20261010/data/Data_Provenance_Verification.json",
+  "saved_hourly_rows": 4344,
+  "appended_exact_boundary_rows": 1,
+  "total_observations": 4345,
+  "first_observation_timestamp": 1767225900,
+  "terminal_observation_timestamp": 1782864000,
+  "initial_declared_equity": "2000",
+  "initial_declared_owned_units": "0",
+  "ending_equity": "1898.277183091943957381228996",
+  "baseline_saved_profit_usd": "-101.722816908056042618771004",
+  "baseline_saved_return_percent": "-5.086140845402802130938550200",
+  "max_cash_inventory_equity_residual_usd": "5E-25",
+  "reconciliation_tolerance_usd": "1E-18",
+  "ending_distinct_asset_count_from_owned_lots": 37,
+  "timestamp_semantics": "Saved producer observes completed bars: dataset.timestamp(index) + 300. First account snapshot is January 1 00:05 UTC, then hourly completed snapshots, plus the separately pinned July 1 00:00 UTC terminal June boundary.",
+  "spot_marked_exposure": "marked_value from the actual saved PARK account, not basis, future endpoint holdings or another arm.",
+  "unobserved_spot_between_snapshots": true,
+  "all_intrabar_spot_commitments_proven": false,
+  "pending_spot_cash_replay_performed": false,
+  "cash_owner_partitions_omitted_from_hourly_csv": true,
+  "costs_embedded_in_baseline_equity_counted_once": true,
+  "baseline_outcome_is_prior_development_evidence": true,
+  "new_spot_strategy_replay_performed": false,
+  "live_balances_or_fills_verified": false,
+  "sealed_holdout_read": false,
+  "future_boundary_used_as_initial_condition": false,
+  "output_filename": "PARK_2026_H1_Hourly_Observed.csv",
+  "output_size_bytes": 686507,
+  "output_sha256": "20ab93ef1add5973d6add0743513c3b41c09720fc5a2de7eaf76ef93f021723c",
+  "approved_for_live": false
+}

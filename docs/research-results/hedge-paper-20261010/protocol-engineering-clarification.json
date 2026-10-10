@@ -1,0 +1,16 @@
+{
+  "schema": "spectra-paper-hedge-engineering-clarification-v1",
+  "written_at_utc": "2026-10-10T16:47:58.850489+00:00",
+  "frozen_protocol_sha256": "952aa51955da1feaca9e0b09245ce1ef7dd156a97c5f9db714ceec9617a81dd0",
+  "frozen_protocol_bytes_changed": false,
+  "written_after_initial_economic_results": true,
+  "financial_grid_and_source_pins_changed": false,
+  "change": "Check maintenance of the already-held short at the actual opening gap BEFORE any queued ordinary reduction or increase. On breach, conservatively liquidate at OPEN with unchanged transaction costs and10bps penalty, keep liability, halt overlay; otherwise execute queued target then run unchanged HIGH stress check.",
+  "reason": "Independent review found that executing a pending reduction first could rescue an already breached old position and undercount a stress liquidation. This is an accounting/event-order correction, not a parameter choice from outcomes.",
+  "additional_change": "OFF arm creates no zero-valued pending targets, so missing-price counters describe actual hedge actions instead of nonexistent orders.",
+  "new_constructed_regression": "Opening gap to400 with1heldshort at100 and queuedzero target produces mandatoryOPENliquidation andcash-200.4 from100reserve; queuedcover cannot suppresspenalty/halt.",
+  "final_actual_matrix_must_be_rerun": true,
+  "final_actual_matrix_rerun_complete": true,
+  "all_135_scenarios_financial_results_unchanged_by_open_gap_correction": true,
+  "frozen_financial_grid_unchanged": true
+}
