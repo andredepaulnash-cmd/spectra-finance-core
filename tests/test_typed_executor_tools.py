@@ -709,7 +709,7 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
                         "controller_id": controller_id,
                     }
                 )
-                return {"executor_id": "exec-spectra-1"}
+                return {"executor_id": executor_config["id"]}
 
         executors = _Executors()
 
@@ -762,12 +762,12 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
 
     assert len(calls) == 1
     assert calls[0]["controller_id"] == "spectra"
-    assert result["executor_id"] == "exec-spectra-1"
+    assert result["executor_id"] == calls[0]["config"]["id"]
 
     # COMMITTED was already asserted inside the fake Hummingbot call.
     # Once a concrete executor_id returns, receipt reconciliation completes.
     assert g.get_decision("bridge-1").status == DecisionStatus.RECONCILED
-    assert g.get_execution_receipt("bridge-1") == "exec-spectra-1"
+    assert g.get_execution_receipt("bridge-1") == calls[0]["config"]["id"]
 
 
 def test_non_spectra_executor_keeps_existing_behavior(monkeypatch):
@@ -1286,7 +1286,7 @@ def test_spectra_grid_single_limit_meets_minima_and_excludes_native_close_defaul
                 controller_id,
             ):
                 captured.append(executor_config.copy())
-                return {"executor_id": "exec-grid-child-floor"}
+                return {"executor_id": executor_config["id"]}
 
         executors = _Executors()
 
@@ -1346,7 +1346,7 @@ def test_spectra_grid_single_limit_meets_minima_and_excludes_native_close_defaul
         )
     )
 
-    assert result["executor_id"] == "exec-grid-child-floor"
+    assert result["executor_id"] == captured[0]["id"]
     assert len(captured) == 1
 
     payload = captured[0]
@@ -1585,7 +1585,7 @@ def test_spectra_accepts_zero_notional_rule_and_uses_base_minimum(
                 controller_id,
             ):
                 captured.append(executor_config.copy())
-                return {"executor_id": "exec-zero-notional"}
+                return {"executor_id": executor_config["id"]}
 
         executors = _Executors()
 
@@ -1643,7 +1643,7 @@ def test_spectra_accepts_zero_notional_rule_and_uses_base_minimum(
         )
     )
 
-    assert result["executor_id"] == "exec-zero-notional"
+    assert result["executor_id"] == captured[0]["id"]
     assert len(captured) == 1
 
     payload = captured[0]

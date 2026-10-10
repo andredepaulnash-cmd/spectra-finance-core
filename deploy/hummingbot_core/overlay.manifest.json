@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "upstream": {
+    "repository": "hummingbot/hummingbot",
+    "commit": "9af100d6822da7d2d0291a906c730ef172284ee2"
+  },
+  "contract": "spectra-single-attempt-v1",
+  "files": [
+    {
+      "path": "hummingbot/strategy_v2/executors/order_executor/order_executor.py",
+      "overlay": "patches/order_executor.py",
+      "upstream_sha256": "7ba680564d3b68edf78f8d80a885d599598035c7c6748abd9a37c89c293a4b09",
+      "sha256": "d1ec8cbf68a54a2917f98e2263bcae60120f5f7d2c0c7d8613aeba7f872ecab0"
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_exchange.py",
+      "overlay": "patches/kraken_exchange.py",
+      "upstream_sha256": "8429899dec3d8eba902ecdab3e34fad6d26a1db730ef420b6dd4391ba83c0807",
+      "sha256": "164df576f47f15a2412f1fc03ca4de7e5667937785de7f3ca3a7e26dd59b87e9"
+    },
+    {
+      "path": "hummingbot/core/web_assistant/connections/rest_connection.py",
+      "overlay": "patches/rest_connection.py",
+      "upstream_sha256": "2fb82f279f951f2a33ec7e3eb76bc9b188805742680cc24f6ab208b311d97eaa",
+      "sha256": "5fbd84aaed827615784e7275a9690d0aaabe030d4adc755111801e9a1225325a"
+    },
+    {
+      "path": "hummingbot/connector/client_order_tracker.py",
+      "overlay": "patches/client_order_tracker.py",
+      "upstream_sha256": "555c82d35f965e930302fe711369d6327bad34588cb4f89313024eee1ef5c6d7",
+      "sha256": "ea83dce5ef7ccf33f9901a2eacbf8096376ced0e737629b50c0be42f8be3ae8a"
+    },
+    {
+      "path": "hummingbot/strategy_v2/executors/order_executor/spectra_attempt_guard.py",
+      "overlay": "patches/spectra_attempt_guard.py",
+      "upstream_sha256": null,
+      "sha256": "b2af358dde7403178cac0aebbd26c0a30170f90beba07007e3ebc014404ee69f"
+    }
+  ]
+}

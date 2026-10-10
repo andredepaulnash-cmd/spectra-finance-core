@@ -305,7 +305,7 @@ class Executors:
 
     async def create_executor(self, executor_config, account_name, controller_id):
         self.calls.append((executor_config, account_name, controller_id))
-        return {"executor_id": "vcap-exec-1"}
+        return {"executor_id": executor_config["id"]}
 
 
 class Client:
@@ -426,7 +426,7 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
             "authorized_quote_budget"
         ]
     ) == D(native_quote)
-    assert g.get_execution_receipt(decision.next_proposal.proposal_id) == "vcap-exec-1"
+    assert g.get_execution_receipt(decision.next_proposal.proposal_id) == config["id"]
     assert g.get_decision("vcap-envelope-1").reserved_quote == D("100") - D(
         native_quote
     )
@@ -444,5 +444,5 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
 
     assert replay["executed"] is True
     assert replay["idempotent_replay"] is True
-    assert replay["executor_id"] == "vcap-exec-1"
+    assert replay["executor_id"] == config["id"]
     assert len(client.executors.calls) == 1

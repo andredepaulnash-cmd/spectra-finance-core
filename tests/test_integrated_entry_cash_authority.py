@@ -61,8 +61,9 @@ def reserve(g, p, *, free="500"):
     return g.reserve(p, CapitalSnapshot(free_quote=D(free), **SCOPE))
 
 
-def config(*, pair="XRP-USD", amount="100", price="0.5"):
+def config(*, pair="XRP-USD", amount="100", price="0.5", executor_id="buyer"):
     return dict(
+        id=executor_id,
         type="order_executor",
         side=1,
         execution_strategy="LIMIT",
@@ -254,7 +255,7 @@ def test_scoped_recovery_keeps_cash_burn_and_exact_buy_config(tmp_path):
     g, ledger = funded(tmp_path)
     entry = proposal()
     assert reserve(g, entry).status == DecisionStatus.RESERVED
-    assert commit(g, ledger, entry, protected=config())
+    assert commit(g, ledger, entry, protected=config(executor_id="entry-buyer"))
     assert g.reconcile_execution(
         proposal_id=entry.proposal_id, executor_id="entry-buyer", **CREATE_SCOPE
     )
@@ -383,7 +384,7 @@ class ProtectedClient:
         self.calls.append((executor_config, account_name, controller_id))
         if self.uncertain:
             raise RuntimeError("synthetic lost create response")
-        return {"executor_id": "protected-buyer"}
+        return {"executor_id": executor_config["id"]}
 
 
 def configure_protected_wrapper(
@@ -598,7 +599,7 @@ def test_live_boundary_submits_bounded_limit_but_commits_original_native_budget(
     assert result["requested_executor_type"] == "dca_executor"
     assert (account, controller) == ("funded", "spectra") and len(book_calls) == 1
     stored = g.get_protected_buy_submission("entry")
-    assert stored["executor_id"] == "protected-buyer"
+    assert stored["executor_id"] == backend["id"]
     assert stored["authorized_quote_budget"] == "50"
     assert stored["config"] == backend
     policy = stored["policy"]
@@ -825,7 +826,7 @@ def test_durable_buy_breach_blocks_cash_without_discarding_later_financial_truth
         trade_id="later-truth",
         order_id="actual-order",
         proposal_id="entry",
-        executor_id="protected-buyer",
+        executor_id=client.calls[0][0]["id"],
         pair="XRP-USD",
         account_name="funded",
         connector_name="kraken",
