@@ -1,0 +1,397 @@
+{
+  "schema_version": 1,
+  "campaign": "profitability-campaign-20261010",
+  "task": "fresh validation historical-input metadata feasibility",
+  "research_only": true,
+  "production_activation": false,
+  "status": "BLOCKED_NO_CERTIFIED_UNSEEN_PERIODS",
+  "as_of_utc_date": "2026-10-10",
+  "market_payload_acquisition": false,
+  "market_payload_read": false,
+  "financial_runs": false,
+  "financial_outcomes_read": false,
+  "sealed_holdout_payload_access": false,
+  "private_account_access": false,
+  "policy_edits": false,
+  "conclusion": "Official metadata identifies old-history sources and three calendar candidate windows, but neither prior inspection nor point-in-time pair completeness is established. No genuinely unseen validation period is certified.",
+  "qualification_gate": {
+    "status": "CLOSED",
+    "basis": "Parent reports current negative research results; this agent did not inspect outcomes. Acquisition and validation remain contingent on a frozen qualifying positive finalist and verified fresh-period ledger.",
+    "fresh_validation_run_count": 6,
+    "design_basis": "Existing frozen protocol: two finalists by three nonoverlapping new periods, with no outcome tuning between periods."
+  },
+  "frozen_protocol_receipt": {
+    "path": "research/danger_room/profitability_protocol.json",
+    "sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+    "holdout_access": false,
+    "development_data_already_inspected": true,
+    "fresh_validation_window": null,
+    "listing_delisting_completeness_not_proven": true
+  },
+  "continuity_check": {
+    "skill_applied": "personal-context",
+    "search_attempted": true,
+    "search_result_is_error": true,
+    "message": "Personal context is unavailable for this conversation.",
+    "genuinely_unseen_verification": false,
+    "library_metadata_search": {
+      "title_queries": [
+        "Kraken",
+        "OHLC",
+        "2025",
+        "2024",
+        "2023"
+      ],
+      "market_payload_materialized": false,
+      "pre_2026_market_archive_identified": false,
+      "absence_does_not_prove_unseen": true
+    },
+    "library_metadata_listing": {
+      "path": "/Spectra Finance",
+      "recursive": true,
+      "pages": 2,
+      "total_items": 225,
+      "next_cursor": null,
+      "market_payload_materialized": false
+    },
+    "prior_exposure_caution": "2025-dated configuration backups and older Freqtrade logs exist in owned metadata; their dates and titles do not establish market-data inspection dates or outcomes. Contents were not opened.",
+    "scope_limitation": "Metadata title search is not an exhaustive inspection history or a whole-Library inventory.",
+    "authoritative_exposure_ledger_available": false,
+    "ledger_basis": "Parent confirms no verified ledger is available; 2025 Q1/Q2/Q3 prior inspection stays UNKNOWN."
+  },
+  "provisional_windows": [
+    {
+      "id": "provisional_2025_q1",
+      "start_inclusive_utc": "2025-01-01T00:00:00Z",
+      "end_exclusive_utc": "2025-04-01T00:00:00Z",
+      "status": "PROVISIONAL_METADATA_CANDIDATE_ONLY",
+      "genuinely_unseen_verified": false,
+      "prior_inspection_status": "UNKNOWN",
+      "selection_basis": "Consecutive calendar quarters preceding already inspected 2026; no price, regime, liquidity, or performance selection.",
+      "unsealed_basis": "Outside parent's sealed Oct9\u2013Nov9 2026 holdout; not a certification against any other historical seal.",
+      "source_claim_covers_dates": true,
+      "actual_pair_coverage_verified": false,
+      "market_payload_acquired": false,
+      "historical_eligible_pair_count": null,
+      "historical_pair_names": null,
+      "source_ids": [
+        "kraken_full_ohlcvt_2026q2",
+        "kraken_full_trades_2026q2"
+      ],
+      "fallback_request_shape_verified": true,
+      "fallback_historical_retention_verified": false
+    },
+    {
+      "id": "provisional_2025_q2",
+      "start_inclusive_utc": "2025-04-01T00:00:00Z",
+      "end_exclusive_utc": "2025-07-01T00:00:00Z",
+      "status": "PROVISIONAL_METADATA_CANDIDATE_ONLY",
+      "genuinely_unseen_verified": false,
+      "prior_inspection_status": "UNKNOWN",
+      "selection_basis": "Consecutive calendar quarters preceding already inspected 2026; no price, regime, liquidity, or performance selection.",
+      "unsealed_basis": "Outside parent's sealed Oct9\u2013Nov9 2026 holdout; not a certification against any other historical seal.",
+      "source_claim_covers_dates": true,
+      "actual_pair_coverage_verified": false,
+      "market_payload_acquired": false,
+      "historical_eligible_pair_count": null,
+      "historical_pair_names": null,
+      "source_ids": [
+        "kraken_full_ohlcvt_2026q2",
+        "kraken_full_trades_2026q2"
+      ],
+      "fallback_request_shape_verified": true,
+      "fallback_historical_retention_verified": false
+    },
+    {
+      "id": "provisional_2025_q3",
+      "start_inclusive_utc": "2025-07-01T00:00:00Z",
+      "end_exclusive_utc": "2025-10-01T00:00:00Z",
+      "status": "PROVISIONAL_METADATA_CANDIDATE_ONLY",
+      "genuinely_unseen_verified": false,
+      "prior_inspection_status": "UNKNOWN",
+      "selection_basis": "Consecutive calendar quarters preceding already inspected 2026; no price, regime, liquidity, or performance selection.",
+      "unsealed_basis": "Outside parent's sealed Oct9\u2013Nov9 2026 holdout; not a certification against any other historical seal.",
+      "source_claim_covers_dates": true,
+      "actual_pair_coverage_verified": false,
+      "market_payload_acquired": false,
+      "historical_eligible_pair_count": null,
+      "historical_pair_names": null,
+      "source_ids": [
+        "kraken_full_ohlcvt_2026q2",
+        "kraken_full_trades_2026q2"
+      ],
+      "fallback_request_shape_verified": true,
+      "fallback_historical_retention_verified": false
+    }
+  ],
+  "sources": [
+    {
+      "id": "kraken_full_ohlcvt_2026q2",
+      "metadata_url": "https://support.kraken.com/articles/360047124832-downloadable-historical-ohlcvt-open-high-low-close-volume-trades-data",
+      "page_last_updated": "2026-09-16",
+      "source_kind": "official published archive metadata",
+      "claimed_history_start": "Each pair's first trade",
+      "claimed_history_end_inclusive": "2026-06-30",
+      "claimed_pair_universe": "Every Kraken currency pair",
+      "actual_pair_count": null,
+      "five_minute_ohlcvt_documented": true,
+      "interval_minutes_documented": [
+        1,
+        5,
+        15,
+        30,
+        60,
+        240,
+        720,
+        1440
+      ],
+      "fields": [
+        "timestamp",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "trades"
+      ],
+      "trades_field_is_count": true,
+      "header": false,
+      "no_trade_intervals_omitted": true,
+      "archive_manifest_documented": "MANIFEST.json",
+      "manifest_read": false,
+      "exact_published_part_urls": [
+        "https://assets.kraken.com/marketing/institutions/Kraken_OHLCVT_Full_2026Q2.zip.part00",
+        "https://assets.kraken.com/marketing/institutions/Kraken_OHLCVT_Full_2026Q2.zip.part01",
+        "https://assets.kraken.com/marketing/institutions/Kraken_OHLCVT_Full_2026Q2.zip.part02",
+        "https://assets.kraken.com/marketing/institutions/Kraken_OHLCVT_Full_2026Q2.zip.part03",
+        "https://assets.kraken.com/marketing/institutions/Kraken_OHLCVT_Full_2026Q2.zip.part04"
+      ],
+      "expected_reassembled_sha256": "fc81b54cba6e12af3e9422dde9416179e6ef76af4831d48d839fbdb43018eaa4",
+      "actual_archive_sha256_verified": false,
+      "part_checksum_metadata_url": "https://assets.kraken.com/marketing/institutions/OHLCVT_Full_PARTS_SHA256SUMS.txt",
+      "part_checksum_warning": "Linked checksum file uses undated Kraken_OHLCVT_Full.zip.part00\u201304 basenames; relationship to dated 2026Q2 files not verified.",
+      "published_incremental_urls": [
+        "https://assets.kraken.com/marketing/institutions/Kraken_OHLCVT_2026Q1.zip",
+        "https://assets.kraken.com/marketing/institutions/Kraken_OHLCVT_2026Q2.zip"
+      ],
+      "exact_pre_2026_incremental_url_verified": false,
+      "current_overlap_by_claim": false,
+      "contains_already_seen_2026": true,
+      "server_side_2025_only_archive_download": false,
+      "market_archive_downloaded": false
+    },
+    {
+      "id": "kraken_full_trades_2026q2",
+      "metadata_url": "https://support.kraken.com/articles/360047543791-downloadable-historical-market-data-time-and-sales-",
+      "page_last_updated": "2026-09-16",
+      "source_kind": "official published archive metadata",
+      "claimed_history_start": "Each pair's first trade",
+      "claimed_history_end_inclusive": "2026-06-30",
+      "claimed_pair_universe": "Every public trade for every Kraken currency pair",
+      "actual_pair_count": null,
+      "individual_trades_documented": true,
+      "fields": [
+        "timestamp",
+        "price",
+        "volume",
+        "type",
+        "order_type",
+        "misc",
+        "trade_id"
+      ],
+      "header": true,
+      "rows_ordered_by_timestamp": true,
+      "archive_manifest_documented": "MANIFEST.json",
+      "manifest_read": false,
+      "exact_published_part_urls": [
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part00",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part01",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part02",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part03",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part04",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part05",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part06",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part07",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part08",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part09",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part10",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part11",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_Full_2026Q2.zip.part12"
+      ],
+      "expected_reassembled_sha256": "554184802aa7367c02cfde9230411d0069ef5b0b4d6f9617c4ec1a7ec8726e16",
+      "actual_archive_sha256_verified": false,
+      "part_checksum_metadata_url": "https://assets.kraken.com/marketing/institutions/Trades_Full_PARTS_SHA256SUMS.txt",
+      "part_checksum_warning": "Current page publishes 13 dated parts (00\u201312), but linked checksum text lists 14 undated parts (00\u201313). Resolve exact build identity before acquisition.",
+      "published_incremental_urls": [
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_2026Q1.zip",
+        "https://assets.kraken.com/marketing/institutions/Kraken_Trades_2026Q2.zip"
+      ],
+      "exact_pre_2026_incremental_url_verified": false,
+      "current_overlap_by_claim": false,
+      "contains_already_seen_2026": true,
+      "server_side_2025_only_archive_download": false,
+      "market_archive_downloaded": false,
+      "inference_limit": "Executed trades do not reconstruct historic order-book depth, queue priority, spread, or guaranteed strategy fills."
+    },
+    {
+      "id": "bounded_spot_posttrade_api",
+      "metadata_url": "https://docs.kraken.com/api-reference/transparency/post-trade-data",
+      "public_endpoint": "https://api.kraken.com/0/public/PostTrade",
+      "method": "GET",
+      "documented_query_fields": [
+        "symbol",
+        "from_ts",
+        "to_ts",
+        "count"
+      ],
+      "max_count": 1000,
+      "from_ts_semantics": "Trades after timestamp",
+      "to_ts_semantics": "Trades before or at timestamp",
+      "exact_bounded_example_not_called": "https://api.kraken.com/0/public/PostTrade?symbol=BTC%2FUSD&from_ts=2024-12-31T23%3A59%3A59.999999999Z&to_ts=2025-03-31T23%3A59%3A59.999999999Z&count=1000",
+      "example_symbol_for_request_shape_only": true,
+      "not_a_finalist_universe_member": true,
+      "retention_2025_verified": false,
+      "all_pairs_complete_verified": false,
+      "venue_equivalence_verified": false,
+      "identical_timestamp_pagination_complete_verified": false,
+      "query_called": false,
+      "market_payload_fetched": false,
+      "pagination_caution": "Docs provide last_ts for from_ts pagination; complete records at a timestamp with >1000 trades are not proved by that shape. Never advance bounds beyond frozen end; deduplicate IDs; fail closed on no progress or unresolved truncation.",
+      "reconstruction": "If retention/completeness later verified, dated public trades could be aggregated into 5m OHLCVT without querying recent OHLC.",
+      "boundary_caution": "from_ts is documented exclusive and to_ts inclusive. The example begins one nanosecond before the intended start; parser precision and strict [start,end) extraction must be verified. This is an uncalled request-shape example, not a collection receipt."
+    },
+    {
+      "id": "recent_ohlc_not_eligible",
+      "metadata_url": "https://docs.kraken.com/api-reference/market-data/get-ohlc-data",
+      "documented_recent_entries_limit": 720,
+      "current_uncommitted_candle_always_returned": true,
+      "older_data_not_retrievable_regardless_since": true,
+      "query_called": false,
+      "conclusion": "Unsuitable for pre2026 fresh validation and can return current holdout-overlapping data even with old since; do not call."
+    },
+    {
+      "id": "current_assetpairs_not_historical_universe",
+      "metadata_url": "https://docs.kraken.com/api-reference/market-data/get-tradable-asset-pairs",
+      "current_filters_documented": [
+        "country_code",
+        "execution_venue",
+        "aclass_base",
+        "pair",
+        "assetVersion"
+      ],
+      "historical_as_of_filter_documented": false,
+      "query_called": false,
+      "conclusion": "Current pair metadata cannot certify 2025 listing/delisting completeness or date-specific US eligibility."
+    }
+  ],
+  "existing_owned_archive_metadata": [
+    {
+      "name": "kraken-2026Q3-5m-fixed619-usd.zip",
+      "library_file_id": "libfile_da7f0bb8efc88191ba3b6c5cf0a95c0b",
+      "file_id": "file_000000003c7c822fa878b911cd78a062",
+      "path": "/kraken-2026Q3-5m-fixed619-usd.zip",
+      "size_bytes": 76872020,
+      "date_coverage_basis": "filename plus parent-reported inspected Jan\u2013Sep 2026; market payload not opened",
+      "prior_inspection": "EXCLUDED_FROM_FRESH_VALIDATION"
+    },
+    {
+      "name": "kraken-2026-05-5m-usd.zip",
+      "library_file_id": "libfile_b9bcb8530ddc81918dc3a38c13998864",
+      "file_id": "file_0000000053e881f585363604dd24f974",
+      "path": "/Spectra Finance/kraken-2026-05-5m-usd.zip",
+      "size_bytes": 27648109,
+      "date_coverage_basis": "filename plus parent-reported inspected Jan\u2013Sep 2026; market payload not opened",
+      "prior_inspection": "EXCLUDED_FROM_FRESH_VALIDATION"
+    },
+    {
+      "name": "kraken-2026-03-5m-usd.zip",
+      "library_file_id": "libfile_e188f1438e148191b26d022fb8c1c71d",
+      "file_id": "file_000000002de481f6a082d72d69b8f9fc",
+      "path": "/Spectra Finance/kraken-2026-03-5m-usd.zip",
+      "size_bytes": 23968069,
+      "date_coverage_basis": "filename plus parent-reported inspected Jan\u2013Sep 2026; market payload not opened",
+      "prior_inspection": "EXCLUDED_FROM_FRESH_VALIDATION"
+    },
+    {
+      "name": "kraken-2026-02-5m-usd.zip",
+      "library_file_id": "libfile_f66b5ad1c75c8191949573f92fcf18bd",
+      "file_id": "file_0000000044c4822f9c81daff3423fdfc",
+      "path": "/Spectra Finance/kraken-2026-02-5m-usd.zip",
+      "size_bytes": 23891213,
+      "date_coverage_basis": "filename plus parent-reported inspected Jan\u2013Sep 2026; market payload not opened",
+      "prior_inspection": "EXCLUDED_FROM_FRESH_VALIDATION"
+    },
+    {
+      "name": "kraken-2026-04-5m-usd.zip",
+      "library_file_id": "libfile_6817b737f1e081919d25bf61c8f7e91a",
+      "file_id": "file_00000000c9ac822f97d62580de5c6559",
+      "path": "/Spectra Finance/kraken-2026-04-5m-usd.zip",
+      "size_bytes": 24209403,
+      "date_coverage_basis": "filename plus parent-reported inspected Jan\u2013Sep 2026; market payload not opened",
+      "prior_inspection": "EXCLUDED_FROM_FRESH_VALIDATION"
+    },
+    {
+      "name": "kraken-2026-01-5m-usd.zip",
+      "library_file_id": "libfile_3898924dae848191ac86dade778f3b94",
+      "file_id": "file_00000000aa9c81f59427003586eee57e",
+      "path": "/Spectra Finance/kraken-2026-01-5m-usd.zip",
+      "size_bytes": 25721797,
+      "date_coverage_basis": "filename plus parent-reported inspected Jan\u2013Sep 2026; market payload not opened",
+      "prior_inspection": "EXCLUDED_FROM_FRESH_VALIDATION"
+    },
+    {
+      "name": "kraken-2026-06-5m-usd.zip",
+      "library_file_id": "libfile_24bed8ec82e08191a2e4bd2b65944b90",
+      "file_id": "file_00000000959481f5836e6a4396b58fce",
+      "path": "/Spectra Finance/kraken-2026-06-5m-usd.zip",
+      "size_bytes": 27448598,
+      "date_coverage_basis": "filename plus parent-reported inspected Jan\u2013Sep 2026; market payload not opened",
+      "prior_inspection": "EXCLUDED_FROM_FRESH_VALIDATION"
+    }
+  ],
+  "required_before_any_finalist_validation": [
+    "Verify candidate period prior inspection and any other seal against an authoritative exposure ledger. Missing evidence means UNKNOWN, not unseen.",
+    "Freeze finalist source/parameters, admission rules, accounting, costs, execution assumptions, warmup boundaries, capital tests, and stopping criteria before opening validation prices.",
+    "Resolve exact archive build/hash/checksum discrepancy or independently verify bounded API retention and pagination completeness.",
+    "Establish date-specific eligible USD spot universe, aliases, first-trade/listing/delisting and geographic eligibility; do not back-project the inspected 619-pair 2026 cohort.",
+    "Quarantine immutable source; extract only frozen pre2026 dates and predeclared warmup; validate timestamp bounds, completeness, duplicates and hashes without reading any sealed holdout.",
+    "Keep spot validation and genuine US hedge validation separate: a pre2026 spot archive is not pre2026 US-margin or US-perpetual contract history."
+  ],
+  "blockers": [
+    "Prior inspection status unknown",
+    "Point-in-time listing/delisting and US pair eligibility not proven",
+    "Exact current archive checksum/build discrepancy unresolved",
+    "No positive finalist qualification reported by parent"
+  ],
+  "no_permission_question_required": "This metadata task is authorized. The existing finalist qualification gate is closed; no acquisition or financial run was attempted.",
+  "source_refs_for_parent_opening": [
+    {
+      "ref": "turn94view0",
+      "url": "https://support.kraken.com/articles/360047124832-downloadable-historical-ohlcvt-open-high-low-close-volume-trades-data"
+    },
+    {
+      "ref": "turn94view1",
+      "url": "https://support.kraken.com/articles/360047543791-downloadable-historical-market-data-time-and-sales-"
+    },
+    {
+      "ref": "turn97view0",
+      "url": "https://assets.kraken.com/marketing/institutions/OHLCVT_Full_PARTS_SHA256SUMS.txt"
+    },
+    {
+      "ref": "turn97view1",
+      "url": "https://assets.kraken.com/marketing/institutions/Trades_Full_PARTS_SHA256SUMS.txt"
+    },
+    {
+      "ref": "turn96view0",
+      "url": "https://docs.kraken.com/api-reference/transparency/post-trade-data"
+    },
+    {
+      "ref": "turn95view2",
+      "url": "https://docs.kraken.com/api-reference/market-data/get-ohlc-data"
+    },
+    {
+      "ref": "turn95view3",
+      "url": "https://docs.kraken.com/api-reference/market-data/get-tradable-asset-pairs"
+    }
+  ]
+}

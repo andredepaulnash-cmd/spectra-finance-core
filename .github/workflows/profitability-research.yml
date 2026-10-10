@@ -16,6 +16,8 @@ on:
       - 'research/danger_room/rotation_profitability_campaign_v3.py'
       - 'research/danger_room/rotation_profitability_campaign_v3_precache.py'
       - 'research/danger_room/rotation_policy.py'
+      - 'research/danger_room/receipt_recurring_ladder.py'
+      - 'research/danger_room/recurring_ladder_profitability_campaign_v4.py'
       - 'research/danger_room/rotation_protocol.json'
       - 'research/danger_room/completed_run_diagnostics.py'
       - 'research/danger_room/receipt_recurrence_protocol.json'
@@ -33,6 +35,8 @@ on:
       - 'tests/test_productive_sizing.py'
       - 'tests/test_rotation_policy.py'
       - 'tests/test_rotation_campaign.py'
+      - 'tests/test_recurring_ladder_book.py'
+      - 'tests/test_recurring_ladder_campaign.py'
       - 'tests/test_completed_run_diagnostics.py'
       - 'docs/research-results/profitability-campaign-20261010/**'
       - '.github/workflows/profitability-research.yml'
@@ -65,6 +69,8 @@ jobs:
           python -B -m unittest discover -s tests -p 'test_terminal_valuation.py'
           python -B -m unittest discover -s tests -p 'test_rotation_policy.py'
           python -B -m unittest discover -s tests -p 'test_rotation_campaign.py'
+          python -B -m unittest discover -s tests -p 'test_recurring_ladder_book.py'
+          python -B -m unittest discover -s tests -p 'test_recurring_ladder_campaign.py'
           python -B -m unittest discover -s tests -p 'test_completed_run_diagnostics.py'
       - name: Verify protocol identities without evaluating strategy
         run: |
@@ -81,5 +87,11 @@ jobs:
                 'cost_cohort_stress_clarification.json':'9917ca5f4e791815f5c0be1ac4dc6dddd8df6babbb09e13cfe5f6d61be9b9358'}
           for name,wanted in pins.items():
               assert hashlib.sha256((root/name).read_bytes()).hexdigest()==wanted,name
+          sources={'research/danger_room/recurring_ladder_profitability_campaign_v4.py':'4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0',
+                   'research/danger_room/receipt_recurring_ladder.py':'790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673',
+                   'tests/test_recurring_ladder_campaign.py':'432f1efb7418cee539cd1a364a91cc29b4fa3d9562ae7ca0da0a635c3651768e',
+                   'tests/test_recurring_ladder_book.py':'91cfa31a8c2b943eaed6229fd676477c8452fe9a4b5346cb409db0aa4dd8d827'}
+          for path,wanted in sources.items():
+              assert hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()==wanted,path
           print('Frozen protocols exact; CI tests fictional mechanics only')
           PY

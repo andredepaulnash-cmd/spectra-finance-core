@@ -1,0 +1,31 @@
+{
+  "arm": "rotation_owned_control_174",
+  "protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "research_adapter_sha256": "5f6c9b2b2ca0c1863c410e578893168690f77a59c70e9169db21971d7f85214a",
+  "native_manifest_sha256": "01fc7540c03c72113aeefea5187cbaae5d14f559e8b6dc90da8cc7aa9d6b4d08",
+  "native_adapter_sha256": "45249e0273bfa4b15cfc54db2bede37b81c0488239fab1503c8911584127583e",
+  "native_bridge_sha256": "87247fd166775c3230445ed06e29f5a4ba2ad0e9253a9a52e3ff5e085f7db6c7",
+  "expected_reference_array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+  "expected_reference_metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+  "supplement_sha256s": {
+    "owned": "29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9",
+    "sizing": "de40c6ec9d865175dd6ecd9d59cb9af0bbc4a79d9bfa589dbc2fe406a0a23575",
+    "profit_policy": "f622c1ce307adb7bb25fcb5f6a1726aab0b15cd664bd6c6fe764180c2afcbaa7",
+    "rotation": "6b6b3a83a159e09d0df8d9407d169cd85bf1b800c6462644a3c30d6a06e91da2"
+  },
+  "policy_sources": {
+    "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+    "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+    "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+    "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+    "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+    "rotation_policy": "f716728c80d014b4d4baae8163a3edf659c34d6582b23f543955bdbc837f44ec",
+    "parent_v2": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024"
+  },
+  "owned_adapter_admission_sha256": "4f238a4a426207514d2a3e97920ac479d32198948501d92f0c5b7162ea42ab0c",
+  "matched_owned_control_receipt_sha256": null,
+  "research_only": true,
+  "production_activation": false,
+  "holdout_accessed": false,
+  "recorded_before_strategy_imports_at": "2026-10-10T21:52:48.102184+00:00"
+}

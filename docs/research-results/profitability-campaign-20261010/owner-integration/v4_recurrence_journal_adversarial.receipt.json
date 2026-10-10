@@ -1,0 +1,44 @@
+{
+  "passed": true,
+  "strategy_imported": false,
+  "synthetic_only": true,
+  "strategy_evaluations_added": 0,
+  "counterexamples": [
+    {
+      "case": "cleared_or_changed_floor_memory",
+      "rejected": true,
+      "error_type": "AssertionError"
+    },
+    {
+      "case": "future_observation_timestamp",
+      "rejected": true,
+      "error_type": "AssertionError"
+    },
+    {
+      "case": "invented_reset_cross",
+      "rejected": true,
+      "error_type": "AssertionError"
+    },
+    {
+      "case": "missing_actual_observation",
+      "rejected": true,
+      "error_type": "AssertionError"
+    },
+    {
+      "case": "missing_same_owner_release",
+      "rejected": true,
+      "error_type": "AssertionError"
+    },
+    {
+      "case": "rehashed_increased_turnover_cap",
+      "rejected": true,
+      "error_type": "AssertionError"
+    },
+    {
+      "case": "substituted_per_lot_profit",
+      "rejected": true,
+      "error_type": "AssertionError"
+    }
+  ],
+  "independent_oracle_source_sha256": "c4bd8d3413d331a2cbe26618151876c6a7040ec0f529a92ef9c45303141a06b7"
+}

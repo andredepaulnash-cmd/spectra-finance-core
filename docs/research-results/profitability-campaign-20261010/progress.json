@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "campaign": "profitability-campaign-20261010",
-  "updated_at": "2026-10-10T22:10:17.851480+00:00",
+  "updated_at": "2026-10-10T22:28:33.873606+00:00",
   "status": "FIXED_RESEARCH_BATCH_RUNNING",
   "original_controls_running": 0,
-  "new_strategy_evaluations_completed": 12,
-  "mechanics_tests_passed": 265,
+  "new_strategy_evaluations_completed": 13,
+  "mechanics_tests_passed": 333,
   "canonical_six_month_tape_restored": true,
   "original_core_modules_verified": 23,
   "maximum_cumulative_strategy_evaluations": 44,
@@ -26,21 +26,31 @@
   "native_comparison_arms_running": [
     "combined_selector_ladder"
   ],
-  "completed_strategy_evaluations": 14,
-  "independently_audited_evaluations": 14,
-  "mechanics_test_count": 265,
+  "completed_strategy_evaluations": 18,
+  "independently_audited_evaluations": 18,
+  "mechanics_test_count": 333,
   "profitability_established": false,
   "owner_control_arms_running": [],
   "native_exit_policy_arms_running": [],
-  "last_published_CI_tests_passed": 247,
+  "last_published_CI_tests_passed": 265,
   "running_arms": [
-    "combined_full_supported",
     "combined_selector_ladder",
-    "confirmed_principal_redeployment",
-    "current_cost_owned_full",
+    "current_cost_owned_full_sized",
+    "fee_hurdle_rotation",
     "owned_full_dttp",
-    "owned_full_sized"
+    "owned_full_sized",
+    "stale_inventory_rotation"
   ],
-  "rotation_adapter": "SYNTHETICALLY_AUDITED_NEUTRAL_MATCHED_CONTROL_RUNNING",
-  "recurring_ladder_extension": "NEW_SPEC_AND_CAP44_FROZEN_DRIVER_IMPLEMENTATION_NOT_RUN"
+  "rotation_adapter": "NEUTRAL_FULL_PATH_AUDIT_AND_ELEVEN_ARTIFACT_EQUALITY_PASS",
+  "recurring_ladder_extension": "NEUTRAL_HISTORICAL_CONTROL_PENDING_FULL_AUDIT_AND_EXACT_EQUIVALENCE",
+  "completed_control_evaluations": 5,
+  "feasible_fixed_development_evaluations": 28,
+  "positive_audited_development_candidates": [],
+  "finalized_awaiting_audit": [],
+  "not_yet_admitted_arms": [
+    "current_cost_receipt_recurrence_owned_full",
+    "receipt_recurrence_control_full",
+    "receipt_recurrence_owned_full",
+    "receipt_recurrence_owned_full_sized"
+  ]
 }
