@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-10T21:23:30.088125+00:00",
+  "research_only": true,
+  "holdout_access": false,
+  "strategy_policy_unchanged": true,
+  "adds_strategy_evaluations": 0,
+  "purpose": "Universal read-only terminal-mark sensitivity; neither hypothetical proceeds nor unknown stale values authorize cash or fills.",
+  "inputs": [
+    "results.json",
+    "terminal.json"
+  ],
+  "calculations": {
+    "marked_equity": "ending_cash plus sum exact terminal quantity times recorded terminal mark; independently reconcile recorded ending equity",
+    "modeled_exit_cost_equity": "ending_cash plus sum quantity times recorded mark times (1-slippage_bps/10000) times (1-fee_bps/10000)",
+    "stale_over_24h_zero_value_equity": "ending_cash plus modeled exit-cost value only for terminal parents with mark_age_seconds<=86400; other marks assigned zero solely for sensitivity",
+    "stale_over_7d_zero_value_equity": "same with mark_age_seconds<=604800"
+  },
+  "costs": "Exact declared fee/slippage of each arm, not a claimed actual historical venue fee.",
+  "disclosure": "These are valuation sensitivities, not executions or realizable liquidation. Pair minima, volume, book availability and listing/delisting completeness remain unverified. Missing terminal marks fail reconciliation. Negative or zero post-cost PnL cannot support a commercial profit claim.",
+  "finalist_gate": "Original frozen marked-PnL and drawdown strategy-selection gate is unchanged; sensitivities are always reported separately for every completed arm."
+}

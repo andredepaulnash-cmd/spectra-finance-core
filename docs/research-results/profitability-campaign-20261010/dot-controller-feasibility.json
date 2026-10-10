@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "researched_on": "2026-10-10",
+  "scope": "Official OpenAI documentation and currently exposed capabilities; proposal only, no new Dot or schedule provisioned.",
+  "skill_used": "OpenAI Docs",
+  "documented_product": {
+    "dots_are_persistent_cloud_agents": true,
+    "cloud_computer_and_browser_documented": true,
+    "parallel_background_agents_and_visible_threads_documented": true,
+    "local_work_or_codex_tasks_require_connected_online_computer": true,
+    "cloud_coding_requires_configured_codex_environment": true,
+    "fixed_recurring_work_requires_saved_schedule": true,
+    "plugin_access_depends_on_account_permissions_and_execution_environment": true,
+    "proactive_research_is_read_only": true,
+    "dedicated_dot_receives_every_prior_conversation_automatically": false
+  },
+  "this_session": {
+    "local_scratch_code_execution_available": true,
+    "public_web_research_available": true,
+    "github_tools_exposed": true,
+    "collab_subagents_available": true,
+    "automation_tools_exposed": true,
+    "automation_is_dot_lifecycle_management": false,
+    "dot_creation_listing_or_assignment_tool_exposed": false,
+    "dot_instance_id_observed": null,
+    "dot_created": false,
+    "dot_controller_assigned": false,
+    "kraken_tools_exposed": false,
+    "kraken_plugin_search": "Root reported exact Kraken search empty; no service capability observed here.",
+    "kraken_account_probed": false,
+    "private_balances_read": false,
+    "new_schedules_created": false,
+    "personal_computer_connected_verified": false,
+    "cloud_browser_session_for_kraken_initialized": false,
+    "registry_matching_dot_or_kraken_names": [],
+    "capability_observation_note": "This is current tool exposure, not a claim about the user's installed apps or account-wide Dot availability."
+  },
+  "proposal": {
+    "name": "Spectra Finance research controller",
+    "state": "PREPARED_NOT_PROVISIONED",
+    "remit": "Coordinate authorized research, keep evidence and asset proposals current, audit completed work, and report decisive findings. Production deployment and private trading authority are outside this preparation.",
+    "account_actions": "Public sources and already-owned datasets only until a particular authorized connector/environment capability is observed.",
+    "durable_handoff_inputs": [
+      "Current campaign protocol, source and data hashes, and complete attempt registry",
+      "Production source pin and no-production-change constraint",
+      "Exact VCAP ownership and floor rules, no-duplicate assets and finite reserve budgets",
+      "Per-coin ladder categories with causal training windows and declared research policy",
+      "Sealed holdout exclusion and previously inspected-period registry",
+      "Current route feasibility and missing data gates",
+      "Exact work completion criteria and output locations"
+    ],
+    "responsibilities": [
+      {
+        "owner": "data and venue evidence worker",
+        "activity": "Verify listing histories, missing bars, costs, minima, precision and usable capital; attach dated evidence.",
+        "output": "Input admission report and current venue-change proposals",
+        "trigger": "New admitted source or completed data-validation job",
+        "status": "PROPOSED_INTERNAL_TRIGGER_NOT_SCHEDULED"
+      },
+      {
+        "owner": "asset-list research worker",
+        "activity": "Rank repeated tradable opportunity using prior data, after costs, with downside and inventory-duration penalties. Separate daily opportunity from rare isolated price spikes.",
+        "output": "Versioned ranked asset-list proposals, additions/removals and explanatory metrics",
+        "trigger": "Campaign-defined rebalance observation using completed prior bars",
+        "status": "PROPOSED_SIMULATION_RESPONSIBILITY"
+      },
+      {
+        "owner": "coin-ladder research worker",
+        "activity": "Evaluate class-specific DCA/VCAP ladders, maximum funded drawdown, capital already committed and recovery eligibility. Freeze each proposed rule before evaluation.",
+        "output": "Ladder comparison evidence, budget refusals and coin-specific policy rationale",
+        "trigger": "Frozen experiment stage",
+        "status": "PROPOSED_RESEARCH_RESPONSIBILITY"
+      },
+      {
+        "owner": "controller and integration worker",
+        "activity": "Resolve mutually competing entry, recovery, rotation, hedge and exit intents through explicit ownership, precedence and capital reservations.",
+        "output": "Decision journal recording accepted actions, refusals, causes and module transitions",
+        "trigger": "Each causal simulation event",
+        "status": "PROPOSED_CONTROLLER_RESPONSIBILITY"
+      },
+      {
+        "owner": "independent economic auditor",
+        "activity": "Reconcile total equity, open inventory losses, costs and cash ownership; inspect high-turnover, drawdown, liquidation, missing-data and no-fill cases.",
+        "output": "Independent PASS/FAIL receipt and promotion recommendation",
+        "trigger": "Completed frozen run",
+        "status": "PROPOSED_REVIEW_RESPONSIBILITY"
+      },
+      {
+        "owner": "software readiness worker",
+        "activity": "Check source binding and compatibility evidence, prepare reviewable fixes and identify machine checks still blocked by missing access.",
+        "output": "Draft change and validation evidence",
+        "trigger": "New implementation or failed required check",
+        "status": "PROPOSED_ENGINEERING_RESPONSIBILITY"
+      }
+    ],
+    "controller_rules": [
+      "Preserve every attempt; do not silently change a losing protocol or tune from future outcomes.",
+      "Target the configured maximum eligible positions within finite capital and reserve rules. Record unfilled slots and their cause; do not defeat risk gates merely to show a full count.",
+      "A list proposal generated from data ending at t may affect only future decisions after its declared delay.",
+      "Internal research changes may be exercised in the research candidate; production configuration remains untouched in this task.",
+      "Keep portfolio-growth, protection and cash ownership objectives explicit so one module cannot spend another's reserved funds.",
+      "Require account-wide marked equity and fresh validation before a profitable-system claim.",
+      "A completed job needs inspected artifacts and evidence, not just a terminal success flag.",
+      "Actual venue hedge conclusions require the route-specific gates in hedge-route-feasibility.json."
+    ],
+    "notifications": {
+      "decisive_events": [
+        "A candidate clears or fails a frozen profitability gate",
+        "Input or accounting failure invalidates a result",
+        "A fee, listing, collateral or execution change materially alters feasibility",
+        "A task requires a concrete user decision or missing computer/app capability"
+      ],
+      "destination": "This ChatGPT project or the same identified Dot conversation, once actually assigned",
+      "fixed_schedule": "NOT_CREATED",
+      "local_timezone": "America/New_York"
+    },
+    "setup_if_existing_dot_is_used": [
+      "Identify the existing Dot and assign the reviewable responsibility in its own conversation.",
+      "Supply the durable handoff packet rather than assume full conversation inheritance.",
+      "Verify required plugins and the connected account in that execution environment.",
+      "For cloud coding, use a configured Codex repository environment; for Bazzite checks, verify the connected computer is online and permitted.",
+      "If fixed daily work is requested, save and verify the precise schedule, timezone, scope and destination through supported scheduling.",
+      "Review Dot Activity for actual delegated task identities and delivered outputs."
+    ]
+  },
+  "sources": [
+    {
+      "id": "meet_dots",
+      "url": "https://learn.chatgpt.com/docs/dots",
+      "web_ref": "turn72search3"
+    },
+    {
+      "id": "tasks_memory",
+      "url": "https://learn.chatgpt.com/docs/dots/tasks-and-memory",
+      "web_ref": "turn72view0"
+    },
+    {
+      "id": "computers_apps",
+      "url": "https://learn.chatgpt.com/docs/dots/computers-and-apps",
+      "web_ref": "turn74view0"
+    },
+    {
+      "id": "controls",
+      "url": "https://learn.chatgpt.com/docs/dots/controls",
+      "web_ref": "turn72view1"
+    },
+    {
+      "id": "getting_started",
+      "url": "https://learn.chatgpt.com/docs/dots/getting-started",
+      "web_ref": "turn74view1"
+    }
+  ]
+}

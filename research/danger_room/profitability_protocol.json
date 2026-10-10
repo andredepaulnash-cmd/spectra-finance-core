@@ -1,0 +1,407 @@
+{
+  "schema_version": 1,
+  "campaign": "profitability-campaign-20261010",
+  "frozen_at": "2026-10-10T21:01:48.346384+00:00",
+  "research_only": true,
+  "production_activation": false,
+  "holdout_access": false,
+  "base_commit": "51385b5ef71a25b38e82cf3927aebc671c6939c7",
+  "base_tree": "45ee53c5380b3946395585e65f84463b6fcabd07",
+  "budget": {
+    "maximum_strategy_evaluations": 32,
+    "controls": 2,
+    "individual_mechanisms": 12,
+    "fixed_combinations": 4,
+    "stress": 8,
+    "fresh_validation": 6,
+    "blocked_evaluations_are_not_completed_runs": true
+  },
+  "window": {
+    "start": 1767225600,
+    "end_exclusive": 1782864000,
+    "bar_seconds": 300,
+    "continuous_account": true,
+    "month_boundary_resets": false,
+    "development_data_already_inspected": true,
+    "fresh_validation_window": null,
+    "sealed_oct9_nov9_holdout_payload_access": false
+  },
+  "universe": {
+    "fixed_crypto_candidates": 619,
+    "direct_XBTUSD_ETHUSD_excluded": true,
+    "wrapped_economic_exposure_may_exist": true,
+    "duplicate_normalized_base_forbidden": true,
+    "listing_delisting_completeness_not_proven": true
+  },
+  "account": {
+    "capital": "2000",
+    "entry_ticket": "10.25",
+    "maximum_distinct_parents": 50,
+    "reserve_target_fraction": "0.25",
+    "reserve_floor_fraction": "0.20",
+    "pair_cap_fraction": "0.05",
+    "no_external_cash": true,
+    "no_borrowing_in_spot": true,
+    "parked_cash_deployable_in_controls": false,
+    "proceeds_release_requires_exact_confirmed_owned_receipt": true,
+    "retained_inventory_counts_in_equity_and_base_identity": true,
+    "small_capital_cohorts": "not normalized from2000; $200/50slots impossible at10.25ticket and25%reserve; any futureadaptivebootstrap requires separate native protocol"
+  },
+  "selector_config": {
+    "history_days": 28,
+    "minimum_history_days": 7,
+    "minimum_daily_coverage": 0.95,
+    "minimum_recent_coverage": 0.95,
+    "minimum_opportunity_days_fraction": 0.5,
+    "minimum_daily_dollar_volume": 1000,
+    "minimum_daily_trades": 25,
+    "net_target_bps": 174,
+    "fee_bps_per_side": 40,
+    "slippage_bps_per_side": 5,
+    "maximum_recovery_days": 7
+  },
+  "ladder_hypotheses": {
+    "original_coin_map_recovered": false,
+    "anchor": "first confirmed entry execution price frozen perparent",
+    "seed": "initial confirmed entry all-in cash; never currentbasis or previousrung",
+    "assignment": "only sufficiently covered completed pre-entryhistory: observedclose drawdown<=10%shallow; <=20%medium; >20%deep; UNKNOWNblocksresearchladder",
+    "immutable_per_parent": true,
+    "profiles": {
+      "shallow": {
+        "drop_fractions": [
+          "0.03",
+          "0.06",
+          "0.10"
+        ],
+        "seed_multiples": [
+          "1",
+          "1",
+          "1"
+        ]
+      },
+      "medium": {
+        "drop_fractions": [
+          "0.03",
+          "0.07",
+          "0.12",
+          "0.18"
+        ],
+        "seed_multiples": [
+          "0.75",
+          "1",
+          "1",
+          "1.25"
+        ]
+      },
+      "deep": {
+        "drop_fractions": [
+          "0.04",
+          "0.10",
+          "0.18",
+          "0.25",
+          "0.30"
+        ],
+        "seed_multiples": [
+          "0.5",
+          "0.75",
+          "1",
+          "1.25",
+          "1.5"
+        ]
+      }
+    },
+    "one_confirmed_rung_per_parent_per_bar": true,
+    "crossing_multiple_rungs_does_not_spend_all_rungs": true,
+    "all_in_budget_ceiling": "minimum of requested rung, native governor authorization, remaining5%paircap, exactownedspendablecash andprotectedfloors",
+    "rejected_orders_consume_no_rung": true,
+    "independent_recovery_quality_gate": true
+  },
+  "arms": [
+    {
+      "name": "control_100_park",
+      "case": "hard_100_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "kind": "control"
+    },
+    {
+      "name": "control_174_park",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "kind": "control"
+    },
+    {
+      "name": "warmup_7_days",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "warmup_days": 7
+    },
+    {
+      "name": "recurring_opportunity",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": true,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {}
+    },
+    {
+      "name": "directional_strength",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": true,
+      "recovery_quality": false,
+      "ladder_profiles": {}
+    },
+    {
+      "name": "market_regime",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "regime_gate": true,
+      "implementation_gate": "causal cross-sectional 24h positive return fraction >=0.5; minimum50 valid assets"
+    },
+    {
+      "name": "recovery_quality",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": true,
+      "ladder_profiles": {}
+    },
+    {
+      "name": "stale_inventory_rotation",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "age_rotation": true,
+      "implementation_gate": "blocked until source-bound whole-parent rotation and fee/loss attribution implemented; age>=14days, no completed recovery episode in prior7days, signed24h return<0"
+    },
+    {
+      "name": "fee_hurdle_rotation",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "fee_rotation": true,
+      "implementation_gate": "blocked until explicit causal expected replacement opportunity and modeled switching costs are source-bound; no hindsight expected profit"
+    },
+    {
+      "name": "weekly_list_refresh",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": true,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "list_refresh_days": 7
+    },
+    {
+      "name": "causal_category_ladders",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "ladder_assignment": "prior_completed_drawdown"
+    },
+    {
+      "name": "confirmed_principal_redeployment",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "redeploy_confirmed_partial": true
+    },
+    {
+      "name": "conditional_actual_hedge",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "blocked": "actual US instrument/route OHLC, fees/funding/collateral/history and account entitlement unavailable; spotXBTUSD is not BTNL fills"
+    },
+    {
+      "name": "beta_actual_hedge",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "blocked": "same actual hedge evidence gate; beta past-only60completed days, separate matched collateral totalcapital"
+    },
+    {
+      "name": "combined_selector_directional",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": true,
+      "directional": true,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "kind": "combination"
+    },
+    {
+      "name": "combined_selector_recovery",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": true,
+      "directional": false,
+      "recovery_quality": true,
+      "ladder_profiles": {},
+      "kind": "combination"
+    },
+    {
+      "name": "combined_selector_ladder",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": true,
+      "directional": false,
+      "recovery_quality": false,
+      "ladder_profiles": {},
+      "ladder_assignment": "prior_completed_drawdown",
+      "kind": "combination"
+    },
+    {
+      "name": "combined_full_supported",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "selection": true,
+      "directional": true,
+      "recovery_quality": true,
+      "ladder_profiles": {},
+      "ladder_assignment": "prior_completed_drawdown",
+      "redeploy_confirmed_partial": true,
+      "kind": "combination"
+    }
+  ],
+  "stress_protocol": {
+    "eligible_finalists": "up to2development arms with positive total marked PnL, allinvariantsPASS and no increased native5m drawdown versus matched174control; ranknetPnL thenlowerdrawdown thenlexicalname",
+    "no_positive_candidate": "do not manufacture a winner; reportnoqualifiedfinalist andgate8stress+6fresh",
+    "per_finalist": [
+      {
+        "name": "fee60_slip15",
+        "fee_bps": "60",
+        "slippage_bps": "15"
+      },
+      {
+        "name": "two_bar_order_delay",
+        "extra_delay_bars": 1
+      },
+      {
+        "name": "one_tenth_capacity",
+        "volume_capacity_multiplier": "0.1"
+      },
+      {
+        "name": "combined_cost_delay_capacity",
+        "fee_bps": "60",
+        "slippage_bps": "15",
+        "extra_delay_bars": 1,
+        "volume_capacity_multiplier": "0.1"
+      }
+    ],
+    "no_synthetic_shock_as_historical_profit_proof": true
+  },
+  "fresh_protocol": {
+    "status": "BLOCKED pending genuinely uninspected tape separatefromseenJanSep andsealedholdout",
+    "design": "2frozenfinalists x3nonoverlappingnewperiods; no outcome-tuning betweenperiods"
+  },
+  "metrics": [
+    "total_marked_equity",
+    "realized_PnL",
+    "open_PnL",
+    "fees_once",
+    "native_5m_drawdown",
+    "whole_and_partial_fills",
+    "occupied_slot_time",
+    "slot_shortfall_reasons",
+    "capital_dollar_days",
+    "cash_by_owner",
+    "partial_principal_reused",
+    "position_age",
+    "missing_marks_and_mark_age",
+    "per_asset_and_month_attribution"
+  ],
+  "invariants": [
+    "cash_conservation",
+    "quantity_and_basis_conservation",
+    "fees_once",
+    "no_double_disposal",
+    "no_duplicate_base",
+    "no_future_bar_or_uncompleted_day_features",
+    "fill_at_next_bar_subject_to_capacity",
+    "no_intrabar_high_automatic_fill",
+    "rungs_frozen_at_entry",
+    "protected_owner_locks",
+    "one_intent_per_parent_per_step"
+  ],
+  "interpretation": {
+    "no_profit_guarantee": true,
+    "development_positive_is_not_independent_validation": true,
+    "all_modules_claim_requires_exact_coverage_and_missingboundaries": true,
+    "offline_research_controller_is_not_online_execution": true,
+    "parameter_changes_after_outcomes_require_new_declared_protocol_and_cumulative_trial_count": true
+  }
+}

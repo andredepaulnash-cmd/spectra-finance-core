@@ -1,0 +1,101 @@
+{
+  "status": "LOCAL_SYNTHETIC_RECURRENCE_PASS_PENDING_INDEPENDENT_ADMISSION",
+  "recorded_at": "2026-10-10T22:26:20.687340+00:00",
+  "research_only": true,
+  "production_activation": false,
+  "historical_strategy_evaluations": 0,
+  "historical_outcomes_read": false,
+  "holdout_accessed": false,
+  "sources": {
+    "driver": {
+      "file": "research/danger_room/recurring_ladder_profitability_campaign_v4.py",
+      "sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "bytes": 76895
+    },
+    "book": {
+      "file": "research/danger_room/receipt_recurring_ladder.py",
+      "sha256": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673",
+      "bytes": 38026
+    },
+    "driver_tests": {
+      "file": "tests/test_recurring_ladder_campaign.py",
+      "sha256": "432f1efb7418cee539cd1a364a91cc29b4fa3d9562ae7ca0da0a635c3651768e",
+      "bytes": 24152
+    },
+    "book_tests": {
+      "file": "tests/test_recurring_ladder_book.py",
+      "sha256": "91cfa31a8c2b943eaed6229fd676477c8452fe9a4b5346cb409db0aa4dd8d827",
+      "bytes": 42677
+    },
+    "protocol": {
+      "file": "research/danger_room/receipt_recurrence_protocol.json",
+      "sha256": "47c7e948fc510dfc67e29d4d294e75d238a93269da1f53a7f77370ea5d8dabe1",
+      "bytes": 7069
+    },
+    "specification": {
+      "file": "docs/research-results/profitability-campaign-20261010/receipt-bound-rung-recurrence-spec.json",
+      "sha256": "b82b86cf78794dfd156b33cf8ee8c0b98068cf45387fd4095ce1c45701717750",
+      "bytes": 12142
+    },
+    "parent_v2": {
+      "file": "research/danger_room/owned_profitability_campaign_v2.py",
+      "sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+      "bytes": 60626
+    },
+    "preserved_v3": {
+      "file": "research/danger_room/rotation_profitability_campaign_v3.py",
+      "sha256": "5f6c9b2b2ca0c1863c410e578893168690f77a59c70e9169db21971d7f85214a",
+      "bytes": 84282
+    },
+    "documentation": {
+      "file": "docs/research-results/profitability-campaign-20261010/recurrence-integration.md",
+      "sha256": "47b6359e9e42e0ec30fa015b234f1455b5f471f27641bdec181c72dbaba61955",
+      "bytes": 6053
+    }
+  },
+  "neutral_generated_body_sha256": "31dc4b04c2fcce5e4f6f7050ab98f709653e4dd0e24520c0e530cd7f97770f19",
+  "active_generated_body_sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9",
+  "neutral_v2_generated_body_equivalent": true,
+  "book_adversarial_tests": {
+    "passed": 55,
+    "command": "python -m unittest discover -s tests -p test_recurring_ladder_book.py -q"
+  },
+  "driver_tests": {
+    "passed": 13,
+    "command": "python -m unittest discover -s tests -p test_recurring_ladder_campaign.py -q"
+  },
+  "combined_before_final_import_guard_test": {
+    "passed": 332,
+    "elapsed_seconds": 26.17,
+    "command": "python -m unittest discover -s tests -q"
+  },
+  "actual_native_synthetic_cases": [
+    "three_episodes",
+    "missing_renewal_bar",
+    "renewal_capacity",
+    "whole_retirement",
+    "neutral",
+    "current_cost",
+    "armed_floor",
+    "original_priority",
+    "sized",
+    "mixed_whole_retirement"
+  ],
+  "synthetic_fixture_injection": "Deterministic selector membership/category only; genuine preserved native financial/owner/directional/quality sources. Fabricated audit/admission files expressly fixture_only; not historical admissions.",
+  "historical_gate": "Root ACK and independent source-bound synthetic admission; v4 neutral control independent full owner/financial audit and exact v2 comparison; exact original primary owner/cost and v2 mechanism comparator audits.",
+  "cli_required_new_flags": [
+    "--recurrence-protocol",
+    "--matched-v2-comparator-receipt",
+    "--matched-v2-comparator-receipt-sha256"
+  ],
+  "cli_candidate_additional_flags": [
+    "--matched-recurrence-control-receipt",
+    "--matched-recurrence-control-receipt-sha256"
+  ],
+  "final_scoped_tests": {
+    "passed": 68,
+    "elapsed_seconds": 6.302,
+    "command": "python -m unittest discover -s tests -p 'test_recurring_ladder*.py' -q"
+  },
+  "all_four_source_test_files_frozen": true
+}

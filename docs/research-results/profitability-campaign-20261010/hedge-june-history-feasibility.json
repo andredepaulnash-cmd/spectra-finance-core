@@ -1,0 +1,277 @@
+{
+  "boundaries": {
+    "financial_outcomes_reviewed": false,
+    "new_market_payload_downloaded": false,
+    "orders_placed": false,
+    "price_series_overlapping_holdout_requested": false,
+    "private_account_accessed": false,
+    "production_changed": false,
+    "six_month_true_hedge_profitability_proved": false
+  },
+  "created_at_utc": "2026-10-10T21:25:57.958246+00:00",
+  "current_session_capability": {
+    "available_for_this_task": [
+      "Public primary-source web retrieval",
+      "Local source/receipt review",
+      "Possible explicitly dated unauthenticated HTTP acquisition in a separately controlled step"
+    ],
+    "bitnomial_connector_tools_exposed": false,
+    "does_not_prove_user_app_uninstalled": true,
+    "exact_kraken_plugin_search_returned": [],
+    "kraken_cli_on_local_path": false,
+    "kraken_market_data_connector_tools_exposed": false,
+    "no_plugin_permission_or_account_probe": true,
+    "official_documented_future_mcp_path": "kraken-cli includes built-in MCP via kraken mcp stdio; not installed, started or connected here, and its documented global derivatives routes do not certify US Bitnomial coverage."
+  },
+  "known_owned_product_receipt": {
+    "base_symbol": "BTCUC",
+    "contract_size_btc": "0.01",
+    "first_trading_day": "2026-05-16",
+    "limitation": "Current metadata already owned from earlier public check; not a dated June rules guarantee or Kraken preJune 15 access.",
+    "path": "analysis_outputs/profitability_campaign_20261010/hedge_inputs/btcuc_product_specs.receipt.json",
+    "product_id": 5614,
+    "raw_sha256": "1dcc9632cc349adb5d738b3a33410b8d99180374c181a7614332fec9f5170a4d",
+    "retrieved_at": "2026-10-10T20:57:41.765165+00:00",
+    "symbol": "PBTCUCZ50"
+  },
+  "paths": [
+    {
+      "alternate_documentation_example_base": "https://bitnomial.com/exchange/api/v1/funding-rates/",
+      "cannot_establish": "5m mark path, tradable bid/ask or intraday liquidation; eight-hour funding snapshots are not interpolated execution candles.",
+      "could_establish": "Actual published product-specific June funding cashflow inputs if complete, correctly versioned and range-bounded.",
+      "coverage_verification": "NOT_PERFORMED",
+      "documented_server_time_bounds": true,
+      "granularity": "Funding intervals; product clock/history must be authenticated.",
+      "kind": "historical funding",
+      "pagination": "Use returned cursor preserving product/date bounds; stop at empty/exhausted cursor.",
+      "record_fields": [
+        "product_id",
+        "price_index",
+        "mark_price",
+        "interest_rate",
+        "funding_rate",
+        "interval_start",
+        "interval_end"
+      ],
+      "records_acquired": false,
+      "route": "US Bitnomial BTCUC perpetual",
+      "sources": [
+        "bitnomial_funding",
+        "bitnomial_api_overview"
+      ],
+      "url_template": "https://bitnomial.com/exchange/api/v1/prod/funding-rates/?product_id=5614&begin_time=2026-06-15T00:00:00Z&end_time=2026-07-01T00:00:00Z&order=asc&limit=100"
+    },
+    {
+      "cannot_establish": "A historical intraday trade sequence, fill timing, spread, depth or maintenance-margin touch order.",
+      "could_establish": "Dated daily contract OHLC/settlement observations if returned.",
+      "coverage_verification": "NOT_PERFORMED",
+      "documented_server_time_bounds": true,
+      "granularity": "One data point per trading day, not5m.",
+      "kind": "daily price chart",
+      "record_fields": [
+        "date",
+        "time",
+        "ohlc.open",
+        "ohlc.high",
+        "ohlc.low",
+        "ohlc.close",
+        "ohlc.volume",
+        "settlementPrice"
+      ],
+      "records_acquired": false,
+      "route": "US Bitnomial BTCUC perpetual",
+      "sources": [
+        "bitnomial_charts"
+      ],
+      "stability": "Draft /web API with no stability guarantee.",
+      "url_template": "https://bitnomial.com/exchange/api/web/charts/price/5614?begin_time=2026-06-15T00:00:00Z&end_time=2026-07-01T00:00:00Z"
+    },
+    {
+      "additional_templates": [
+        "https://bitnomial.com/exchange/api/v1/prod/product/spec/5614?day=2026-06-30",
+        "https://bitnomial.com/exchange/api/v1/prod/product/data/5614?day=2026-06-15"
+      ],
+      "documented_server_time_bounds": true,
+      "kind": "dated product metadata",
+      "metadata_only": true,
+      "note": "Product APIs document a day filter. This is a possible date-specific identity/rules check; historical retention and version fidelity must still be checked. Product data fields may include daily price outcomes and require exact dated scope.",
+      "records_acquired": false,
+      "route": "US Bitnomial BTCUC perpetual",
+      "sources": [
+        "bitnomial_products",
+        "bitnomial_api_overview"
+      ],
+      "url_template": "https://bitnomial.com/exchange/api/v1/prod/product/spec/5614?day=2026-06-15"
+    },
+    {
+      "cannot_establish": "PF_BTCUSD/PF_XBTUSD global contract is not established as PBTCUC BitnomialUS. Do not use spot tick type as derivative execution proof.",
+      "documented_server_time_bounds": true,
+      "granularity": "1m/5m and other documented resolutions.",
+      "kind": "trade/mark candles",
+      "pagination": "more_candles; preserve maximum endbound on every followup.",
+      "records_acquired": false,
+      "route": "Global Kraken Derivatives, US venue equivalence unverified",
+      "sources": [
+        "kraken_candles"
+      ],
+      "url_template": "https://futures.kraken.com/api/charts/v1/{trade_or_mark}/{verified_symbol}/5m?from=1781481600&to=1782864000&count={bounded_count}",
+      "us_instrument_mapping_verified": false
+    },
+    {
+      "documented_server_time_bounds": true,
+      "funding_cashflow_units_or_settlement_equivalence_verified": false,
+      "granularity": "Analytics buckets; documented interval300seconds is not evidence that funding settles every5m.",
+      "kind": "bounded funding analytics",
+      "records_acquired": false,
+      "route": "Global Kraken Derivatives, US venue equivalence unverified",
+      "sources": [
+        "kraken_analytics"
+      ],
+      "url_template": "https://futures.kraken.com/api/charts/v1/analytics/{verified_symbol}/funding?since=1781481600&to=1782864000&interval=300",
+      "us_instrument_mapping_verified": false
+    },
+    {
+      "documented_server_time_bounds": true,
+      "kind": "bounded public execution and mark events",
+      "pagination": "Next-Continuation-Token/continuation_token, same sort and bounded dates",
+      "records_acquired": false,
+      "route": "Global Kraken Derivatives, US venue equivalence unverified",
+      "sources": [
+        "kraken_public_events",
+        "kraken_public_marks"
+      ],
+      "timestamp_units": "milliseconds",
+      "url_templates": [
+        "https://futures.kraken.com/api/history/v3/market/{verified_tradeable}/executions?since=1781481600000&before=1782864000000&sort=asc&count=1000",
+        "https://futures.kraken.com/api/history/v3/market/{verified_tradeable}/price?since=1781481600000&before=1782864000000&sort=asc&count=1000"
+      ],
+      "us_instrument_mapping_verified": false
+    },
+    {
+      "documented_query_parameters": [
+        "symbol"
+      ],
+      "documented_server_time_bounds": false,
+      "kind": "historical funding endpoint",
+      "reason": "Documentation exposes no start/end query. Client filtering after fetching could already ingest Oct9\u2013Nov9 records; query bounds must be verified before any request.",
+      "records_acquired": false,
+      "route": "Global Kraken Derivatives",
+      "sources": [
+        "kraken_funding"
+      ],
+      "status": "DO_NOT_CALL_UNBOUNDED_WHILE_HOLDOUT_SEALED",
+      "url_template": "https://futures.kraken.com/derivatives/api/v3/historical-funding-rates?symbol={verified_symbol}"
+    },
+    {
+      "coverage_verification": "BTNL Trades/OHLC endpoint support and retained history unverified.",
+      "documented_bitnomial_venue_history_support": false,
+      "funding_difference": "US spot margin needs historical borrow/rollover costs, not BTCUCperpetual funding history.",
+      "kind": "standard Trades/OHLC candidate path",
+      "records_acquired": false,
+      "route": "US BTNL leveraged spot margin",
+      "sources": [
+        "spot_trades",
+        "spot_ohlc",
+        "margin_orderbook"
+      ],
+      "spot_ohlc_limit": "720 recent rows, about 60 hours at5m, regardless ofoldsince. No documented server end.",
+      "spot_trades_bounds": "since/count/pair with lastcursor; no documented server end or execution_venue. Order :BTNL suffix and AssetPairs venue filter do not establish historical market-data support."
+    }
+  ],
+  "range": {
+    "begin_epoch_seconds": 1781481600,
+    "begin_inclusive_utc": "2026-06-15T00:00:00Z",
+    "end_epoch_seconds": 1782864000,
+    "end_exclusive_utc": "2026-07-01T00:00:00Z",
+    "interpretation": "Includes June 15\u2013June 30; product-specific actual launch time may exclude part ofJune 15."
+  },
+  "recommended_next_step": "Bound and acquire product-specific dated metadata, dailycontract chart and funding records only as a separate June data-readiness check; then seek genuine intradayUSvenue records. Keep actual hedgeprofitability arms gated until necessary execution/risk history is authenticated. Continue existing authorized spot profitability study independently.",
+  "remaining_blockers": [
+    "Actual dated June records, retained timestamps, duplicates/gaps and product identity have not been fetched or authenticated.",
+    "No confirmed US Bitnomial historical5m/tick trade+mark+bid/ask/liquidity dataset found in public primary docs reviewed. Daily charts and funding snapshot marks are insufficient for strict5m fill/maintenance/liquidation replay.",
+    "Need dated fees, whole-contract increments, initial/maintenance margin and liquidation schedule applicable toJune. Current metadata and fee tables cannot silently substitute.",
+    "Funding interval clock differs among current spec, generic exchange docs and broker daily cash aggregation. Need June product/broker timing version and settlement treatment.",
+    "Need product launch/access cutoff withinJune 15 and appropriate UTC/CT day boundaries.",
+    "KrakenUSaccount/API automation path not established by global futures endpoints or directexchange data; no account probe performed.",
+    "Historical US spot margin BTNL separatebook data and borrow rates remain unverified."
+  ],
+  "schema": 1,
+  "scope": "Read-only connector and primary-documentation feasibility review, June 15\u2013June 30,2026 only. No new market payload requested.",
+  "six_month_statement": "A January\u2013June US Kraken BTCUCperpetual simulation cannot be claimed: KrakenUS access launchedJune 15,2026. A truthful actual-instrument study can cover only verified postlaunch dates. USmargin likewise cannot be assumed availableJanuary\u2013March. CME is a separate route requiring its own actual contracts/history/rules.",
+  "sources": [
+    {
+      "id": "kraken_candles",
+      "retrieval_ref": "turn81view0",
+      "url": "https://docs.kraken.com/api-reference/candles/market-candles"
+    },
+    {
+      "id": "kraken_funding",
+      "retrieval_ref": "turn80view1",
+      "url": "https://docs.kraken.com/api-reference/historical-funding-rates/historical-funding-rates"
+    },
+    {
+      "id": "kraken_analytics",
+      "retrieval_ref": "turn88view1",
+      "url": "https://docs.kraken.com/api-reference/analytics/market-analytics"
+    },
+    {
+      "id": "kraken_public_events",
+      "retrieval_ref": "turn87view1",
+      "url": "https://docs.kraken.com/api-reference/market-history/get-public-execution-events"
+    },
+    {
+      "id": "kraken_public_marks",
+      "retrieval_ref": "turn87view2",
+      "url": "https://docs.kraken.com/api-reference/market-history/get-public-mark-price-events"
+    },
+    {
+      "id": "bitnomial_funding",
+      "retrieval_ref": "turn83view3",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/funding-rates/"
+    },
+    {
+      "id": "bitnomial_charts",
+      "retrieval_ref": "turn87view4",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/charts/"
+    },
+    {
+      "id": "bitnomial_products",
+      "retrieval_ref": "turn89view1",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/products/"
+    },
+    {
+      "id": "bitnomial_api_overview",
+      "retrieval_ref": "turn80view2",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/overview/"
+    },
+    {
+      "id": "us_perp_launch",
+      "retrieval_ref": "turn88view0",
+      "url": "https://blog.kraken.com/product/kraken-derivatives/announcing-cftc-regulated-us-perps"
+    },
+    {
+      "id": "us_perps",
+      "retrieval_ref": "turn87view5",
+      "url": "https://support.kraken.com/articles/us-perpetual-futures"
+    },
+    {
+      "id": "margin_orderbook",
+      "retrieval_ref": "turn83view1",
+      "url": "https://support.kraken.com/articles/margin-order-book"
+    },
+    {
+      "id": "spot_trades",
+      "url": "https://docs.kraken.com/api-reference/market-data/get-recent-trades"
+    },
+    {
+      "id": "spot_ohlc",
+      "url": "https://docs.kraken.com/api-reference/market-data/get-ohlc-data"
+    },
+    {
+      "id": "kraken_cli",
+      "retrieval_ref": "turn83view0",
+      "url": "https://docs.kraken.com/llms.txt"
+    }
+  ],
+  "status": "DATE_BOUNDED_PUBLIC_PATHS_DOCUMENTED_US_INTRADAY_HISTORY_UNVERIFIED"
+}

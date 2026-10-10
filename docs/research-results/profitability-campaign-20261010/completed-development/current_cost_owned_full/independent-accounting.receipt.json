@@ -1,0 +1,170 @@
+{
+  "passed": true,
+  "status": "PASS",
+  "arm": "current_cost_owned_full",
+  "strategy_imported": false,
+  "scope": "Independent actual serialized-fill accounting, immutable lot disposal, entire native-five-minute equity/basis/marks path, declared exit-floor behavior, immediate actual-next-open prices and declared FOK volume surrogate; not venue or full production ownership proof",
+  "arithmetic_precision": 60,
+  "arithmetic_tolerance": "1E-18",
+  "samples_checked": 52128,
+  "execution_fee_bps": "80",
+  "execution_slippage_bps": "15",
+  "execution_exit_floor_bps": "174",
+  "sample_scalar_checks": {
+    "cash": 52128,
+    "parked_cash": 52128,
+    "deployable_cash": 52128,
+    "committed_basis": 52128,
+    "marked_value": 52128,
+    "equity": 52128,
+    "cumulative_realized": 52128,
+    "cumulative_fees": 52128
+  },
+  "fills_checked": {
+    "ENTRY": 271,
+    "RECOVERY": 380,
+    "EXIT": 221,
+    "PARTIAL_RECYCLE": 295
+  },
+  "fill_price_capacity_checks": 1167,
+  "surviving_lots": 126,
+  "disposed_lots": 525,
+  "surviving_parents": 50,
+  "independent_cash": "1144.21570841067115036587749419824",
+  "independent_parked_cash": "0",
+  "minimum_deployable_cash": "1069.67408993322588476354121899549",
+  "independent_marked_inventory": "444.655210971943654248620828289536586",
+  "independent_equity": "1588.870919382614804614498322487776586",
+  "independent_realized_pnl": "105.06838988785489300721349695824",
+  "independent_unrealized_pnl": "-516.197470505240088392715174470463414",
+  "independent_fees": "73.86170419950170961194524633376",
+  "native_5m_drawdown": "0.213623273061188805688319706683105193917537545125663477908603",
+  "capital_dollar_days": "142474.235115205646690418063794635965",
+  "occupied_slot_fraction": "0.786690837937384898710865561694290976058931860036832412523020",
+  "all_minutes_below50_including_initialization": 194860,
+  "maximum_mark_age_seconds": 1209300,
+  "sealed_holdout_read": false,
+  "full_cash_owner_adapter_verified": true,
+  "owner_proof": {
+    "passed": true,
+    "samples_checked": 52128,
+    "owner_events_checked": {
+      "RESERVE": 2368,
+      "BUY": 651,
+      "TERMINAL": 2368,
+      "SALE": 516,
+      "RELEASE_PARTIAL": 295
+    },
+    "owner_cash": {
+      "PRODUCTIVE": "1066.204818331222259725856847691755",
+      "VCAP": "78.010890079448890640020646506485"
+    },
+    "held_by_owner": {
+      "PRODUCTIVE": "0",
+      "VCAP": "0"
+    },
+    "ending_parked_cash": "0",
+    "ending_owner_available_before_physical_reserve": {
+      "PRODUCTIVE": "1066.204818331222259725856847691755",
+      "VCAP": "78.010890079448890640020646506485"
+    },
+    "minimum_free_physical_cash_after_all_holds": "1060.36382855795473930339401899549",
+    "minimum_owner_available_before_physical_reserve": {
+      "PRODUCTIVE": "1044.0173353025357037530659139213775",
+      "VCAP": "4.92679853424948725E-14"
+    },
+    "maximum_funded_active_or_pending_asset_claims": 50,
+    "independent_owner_realized": "105.06838988785489300721349695824",
+    "independent_owner_fees": "73.86170419950170961194524633376",
+    "checkpoint_internal_hash_verified": "c27c2a121e14525513bc628075b19680ddeabca788c8d73da1aa9847dcd4898b",
+    "checkpoint_complete_receipt_identity_set_verified": true,
+    "full_cash_owner_adapter_verified": true,
+    "scope": "Independent exact rational lot-owner principal, per-lot net profit/loss, pending reservations, same-owner proceeds holds/releases, every five-minute cash/basis/fees; offline surrogate only"
+  },
+  "rotation_proof": null,
+  "neutral_control_proof": null,
+  "recurrence_proof": null,
+  "research_adapter_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+  "policy_sources": {
+    "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+    "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+    "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+    "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+    "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554"
+  },
+  "input_array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+  "input_metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+  "results_sha256": "5d99a42bfabe0223ede6a1a15166735acab626a735e719a928f941393755639e",
+  "artifacts": [
+    {
+      "file": "account_5m.csv.gz",
+      "bytes": 2110900,
+      "sha256": "9ece734cbc7364483471c900ebe650506e05ac5e5cea508a28e9e120265e662a"
+    },
+    {
+      "file": "fills.csv",
+      "bytes": 193798,
+      "sha256": "fa524f368f6dce7cd0528b3fa4c92f25aa40255721af31c3b2f1a7ace30305fe"
+    },
+    {
+      "file": "generated_campaign_body.py",
+      "bytes": 30879,
+      "sha256": "31dc4b04c2fcce5e4f6f7050ab98f709653e4dd0e24520c0e530cd7f97770f19"
+    },
+    {
+      "file": "owner_account_5m.jsonl.gz",
+      "bytes": 460708,
+      "sha256": "94553d32e7f88166e99173e5b8c19d8238f40469cc8775f4dd9d07a699ce78a2"
+    },
+    {
+      "file": "owner_checkpoint.json",
+      "bytes": 2895045,
+      "sha256": "a60cc2f90ddc0b5558c3fe6b53ac124f3c2c7bc5873f01775a2207ee38efa200"
+    },
+    {
+      "file": "owner_terminal.json",
+      "bytes": 32784,
+      "sha256": "1a941180d0985b06b3a5e83fd840af6911fc6c65ca574d665bd53d74c0ef4174"
+    },
+    {
+      "file": "owner_transactions.jsonl.gz",
+      "bytes": 586027,
+      "sha256": "1170eb7902f8dfa623c44894037f1ab3b149ed079ddfa56267cec5d704126785"
+    },
+    {
+      "file": "ownership_events.json.gz",
+      "bytes": 1033261,
+      "sha256": "13925c42da57035af0026c60b968ec7729978955250390acf9f83fa68cd4b9af"
+    },
+    {
+      "file": "pending_orders.jsonl.gz",
+      "bytes": 639447,
+      "sha256": "d4b7b93e904d58088dbc1f068a2bdda5df7c986d9fe018dd9f980d073fb8f97e"
+    },
+    {
+      "file": "results.json",
+      "bytes": 18156,
+      "sha256": "5d99a42bfabe0223ede6a1a15166735acab626a735e719a928f941393755639e"
+    },
+    {
+      "file": "run_admission.receipt.json",
+      "bytes": 1869,
+      "sha256": "c6d22c1cfbe1c6aabf5243dcd233baea2a9b9ea0763f5be5eab7e59152ec58f7"
+    },
+    {
+      "file": "terminal.json",
+      "bytes": 16305,
+      "sha256": "67686e70d81452eee4be69da22d91dc3735546c7a46e2cc1f1bcf827192cefa9"
+    },
+    {
+      "file": "terminal_lots.json",
+      "bytes": 373640,
+      "sha256": "48b2845526d7f6dfef404ddba18ecec763e22db8c69586415d254780ffc6d06e"
+    },
+    {
+      "file": "watchlist_updates.jsonl.gz",
+      "bytes": 8206038,
+      "sha256": "d097087de6f7783909da9f709601f993144d6328b16326ac7c04458e9babfdf6"
+    }
+  ]
+}

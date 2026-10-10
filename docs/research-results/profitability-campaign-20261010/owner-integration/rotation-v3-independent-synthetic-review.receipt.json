@@ -1,0 +1,77 @@
+{
+  "status": "SYNTHETIC_ROTATION_INTEGRATION_PASS",
+  "recorded_at": "2026-10-10T21:51:47.022519+00:00",
+  "research_adapter_sha256": "5f6c9b2b2ca0c1863c410e578893168690f77a59c70e9169db21971d7f85214a",
+  "policy_sources": {
+    "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+    "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+    "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+    "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+    "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+    "rotation_policy": "f716728c80d014b4d4baae8163a3edf659c34d6582b23f543955bdbc837f44ec",
+    "parent_v2": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024"
+  },
+  "rotation_protocol_sha256": "6b6b3a83a159e09d0df8d9407d169cd85bf1b800c6462644a3c30d6a06e91da2",
+  "parent_v2_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+  "neutral_v2_financial_body_identical": true,
+  "neutral_generated_financial_body_sha256": "df36360d54e0f000531c46180d9c570df48971e372b31b84f58ab5ccf7d38dce",
+  "rotation_generated_variants": {
+    "stale": {
+      "generated_financial_body_sha256": "14227b3bd02b8824623d69dbca2a308cdf16342556782edbe849a44ff1a82d01",
+      "declared_source_boundaries": 10
+    },
+    "fee_hurdle": {
+      "generated_financial_body_sha256": "14227b3bd02b8824623d69dbca2a308cdf16342556782edbe849a44ff1a82d01",
+      "declared_source_boundaries": 10
+    }
+  },
+  "test_source_sha256": "0d4ee04d7c48ce82a3e3397a6f7a25355a3eaca82f19656c77175729ae4d193b",
+  "tests_passed": 20,
+  "actual_preserved_native_synthetic_scenarios": 11,
+  "synthetic_trigger_injection_explicit": true,
+  "historical_outcomes_read": false,
+  "holdout_accessed": false,
+  "historical_admission_granted": true,
+  "command": "python -m unittest discover -s tests -p test_rotation_campaign.py -v",
+  "test_elapsed_seconds": 7.946,
+  "boundary_notes": [
+    "Actual preserved native controller executes synthetic OHLC. Only the research trigger is injected for mechanics fixtures.",
+    "Independent rotation_policy tests exercise the genuine causal evidence tracker and exact fee hurdle.",
+    "No native, v1, v2, selector, owner or protocol source was edited.",
+    "Historical candidates require an independently audited v3 rotation_owned_control_174 receipt."
+  ],
+  "precache_adapter_sha256": "833307c97cda0bf31b3ef4afc4082973cb6aa6621491feaf969c536781286a5d",
+  "precache_adapter_archive_path": "research/danger_room/rotation_profitability_campaign_v3_precache.py",
+  "precache_local_receipt_sha256": "dc675442c733e7f163c674110e6af2cbd3edf67e93668039357d80f299676174",
+  "cache_revision_before_any_v3_historical_admission": true,
+  "active_generated_financial_body_unchanged": true,
+  "policy_or_parameter_changes": false,
+  "cache_safety_tests": [
+    "one immutable native ranking per completed frame",
+    "current position/pending/closed/base/liquidity eligibility stays outside cache",
+    "next completed frame invalidates asset identities/order",
+    "future mutation cannot enter current frame ranking"
+  ],
+  "runtime_change": "Stale proposals skip unused candidate ranking. Fee proposals share one native ranking per completed frame and retain per-parent current eligibility filters.",
+  "independent_review_finding_corrected_before_history": "Replacement terminal rejection now sets exact tag replacement_status REJECTED and replacement_terminal_reason, matching journal event.",
+  "replacement_rejection_terminal_consistency_tested": true,
+  "independent_review_passed": true,
+  "independently_rerun_unit_cases": 20,
+  "independent_unit_elapsed_seconds": 7.561,
+  "independent_rotation_helper_unit_cases": 31,
+  "independent_native_synthetic_cases": 11,
+  "independent_review_at": "2026-10-10T21:52:22.983929+00:00",
+  "historical_rotation_outcomes_read": false,
+  "strategy_evaluations": 0,
+  "scope": "Admits additional v3 matched owned control only. Candidates require finalized exact-source matched control full-path audit. Runtime caching preserves all active and neutral financial body bytes. Replacement rejection terminal status correction tested before any v3 evaluation.",
+  "independent_bound_source_files": {
+    "research/danger_room/rotation_profitability_campaign_v3.py": "5f6c9b2b2ca0c1863c410e578893168690f77a59c70e9169db21971d7f85214a",
+    "research/danger_room/rotation_profitability_campaign_v3_precache.py": "833307c97cda0bf31b3ef4afc4082973cb6aa6621491feaf969c536781286a5d",
+    "tests/test_rotation_campaign.py": "0d4ee04d7c48ce82a3e3397a6f7a25355a3eaca82f19656c77175729ae4d193b",
+    "research/danger_room/rotation_policy.py": "f716728c80d014b4d4baae8163a3edf659c34d6582b23f543955bdbc837f44ec",
+    "tests/test_rotation_policy.py": "179f478ed4bbd9422d2812fd7b5c7b706b5088e29ec4b68dc81849f78af8c0f6",
+    "research/danger_room/rotation_protocol.json": "6b6b3a83a159e09d0df8d9407d169cd85bf1b800c6462644a3c30d6a06e91da2"
+  },
+  "independent_local_receipt_sha256": "4b943a59a46cc4919ec627ead58c2a86fea478bcb2e77c2ace2b7f6707772cec",
+  "independent_rational_hurdle_oracle_sha256": "e8f767270674a34da33fa5b9f92475dc04a096eac4ec739b4a40795dde4dcb8b"
+}

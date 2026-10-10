@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "campaign": "profitability-campaign-20261010/owned-and-current-cost-supplement",
+  "parent_protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "frozen_at": "2026-10-10T21:05:36.070013+00:00",
+  "research_only": true,
+  "production_activation": false,
+  "holdout_access": false,
+  "maximum_total_strategy_evaluations": 35,
+  "additional_evaluations": 3,
+  "replaces_no_original_parameters": true,
+  "owned_cash_model": {
+    "capital": "2000",
+    "initial_productive_cash": "1500",
+    "initial_vcap_cash": "500",
+    "source_binding": "ENTRY=PRODUCTIVE; RECOVERY=VCAP; no owner reassignment or fungible borrowing",
+    "principal_returns": "exact fee-inclusive disposed lotbasis to originowner",
+    "positive_realized_profit_split": {
+      "PRODUCTIVE": "0.75",
+      "VCAP": "0.25"
+    },
+    "loss_attribution": "allocated to exact disposedoriginlot; no manufacturedpositiveprofit",
+    "partial_recycle": "RECOVERYlots only, principalreturnsVCAP; positiveprofit75/25; originalcontrolPARKkept",
+    "pending": "ownerreservation at acceptedproposal, remainlockedthroughqueuedcancel; settleonlyexactuniqueconfirmedreceipt, releaseonlyconfirmedremainingcancel, invariantcashpluslocks",
+    "physical_cash_reserve": "retain native25%target/20%floor and $40protectedbootstrapminimum; ownercash cannot circumventphysicalfloor",
+    "pair_limit": "same5%nativeallin governor",
+    "recovery_ladders": "samepriorfrozennewhypotheses/entryanchor/initialallinseed andcausalclassassign; noadditional tuning",
+    "original_owner_adaptation_gate": "exact source-bound pending/fill/lotbasis hooks + independent cash/quantity/feeaudit PASS before validintegrated results"
+  },
+  "additional_arms": [
+    {
+      "name": "owned_control_174",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "owned_cash": true,
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "redeploy_confirmed_partial": false,
+      "ladder_assignment": null
+    },
+    {
+      "name": "current_cost_owned_control_174",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "80",
+      "slippage_bps": "15",
+      "owned_cash": true,
+      "selection": false,
+      "directional": false,
+      "recovery_quality": false,
+      "redeploy_confirmed_partial": false,
+      "ladder_assignment": null,
+      "counterfactual": true
+    },
+    {
+      "name": "current_cost_owned_full",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "80",
+      "slippage_bps": "15",
+      "owned_cash": true,
+      "selection": true,
+      "directional": true,
+      "recovery_quality": true,
+      "redeploy_confirmed_partial": true,
+      "ladder_assignment": "prior_completed_drawdown",
+      "counterfactual": true
+    }
+  ],
+  "existing_arms_using_matched_owner_control": [
+    "causal_category_ladders",
+    "confirmed_principal_redeployment",
+    "combined_selector_ladder",
+    "combined_full_supported"
+  ],
+  "fees": {
+    "historical_control": "original40bps/side preserved forJanJun reconstruction",
+    "current_cost_sensitivity": "80bps/side+15bpsslip fixed counterfactual, based currententrytier KrakenProSpot Crypto; no claimtheseJanJun actualfees",
+    "source": "https://www.kraken.com/features/fee-schedule",
+    "observed_at": "2026-10-10",
+    "actual_account_tier_unverified": true,
+    "volume_tier_discount_not_assumed": true,
+    "maker_execution_not_assumed": true
+  },
+  "clarifications": {
+    "independent_recovery_quality_gate": "optionalindependent mechanism controlledby armrecovery_quality flag; falsemeansOFF; profileclassificationdoesnotestablishassetrecoveryquality",
+    "fresh_two_finalists_three_periods": "absoluteprofitvalidationonly; nofreshmatchedcontrol superiorityclaim; comparativefreshcontrolrequiresnewprotocolbudget beforedata",
+    "same_frozen_classification": "sufficientcompletedpastcoverage, observedcloseDD<=10%shallow<=20%mediumelsedeep;UNKNOWNblocks; nofuturechangingladder"
+  },
+  "validity": "Newownerarming must bematchedtoowned_control174; comparisonswithfungiblenativecontrolarearchitecturalcounterfactuals notisolatedladdercausalestimates",
+  "fresh_holdout_payload_access": false
+}

@@ -1,0 +1,107 @@
+{
+  "passed": true,
+  "status": "PASS",
+  "arm": "combined_selector_directional",
+  "strategy_imported": false,
+  "scope": "Independent actual serialized-fill accounting, immutable lot disposal, entire native-five-minute equity/basis/marks path, declared exit-floor behavior, immediate actual-next-open prices and declared FOK volume surrogate; not venue or full production ownership proof",
+  "arithmetic_precision": 60,
+  "arithmetic_tolerance": "1E-18",
+  "samples_checked": 52128,
+  "execution_fee_bps": "40",
+  "execution_slippage_bps": "5",
+  "execution_exit_floor_bps": "174",
+  "sample_scalar_checks": {
+    "cash": 52128,
+    "parked_cash": 52128,
+    "deployable_cash": 52128,
+    "committed_basis": 52128,
+    "marked_value": 52128,
+    "equity": 52128,
+    "cumulative_realized": 52128,
+    "cumulative_fees": 52128
+  },
+  "fills_checked": {
+    "ENTRY": 66,
+    "EXIT": 54,
+    "RECOVERY": 307,
+    "PARTIAL_RECYCLE": 196
+  },
+  "fill_price_capacity_checks": 623,
+  "surviving_lots": 48,
+  "disposed_lots": 325,
+  "surviving_parents": 12,
+  "independent_cash": "1702.64926497369039264421124525915",
+  "independent_parked_cash": "1702.64926497369021206173374363111",
+  "minimum_deployable_cash": "3.1079276804E-19",
+  "independent_marked_inventory": "159.994646538049948392030510208941345",
+  "independent_equity": "1862.643911511740341036241755468091345",
+  "independent_realized_pnl": "47.95749655480724554941235704219",
+  "independent_unrealized_pnl": "-185.313585043066904513170601574098655",
+  "independent_fees": "19.33257520382494763366933084185",
+  "native_5m_drawdown": "0.0854847770103315511274815421660233155608848860551606344665812",
+  "capital_dollar_days": "62734.0466172423983158097494067888901388888888888888888888889",
+  "occupied_slot_fraction": "0.243317602823818293431553100061387354205033763044812768569675",
+  "all_minutes_below50_including_initialization": 260640,
+  "maximum_mark_age_seconds": 6300,
+  "sealed_holdout_read": false,
+  "full_cash_owner_adapter_verified": false,
+  "owner_proof": null,
+  "rotation_proof": null,
+  "research_adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+  "policy_sources": null,
+  "input_array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+  "input_metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+  "results_sha256": "6b13eff058bcbf3b3564859fb0ca632fb8e7cc5367b00866c75ef5afb105bef1",
+  "artifacts": [
+    {
+      "file": "account_5m.csv.gz",
+      "bytes": 2008834,
+      "sha256": "c323739d09e6bf3f9eedc0c5e5ac6c34d4d09b77a344f10ef5666f97a156c819"
+    },
+    {
+      "file": "fills.csv",
+      "bytes": 100686,
+      "sha256": "b02b2bb5a056fb67d4509c57ead29d2f09a69601a8472a477c610ce0ff477670"
+    },
+    {
+      "file": "generated_campaign_body.py",
+      "bytes": 30566,
+      "sha256": "5886063d403dd6bd257ec43e8025671e2f5bfc44701f8c16ca890cb300b01a3a"
+    },
+    {
+      "file": "ownership_events.json.gz",
+      "bytes": 851470,
+      "sha256": "9c328c31894537e3c9eecaa3cdaabc107defa5c8306f59c0e7603f0335374a48"
+    },
+    {
+      "file": "pending_orders.jsonl.gz",
+      "bytes": 618570,
+      "sha256": "a010005b36cb2f6417c02c86558c2d167a18cad80732f8fee7b22194a4eb2add"
+    },
+    {
+      "file": "results.json",
+      "bytes": 10482,
+      "sha256": "6b13eff058bcbf3b3564859fb0ca632fb8e7cc5367b00866c75ef5afb105bef1"
+    },
+    {
+      "file": "run_admission.receipt.json",
+      "bytes": 894,
+      "sha256": "6a3b57a850a6a6e2affd5f11920ae8d7d51f4e01aeeb7490e762f59ac099e22f"
+    },
+    {
+      "file": "terminal.json",
+      "bytes": 3920,
+      "sha256": "ff2e8d2bcdfbdeadf73d65a79046b42721a1dcc81b51281aad2ffeeb8282fe1e"
+    },
+    {
+      "file": "terminal_lots.json",
+      "bytes": 210172,
+      "sha256": "12f8b3bf99f4d3e2d0f0b3b10d0271a145429015fda1c99488e68f4d1607a729"
+    },
+    {
+      "file": "watchlist_updates.jsonl.gz",
+      "bytes": 8206038,
+      "sha256": "b99ea707b672417918ecb8adbbc5bc16000b228af9414a4f346707864e2d0a28"
+    }
+  ]
+}

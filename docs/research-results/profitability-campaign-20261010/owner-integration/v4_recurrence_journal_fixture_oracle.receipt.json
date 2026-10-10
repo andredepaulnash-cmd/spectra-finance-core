@@ -1,0 +1,1171 @@
+{
+  "passed": true,
+  "strategy_imported": false,
+  "synthetic_only": true,
+  "completed_strategy_evaluations_added": 0,
+  "cases": [
+    {
+      "case": "fixture_three_episodes",
+      "results_sha256": "6b626f8a91e9714df07c56b2c9de059943506191330889fb6f4c9f6579c1879d",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": true,
+        "events_checked": {
+          "RECURRENCE_PARENT_BOUND": 1,
+          "RECURRENCE_COMPLETED_OBSERVATION": 44,
+          "RECURRENCE_DECISION": 41,
+          "RECURRENCE_RESERVE": 3,
+          "RECURRENCE_BUY_CONFIRMED": 3,
+          "RECURRENCE_DISPOSAL_PROVEN": 3,
+          "RECURRENCE_PROFIT_STATE_PRESERVED": 2
+        },
+        "parents_checked": 1,
+        "renewal_fills_checked": 2,
+        "original_recovery_fills_checked": 1,
+        "exact_lifetime_turnover_and_pending_holds_checked": true,
+        "max_three_episodes_each_rung_checked": true,
+        "per_episode_exact_disposal_profit_and_same_owner_release_checked": true,
+        "all_actual_completed_price_observations_checked": true,
+        "original_priority_deepest_renewal_and_late_cross_checked": true,
+        "renewal_floor_and_profit_state_preservation_checked": true,
+        "checkpoint_independently_folded": true,
+        "scope": "Serialized authoritative pending/floor fields plus source-bound native synthetic proof; no strategy import or live venue restart claim"
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 2593,
+          "sha256": "db1bfcab45a37db1c2be0bc1a542d4ae8534f2ab6fd65e04d6aa9fd911871278"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 1219,
+          "sha256": "77caed442e5318dcd8d1d58b23f47ceb66295ca4aea055431ad669454c9cd5d6"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 31215,
+          "sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2381,
+          "sha256": "21732963b76a96366add882e336c733009fc3f19d91c644460f55fc5e8278515"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 9774,
+          "sha256": "f128787d85e739e97e8c672f5ca8bced0326587cb63c04be51609e02a25dda2a"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 1215,
+          "sha256": "70a8b329972cd2092bcb08e44855084504c0ab806b875318f722617411106713"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 2183,
+          "sha256": "cb9beda2d2799c5cac601d2586feb839829e0894a470a0064f8b95befea07b6d"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 2072,
+          "sha256": "42b216a1a137b52ea092581d1ce9de8893123efb6b3037ac02c41a30e6081df7"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1341,
+          "sha256": "60f660a400d34298b2f499ee34be4c5d4b1e83571ee5f50d78f800c1d29d7cc5"
+        },
+        {
+          "file": "recurrence_checkpoint.json",
+          "bytes": 36155,
+          "sha256": "74e79524e41a74f5f8f756c4eedebb740d05ec04998f6c2335b5e03a886d1d24"
+        },
+        {
+          "file": "recurrence_events.jsonl.gz",
+          "bytes": 3443,
+          "sha256": "22c03a70e6e1613a3d0560a98350b62c94166755708a8b609f64feb6f28bdde8"
+        },
+        {
+          "file": "results.json",
+          "bytes": 19162,
+          "sha256": "6b626f8a91e9714df07c56b2c9de059943506191330889fb6f4c9f6579c1879d"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 3305,
+          "sha256": "710e19775103c4f91b24e1be892fe842ef2d4d7098798c1c3a198057123a4489"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 322,
+          "sha256": "0069c59cc2d9bbd9da2b93d1d93e2153d9cc5c08be0a2370b82f48fc144b8f3b"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 2261,
+          "sha256": "6667f39f23025b76dd04449bd3a38545ff5c8a0c0db3a9b25e0e395ae8eefdca"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "c81a0e0b87aeeaeb9fe43f6c98c915b35371803b99f6bf224a7245cdcd7f0625"
+        }
+      ]
+    },
+    {
+      "case": "fixture_missing_renewal_bar",
+      "results_sha256": "f34f577fed47fb26574c5ec40c49a63a3ee318173578ae4f9229c08e8890ab6d",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": true,
+        "events_checked": {
+          "RECURRENCE_PARENT_BOUND": 1,
+          "RECURRENCE_COMPLETED_OBSERVATION": 43,
+          "RECURRENCE_DECISION": 40,
+          "RECURRENCE_RESERVE": 4,
+          "RECURRENCE_BUY_CONFIRMED": 3,
+          "RECURRENCE_DISPOSAL_PROVEN": 3,
+          "RECURRENCE_REJECTED": 1,
+          "RECURRENCE_PROFIT_STATE_PRESERVED": 2
+        },
+        "parents_checked": 1,
+        "renewal_fills_checked": 2,
+        "original_recovery_fills_checked": 1,
+        "exact_lifetime_turnover_and_pending_holds_checked": true,
+        "max_three_episodes_each_rung_checked": true,
+        "per_episode_exact_disposal_profit_and_same_owner_release_checked": true,
+        "all_actual_completed_price_observations_checked": true,
+        "original_priority_deepest_renewal_and_late_cross_checked": true,
+        "renewal_floor_and_profit_state_preservation_checked": true,
+        "checkpoint_independently_folded": true,
+        "scope": "Serialized authoritative pending/floor fields plus source-bound native synthetic proof; no strategy import or live venue restart claim"
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 2466,
+          "sha256": "1a76283d8651a886b913a5872b3f620d27ddbbb98a3a7d71d66e6f685d81c892"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 1219,
+          "sha256": "b2681c478f5b7b80e7e651dfaadeea4f81a40b3f48060d566315bb40e213b6dd"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 31215,
+          "sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2390,
+          "sha256": "eed28594f08e499eef985d54f158f9669e5572cf3bef17d023a1738d92a58585"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 10564,
+          "sha256": "a759be097d49372220200e21964fe4d405cd03fffa4cf8c005cf5bec90fe11c2"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 1215,
+          "sha256": "60fa7adbaf2bbc0256db679a437a9e31fc0bbdfde2305e2549837fb6c4c12e9a"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 2337,
+          "sha256": "176f6e475ae972ffc06a22254af21eddc48dfd86a2c4a78897bb768e5412c749"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 2089,
+          "sha256": "d67835690526b414f838b72e25300715d8332d4750db46e78a1b8bb8956723e6"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1354,
+          "sha256": "52c57a7a82003ce21575962dc5da57223c69316bf3b68639cf5c22834e00ac69"
+        },
+        {
+          "file": "recurrence_checkpoint.json",
+          "bytes": 36155,
+          "sha256": "06a66a8b5b20a34ed6af4edbccb7ce6705cf5164a8942c28e3af9d41adbd96d2"
+        },
+        {
+          "file": "recurrence_events.jsonl.gz",
+          "bytes": 3622,
+          "sha256": "17f14b27b26ac478f5121f41574e5b6cbfbaef3057e6e77dc5f23b8360fa5140"
+        },
+        {
+          "file": "results.json",
+          "bytes": 19201,
+          "sha256": "f34f577fed47fb26574c5ec40c49a63a3ee318173578ae4f9229c08e8890ab6d"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 3305,
+          "sha256": "23bb1929ea5bdd42eeef5f7b5026984f17afe7e0b7e58b65db3a8ccaada7b090"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 322,
+          "sha256": "0069c59cc2d9bbd9da2b93d1d93e2153d9cc5c08be0a2370b82f48fc144b8f3b"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 2261,
+          "sha256": "c9ba33c2b7fadf876ae6436e6f38a1f24d797b7c1ec01f922516a998e21ad751"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "346d34e25b9c305daa9e514f68c37d8c29e0f25a9afddb04ad0ce16f9ede67f9"
+        }
+      ]
+    },
+    {
+      "case": "fixture_renewal_capacity",
+      "results_sha256": "9b8b86a054de71acec99e306530612938a971c03f286c41177ef57fd2ba20807",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": true,
+        "events_checked": {
+          "RECURRENCE_PARENT_BOUND": 1,
+          "RECURRENCE_COMPLETED_OBSERVATION": 44,
+          "RECURRENCE_DECISION": 41,
+          "RECURRENCE_RESERVE": 5,
+          "RECURRENCE_BUY_CONFIRMED": 3,
+          "RECURRENCE_DISPOSAL_PROVEN": 3,
+          "RECURRENCE_REJECTED": 2,
+          "RECURRENCE_PROFIT_STATE_PRESERVED": 2
+        },
+        "parents_checked": 1,
+        "renewal_fills_checked": 2,
+        "original_recovery_fills_checked": 1,
+        "exact_lifetime_turnover_and_pending_holds_checked": true,
+        "max_three_episodes_each_rung_checked": true,
+        "per_episode_exact_disposal_profit_and_same_owner_release_checked": true,
+        "all_actual_completed_price_observations_checked": true,
+        "original_priority_deepest_renewal_and_late_cross_checked": true,
+        "renewal_floor_and_profit_state_preservation_checked": true,
+        "checkpoint_independently_folded": true,
+        "scope": "Serialized authoritative pending/floor fields plus source-bound native synthetic proof; no strategy import or live venue restart claim"
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 2592,
+          "sha256": "40c9d6f8a425165c8b1b59f6b3c27d4e5b8f4c3175fca6ca1c1197f463fdcf66"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 1220,
+          "sha256": "fa01c27ec532c5a353ba0b00ae3c3e578389147fbeb5cef3c49e49d2b629709d"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 31215,
+          "sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2417,
+          "sha256": "f9675df76165c480215d5b9ff8a6821198986d366b7575f68d1b8b0134f44bc4"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 11362,
+          "sha256": "805b478f53b67f0ef06cadcc7297c8bacb768ab044393b8c6c01ca9daa9241df"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 1224,
+          "sha256": "853caedb30bf75814ca6765ae0a9a95679261dd8b9e1cc1e2f6638e923a41656"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 2759,
+          "sha256": "3fab8c956e2c6c4573711ef28a691bf744d7ae7109dfe4cb6478e53f32f0c7b2"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 2383,
+          "sha256": "b36ed763a0af048e737f510cb2248f82741b6d0b22f7626e7eace6b7740b4bcc"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1390,
+          "sha256": "8168f7dea07831ee65b6d18e1cf75b58e2dd69c972758a47ce38ae7ce62783a3"
+        },
+        {
+          "file": "recurrence_checkpoint.json",
+          "bytes": 36155,
+          "sha256": "64b61241fbe91fec8f07a0355f86b6425ecd497b0c6b6c573f66094c3be28c6e"
+        },
+        {
+          "file": "recurrence_events.jsonl.gz",
+          "bytes": 3951,
+          "sha256": "89b27bfcc41526a6625e112252c44ba16f859176bc0df929d858c9aaf3bb25aa"
+        },
+        {
+          "file": "results.json",
+          "bytes": 19197,
+          "sha256": "9b8b86a054de71acec99e306530612938a971c03f286c41177ef57fd2ba20807"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 3305,
+          "sha256": "b06cfee9861931ba665b1d126a1b9b0e72021b84aa8d4edcf85b04cf0c5bc560"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 322,
+          "sha256": "0069c59cc2d9bbd9da2b93d1d93e2153d9cc5c08be0a2370b82f48fc144b8f3b"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 2261,
+          "sha256": "2a813f888955f0d31b20b5d11eb8c390c22db6562e1d9669d2f7755c786e0a3c"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "346d34e25b9c305daa9e514f68c37d8c29e0f25a9afddb04ad0ce16f9ede67f9"
+        }
+      ]
+    },
+    {
+      "case": "fixture_whole_retirement",
+      "results_sha256": "5c3873a03add1503af87639a30bebc68a2ef5208ec0263e3c6711e5ed31ec78a",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": true,
+        "events_checked": {
+          "RECURRENCE_PARENT_BOUND": 1,
+          "RECURRENCE_COMPLETED_OBSERVATION": 42,
+          "RECURRENCE_DECISION": 38,
+          "RECURRENCE_RESERVE": 3,
+          "RECURRENCE_BUY_CONFIRMED": 3,
+          "RECURRENCE_DISPOSAL_PROVEN": 3,
+          "RECURRENCE_PROFIT_STATE_PRESERVED": 2,
+          "RECURRENCE_PARENT_RETIRED": 1
+        },
+        "parents_checked": 1,
+        "renewal_fills_checked": 2,
+        "original_recovery_fills_checked": 1,
+        "exact_lifetime_turnover_and_pending_holds_checked": true,
+        "max_three_episodes_each_rung_checked": true,
+        "per_episode_exact_disposal_profit_and_same_owner_release_checked": true,
+        "all_actual_completed_price_observations_checked": true,
+        "original_priority_deepest_renewal_and_late_cross_checked": true,
+        "renewal_floor_and_profit_state_preservation_checked": true,
+        "checkpoint_independently_folded": true,
+        "scope": "Serialized authoritative pending/floor fields plus source-bound native synthetic proof; no strategy import or live venue restart claim"
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 2693,
+          "sha256": "497b18a84e65c6bbb722a82e72ff66d053bf13ca06fb23b17b18d30ee23b8a37"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 1411,
+          "sha256": "842fb4e9420babe86f07cbb7e4b4b0aeb2c72900b38e8626536ff0a4c2767a5c"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 31215,
+          "sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2520,
+          "sha256": "62d8360822b1b6fa3e1803dcbdf226738c20df503d40a62a4249bbc1353e2e9f"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 11038,
+          "sha256": "f65ac2172746588eb549099984d5f35c3b72e40aa4840fe131c1acda3c56e0e8"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 977,
+          "sha256": "06a1802aa94466b386c40075de50e9930ff718e0118d0731f503ef7761e602e6"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 2583,
+          "sha256": "11ec616225c5f26fd603b2a0f46c23b17be505fdd87a73e57c879c4e2c881025"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 2341,
+          "sha256": "a33784516038336611fcd8d2364aa6beed74dc62ad16631fc60e51ffe2ccac92"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1374,
+          "sha256": "103a53445535374749e889018189858ef0d0a061d9e2a289b0128e44e67ecc63"
+        },
+        {
+          "file": "recurrence_checkpoint.json",
+          "bytes": 37723,
+          "sha256": "64722aa6711bfa98c693564a620bdce210801c471d96e3aa19c16666a2b2361a"
+        },
+        {
+          "file": "recurrence_events.jsonl.gz",
+          "bytes": 4043,
+          "sha256": "92f154d6a8d31a7995d5f9607c569a54f6c20843f8ec371a69200e2608a5fccd"
+        },
+        {
+          "file": "results.json",
+          "bytes": 19357,
+          "sha256": "5c3873a03add1503af87639a30bebc68a2ef5208ec0263e3c6711e5ed31ec78a"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 3305,
+          "sha256": "aefb24619518dbb59a30087583bdad854545bdb7f0e801337fe76599d14253c8"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 3,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 2174,
+          "sha256": "c75f661c7ee4d2c046591545d20f6ac5db45ba36541452b62538379b7ebd001a"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "2e61e191713ce004f06363b4db0a372eb9c446f3552d8351bf8a57ca222e0926"
+        }
+      ]
+    },
+    {
+      "case": "fixture_neutral",
+      "results_sha256": "5abeafcd6680ed11b5e14728f5fb5473c1934aa01f359ba085a0fb2dfc194d3f",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": false,
+        "renewal_fills_checked": 0
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 1989,
+          "sha256": "086c7c49745ccbe71e0b8c970045285b4d1192fe7bbb444715584bc03aaa8650"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 583,
+          "sha256": "9cbe82be948297715ed7cb6f9cd13a04097ea293ef620c901aa29304d32bcdb4"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 30879,
+          "sha256": "31dc4b04c2fcce5e4f6f7050ab98f709653e4dd0e24520c0e530cd7f97770f19"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2042,
+          "sha256": "2097cf2f4172ce8287c1d8f724e3f79597f62291b4b9bcb13864afaa2d6d1878"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 5006,
+          "sha256": "e183e7ad5e61260ac878c3880902a5ce4041b52762964cd6158bfb5f4ac76875"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 1214,
+          "sha256": "0160be83a208cf5e0884b2921cb14314fbaab86cb6a25496713c035361454c54"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 1465,
+          "sha256": "09fd84c74011453c7ab89d66759b7bd5bcf0c7da79c852c20eacf6e48ead869c"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 1597,
+          "sha256": "19231b81223efa648007071ee01f158efa3ca174e7ca35486db8e914a2048aac"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1287,
+          "sha256": "72889b9c6d4858021750ff5a5419c941a6a2beb51b2f6ecd2726a3198ada3988"
+        },
+        {
+          "file": "results.json",
+          "bytes": 17221,
+          "sha256": "5abeafcd6680ed11b5e14728f5fb5473c1934aa01f359ba085a0fb2dfc194d3f"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 2941,
+          "sha256": "71477d468936ae626d09ae96c48c9506451a51fd56a13fdd7569301b023911a2"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 322,
+          "sha256": "606e573d94fdf404161377a27e5497c3b8523c294571bd4cbfafbe447b51abe5"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 1183,
+          "sha256": "642e9d936ebac57f69c377e185b87029391282dccb4ddbe9c7244f6f35b55409"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "f537f8454bc97c3307c3a62cbedc537a1086b8f9ee0832dbdc17b189751c3f2a"
+        }
+      ]
+    },
+    {
+      "case": "fixture_current_cost",
+      "results_sha256": "f237643bdb9751beff947af14579635a55fe75381998880dcf5453ae72a5e8f4",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": true,
+        "events_checked": {
+          "RECURRENCE_PARENT_BOUND": 1,
+          "RECURRENCE_COMPLETED_OBSERVATION": 44,
+          "RECURRENCE_DECISION": 41,
+          "RECURRENCE_RESERVE": 3,
+          "RECURRENCE_BUY_CONFIRMED": 3,
+          "RECURRENCE_DISPOSAL_PROVEN": 3,
+          "RECURRENCE_PROFIT_STATE_PRESERVED": 2
+        },
+        "parents_checked": 1,
+        "renewal_fills_checked": 2,
+        "original_recovery_fills_checked": 1,
+        "exact_lifetime_turnover_and_pending_holds_checked": true,
+        "max_three_episodes_each_rung_checked": true,
+        "per_episode_exact_disposal_profit_and_same_owner_release_checked": true,
+        "all_actual_completed_price_observations_checked": true,
+        "original_priority_deepest_renewal_and_late_cross_checked": true,
+        "renewal_floor_and_profit_state_preservation_checked": true,
+        "checkpoint_independently_folded": true,
+        "scope": "Serialized authoritative pending/floor fields plus source-bound native synthetic proof; no strategy import or live venue restart claim"
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 2586,
+          "sha256": "4eb99a56ae2033050f134824c6c70503d69ab88ccd7c120ed2f54bd03d5c28d0"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 1222,
+          "sha256": "4a904b40e177b380b5085806d85e898d8836e441051bd4eed7c211cc1d01e5fa"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 31215,
+          "sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2402,
+          "sha256": "dbde618902f6ca85bad60f3278d38aa6a701aca56bd98912948e25dc22a505c1"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 9786,
+          "sha256": "ede97db538768d570f1ef38ce707692216a529fbb40c305d3af89f797af83656"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 1224,
+          "sha256": "af78738d155db7c0836c0852a082d4ce2461e0d4405cbe63167e7ea246907e3e"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 2198,
+          "sha256": "50759b71cac5e9a51f580a25d27af5a514a151cb0e93f9e576a66c57469d5751"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 2069,
+          "sha256": "a8792e43f94c0dbf803dfbd427877a76c65689ec2d52ffa58cf92d3a124cb0ae"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1340,
+          "sha256": "ed4a3e41ebebfada75c86d6f300ea8252b82bc072c519780bac5dfe79fa84a08"
+        },
+        {
+          "file": "recurrence_checkpoint.json",
+          "bytes": 36148,
+          "sha256": "983da4b20e594aefe83cf04ae0d82431059a3c4dd6bd777c85eda91704a03784"
+        },
+        {
+          "file": "recurrence_events.jsonl.gz",
+          "bytes": 3490,
+          "sha256": "346aaea62462ced83cbb37d747524da1f1ee0edb8a7880ee3010f9c96650d9e6"
+        },
+        {
+          "file": "results.json",
+          "bytes": 19243,
+          "sha256": "f237643bdb9751beff947af14579635a55fe75381998880dcf5453ae72a5e8f4"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 3331,
+          "sha256": "a14b9b0e2bedf12d25ba293dcc63c9270d1a1471030f5afa7ef9d7e36c451cb2"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 322,
+          "sha256": "a4fe78abfa92c600fe9a8c0dd89ae3e9dd9ae20eab865fcb1518facf8ef34b9b"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 2261,
+          "sha256": "80c6625e1088814c6f8a1281536bc47b5f6874e7242c2c9c873faceab872551c"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "f537f8454bc97c3307c3a62cbedc537a1086b8f9ee0832dbdc17b189751c3f2a"
+        }
+      ]
+    },
+    {
+      "case": "fixture_armed_floor",
+      "results_sha256": "33707790ea45b23a5ba1170e7283ea80050a8f781cf17e9b267c60fd7eb53b3f",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": true,
+        "events_checked": {
+          "RECURRENCE_PARENT_BOUND": 1,
+          "RECURRENCE_COMPLETED_OBSERVATION": 44,
+          "RECURRENCE_DECISION": 42,
+          "RECURRENCE_RESERVE": 1,
+          "RECURRENCE_BUY_CONFIRMED": 1,
+          "RECURRENCE_DISPOSAL_PROVEN": 1
+        },
+        "parents_checked": 1,
+        "renewal_fills_checked": 0,
+        "original_recovery_fills_checked": 1,
+        "exact_lifetime_turnover_and_pending_holds_checked": true,
+        "max_three_episodes_each_rung_checked": true,
+        "per_episode_exact_disposal_profit_and_same_owner_release_checked": true,
+        "all_actual_completed_price_observations_checked": true,
+        "original_priority_deepest_renewal_and_late_cross_checked": true,
+        "renewal_floor_and_profit_state_preservation_checked": true,
+        "checkpoint_independently_folded": true,
+        "scope": "Serialized authoritative pending/floor fields plus source-bound native synthetic proof; no strategy import or live venue restart claim"
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 2036,
+          "sha256": "0fe84c4d630a0908201325b72c997e4a7b5bd9b1f71546a29c611958e87f78dc"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 583,
+          "sha256": "9cbe82be948297715ed7cb6f9cd13a04097ea293ef620c901aa29304d32bcdb4"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 31215,
+          "sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2042,
+          "sha256": "fa39fd4edaefb98af16a58b7ae182217d9746046d78aff0f25faf5f4d3700e7f"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 5006,
+          "sha256": "e183e7ad5e61260ac878c3880902a5ce4041b52762964cd6158bfb5f4ac76875"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 1214,
+          "sha256": "0160be83a208cf5e0884b2921cb14314fbaab86cb6a25496713c035361454c54"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 1465,
+          "sha256": "128cf46d9043f4db61c66665daabe10d546434533dd7d270c45213a28043fffd"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 1703,
+          "sha256": "4f098de56b51c114dfbbd24917a937c54399ec5e9eb14781319c18b2983ce84f"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1306,
+          "sha256": "73c6892411392bd24c9b4e4e3c0da2b5e4969479bf9d1b84338aeb1a733b7ba2"
+        },
+        {
+          "file": "recurrence_checkpoint.json",
+          "bytes": 15883,
+          "sha256": "3bf8b569bf8ef8c1d74676a8bca560324ec56ae84e4d4c6b60afc1c7fe1ccf24"
+        },
+        {
+          "file": "recurrence_events.jsonl.gz",
+          "bytes": 2827,
+          "sha256": "ffb52f5b812b237939bb84eb5061b304120327f8cafbf1aca500d2941f2c68f6"
+        },
+        {
+          "file": "results.json",
+          "bytes": 19256,
+          "sha256": "33707790ea45b23a5ba1170e7283ea80050a8f781cf17e9b267c60fd7eb53b3f"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 3305,
+          "sha256": "20e5ac52d327a6e5127f8d6fe88f6a807addc5b41dda5b4cd90c2f01f2af5401"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 322,
+          "sha256": "606e573d94fdf404161377a27e5497c3b8523c294571bd4cbfafbe447b51abe5"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 1183,
+          "sha256": "642e9d936ebac57f69c377e185b87029391282dccb4ddbe9c7244f6f35b55409"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "0fbf1d1741bbaa5c996b9cc1da9d211302a306bd3564ed86105805d0593793e6"
+        }
+      ]
+    },
+    {
+      "case": "fixture_original_priority",
+      "results_sha256": "7f280dfd90ad2e051f1d838c5c98b7a81d314d7a86e9afedf189b03cdd40b542",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": true,
+        "events_checked": {
+          "RECURRENCE_PARENT_BOUND": 1,
+          "RECURRENCE_COMPLETED_OBSERVATION": 44,
+          "RECURRENCE_DECISION": 42,
+          "RECURRENCE_RESERVE": 3,
+          "RECURRENCE_BUY_CONFIRMED": 3,
+          "RECURRENCE_DISPOSAL_PROVEN": 2,
+          "RECURRENCE_PROFIT_STATE_PRESERVED": 1
+        },
+        "parents_checked": 1,
+        "renewal_fills_checked": 1,
+        "original_recovery_fills_checked": 2,
+        "exact_lifetime_turnover_and_pending_holds_checked": true,
+        "max_three_episodes_each_rung_checked": true,
+        "per_episode_exact_disposal_profit_and_same_owner_release_checked": true,
+        "all_actual_completed_price_observations_checked": true,
+        "original_priority_deepest_renewal_and_late_cross_checked": true,
+        "renewal_floor_and_profit_state_preservation_checked": true,
+        "checkpoint_independently_folded": true,
+        "scope": "Serialized authoritative pending/floor fields plus source-bound native synthetic proof; no strategy import or live venue restart claim"
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 2552,
+          "sha256": "21ed5a1c7df749965e24001c754d13da4f03dd80cb66468bfead70e20615a3d7"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 1023,
+          "sha256": "a11ea9b45b33ffa8a69eb16023f64f27914566e7fc893bd16af371dde43c2547"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 31215,
+          "sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2311,
+          "sha256": "7a749ea57978e8eedff1f612f063edcf6124e9b22d34f857a33bb55b5a39c543"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 9276,
+          "sha256": "106bc5306438ac89e6d49310214f269984ab8c6fc3c24c7d024d9ecd96ee8fa3"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 1224,
+          "sha256": "77be598fc1f92ad87bbd0fd770c00f94d94f47a720322cc5296278b4f685c948"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 2469,
+          "sha256": "fcc989c5a1d07e282be6ab34036a0a8af9a137f8bc7867c6e2b7bf4bf3c9f56f"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 2471,
+          "sha256": "7280852dd7c502399ea1ceb299624e64f8ff7017843d32d30787f04b6ce52c6d"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1339,
+          "sha256": "b4e92beb067f063183442cc17f71b5fe348487548634cfa923caec472e9c359b"
+        },
+        {
+          "file": "recurrence_checkpoint.json",
+          "bytes": 34721,
+          "sha256": "33605e90dbbdd076173da5d90e579aefbccbfd9e1afa95c073d9fd61eaf0076e"
+        },
+        {
+          "file": "recurrence_events.jsonl.gz",
+          "bytes": 3921,
+          "sha256": "ee35d10007e6605892c16bc603e85865db43e2c6716d17e56024baf54edce1d1"
+        },
+        {
+          "file": "results.json",
+          "bytes": 19162,
+          "sha256": "7f280dfd90ad2e051f1d838c5c98b7a81d314d7a86e9afedf189b03cdd40b542"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 3305,
+          "sha256": "b1cfb84d8d462ab31a2efb1f426f26a1e5d0a13bf4faa7d6e6d169a47b3acf92"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 322,
+          "sha256": "0069c59cc2d9bbd9da2b93d1d93e2153d9cc5c08be0a2370b82f48fc144b8f3b"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 2261,
+          "sha256": "e9167240874e2359633295efae1f6404d49ce016cfdd85454d344037da4e60a8"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "c555c05512e0c07f940f1b87ff9f5ff889e5447e1b49ca468e13f04869d3f978"
+        }
+      ]
+    },
+    {
+      "case": "fixture_sized",
+      "results_sha256": "e1c73a792b8e75f2542f80646106592857c465d1033d53f21d41e9786f0aeca4",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": true,
+        "events_checked": {
+          "RECURRENCE_PARENT_BOUND": 1,
+          "RECURRENCE_COMPLETED_OBSERVATION": 44,
+          "RECURRENCE_DECISION": 41,
+          "RECURRENCE_RESERVE": 3,
+          "RECURRENCE_BUY_CONFIRMED": 3,
+          "RECURRENCE_DISPOSAL_PROVEN": 3,
+          "RECURRENCE_PROFIT_STATE_PRESERVED": 2
+        },
+        "parents_checked": 1,
+        "renewal_fills_checked": 2,
+        "original_recovery_fills_checked": 1,
+        "exact_lifetime_turnover_and_pending_holds_checked": true,
+        "max_three_episodes_each_rung_checked": true,
+        "per_episode_exact_disposal_profit_and_same_owner_release_checked": true,
+        "all_actual_completed_price_observations_checked": true,
+        "original_priority_deepest_renewal_and_late_cross_checked": true,
+        "renewal_floor_and_profit_state_preservation_checked": true,
+        "checkpoint_independently_folded": true,
+        "scope": "Serialized authoritative pending/floor fields plus source-bound native synthetic proof; no strategy import or live venue restart claim"
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 2759,
+          "sha256": "21091c5d3b71a0c800b5b5f61e69dcf9e517c3118d04e01a00697154ef476f40"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 1221,
+          "sha256": "56408c50817bcfc6c8b55b33ac9da7ea64a6f807ab3bf51b823ae260e9b48ccd"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 31215,
+          "sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2471,
+          "sha256": "5a9822c387f0527f105ddc00b1793f254f08f5c6daf8c02c10e7724785a74017"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 9784,
+          "sha256": "b0caaec4d1818e796f3d05270a818c3424bb867b9fb2a3d69d1e7822acd19854"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 1224,
+          "sha256": "a0dada38b7ffb69fef132ae33d871a92a3c658edc257154cf3db265507f9c5ac"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 2707,
+          "sha256": "0996bd52eb140503bfc844b92aaa4de8a2695f40005032ed06fb5dad0c75d5b8"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 2658,
+          "sha256": "d9673d2f6f80c40cec2432566623a77b507f75cc439b5a51c9709256c0a658b3"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1371,
+          "sha256": "73bb3e339c3ca738cb995136547a063bc6a3c6a5b89efc6ac5d13d0116698577"
+        },
+        {
+          "file": "recurrence_checkpoint.json",
+          "bytes": 36156,
+          "sha256": "54ecb28bd84b8dc389bd3d87f9c41973ded57426c1c8f12f5ad2cc409e5eeac8"
+        },
+        {
+          "file": "recurrence_events.jsonl.gz",
+          "bytes": 4011,
+          "sha256": "670577ae8b0e101da00d575ed5389521b6c6200118cc4df42cff85a6fdf211b9"
+        },
+        {
+          "file": "results.json",
+          "bytes": 19264,
+          "sha256": "e1c73a792b8e75f2542f80646106592857c465d1033d53f21d41e9786f0aeca4"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 3304,
+          "sha256": "c1aab4e6dc50185a68ddfc0a881bc8e3318637f6c2b4d114698683240ca86a07"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 322,
+          "sha256": "9e91d1d53a638e12ca65d9c711552103838e2a96740e064f6d552aff92726c90"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 2261,
+          "sha256": "89b9079d5d1a7f8828cf2f903095a8ea798e67d8c69431575a856bd791cb4c91"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "c555c05512e0c07f940f1b87ff9f5ff889e5447e1b49ca468e13f04869d3f978"
+        }
+      ]
+    },
+    {
+      "case": "fixture_mixed_whole_retirement",
+      "results_sha256": "92dbc0296543a580cfc40afd2002d645605c125117f0857645bc03edc5a6d78f",
+      "research_adapter_sha256": "4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0",
+      "policy_sources": {
+        "owned_cash": "8e78b2535492f7279cddb67539ff37126f861dd7cba596ffd10dfceafa8439d1",
+        "module_coordination": "e448b43f4006d2e0867cfb5f6142d1f1ad3e39605ca8b057476748d74820ded9",
+        "productive_sizing": "591a9ae7ac78337a0817f8d275f1307f94412f3f806a3a73c98d3a415588feae",
+        "opportunity_selector": "db4878d392738b11df75f42fec0e779b24fcfed95b79020a2111acf3883bb305",
+        "market_regime": "0ecbe4666cd1bdfe71c96eae15145c7da6c22552abd4972ef2583e01ab847554",
+        "receipt_recurring_ladder": "790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673"
+      },
+      "proof": {
+        "passed": true,
+        "enabled": true,
+        "events_checked": {
+          "RECURRENCE_PARENT_BOUND": 2,
+          "RECURRENCE_COMPLETED_OBSERVATION": 42,
+          "RECURRENCE_DECISION": 41,
+          "RECURRENCE_RESERVE": 1,
+          "RECURRENCE_BUY_CONFIRMED": 1,
+          "RECURRENCE_PARENT_RETIRED": 1
+        },
+        "parents_checked": 2,
+        "renewal_fills_checked": 0,
+        "original_recovery_fills_checked": 1,
+        "exact_lifetime_turnover_and_pending_holds_checked": true,
+        "max_three_episodes_each_rung_checked": true,
+        "per_episode_exact_disposal_profit_and_same_owner_release_checked": true,
+        "all_actual_completed_price_observations_checked": true,
+        "original_priority_deepest_renewal_and_late_cross_checked": true,
+        "renewal_floor_and_profit_state_preservation_checked": true,
+        "checkpoint_independently_folded": true,
+        "scope": "Serialized authoritative pending/floor fields plus source-bound native synthetic proof; no strategy import or live venue restart claim"
+      },
+      "artifacts": [
+        {
+          "file": "account_5m.csv.gz",
+          "bytes": 1775,
+          "sha256": "2ac02501f42e04c2500d5df77fa8fb9a4bdf7ad1278307e3c6359d70c85e98e5"
+        },
+        {
+          "file": "fills.csv",
+          "bytes": 718,
+          "sha256": "55a9a964124545ecd04163395a04d459ef2fc0de79f1a75d9b8d502f1298e26f"
+        },
+        {
+          "file": "generated_campaign_body.py",
+          "bytes": 31215,
+          "sha256": "9624efdf06fab365ff02718776d71117c7b59cc4fff8b01dffc14471dcf0f8f9"
+        },
+        {
+          "file": "owner_account_5m.jsonl.gz",
+          "bytes": 2133,
+          "sha256": "dbaa7e8c58fdc6ca39adbc89bd1c5db8203947d8751826aeebc0a311aa7cb851"
+        },
+        {
+          "file": "owner_checkpoint.json",
+          "bytes": 6849,
+          "sha256": "06f866154beda2f98b84bbff700c2a2cdf9f278389e2343717e01d04f169761c"
+        },
+        {
+          "file": "owner_terminal.json",
+          "bytes": 1224,
+          "sha256": "0f98d2808744c15bb37fd8f2778efd4b58f1fc01ae0b4ac15fbe8ebb10149632"
+        },
+        {
+          "file": "owner_transactions.jsonl.gz",
+          "bytes": 1722,
+          "sha256": "e43c983bad0ffe613e532c8e9aac1516ed2e3d1454228899f7aa9b087c3ea9cf"
+        },
+        {
+          "file": "ownership_events.json.gz",
+          "bytes": 1325,
+          "sha256": "8e1ad75750aab3d1e20d48b2533c4366536a0eac028c77785a902834fd441677"
+        },
+        {
+          "file": "pending_orders.jsonl.gz",
+          "bytes": 1283,
+          "sha256": "1efeb565809a449c42f82d6f12f61243d2bab3e640744181d1eeeba336777d6b"
+        },
+        {
+          "file": "recurrence_checkpoint.json",
+          "bytes": 22400,
+          "sha256": "97bc9f56281de975e6a6fc743a9178416296a76cb1c3658702788da7b1422f46"
+        },
+        {
+          "file": "recurrence_events.jsonl.gz",
+          "bytes": 2468,
+          "sha256": "d460640346cdda5f91a9044bd6c7152f522a75de8c5ed64c65acbfe44a39067e"
+        },
+        {
+          "file": "results.json",
+          "bytes": 19173,
+          "sha256": "92dbc0296543a580cfc40afd2002d645605c125117f0857645bc03edc5a6d78f"
+        },
+        {
+          "file": "run_admission.receipt.json",
+          "bytes": 3305,
+          "sha256": "c6f76f810c8356e5a28fce6eb794e61b36377a226e44c909648026d0d4993bba"
+        },
+        {
+          "file": "terminal.json",
+          "bytes": 323,
+          "sha256": "479b0f1b5115249f05262a3a9cd428ed6da4547489d8b5a8f74f165f15147e6e"
+        },
+        {
+          "file": "terminal_lots.json",
+          "bytes": 1739,
+          "sha256": "6fde975111805ba985eee364e475da385345671ecaf0923af6cdb03dd13249bb"
+        },
+        {
+          "file": "watchlist_updates.jsonl.gz",
+          "bytes": 589,
+          "sha256": "3c7eb3853585a82db5368e03360dbfca1d495a2bb4064b9fa8466db786675649"
+        }
+      ]
+    }
+  ],
+  "independent_oracle_source_sha256": "c4bd8d3413d331a2cbe26618151876c6a7040ec0f529a92ef9c45303141a06b7"
+}

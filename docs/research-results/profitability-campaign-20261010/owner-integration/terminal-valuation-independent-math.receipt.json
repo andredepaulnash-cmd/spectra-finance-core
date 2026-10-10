@@ -1,0 +1,205 @@
+{
+  "passed": true,
+  "completed_arms_checked": 5,
+  "scope": "Independent exact rational terminal valuation math against declared helper; reporting sensitivities only, zero actual liquidations or extra strategy evaluations",
+  "helper_sha256": "40f1e183582643e5a4f6f2dfd69576e7a7b8706789daa537692780dbb9692709",
+  "tests_sha256": "6ec7eab1c65bc433a650fa3f984d9ad48c49b062354cace3e443f9f4c0b08566",
+  "protocol_sha256": "a0de80a3022c3e918f69d4565e7463a032f408dcf551ac598e876862f184e909",
+  "arms": [
+    {
+      "arm": "control_100_park",
+      "passed": true,
+      "results_sha256": "4a0ffd67a2e0ee3fe1d2422499f4921f59cccd1b3e992554ec60fd7b555594be",
+      "sensitivities": {
+        "marked": {
+          "equity": "1898.2771830919439573812289957278086",
+          "pnl": "-101.7228169080560426187710042721914",
+          "return_fraction": "-0.0508614084540280213093855021360957"
+        },
+        "modeled_exit_cost": {
+          "equity": "1897.39818156178285363595871280776691691720",
+          "pnl": "-102.60181843821714636404128719223308308280",
+          "return_fraction": "-0.0513009092191085731820206435961165415414"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1897.39818156178285363595871280776691691720",
+          "pnl": "-102.60181843821714636404128719223308308280",
+          "return_fraction": "-0.0513009092191085731820206435961165415414"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1897.39818156178285363595871280776691691720",
+          "pnl": "-102.60181843821714636404128719223308308280",
+          "return_fraction": "-0.0513009092191085731820206435961165415414"
+        }
+      },
+      "stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      }
+    },
+    {
+      "arm": "control_174_park",
+      "passed": true,
+      "results_sha256": "085aacd8b93e7b7bf575c95038d8031cf018763618ec06d9aaf35b71e7681893",
+      "sensitivities": {
+        "marked": {
+          "equity": "1941.8106231759475185081972932141744",
+          "pnl": "-58.1893768240524814918027067858256",
+          "return_fraction": "-0.0290946884120262407459013533929128"
+        },
+        "modeled_exit_cost": {
+          "equity": "1940.82279795993153113591647781755504354880",
+          "pnl": "-59.17720204006846886408352218244495645120",
+          "return_fraction": "-0.0295886010200342344320417610912224782256"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1940.82279795993153113591647781755504354880",
+          "pnl": "-59.17720204006846886408352218244495645120",
+          "return_fraction": "-0.0295886010200342344320417610912224782256"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1940.82279795993153113591647781755504354880",
+          "pnl": "-59.17720204006846886408352218244495645120",
+          "return_fraction": "-0.0295886010200342344320417610912224782256"
+        }
+      },
+      "stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      }
+    },
+    {
+      "arm": "directional_strength",
+      "passed": true,
+      "results_sha256": "3013fe46a45d7477913a8911fef01e8c3b29cb0c0c3189f4f45d97feb4e59c6a",
+      "sensitivities": {
+        "marked": {
+          "equity": "1856.822209807027294136235883972325767",
+          "pnl": "-143.177790192972705863764116027674233",
+          "return_fraction": "-0.0715888950964863529318820580138371165"
+        },
+        "modeled_exit_cost": {
+          "equity": "1856.0305681198955112589532743305902457000340",
+          "pnl": "-143.9694318801044887410467256694097542999660",
+          "return_fraction": "-0.071984715940052244370523362834704877149983"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1856.0305681198955112589532743305902457000340",
+          "pnl": "-143.9694318801044887410467256694097542999660",
+          "return_fraction": "-0.071984715940052244370523362834704877149983"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1856.0305681198955112589532743305902457000340",
+          "pnl": "-143.9694318801044887410467256694097542999660",
+          "return_fraction": "-0.071984715940052244370523362834704877149983"
+        }
+      },
+      "stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      }
+    },
+    {
+      "arm": "recovery_quality",
+      "passed": true,
+      "results_sha256": "51e5b20cfb587b3e77d18fa85d75bf1141555850ac667516f06f277fe6a81232",
+      "sensitivities": {
+        "marked": {
+          "equity": "1888.059349086325117537315526666196063",
+          "pnl": "-111.940650913674882462684473333803937",
+          "return_fraction": "-0.0559703254568374412313422366669019685"
+        },
+        "modeled_exit_cost": {
+          "equity": "1887.1817757069342326289988967805695131086260",
+          "pnl": "-112.8182242930657673710011032194304868913740",
+          "return_fraction": "-0.056409112146532883685500551609715243445687"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1887.1817757069342326289988967805695131086260",
+          "pnl": "-112.8182242930657673710011032194304868913740",
+          "return_fraction": "-0.056409112146532883685500551609715243445687"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1887.1817757069342326289988967805695131086260",
+          "pnl": "-112.8182242930657673710011032194304868913740",
+          "return_fraction": "-0.056409112146532883685500551609715243445687"
+        }
+      },
+      "stale_marks": {
+        "over_24h": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      }
+    },
+    {
+      "arm": "warmup_7_days",
+      "passed": true,
+      "results_sha256": "fbe46629edad9489476b430918b90ac942f8428dab2bb9b791fdff8f7cb27476",
+      "sensitivities": {
+        "marked": {
+          "equity": "1696.47225805613528287765241049152552",
+          "pnl": "-303.52774194386471712234758950847448",
+          "return_fraction": "-0.15176387097193235856117379475423724"
+        },
+        "modeled_exit_cost": {
+          "equity": "1695.415607869402391098105904595980638211040",
+          "pnl": "-304.584392130597608901894095404019361788960",
+          "return_fraction": "-0.15229219606529880445094704770200968089448"
+        },
+        "stale_over_24h_zero_value": {
+          "equity": "1691.612470500643674122319872243445677435040",
+          "pnl": "-308.387529499356325877680127756554322564960",
+          "return_fraction": "-0.15419376474967816293884006387827716128248"
+        },
+        "stale_over_7d_zero_value": {
+          "equity": "1695.415607869402391098105904595980638211040",
+          "pnl": "-304.584392130597608901894095404019361788960",
+          "return_fraction": "-0.15229219606529880445094704770200968089448"
+        }
+      },
+      "stale_marks": {
+        "over_24h": {
+          "count": 1,
+          "marked_value": "3.820321173396655130563306103388",
+          "modeled_exit_cost_value": "3.8031373687587169757860323525349607760"
+        },
+        "over_7d": {
+          "count": 0,
+          "marked_value": "0",
+          "modeled_exit_cost_value": "0"
+        }
+      }
+    }
+  ]
+}

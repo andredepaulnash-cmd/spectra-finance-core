@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-10T21:10:36.325483+00:00",
+  "prior_to_owner_financial_outcomes": true,
+  "parent_protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "owner_protocol_sha256": "29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9",
+  "parameters_changed": false,
+  "interpretations": {
+    "recovery_quality": "independentoptionalmechanism; useexact armrecovery_quality flag, no implicitladder-onlyoverride",
+    "positive_profit": "each exactdisposedlot computes realized netafterentry/exitfees; positivevalue75%PRODUCTIVE25%VCAP, negativevalueoriginowner; accountrealizedstillnetsallpositiveandnegative",
+    "physical_reserve": "everyownerENTRYandRECOVERYretains25%pretradeequitytargetafterpendingholds;20%pretradeequityand$40absolutehardflooradditionalhealthguards; nativedependent-replacementexceptiondoesnotbypassnewownerconstraint",
+    "current_cost": "80fee/15slipforactualcounterfactualfills; selector screeningremains original40fee/5slip/net174toisolatecostchange; noactual-currentprofitabilityclaimfromhistoricaldevelopmenttape",
+    "fresh_validation": "2finalistsx3periods supports absoluteprofitalone; nofreshmatchedcontrolsuperiorityclaim; extrafreshcontrolsneednewbudgetbeforenewdata"
+  },
+  "heldout_payload_access": false,
+  "production_activation": false
+}

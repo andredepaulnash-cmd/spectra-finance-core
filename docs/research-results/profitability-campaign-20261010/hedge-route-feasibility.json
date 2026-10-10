@@ -1,0 +1,474 @@
+{
+  "schema_version": 1,
+  "purpose": "Public-source route and input feasibility for the authorized profitability research campaign; no executable hedge-profit certification.",
+  "researched_on": "2026-10-10",
+  "production_changes": false,
+  "private_account_access": false,
+  "orders_submitted": false,
+  "bulk_market_history_acquired": false,
+  "sealed_holdout_payloads_read": false,
+  "spot_research_may_proceed": true,
+  "actual_hedge_backed_profit_proof_ready": false,
+  "principal_findings": [
+    "Eligible US retail users currently have a regulated spot-margin short route through Kraken Derivatives US and Bitnomial, distinct from Kraken Borrow's purchase feature.",
+    "US retail margin order requests require venue-qualified :BTNL pairs. Public metadata can verify route and precision; format validation cannot establish account routing or eligibility.",
+    "US margin execution occurs on a separate Bitnomial order book. Existing standard Kraken XBTUSD OHLC is a reference-price source, not verified BTNL fills.",
+    "Neither current US retail spot margin nor Kraken's US perpetual route is established as available throughout January–June 2026.",
+    "Spot-margin liquidation may draw on collateral assets in the Kraken account. Internal VCAP labels do not create venue-level protection.",
+    "The only new public API payloads acquired are small BTC pair and BTCUC product metadata responses. No funding, price, account, or market archive payload was acquired."
+  ],
+  "routes": [
+    {
+      "id": "kraken_us_retail_spot_margin_btc",
+      "type": "borrowed_BTC_spot_short",
+      "public_short_support_confirmed": true,
+      "account_eligibility": "UNVERIFIED",
+      "account_opening_required": true,
+      "public_access_evidence_date": "2026-05-06",
+      "earliest_access_date": "UNRESOLVED",
+      "date_conflicts": [
+        {
+          "source": "kraken_us_margin_ecp_faq",
+          "assertion": "Background states separate retail product introduced in April 2026."
+        },
+        {
+          "source": "kraken_us_margin_launch_blog",
+          "assertion": "May 6, 2026 announcement says retail spot margin is now live."
+        }
+      ],
+      "historical_admission_rule": "Do not claim US retail access before verified dated product availability and participant eligibility. May 6 is a conservative public-evidence date, not proof of earliest access. January–March are not admitted.",
+      "venue": "bitnomial_exchange",
+      "current_pair": "XBTUSD:BTNL",
+      "standard_pair_is_valid_substitute": false,
+      "current_public_metadata": {
+        "url": "https://api.kraken.com/0/public/AssetPairs?execution_venue=bitnomial_exchange&pair=XBTUSD%3ABTNL",
+        "retrieved_at_utc": "2026-10-10T20:56:18.266472+00:00",
+        "bytes": 639,
+        "sha256": "2b439aaf8f548460538b73cc73a99258f256f7cd07c778a3a4419b34db99ac98",
+        "minimum_quantity_btc": "0.00005",
+        "quantity_decimal_places": 8,
+        "minimum_cost_usd": "0.5",
+        "tick_size_usd_per_btc": "0.1",
+        "margin_call_percent": 80,
+        "margin_stop_percent": 40,
+        "leverage_sell_allowed": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "metadata_is_current_not_historical": true,
+        "fees_arrays_empty": true,
+        "full_current_btc_pair_response": {
+          "altname": "XBTUSD:BTNL",
+          "wsname": "XBT/USD:BTNL",
+          "aclass_base": "currency",
+          "base": "XXBT",
+          "aclass_quote": "currency",
+          "quote": "ZUSD",
+          "lot": "unit",
+          "cost_decimals": 5,
+          "pair_decimals": 1,
+          "lot_decimals": 8,
+          "lot_multiplier": 1,
+          "leverage_buy": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "leverage_sell": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "fees": [],
+          "fees_maker": [],
+          "fee_volume_currency": "ZUSD",
+          "margin_call": 80,
+          "margin_stop": 40,
+          "ordermin": "0.00005",
+          "costmin": "0.5",
+          "tick_size": "0.1",
+          "status": "online",
+          "execution_venue": "bitnomial_exchange",
+          "long_position_limit": 350,
+          "short_position_limit": 250
+        }
+      },
+      "fees": {
+        "current_spot_entry_tier_maker_decimal": "0.004",
+        "current_spot_entry_tier_taker_decimal": "0.008",
+        "current_btc_opening_rate_decimal_range": [
+          "0.0001",
+          "0.0002"
+        ],
+        "current_btc_rollover_rate_decimal_range_per_four_hours": [
+          "0.0001",
+          "0.0002"
+        ],
+        "implied_six_intervals_daily_bps_range": [
+          6,
+          12
+        ],
+        "daily_bps_conversion_assumes_constant_valuation": true,
+        "rate_locked_at_execution": true,
+        "historical_opening_and_rollover_series_available_in_owned_inputs": false,
+        "historical_rates_not_verified": true,
+        "entry_tier_not_asserted_as_private_account_tier": true,
+        "rolling_fee_tier_requires_causal_thirty_day_volume": true
+      },
+      "automation": {
+        "documented_rest_and_websocket_route": true,
+        "venue_pair_suffix_required": ":BTNL",
+        "validate_true_proves_live_routing": false,
+        "account_specific_automation_verified": false,
+        "private_api_called": false
+      },
+      "collateral": {
+        "source": "kraken_us_margin_liquidation",
+        "collateral_assets_may_be_converted": true,
+        "independent_internal_vcap_ledger_protects_against_venue_recourse": false,
+        "liquidation_reference": "CF Benchmarks index",
+        "liquidation_spread_decimal": "0.02",
+        "cash_conversion_fee_decimal": "0.015",
+        "btc_eth_cash_conversion_fee_decimal": "0.025",
+        "other_collateral_conversion_fee_decimal": "0.05",
+        "possible_remaining_deficiency": true,
+        "legal_and_technical_ring_fencing_verified": false
+      },
+      "historical_inputs_missing": [
+        "BTNL-specific intraday trades or OHLC, spreads and liquidity sufficient for execution assumptions",
+        "Historical borrowed-BTC opening and locked rollover rates at each modeled order",
+        "Historical collateral haircuts, CF Benchmarks reference marks and margin rules",
+        "Documented product availability dates and pair listing transitions",
+        "Borrow-pool availability and failure/rejection treatment",
+        "Venue-level collateral and VCAP ring-fencing evidence"
+      ]
+    },
+    {
+      "id": "kraken_us_bitnomial_btcuc_perpetual",
+      "type": "cash_settled_US_perpetual_future",
+      "public_short_support_confirmed": true,
+      "kraken_us_launch_date": "2026-06-15",
+      "account_eligibility": "UNVERIFIED",
+      "historical_admission_rule": "Exchange first trading day is not Kraken account access. Do not admit this Kraken route before June 15 without better dated evidence.",
+      "current_product_metadata": {
+        "url": "https://bitnomial.com/exchange/api/v1/prod/product/specs/?base_symbol=BTCUC",
+        "retrieved_at_utc": "2026-10-10T20:57:41.765165+00:00",
+        "bytes": 737,
+        "sha256": "1dcc9632cc349adb5d738b3a33410b8d99180374c181a7614332fec9f5170a4d",
+        "product_id": 5614,
+        "symbol": "PBTCUCZ50",
+        "base_symbol": "BTCUC",
+        "first_trading_day": "2026-05-16",
+        "contract_size_btc": "0.01",
+        "whole_contracts_required": true,
+        "price_increment_usd_per_btc": "5",
+        "tick_value_usd_per_contract": "0.05",
+        "settlement_method": "Cash Settled",
+        "margin_unit": "USD",
+        "funding_interval_hours": 8,
+        "funding_rate_lower_bound_decimal": "-0.0005",
+        "funding_rate_upper_bound_decimal": "0.0005",
+        "daily_first_funding_interval_end_as_returned": "03:00:00",
+        "funding_caps_and_clock_are_current_not_historical": true
+      },
+      "fees": {
+        "june_fifteen_support_page_all_in_usd_per_contract_per_side": "0.15",
+        "round_trip_usd_per_contract": "0.30",
+        "current_marketing_page_describes_maker_taker_pricing": true,
+        "fee_schedule_conflict_requires_dated_resolution": true,
+        "international_futures_fee_schedule_cannot_be_assumed": true
+      },
+      "funding": {
+        "public_historical_endpoint_documented": true,
+        "documentation_url": "https://bitnomial.com/exchange/docs/api/rest/funding-rates/",
+        "historical_query_requires_begin_time": true,
+        "product_id_and_base_symbol_filters_documented": true,
+        "response_has_mark_and_index_prices_at_funding_intervals": true,
+        "requested_history_downloaded": false,
+        "source_requires_product_launch_date_admission": true,
+        "timing_notes": "Exchange docs describe fixed UTC eight-hour intervals; current product metadata returns daily_first_funding_interval_end 03:00:00; Kraken US support describes aggregated 15:00 CT cash settlement. Keep accrual and settlement separate and resolve exact contract/version clocks."
+      },
+      "pricing": {
+        "public_chart_endpoint_documented": true,
+        "documentation_url": "https://bitnomial.com/exchange/docs/api/rest/charts/",
+        "chart_granularity": "daily",
+        "chart_api_stability": "draft_non_stable",
+        "chart_daily_prices_alone_sufficient_for_five_minute_execution_and_liquidation": false,
+        "owned_btc_spot_ohlc_is_verified_contract_execution": false
+      },
+      "automation": {
+        "bitnomial_exchange_documents_public_and_authenticated_apis": true,
+        "direct_exchange_api_is_kraken_us_account_api": false,
+        "kraken_us_futures_api_access_primary_verified": false,
+        "global_kraken_derivatives_api_is_verified_us_substitute": false
+      },
+      "collateral": {
+        "kraken_us_launch_collateral": "USD only",
+        "wallet": "Kraken US futures wallet",
+        "infinite_extra_hedge_reserve_allowed": false,
+        "vcap_internal_tag_is_legal_ring_fence": false,
+        "liquidations_perpetual_only_fee_usd": "10",
+        "liquidation_can_consume_funding_margin": true,
+        "cross_wallet_recourse_unverified": true
+      },
+      "historical_inputs_missing": [
+        "Intraday actual PBTCUC contract and risk marks with coverage and product identity",
+        "Actual product-specific funding observations and broker cash-settlement schedule",
+        "Historical initial, intraday and maintenance margin requirements",
+        "Historical dated contract and brokerage fee schedule resolving flat versus maker/taker descriptions",
+        "Actual API access path for Kraken Derivatives US account",
+        "Historical product access and trading-calendar rules"
+      ]
+    },
+    {
+      "id": "kraken_us_cme_micro_bitcoin",
+      "type": "dated_cash_settled_future",
+      "kraken_us_public_launch_date": "2025-07-15",
+      "historical_january_june_route_temporally_possible": true,
+      "account_eligibility": "UNVERIFIED",
+      "contract_size_btc": "0.1",
+      "whole_contracts_required": true,
+      "minimum_outright_price_increment_usd_per_btc": "5",
+      "minimum_outright_tick_value_usd_per_contract": "0.50",
+      "expires_and_requires_expiry_roll_policy": true,
+      "fee_type": "contract_and_side_specific_commission_exchange_NFA_clearing",
+      "broker_overnight_margin_is_same_as_low_intraday_margin": false,
+      "exact_historical_margin_and_contract_series_owned": false,
+      "kraken_us_account_api_support_primary_verified": false,
+      "small_capital_sizing": "One contract is 0.1 times actual futures price. Low posted margin does not reduce this notional exposure. $200/$1000/$2000 accounts must admit integer-sized risk rather than a fractional paper short.",
+      "historical_inputs_missing": [
+        "Actual monthly futures series and spreads with a fixed causal roll policy",
+        "Session and weekend calendars and available-market periods",
+        "Historical CME and broker margin schedules",
+        "Contract-specific all-in trading fees",
+        "Kraken US account automation and entitlement"
+      ]
+    },
+    {
+      "id": "international_kraken_derivatives",
+      "type": "non_US_global_derivatives",
+      "admitted_as_us_account_route": false,
+      "reason": "US futures and global Kraken Derivatives are separate product and account routes. No offshore/global fee, contract, funding, collateral or API may silently certify a US retail hedge."
+    },
+    {
+      "id": "kraken_borrow_us",
+      "type": "crypto_backed_purchase_financing",
+      "admitted_as_short_route_proof": false,
+      "reason": "A purchase-financing feature by itself does not demonstrate borrowing and selling BTC. The separately documented US spot-margin short route is the relevant candidate."
+    }
+  ],
+  "capital_admission": {
+    "tested_total_capital_usd": [
+      "200",
+      "1000",
+      "2000"
+    ],
+    "comparison_rule": "Equal total starting capital for hedge ON/OFF within each cohort. Hedge reserve, spot reserve, fees and VCAP are funded from that total; no invisible additional collateral or credit.",
+    "spot_margin_min_notional_formula": "max(0.5, 0.00005 * BTNL_BTC_USD_price), then apply quantity precision, fees and supported leverage.",
+    "cme_micro_btc_notional_formula": "0.1 * actual_MBT_contract_price * integer_contract_quantity",
+    "btcuc_notional_formula": "0.01 * actual_PBTCUC_contract_price * integer_contract_quantity",
+    "illustrative_price_usd": "60000",
+    "illustrative_example_is_not_historical_or_current_price": true,
+    "illustrative_minimum_exposures_usd": {
+      "spot_margin": "3",
+      "cme_micro_btc": "6000",
+      "btcuc": "600"
+    },
+    "conclusions": [
+      "$200: spot-margin quantity minimum can be small enough, but reserve ownership, fees and collateral recourse remain unresolved; one BTCUC contract can materially overhedge the account; one MBT contract is much larger than the account at the illustrative price.",
+      "$1000: spot-margin precision is a better fit than whole futures contracts, but short carry and same-account collateral remain material. One BTCUC contract can still be a large exposure step.",
+      "$2000: futures granularity still affects hedge ratios; no capital cohort receives a blanket feasibility or profitability PASS.",
+      "Admission must use causal instrument prices and actual margin schedules. Decline or reduce a hedge that cannot fit funded reserves without consuming VCAP."
+    ]
+  },
+  "profit_proof_gate": {
+    "state": "BLOCKED_FOR_ACTUAL_HEDGE_PROFIT_PROOF_ONLY",
+    "gates": [
+      "Identified eligible route and date-valid instrument",
+      "Exact price, cost, financing and reference-mark inputs",
+      "Integer/quantity minimum and intraday chronology respected",
+      "Finite equal-capital funding and venue collateral recourse accounted",
+      "Account-specific automated order path verified in an authorized test environment",
+      "Independent economic audit and genuinely unseen validation"
+    ],
+    "permitted_now": [
+      "Authorized spot selector, coin-class ladder, continuous redeployment and VCAP research",
+      "Synthetic hedge mechanics and explicit counterfactual sensitivities",
+      "Public-source and small public metadata collection"
+    ],
+    "not_claimed": [
+      "Profitable executable six-month hedge",
+      "Kraken account permission or eligibility",
+      "Protected VCAP at venue",
+      "January access to a later-launched retail route",
+      "Actual historical fills from standard spot bars"
+    ]
+  },
+  "sources": [
+    {
+      "id": "kraken_us_margin_launch_blog",
+      "url": "https://blog.kraken.com/product/margin/cftc-regulated-spot",
+      "date": "2026-05-06",
+      "web_ref": "turn56view1"
+    },
+    {
+      "id": "kraken_us_margin_ecp_faq",
+      "url": "https://support.kraken.com/articles/360061972272-margin-trading-and-eligible-contract-participant-ecp-self-certification-for-u-s-clients",
+      "date": "2026-07-09",
+      "web_ref": "turn58view0"
+    },
+    {
+      "id": "kraken_us_short_marketing",
+      "url": "https://www.kraken.com/pro/short-selling",
+      "web_ref": "turn55view4"
+    },
+    {
+      "id": "kraken_us_margin_order_book",
+      "url": "https://support.kraken.com/articles/margin-order-book",
+      "date": "2026-05-06",
+      "web_ref": "turn68view0"
+    },
+    {
+      "id": "kraken_api_errors_US_venue",
+      "url": "https://support.kraken.com/au/articles/360001491786-api-error-messages",
+      "web_ref": "turn59view0"
+    },
+    {
+      "id": "kraken_assetpairs_docs",
+      "url": "https://docs.kraken.com/api-reference/market-data/get-tradable-asset-pairs",
+      "web_ref": "turn62view2"
+    },
+    {
+      "id": "kraken_us_margin_fees",
+      "url": "https://support.kraken.com/articles/us-margin-fees",
+      "date": "2026-05-06",
+      "web_ref": "turn56view0"
+    },
+    {
+      "id": "kraken_current_fee_schedule",
+      "url": "https://www.kraken.com/features/fee-schedule",
+      "web_ref": "turn61view1"
+    },
+    {
+      "id": "kraken_us_margin_liquidation",
+      "url": "https://support.kraken.com/articles/liquidations-us-margin",
+      "date": "2026-07-27",
+      "web_ref": "turn59view4"
+    },
+    {
+      "id": "kraken_us_perp_launch",
+      "url": "https://blog.kraken.com/product/kraken-derivatives/announcing-cftc-regulated-us-perps",
+      "date": "2026-06-15",
+      "web_ref": "turn55view3"
+    },
+    {
+      "id": "bitnomial_product_docs",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/products/",
+      "web_ref": "turn62view1"
+    },
+    {
+      "id": "bitnomial_funding_docs",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/funding-rates/",
+      "web_ref": "turn58view1"
+    },
+    {
+      "id": "bitnomial_chart_docs",
+      "url": "https://bitnomial.com/exchange/docs/api/rest/charts/",
+      "web_ref": "turn61view3"
+    },
+    {
+      "id": "kraken_us_futures_fees",
+      "url": "https://support.kraken.com/articles/us-futures-fees",
+      "date": "2026-06-15",
+      "web_ref": "turn66view0"
+    },
+    {
+      "id": "kraken_us_perp_support",
+      "url": "https://support.kraken.com/articles/us-perpetual-futures",
+      "web_ref": "turn66view1"
+    },
+    {
+      "id": "kraken_current_us_perp_marketing",
+      "url": "https://www.kraken.com/pro/perps/crypto-perpetuals",
+      "web_ref": "turn66view4"
+    },
+    {
+      "id": "kraken_us_contract_specifications",
+      "url": "https://support.kraken.com/articles/contract-specifications",
+      "date": "2026-06-15",
+      "web_ref": "turn56view2"
+    },
+    {
+      "id": "kraken_us_futures_margin",
+      "url": "https://support.kraken.com/articles/margin-on-us-futures",
+      "date": "2026-06-15",
+      "web_ref": "turn56view3"
+    },
+    {
+      "id": "kraken_us_cme_launch",
+      "url": "https://blog.kraken.com/product/kraken-derivatives/us-regulated-derivatives",
+      "date": "2025-07-15",
+      "web_ref": "turn65view2"
+    },
+    {
+      "id": "cme_micro_bitcoin_factcard",
+      "url": "https://www.cmegroup.com/trading/files/micro-bitcoin-futures-fact-card-retail-us.pdf",
+      "web_ref": "turn64search41"
+    },
+    {
+      "id": "kraken_fee_change",
+      "url": "https://support.kraken.com/articles/cross-platform-fee-tier-changes",
+      "date": "2026-07-09",
+      "web_ref": "turn65view0"
+    }
+  ]
+}

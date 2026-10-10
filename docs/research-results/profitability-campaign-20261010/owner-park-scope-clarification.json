@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-10T21:55:00Z",
+  "status": "SOURCE_BEHAVIOR_CLARIFICATION_NO_POLICY_CHANGE",
+  "source": "research/danger_room/owned_profitability_campaign_v2.py",
+  "source_sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024",
+  "evidence": "OwnedCashHooks.sale passes sale_kind=PARTIAL if partial else WHOLE and deployable=not partial to exact-owner settlement.",
+  "owner_control_PARK_scope": "Only confirmed partial RECOVERY sale proceeds are parked in the owner-control cohort. Ordinary confirmed whole-position sale proceeds are deployable under the disposed lots' original cash owners.",
+  "redeployment_hypothesis_scope": "Explicit confirmed-partial redeployment releases only the identified settled partial receipt, preserving original owners and unrelated PARK holds.",
+  "rotation_scope": "Confirmed whole rotation receipts settle under the same pre-existing whole-sale rule; they cannot convert VCAP principal into productive cash or release another receipt's parked proceeds.",
+  "cohort_boundary": "The original fungible native PARK controls have different cash behavior. Compare ownership-sensitive candidates with their matched owner control and identical costs.",
+  "chronology": "Recorded after the neutral v3 matched control was admitted and before either rotation candidate was admitted. This documents existing frozen v2/v3 behavior and changes no decisions, source bytes, protocol bytes or financial results.",
+  "holdout_accessed": false,
+  "production_activation": false
+}

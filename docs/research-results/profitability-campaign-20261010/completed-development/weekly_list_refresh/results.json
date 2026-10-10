@@ -1,0 +1,265 @@
+{
+  "arm": "weekly_list_refresh",
+  "status": "COMPLETED",
+  "completed_strategy_evaluation": true,
+  "research_only": true,
+  "production_activation": false,
+  "holdout_accessed": false,
+  "protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "input_identity": {
+    "metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+    "array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+    "shape": [
+      52128,
+      619,
+      6
+    ],
+    "observed_only": true,
+    "holdout_accessed": false
+  },
+  "native_sources": [
+    {
+      "file": "__init__.py",
+      "sha256": "f7abdf61344bfb6d1bb17c2629d9773fa376fc2096a3ddde21869605310660ec"
+    },
+    {
+      "file": "accounting_health.py",
+      "sha256": "703932720a5fe09962b2337d39f6c4ee62b29404352ba7060dfe9fce0d787397"
+    },
+    {
+      "file": "asset_fingerprint.py",
+      "sha256": "93fed948aa8670b3ba1fea8f1df93b99b3ad42fe9f4df666fc355b1799684fc2"
+    },
+    {
+      "file": "binance_kline_import.py",
+      "sha256": "e97d371eb424a2fed47d95af238f8ef50784fb9b44f0dcdf884b28bf25ed4813"
+    },
+    {
+      "file": "capital_governor.py",
+      "sha256": "93a4a6abb48eb94123aaf2529e7d55b1d9059a1a2a96ad00ef5c41f11c29896f"
+    },
+    {
+      "file": "economic_exit.py",
+      "sha256": "54d42d99867d4db9509b093a4d69f191db9a7df7e8d78f0643a13ddb570572d3"
+    },
+    {
+      "file": "economic_position.py",
+      "sha256": "28b8a06bbbeba31cf46ccff98183e8087f101d3bf288e6e99ea4b0360089d63a"
+    },
+    {
+      "file": "executor_accounting.py",
+      "sha256": "0400ce13205c90eaa13dbeed19aaac4b6f584be9cc56b37055b6031fa8e2734b"
+    },
+    {
+      "file": "executor_provenance_bridge.py",
+      "sha256": "96bdfc94d9c33685bb2d83c2ef3f4376eba9f5adf14af8d7b0155ca529789a83"
+    },
+    {
+      "file": "fill_reconciliation.py",
+      "sha256": "ffde14ee3d667300205a3f0d0a3e6c842a6cccfa2001d75e60d1a8b2b8bc79ac"
+    },
+    {
+      "file": "kraken_market_fabric.py",
+      "sha256": "1787d100bbf7241d065d212db0c084c600e7e6ffd185211988ca4d6699210d46"
+    },
+    {
+      "file": "models.py",
+      "sha256": "155f72a31bcd707ac5277a5f41ddc7dd090a76b585c225f4ed246307a2837d03"
+    },
+    {
+      "file": "partial_recycle.py",
+      "sha256": "eab2b61bd4c11ad7424fcfed09403a3d397dd6db695841bbd5230b48f9001417"
+    },
+    {
+      "file": "position_hold_accounting.py",
+      "sha256": "86d15cd7b8986da79636b2465b2c34c566a15f36164e69043433b33c81b4bcd3"
+    },
+    {
+      "file": "recovery_fingerprint.py",
+      "sha256": "6afb839f0e081d127c8dcd8ce8230670517a73142e12d96da18a4104d88bdd66"
+    },
+    {
+      "file": "rotating_fleet.py",
+      "sha256": "58b484118f8be69ebf0ae45fe95482b3b2abecd4b4f4c0ec2d9d7c7cf3948247"
+    },
+    {
+      "file": "strategy_lab.py",
+      "sha256": "841b519e2e50b4d4ef1d6eb440ad5485d9ccca959230e19bcd74a79fe12b4d51"
+    },
+    {
+      "file": "vcap_execution.py",
+      "sha256": "80981cb4d4caa84615e79755b159beae4919d0eb9a3c77bd381872c4ef2cddd6"
+    },
+    {
+      "file": "vcap_lifecycle.py",
+      "sha256": "91795d5ca1de0ccaa280888a77980199334971538c0d34a2207ff4732cb48f86"
+    },
+    {
+      "file": "vcap_profit_exit.py",
+      "sha256": "0803bc2f168704e2b0258a88172e6e24ca15ea942a1ab76361dad9715a0269da"
+    },
+    {
+      "file": "vcap_runtime.py",
+      "sha256": "1529a65dbbd3756197d2263d3143541ebc7940a4fba5b208d5b17c126cbd7eff"
+    },
+    {
+      "file": "vcap_state.py",
+      "sha256": "cc6a182c16fd25c61d86bf9cdab2e65f9ae5a6328135fcaec5cdfe558712d60f"
+    },
+    {
+      "file": "vcap_tranches.py",
+      "sha256": "74da3fb7e2f2ae679915b4801bf43df99f3daade1fe3eefecce768cfae641111"
+    }
+  ],
+  "native_manifest_sha256": "01fc7540c03c72113aeefea5187cbaae5d14f559e8b6dc90da8cc7aa9d6b4d08",
+  "native_generated_body_sha256": "9260c013c5c85088f0098d76d39f754b456d581d93e8dda98c5bbf0711d6b838",
+  "research_generated_body_sha256": "57d9652b1017c6a4b0a40e22f3681626a43b20e50642e7bb7a2a0b294b3410a6",
+  "research_adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+  "declared_changes": [
+    {
+      "before": "        pending = exit_orders + partial_orders + recovery_orders + entry_orders",
+      "after": "        pending = exit_orders + partial_orders + recovery_orders + entry_orders\n        dataset.observe_account(locals())"
+    },
+    {
+      "before": "        candidates.sort(key=movement_rank)",
+      "after": "        candidates = dataset.rank_candidates(candidates, timestamp)"
+    }
+  ],
+  "financial_metrics": {
+    "starting_cash": "2000",
+    "ending_cash": "1840.490346237437596617953464",
+    "ending_equity": "1938.368471233155311668888232",
+    "realized_pnl": "48.66798292332700616858577284",
+    "unrealized_pnl": "-110.2995116901716944996975317",
+    "total_pnl": "-61.631528766844688331111768",
+    "fees": "19.29266692909299571109707219",
+    "turnover_quote": "4823.166732273248927774268068",
+    "max_drawdown_fraction": "0.06649493634032769109204275746",
+    "open_basis": "208.1776366858894095506323000",
+    "peak_committed_basis": "845.5999564113540654013408175",
+    "ending_positions": 14,
+    "target_positions": 50,
+    "fleet_initialized": false,
+    "first_target_timestamp": null,
+    "minimum_positions_after_initialization": 0,
+    "minutes_below_target_after_initialization": 260640,
+    "fleet_position_minute_fill_ratio": "0.2704884131368937998772252916",
+    "entry_fills": 55,
+    "rotations": 5,
+    "completed_positions": 41,
+    "recovery_fills": 309,
+    "linked_replacements_filled": 11,
+    "linked_replacements_funded_from_released_capital": 0,
+    "unique_position_ids": 55,
+    "unique_assets_ever_entered": 19,
+    "minimum_entry_basis": "10.25000000000000000000000000",
+    "maximum_simultaneous_positions": 16,
+    "duplicate_asset_violations": 0,
+    "expired_orders": 0,
+    "planner_exit_signals": 46,
+    "planner_recovery_signals": 4028,
+    "exit_mode": "hard_target",
+    "target_net_profit_bps": "174",
+    "hard_target_exit_signals": 45,
+    "exit_signal_reasons": {
+      "strict_hard_net_target_reached": 46
+    },
+    "qualifying_hard_wins": 0,
+    "earned_dttp_activation_events": 0,
+    "earned_dttp_assets_activated": 0,
+    "earned_dttp_deactivation_events": 0,
+    "earned_dttp_extension_decisions": 0,
+    "earned_dttp_extended_positions": 0,
+    "execution_model": "next immediate actual 5m open plus adverse slippage; FOK cap 1% of minimum of previous observed decision-bar and actual execution-bar close*base-volume; expire on absent next candle",
+    "evidence_class": "recorded OHLCV; estimated execution; not top-of-book"
+  },
+  "elapsed_seconds": 1763.069488068999,
+  "decision_digest_sha256": "77e7775028a37e466e7cd19623f2c05f19ad842ed2e8d9a1677286b3bee3d974",
+  "rejection_counts": {
+    "absent_immediate_next_candle": 517,
+    "dependency_not_filled": 5,
+    "insufficient_liquidity_eligible_assets": 158502,
+    "insufficient_shared_cash_for_fleet": 1742838,
+    "net_profit_limit_unfilled": 10562,
+    "no_distinct_replacement_candidate": 33,
+    "pair_basis_cap": 2263,
+    "partial_execution_minimum": 18352,
+    "replacement_fallback_not_needed": 15,
+    "volume_participation_fok": 4838
+  },
+  "research_counts": {
+    "selector_denied_candidate_steps": 1605085
+  },
+  "ending_parked_cash": "1837.984438649311248038798183",
+  "ending_deployable_cash": "2.505907588126348579155281",
+  "partial_fills": 210,
+  "partial_principal_reused": "0",
+  "capital_dollar_days": "47333.77704441217098871820507",
+  "pending_terminal": [],
+  "monthly": {
+    "2026-01": {
+      "starting_equity": "2000",
+      "ending_equity": "1953.296599849114918002497639",
+      "realized_pnl": "44.09484370278396184012201093",
+      "fees": "18.39003604801264910154756736",
+      "frames": 8928,
+      "marked_pnl": "-46.703400150885081997502361"
+    },
+    "2026-02": {
+      "starting_equity": "1953.296599849114918002497639",
+      "ending_equity": "1936.486675780753935834583019",
+      "realized_pnl": "0",
+      "fees": "0",
+      "frames": 8064,
+      "marked_pnl": "-16.809924068360982167914620"
+    },
+    "2026-03": {
+      "starting_equity": "1936.486675780753935834583019",
+      "ending_equity": "1934.361554174932602115834881",
+      "realized_pnl": "1.57923649487810113866519168",
+      "fees": "0.4983501873664283170259518249",
+      "frames": 8928,
+      "marked_pnl": "-2.125121605821333718748138"
+    },
+    "2026-04": {
+      "starting_equity": "1934.361554174932602115834881",
+      "ending_equity": "1942.918123429608445238304718",
+      "realized_pnl": "0",
+      "fees": "0",
+      "frames": 8640,
+      "marked_pnl": "8.556569254675843122469837"
+    },
+    "2026-05": {
+      "starting_equity": "1942.918123429608445238304718",
+      "ending_equity": "1963.175253030597253519631833",
+      "realized_pnl": "2.993902725664943189798570230",
+      "fees": "0.4042806937139182925235530348",
+      "frames": 8928,
+      "marked_pnl": "20.257129600988808281327115"
+    },
+    "2026-06": {
+      "starting_equity": "1963.175253030597253519631833",
+      "ending_equity": "1938.368471233155311668888232",
+      "realized_pnl": "0",
+      "fees": "0",
+      "frames": 8640,
+      "marked_pnl": "-24.806781797441941850743601"
+    }
+  },
+  "coverage": {
+    "native_spot_selection": true,
+    "native_recovery_planners": true,
+    "native_partial_lot_recycling": true,
+    "native_protected_net_exit_surrogate": true,
+    "continuous_finite_cash_and_inventory": true,
+    "recorded_volume_fok_surrogate": true,
+    "productive_VCAP_cash_owner_integration": false,
+    "full_API_lifecycle": false,
+    "live_orderbook_or_pair_specific_historical_minima": false,
+    "actual_hedge_route": false,
+    "DTSS_enabled": false,
+    "DTSSR_enabled": false,
+    "PSSM_enabled": false
+  },
+  "interpretation": "Previously inspected development history; recorded OHLC, estimated next-open FOK execution and historical marks. Positive development PnL does not establish independent or live profitability."
+}

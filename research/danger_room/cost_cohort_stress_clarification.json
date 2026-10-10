@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-10T22:08:57.044761+00:00",
+  "status": "PREREGISTERED_COST_COHORT_STRESS_RULE_NO_EVALUATIONS_ADDED",
+  "chronology": "Declared after negative native and owner controls, before any current-cost candidate completes and before any finalist stress outcome.",
+  "original_protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "original_protocol_bytes_changed": false,
+  "maximum_finalists": 2,
+  "maximum_stress_evaluations": 8,
+  "maximum_cumulative_strategy_evaluations": 44,
+  "historical_cost_candidates": {
+    "normal_fee_bps": "40",
+    "normal_slippage_bps": "5",
+    "stress_fee_bps": "60",
+    "stress_slippage_bps": "15",
+    "original_stress_unchanged": true
+  },
+  "current_cost_candidates": {
+    "normal_fee_bps": "80",
+    "normal_slippage_bps": "15",
+    "stress_fee_bps": "120",
+    "stress_slippage_bps": "25",
+    "fixed_relative_rule": "1.5 times the exact declared normal execution fee; normal execution slippage plus10basispoints."
+  },
+  "four_stresses_each_finalist": [
+    "Declared cohort-specific higher costs only",
+    "One extra completed bar of latency: two bars total from decision to immediate scheduled actual execution open; absent required candle expires",
+    "Native volume-capacity participation reduced from1percent to0.1percent",
+    "All three adverse changes together"
+  ],
+  "unchanged_selector_features": "Do not recompute selector eligibility or price-opportunity hurdles from stressed execution costs. Preserve the exact finalist source/config and frozen feature costs to isolate execution sensitivity.",
+  "qualification": "Positive whole-account marked PnL, independent full accounting PASS, and drawdown no worse than the corresponding original primary owner/cost control. At most two finalists selected under the frozen ranking; no minimum count is required.",
+  "interpretation": "Stress outcomes test absolute profitability and drawdown robustness. No cost-matched stressed control is included, so they do not establish a matched causal relative-improvement claim. If no candidate qualifies, all eight stresses remain gated.",
+  "admission": "Separate immutable stress adapter/source, causal actual-bar execution fixtures and independent review are required before any historical stress. Original normal-run sources/protocols stay frozen.",
+  "research_only": true,
+  "production_activation": false,
+  "holdout_access": false
+}

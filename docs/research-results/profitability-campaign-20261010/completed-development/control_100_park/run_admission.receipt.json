@@ -1,0 +1,14 @@
+{
+  "arm": "control_100_park",
+  "protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "research_adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+  "native_manifest_sha256": "01fc7540c03c72113aeefea5187cbaae5d14f559e8b6dc90da8cc7aa9d6b4d08",
+  "native_adapter_sha256": "45249e0273bfa4b15cfc54db2bede37b81c0488239fab1503c8911584127583e",
+  "native_bridge_sha256": "87247fd166775c3230445ed06e29f5a4ba2ad0e9253a9a52e3ff5e085f7db6c7",
+  "expected_reference_array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+  "expected_reference_metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+  "research_only": true,
+  "production_activation": false,
+  "holdout_accessed": false,
+  "recorded_before_strategy_imports_at": "2026-10-10T21:06:07.138079+00:00"
+}

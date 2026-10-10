@@ -1,0 +1,72 @@
+[
+  {
+    "file": "account_5m.csv.gz",
+    "bytes": 2148558,
+    "sha256": "5f41184d93992e95d01332dc85a08489df67e161402ff739adeecaaf398041a9"
+  },
+  {
+    "file": "fills.csv",
+    "bytes": 154826,
+    "sha256": "bea7023cef2f983c3d2e6a7f6fa56b1df4dd1e0a6a055af532eb57e2e639b85c"
+  },
+  {
+    "file": "generated_campaign_body.py",
+    "bytes": 30543,
+    "sha256": "df36360d54e0f000531c46180d9c570df48971e372b31b84f58ab5ccf7d38dce"
+  },
+  {
+    "file": "owner_account_5m.jsonl.gz",
+    "bytes": 440786,
+    "sha256": "4d649e55c52b0e3fafd64c95040ec55b4c864ed8747b4cbd41f8f5e13c1c37be"
+  },
+  {
+    "file": "owner_checkpoint.json",
+    "bytes": 2035345,
+    "sha256": "c6682c78b41c4d256ea126ef5c60ae9cf7dc38cf5401e2e2083a31727361f033"
+  },
+  {
+    "file": "owner_terminal.json",
+    "bytes": 16794,
+    "sha256": "075be699e3ab0a38b28a5369fbff722797931f1f5ab921950ee4be299401c044"
+  },
+  {
+    "file": "owner_transactions.jsonl.gz",
+    "bytes": 393746,
+    "sha256": "ac3d73fa7fe6c9a4c2c990eb8bc38269f100f4720b61e420cbbc79e709008d3a"
+  },
+  {
+    "file": "ownership_events.json.gz",
+    "bytes": 921109,
+    "sha256": "a2ef133b4b3a78ae5d8bb6fbeb37a3aa26f971c6b3995a2f0f8b27adfa64db6f"
+  },
+  {
+    "file": "pending_orders.jsonl.gz",
+    "bytes": 618873,
+    "sha256": "5ee7b4c95dcc9d0fd7d4b247d9567eb3d35d2719fc9338c36d31e67a4c9db42f"
+  },
+  {
+    "file": "results.json",
+    "bytes": 15974,
+    "sha256": "9f28f5a194b2909afd9663d235ff67ded3dc5fc88286691085893c09a4c9fc82"
+  },
+  {
+    "file": "run_admission.receipt.json",
+    "bytes": 1814,
+    "sha256": "39827718f53e872e4c9580d8e9e5a1dcbd0172a32835cbe536ba6ae498c150e2"
+  },
+  {
+    "file": "terminal.json",
+    "bytes": 16448,
+    "sha256": "dd77b59fbf79e9f518720191daf2ef6a05bf0eee03a1d03ba410b8aebbd55413"
+  },
+  {
+    "file": "terminal_lots.json",
+    "bytes": 290994,
+    "sha256": "8d20854a920ebed8bd0e16aa7437f54e34149d474ac8d6255256dc2c768d80d7"
+  },
+  {
+    "file": "watchlist_updates.jsonl.gz",
+    "bytes": 49,
+    "sha256": "8cb2e628ca2593805e5fa1f2694ec711aa56d13ea00b60be36b2d5581de61e6a"
+  }
+]

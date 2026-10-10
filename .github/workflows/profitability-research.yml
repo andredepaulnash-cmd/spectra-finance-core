@@ -1,0 +1,97 @@
+name: Profitability Research Mechanics
+on:
+  pull_request:
+    branches: [research/historical-paper-hedge-20261010]
+    paths:
+      - 'research/danger_room/profitability_campaign.py'
+      - 'research/danger_room/opportunity_selector.py'
+      - 'research/danger_room/module_coordination.py'
+      - 'research/danger_room/market_regime.py'
+      - 'research/danger_room/terminal_valuation.py'
+      - 'research/danger_room/terminal_valuation_protocol.json'
+      - 'research/danger_room/owned_cash.py'
+      - 'research/danger_room/productive_sizing.py'
+      - 'research/danger_room/native_profitability_campaign_v1.py'
+      - 'research/danger_room/owned_profitability_campaign_v2.py'
+      - 'research/danger_room/rotation_profitability_campaign_v3.py'
+      - 'research/danger_room/rotation_profitability_campaign_v3_precache.py'
+      - 'research/danger_room/rotation_policy.py'
+      - 'research/danger_room/receipt_recurring_ladder.py'
+      - 'research/danger_room/recurring_ladder_profitability_campaign_v4.py'
+      - 'research/danger_room/rotation_protocol.json'
+      - 'research/danger_room/completed_run_diagnostics.py'
+      - 'research/danger_room/receipt_recurrence_protocol.json'
+      - 'research/danger_room/cost_cohort_stress_clarification.json'
+      - 'research/danger_room/productive_sizing_protocol.json'
+      - 'research/danger_room/native_profit_policy_protocol.json'
+      - 'research/danger_room/*profitability*protocol.json'
+      - 'research/danger_room/owned_cash_protocol.json'
+      - 'tests/test_profitability_campaign.py'
+      - 'tests/test_opportunity_selector.py'
+      - 'tests/test_module_coordination.py'
+      - 'tests/test_market_regime.py'
+      - 'tests/test_terminal_valuation.py'
+      - 'tests/test_owned_cash.py'
+      - 'tests/test_productive_sizing.py'
+      - 'tests/test_rotation_policy.py'
+      - 'tests/test_rotation_campaign.py'
+      - 'tests/test_recurring_ladder_book.py'
+      - 'tests/test_recurring_ladder_campaign.py'
+      - 'tests/test_completed_run_diagnostics.py'
+      - 'docs/research-results/profitability-campaign-20261010/**'
+      - '.github/workflows/profitability-research.yml'
+permissions:
+  contents: read
+jobs:
+  mechanics:
+    name: Causal selection and owned capital mechanics
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Record exact tested identity
+        run: |
+          git rev-parse HEAD
+          git rev-parse 'HEAD^{tree}'
+      - name: Install tested numerical runtime
+        run: python -m pip install numpy==2.3.5 pandas==2.2.3
+      - name: Run fictional fixtures without opening market outcomes
+        run: |
+          python -B -m unittest discover -s tests -p 'test_opportunity_selector.py'
+          python -B -m unittest discover -s tests -p 'test_market_regime.py'
+          python -B -m unittest discover -s tests -p 'test_module_coordination.py'
+          python -B -m unittest discover -s tests -p 'test_profitability_campaign.py'
+          python -B -m unittest discover -s tests -p 'test_owned_cash.py'
+          python -B -m unittest discover -s tests -p 'test_productive_sizing.py'
+          python -B -m unittest discover -s tests -p 'test_terminal_valuation.py'
+          python -B -m unittest discover -s tests -p 'test_rotation_policy.py'
+          python -B -m unittest discover -s tests -p 'test_rotation_campaign.py'
+          python -B -m unittest discover -s tests -p 'test_recurring_ladder_book.py'
+          python -B -m unittest discover -s tests -p 'test_recurring_ladder_campaign.py'
+          python -B -m unittest discover -s tests -p 'test_completed_run_diagnostics.py'
+      - name: Verify protocol identities without evaluating strategy
+        run: |
+          python - <<'PY'
+          import hashlib,pathlib
+          root=pathlib.Path('research/danger_room')
+          pins={'profitability_protocol.json':'a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374',
+                'owned_cash_protocol.json':'29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9',
+                'productive_sizing_protocol.json':'de40c6ec9d865175dd6ecd9d59cb9af0bbc4a79d9bfa589dbc2fe406a0a23575',
+                'native_profit_policy_protocol.json':'f622c1ce307adb7bb25fcb5f6a1726aab0b15cd664bd6c6fe764180c2afcbaa7',
+                'terminal_valuation_protocol.json':'a0de80a3022c3e918f69d4565e7463a032f408dcf551ac598e876862f184e909',
+                'rotation_protocol.json':'6b6b3a83a159e09d0df8d9407d169cd85bf1b800c6462644a3c30d6a06e91da2',
+                'receipt_recurrence_protocol.json':'47c7e948fc510dfc67e29d4d294e75d238a93269da1f53a7f77370ea5d8dabe1',
+                'cost_cohort_stress_clarification.json':'9917ca5f4e791815f5c0be1ac4dc6dddd8df6babbb09e13cfe5f6d61be9b9358'}
+          for name,wanted in pins.items():
+              assert hashlib.sha256((root/name).read_bytes()).hexdigest()==wanted,name
+          sources={'research/danger_room/recurring_ladder_profitability_campaign_v4.py':'4a5d965b3646b80b512b355a5cc9d6b1a2c5b0f87bd967526bbd35e11fca2cb0',
+                   'research/danger_room/receipt_recurring_ladder.py':'790fb4a8ea3aa3956c2d2c80bdebdec613b20d86a8172ba5619cfbefb58e0673',
+                   'tests/test_recurring_ladder_campaign.py':'432f1efb7418cee539cd1a364a91cc29b4fa3d9562ae7ca0da0a635c3651768e',
+                   'tests/test_recurring_ladder_book.py':'91cfa31a8c2b943eaed6229fd676477c8452fe9a4b5346cb409db0aa4dd8d827'}
+          for path,wanted in sources.items():
+              assert hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()==wanted,path
+          print('Frozen protocols exact; CI tests fictional mechanics only')
+          PY

@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "campaign": "profitability-campaign-20261010/productive-sizing",
+  "parent_protocol_sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+  "owner_protocol_sha256": "29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9",
+  "frozen_at": "2026-10-10T21:12:27.896405+00:00",
+  "research_only": true,
+  "production_activation": false,
+  "holdout_access": false,
+  "maximum_cumulative_strategy_evaluations": 37,
+  "additional_evaluations": 2,
+  "reason": "50 fixed $10.25 tickets deploy only $512.50 at $2000; portfolio growth and utilization need native funded sizing ratherthan inferrednormalized returns",
+  "policy": {
+    "new_entry_all_in_target_fraction_of_completed_marked_equity": "0.01",
+    "all_in_ceiling": "min(1%marked equity, remainingPRODUCTIVEavailableowner cash, remaining5%pair authorization, strict25%pretradeequityphysicalcashspendableafterholds)",
+    "minimum_quote": "5",
+    "no_subminimum_orders": true,
+    "only_new_entries": true,
+    "no_resize_of_owned_inventory": true,
+    "current_equity_can_reduce_ticket": true,
+    "profit_and_deposit_distinction_retained": true,
+    "parent_initial_entry_anchor_and_seed_frozen": true,
+    "pending_order_budget_frozen_at_authorization": true,
+    "unknown_or_unfunded_rejected_with_reason": true
+  },
+  "arms": [
+    {
+      "name": "owned_full_sized",
+      "matched_control": "combined_full_supported",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "40",
+      "slippage_bps": "5",
+      "owned_cash": true,
+      "selection": true,
+      "directional": true,
+      "recovery_quality": true,
+      "redeploy_confirmed_partial": true,
+      "ladder_assignment": "prior_completed_drawdown",
+      "entry_budget_equity_fraction": "0.01"
+    },
+    {
+      "name": "current_cost_owned_full_sized",
+      "matched_control": "current_cost_owned_full",
+      "case": "hard_174_park",
+      "capital": "2000",
+      "fee_bps": "80",
+      "slippage_bps": "15",
+      "owned_cash": true,
+      "selection": true,
+      "directional": true,
+      "recovery_quality": true,
+      "redeploy_confirmed_partial": true,
+      "ladder_assignment": "prior_completed_drawdown",
+      "entry_budget_equity_fraction": "0.01",
+      "counterfactual": true
+    }
+  ],
+  "selector_cost_features_unchanged_from_parent": true,
+  "all_owner_reserve_fee_lot_and_causality_invariants_inherited": true,
+  "interpretation": "Research hypothesis; increased dollar exposure can increase losses and reduce recovery capacity. Fullslotsdoesnotestablishusefulutilization orprofitablegrowth."
+}

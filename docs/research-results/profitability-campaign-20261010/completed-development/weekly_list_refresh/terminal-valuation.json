@@ -1,0 +1,254 @@
+{
+  "analyzer_sha256": "40f1e183582643e5a4f6f2dfd69576e7a7b8706789daa537692780dbb9692709",
+  "arm": "weekly_list_refresh",
+  "cost_binding": {
+    "name": "weekly_list_refresh",
+    "path": "/workspace/scratch/82bd120b042e/profitability_candidate/research/danger_room/profitability_protocol.json",
+    "sha256": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+    "source": "frozen_strategy_protocol#/arms"
+  },
+  "decimal_precision": 60,
+  "declared_modeled_exit_costs": {
+    "actual_venue_execution_proven": false,
+    "fee_bps": "40",
+    "multiplicative_value_factor": "0.9955020",
+    "slippage_bps": "5"
+  },
+  "disclosure": "Valuation sensitivities only: no orders, fills, released cash or realizable liquidation are established. Pair minima, quantity increments, volume, order-book availability and historical listing/delisting completeness remain unverified. Stale-zero cases are hypothetical markdowns. The original frozen strategy-selection gate is unchanged.",
+  "ending_cash": "1840.490346237437596617953464",
+  "holdout_accessed": false,
+  "oldest_mark_age_seconds": 600,
+  "orders_or_fills_created": false,
+  "parents": [
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "26.263601565235791138199987119852",
+      "modeled_exit_cost_value": "26.1454678853953605496603635777869057040",
+      "pair": "NIGHT-USD",
+      "position_id": 6,
+      "quantity": "846.6667171255896562927139626",
+      "recorded_mark": "0.03102",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "4.90294613683249698101137739552460",
+      "modeled_exit_cost_value": "4.880892685109024409590788219999530349200",
+      "pair": "XRP-USD",
+      "position_id": 8,
+      "quantity": "4.720998841481788839150516490",
+      "recorded_mark": "1.03854",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "12.131512316849506192451473911057",
+      "modeled_exit_cost_value": "12.0769447744483171135978271814050656140",
+      "pair": "LTC-USD",
+      "position_id": 9,
+      "quantity": "0.2894658152433668860045686927",
+      "recorded_mark": "41.91",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "6.086669547952302350063543606020",
+      "modeled_exit_cost_value": "6.0592917083256128940929577868801220400",
+      "pair": "KAS-USD",
+      "position_id": 18,
+      "quantity": "207.9490791920841253865235260",
+      "recorded_mark": "0.02927",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 300,
+      "mark_timestamp": 1782863700,
+      "marked_value": "3.6793130997994022643865000007276",
+      "modeled_exit_cost_value": "3.66276354947650455300128952372432725520",
+      "pair": "SUI-USD",
+      "position_id": 38,
+      "quantity": "5.338527422808186686573563553",
+      "recorded_mark": "0.6892",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "3.49321699040876612910861854634756",
+      "modeled_exit_cost_value": "3.477504500385907499059887980126088675120",
+      "pair": "ADA-USD",
+      "position_id": 39,
+      "quantity": "24.22766200182244875684802332",
+      "recorded_mark": "0.144183",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "5.1068903959837500645437552161680",
+      "modeled_exit_cost_value": "5.08391960298261515675343740520567633600",
+      "pair": "SOL-USD",
+      "position_id": 40,
+      "quantity": "0.06942482865665783122000754780",
+      "recorded_mark": "73.56",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "5.19443729821310682027032508064210",
+      "modeled_exit_cost_value": "5.171072719245744265792749158429371834200",
+      "pair": "LINK-USD",
+      "position_id": 42,
+      "quantity": "0.7224630799055768258627136790",
+      "recorded_mark": "7.1899",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "4.898461305935476506219947103181029",
+      "modeled_exit_cost_value": "4.8764280269813787328949697811109207315580",
+      "pair": "XDG-USD",
+      "position_id": 44,
+      "quantity": "68.03220053214387505669900049",
+      "recorded_mark": "0.0720021",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "3.498148416336876389865282998250",
+      "modeled_exit_cost_value": "3.4824137447601931198636689553238715000",
+      "pair": "PEPE-USD",
+      "position_id": 45,
+      "quantity": "1504579.964015860812845283010",
+      "recorded_mark": "0.000002325",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "5.5593051065050801138019051780412",
+      "modeled_exit_cost_value": "5.53429935213602026345002420855037068240",
+      "pair": "HBAR-USD",
+      "position_id": 47,
+      "quantity": "80.01302686391882719922143319",
+      "recorded_mark": "0.06948",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "6.2395281926749530490858788788334",
+      "modeled_exit_cost_value": "6.21146279486430111027109059563640736680",
+      "pair": "XMR-USD",
+      "position_id": 48,
+      "quantity": "0.02056399773474046881908206077",
+      "recorded_mark": "303.42",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 0,
+      "mark_timestamp": 1782864000,
+      "marked_value": "5.48004228050423376935758619043207",
+      "modeled_exit_cost_value": "5.455393050326525725863015767747506549140",
+      "pair": "TAO-USD",
+      "position_id": 54,
+      "quantity": "0.02713846094669034051254443983",
+      "recorded_mark": "201.929",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    },
+    {
+      "mark_age_seconds": 600,
+      "mark_timestamp": 1782863400,
+      "marked_value": "5.3440523424859732825685870688840",
+      "modeled_exit_cost_value": "5.32001479504947137474359356424815976800",
+      "pair": "PENGU-USD",
+      "position_id": 55,
+      "quantity": "889.7856048095193610670308140",
+      "recorded_mark": "0.006006",
+      "stale_over_24h": false,
+      "stale_over_7d": false
+    }
+  ],
+  "production_activation": false,
+  "reconciliation": {
+    "difference": "2.93960559E-25",
+    "independently_marked_equity": "1938.368471233155311668888232293960559",
+    "recorded_basis": "208.1776366858894095506323000",
+    "recorded_equity": "1938.368471233155311668888232",
+    "status": "PASS",
+    "terminal_basis": "208.17763668588940955063230000"
+  },
+  "reconciliation_tolerance": "1E-18",
+  "reconciliation_tolerance_basis": "Same absolute1e-18 as source-bound native cash/quantity accounting; Decimal60 recomputation avoids inherited28digit product rounding.",
+  "research_only": true,
+  "schema_version": 1,
+  "source_files": {
+    "/workspace/scratch/82bd120b042e/analysis_outputs/profitability_campaign_20261010/engine/runs/weekly_list_refresh/artifact_manifest.json": "c7f432cb4410964fdec7f1de14018cecb60d9bab3382cb102f8403eea772a687",
+    "/workspace/scratch/82bd120b042e/analysis_outputs/profitability_campaign_20261010/engine/runs/weekly_list_refresh/results.json": "d5ac3f8675773b3d9ed287b71109f36dfc4f8ecec9d15f7fca985fd619cc45d6",
+    "/workspace/scratch/82bd120b042e/analysis_outputs/profitability_campaign_20261010/engine/runs/weekly_list_refresh/terminal.json": "0b07dfb6057751c8850dab75b1b245fd6bee5a7aa2f9302c38031318e71d8af3",
+    "/workspace/scratch/82bd120b042e/profitability_candidate/research/danger_room/profitability_protocol.json": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374",
+    "/workspace/scratch/82bd120b042e/profitability_candidate/research/danger_room/terminal_valuation_protocol.json": "a0de80a3022c3e918f69d4565e7463a032f408dcf551ac598e876862f184e909"
+  },
+  "stale_marks": {
+    "over_24h": {
+      "count": 0,
+      "marked_value": "0",
+      "modeled_exit_cost_value": "0"
+    },
+    "over_7d": {
+      "count": 0,
+      "marked_value": "0",
+      "modeled_exit_cost_value": "0"
+    }
+  },
+  "starting_cash": "2000",
+  "status": "ANALYZED_COMPLETED_ARM",
+  "strategy_evaluations_added": 0,
+  "strategy_finalist_gate_changed": false,
+  "terminal_marked_inventory_value": "97.878124995717715050934768293960559",
+  "terminal_parent_count": 14,
+  "terminal_timestamp": 1782864000,
+  "valuation_sensitivities": {
+    "marked": {
+      "equity": "1938.368471233155311668888232293960559",
+      "pnl": "-61.631528766844688331111767706039441",
+      "return_fraction": "-0.0308157643834223441655558838530197205"
+    },
+    "modeled_exit_cost": {
+      "equity": "1937.9282154269245733865891277061743244056180",
+      "pnl": "-62.0717845730754266134108722938256755943820",
+      "return_fraction": "-0.031035892286537713306705436146912837797191"
+    },
+    "stale_over_24h_zero_value": {
+      "equity": "1937.9282154269245733865891277061743244056180",
+      "pnl": "-62.0717845730754266134108722938256755943820",
+      "return_fraction": "-0.031035892286537713306705436146912837797191"
+    },
+    "stale_over_7d_zero_value": {
+      "equity": "1937.9282154269245733865891277061743244056180",
+      "pnl": "-62.0717845730754266134108722938256755943820",
+      "return_fraction": "-0.031035892286537713306705436146912837797191"
+    }
+  },
+  "zero_mark_parent_count": 0
+}
