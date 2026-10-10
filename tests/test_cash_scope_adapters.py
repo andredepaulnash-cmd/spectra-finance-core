@@ -65,7 +65,7 @@ class Executors:
 
     async def create_executor(self, executor_config, account_name, controller_id):
         self.calls.append((executor_config, account_name, controller_id))
-        return {"executor_id": "scoped-executor-1"}
+        return {"executor_id": executor_config["id"]}
 
 
 class Client:
@@ -223,7 +223,7 @@ def test_matching_account_dispatch_uses_productive_cash_and_preserves_park(
     authorization = authorize(client, activated_governor)
     configure_executor_gate(monkeypatch, activated_governor)
     result = create_grid(client, authorization.proposal.proposal_id, "funded_account")
-    assert result["executor_id"] == "scoped-executor-1"
+    assert result["executor_id"] == client.executors.calls[0][0]["id"]
     assert len(client.executors.calls) == 1
     state = activated_governor.cash_authority_snapshot()
     assert state.productive_quote == D("50")

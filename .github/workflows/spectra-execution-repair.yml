@@ -1,0 +1,99 @@
+name: Spectra Execution Repair
+
+on:
+  pull_request:
+    branches:
+      - spectra-core-phase2
+      - integrate/execution-cash-safety-20261010
+      - verify/installed-limit-runtime-20261010
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spectra-execution-repair-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-repair:
+    name: Finance regressions and corrected execution source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Record checkout identity
+        run: |
+          git rev-parse HEAD
+          git rev-parse HEAD^{tree}
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+      - name: Install locked dependencies
+        run: uv sync --dev --frozen
+      - name: Check source overlay contract
+        run: uv run python deploy/hummingbot_core/apply_overlay.py --manifest deploy/hummingbot_core/overlay.manifest.json --expected-manifest-sha256 "$(sha256sum deploy/hummingbot_core/overlay.manifest.json | cut -d ' ' -f1)" --overlay-root deploy/hummingbot_core --verify-overlay
+      - name: Run finance regressions and execution repair tests without orders
+        run: |
+          uv run pytest -q --junitxml=execution-repair.xml \
+            tests/test_spectra_core.py \
+            tests/test_spectra_kraken_execution_flow.py \
+            tests/test_spectra_executor_accounting_flow.py \
+            tests/test_position_hold_snapshot_ledger.py \
+            tests/test_recovery_exposure_governor.py \
+            tests/test_kraken_market_fabric.py \
+            tests/test_stack_lock_manifest.py \
+            tests/test_hummingbot_api_contract.py \
+            tests/test_asset_fingerprint.py \
+            tests/test_recovery_fingerprint.py \
+            tests/test_vcap_tranches.py \
+            tests/test_vcap_execution_loop.py \
+            tests/test_vcap_profit_exit.py \
+            tests/test_vcap_restart_continuity.py \
+            tests/test_vcap_lifecycle_controller.py \
+            tests/test_economic_position_ledger.py \
+            tests/test_live_fill_reconciliation.py \
+            tests/test_executor_provenance_bridge.py \
+            tests/test_accounting_health_gate.py \
+            tests/test_vcap_runtime_supervisor.py \
+            tests/test_unified_economic_exit.py \
+            tests/test_multi_position_runtime_scheduler.py \
+            tests/test_partial_recovery_recycling.py \
+            tests/test_protected_recovery_exit.py \
+            tests/test_protected_whole_exit.py \
+            tests/test_parked_cash_authority.py \
+            tests/test_cash_scope_adapters.py \
+            tests/test_cash_runtime_resume.py \
+            tests/test_strategy_laboratory.py \
+            tests/test_strategy_replay.py \
+            tests/test_strategy_replay_vcap.py \
+            tests/test_kraken_tardis_import.py \
+            tests/test_binance_kline_import.py \
+            tests/test_rotating_fleet.py \
+            tests/test_entry_identity_submission.py \
+            tests/test_residual_position_lifecycle.py \
+            tests/test_terminal_retirement_runtime.py \
+            tests/test_terminal_retirement_scheduler.py \
+            tests/test_partial_recycle_dispatch_guards.py \
+            tests/test_partial_residual_runtime.py \
+            tests/test_executor_trading_rule_preflight.py \
+            tests/test_typed_executor_tools.py \
+            tests/test_integrated_entry_cash_authority.py \
+            tests/test_integrated_partial_exit.py \
+            tests/test_integrated_retirement_exit.py \
+            tests/test_integrated_runtime_restart.py \
+            tests/test_execution_price_policy.py \
+            tests/test_protected_buy_reconciliation.py \
+            tests/test_runtime_attestation.py \
+            tests/test_pinned_limit_lifecycle.py \
+            tests/test_attempt_journal.py \
+            tests/test_corrected_limit_executor.py \
+            tests/test_corrected_kraken_placement.py \
+            tests/test_core_overlay_build.py \
+            tests/test_protected_attempt_identity.py

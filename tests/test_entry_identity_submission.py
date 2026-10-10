@@ -98,7 +98,7 @@ class FakeClient:
         self.calls.append((executor_config, account_name, controller_id))
         if self.fail:
             raise RuntimeError("synthetic uncertain create")
-        return {"executor_id": f"fake-executor-{len(self.calls)}"}
+        return {"executor_id": executor_config["id"]}
 
 
 def configure(monkeypatch, g, ledger):

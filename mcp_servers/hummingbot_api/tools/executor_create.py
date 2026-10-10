@@ -21,7 +21,10 @@ Signatures were verified field-by-field against ``GET /executors/types/{type}/co
 a live API server. See ``mcp_servers/TOOL_STYLE.md``.
 """
 
+import hashlib
+import json
 import logging
+from collections.abc import Mapping
 from dataclasses import replace
 from decimal import Decimal
 from math import isfinite
@@ -41,6 +44,58 @@ from spectra_core.runtime import (
 )
 
 logger = logging.getLogger("hummingbot-mcp")
+
+
+def _protected_attempt_text(value: Any, field: str) -> str:
+    """Use the governor's normalized string identity, with bounded input."""
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"protected BUY {field} must be a non-empty string")
+    normalized = value.strip()
+    if len(normalized) > 1024 or any(
+        ord(char) < 32 or ord(char) == 127 for char in normalized
+    ):
+        raise ValueError(f"protected BUY {field} has invalid identity geometry")
+    try:
+        normalized.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"protected BUY {field} is not valid UTF-8") from exc
+    return normalized
+
+
+def _protected_buy_attempt_id(
+    *,
+    proposal_id: Any,
+    account_name: Any,
+    controller_id: Any,
+    position_id: Any,
+    intent: Any,
+    connector_name: Any,
+    trading_pair: Any,
+) -> str:
+    """Bind one backend attempt to an exact authorized capital generation.
+
+    Capital proposal IDs cannot be reserved twice; the proposal is the durable
+    authorization generation. Prices, timestamps, saved defaults and native
+    caller IDs deliberately do not create a different attempt for that claim.
+    Canonical JSON avoids delimiter collisions, and the fixed 79-character ID
+    fits the backend's 128-character executor identity field.
+    """
+    identity = {
+        "version": 1,
+        "proposal_id": _protected_attempt_text(proposal_id, "proposal_id"),
+        "account_name": _protected_attempt_text(account_name, "account_name"),
+        "controller_id": _protected_attempt_text(controller_id, "controller_id"),
+        "position_id": _protected_attempt_text(position_id, "position_id"),
+        "intent": IntentKind(_protected_attempt_text(intent, "intent").upper()).value,
+        "connector_name": _protected_attempt_text(
+            connector_name, "connector_name"
+        ).lower(),
+        "trading_pair": _protected_attempt_text(trading_pair, "trading_pair").upper(),
+    }
+    encoded = json.dumps(identity, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    return "spectra-buy-v1-" + hashlib.sha256(encoded).hexdigest()
 
 
 def _compact(config: dict[str, Any]) -> dict[str, Any]:
@@ -727,6 +782,22 @@ async def create_executor(
                 raise ValueError(
                     f"Spectra execution is not enabled for {executor_type}"
                 )
+            account = _protected_attempt_text(
+                account_name if account_name is not None else account, "account_name"
+            )
+            attempt_id = _protected_buy_attempt_id(
+                proposal_id=spectra_proposal_id,
+                account_name=account,
+                controller_id=tag,
+                position_id=spectra_position_id,
+                intent=spectra_intent,
+                connector_name=merged_config.get("connector_name"),
+                trading_pair=merged_config.get("trading_pair"),
+            )
+            # A caller or saved default cannot create another backend identity
+            # for the same authorized capital claim. Stamp the derived identity
+            # after the pure price/quantity adapter and before capital commit.
+            merged_config.pop("id", None)
             if not (spectra_proposal_id or "").strip():
                 raise ValueError("Spectra execution requires a capital proposal_id")
             if not (spectra_intent or "").strip():
@@ -749,6 +820,7 @@ async def create_executor(
                 max_price_slippage_bps=spectra_max_price_slippage_bps,
                 fee_allowance_bps=spectra_fee_allowance_bps,
             )
+            backend_config["id"] = attempt_id
         except Exception as exc:
             error = f"Spectra protected BUY refused before capital commit: {exc}"
             return {
@@ -822,19 +894,36 @@ async def create_executor(
             "formatted_output": f"Error creating {executor_type}: {exc}",
         }
 
-    executor_id = result.get("executor_id") or result.get("id")
-
     if settings.agent_slug == "spectra":
-        if not executor_id:
+        executor_id = result.get("executor_id") if isinstance(result, Mapping) else None
+        if not isinstance(executor_id, str) or not executor_id.strip():
             error = (
                 "Spectra execution result is ambiguous: Hummingbot returned "
-                "success without an executor_id. Capital remains COMMITTED; "
+                "a response without a non-empty string executor_id. "
+                "Capital remains COMMITTED; "
                 "do not retry blindly."
             )
             logger.error("%s", error)
             return {
                 "action": "create",
                 "executor_type": executor_type,
+                "expected_executor_id": backend_config["id"],
+                "error": error,
+                "result": result,
+                "formatted_output": f"Error creating {executor_type}: {error}",
+            }
+
+        if executor_id != backend_config["id"]:
+            error = (
+                "Spectra execution result is ambiguous: Hummingbot returned "
+                "an executor_id different from the committed protected BUY "
+                "attempt. Capital remains COMMITTED; do not retry blindly."
+            )
+            logger.error("%s", error)
+            return {
+                "action": "create",
+                "executor_type": executor_type,
+                "expected_executor_id": backend_config["id"],
                 "error": error,
                 "result": result,
                 "formatted_output": f"Error creating {executor_type}: {error}",
@@ -879,6 +968,8 @@ async def create_executor(
                 "result": result,
                 "formatted_output": f"Error reconciling {executor_type}: {error}",
             }
+    else:
+        executor_id = result.get("executor_id") or result.get("id")
 
     if save_as_default:
         executor_preferences.update_defaults(executor_type, config)

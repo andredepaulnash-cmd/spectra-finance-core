@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "scope": "reviewed_source_build_recipe",
+  "execution_contract": "spectra-single-attempt-v1",
+  "api_source": {
+    "repository": "andredepaulnash-cmd/spectra-hummingbot-api",
+    "commit": "84426ffbf9ba09522b4444664f9770236205ae29",
+    "environment_sha256": "82131a516ad12161e74322082ddee9d9aecd3ab6db8c098ca2d9a5addfb66321"
+  },
+  "core_source": {
+    "repository": "hummingbot/hummingbot",
+    "commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+    "setup_sha256": "ba4c5760e8ece5993a2e9bfc5d4381318b142674208bc65fc5a0649d209f6c6a"
+  },
+  "overlay_manifest": "overlay.manifest.json",
+  "base_image": {
+    "required_repository": "continuumio/miniconda3",
+    "required_digest_algorithm": "sha256",
+    "verified_reference": null
+  },
+  "attempt_journal": {
+    "path_environment": "SPECTRA_ATTEMPT_JOURNAL",
+    "identity_environment": "SPECTRA_ATTEMPT_JOURNAL_ID",
+    "suggested_container_path": "/hummingbot-api/bots/data/spectra-execution/attempts.sqlite3",
+    "claim_anchor_suffix": ".claims",
+    "persistent_parent_mount": "/hummingbot-api/bots",
+    "parent_private_and_runtime_user_owned": true,
+    "file_private_regular_and_runtime_user_owned": true,
+    "automatic_initialization": false,
+    "automatic_release": false,
+    "coherent_rollback_requires_external_checkpoint_or_manual_recovery": true
+  },
+  "dependencies_fully_locked": false,
+  "compiled_build_verified": false,
+  "wheel_sha256": null,
+  "api_image_digest": null,
+  "installed_backend_verified": false,
+  "approved_for_live": false,
+  "accounting_finality": {
+    "automatic_archive_of_protected_attempt": false,
+    "fully_filled_remains_visible_pending_reconciliation": true,
+    "automatic_claim_release": false,
+    "unknown_exposure_represented_as_zero": false
+  }
+}

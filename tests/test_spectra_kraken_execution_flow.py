@@ -98,7 +98,7 @@ class Executors:
         )
 
         return {
-            "executor_id": "spectra-e2e-1",
+            "executor_id": executor_config["id"],
         }
 
 
@@ -217,7 +217,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
         )
     )
 
-    assert result["executor_id"] == "spectra-e2e-1"
+    assert result["executor_id"] == client.executors.calls[0]["executor_config"]["id"]
 
     assert len(client.connectors.calls) == 1
     assert client.connectors.calls[0] == {
@@ -244,10 +244,13 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
 
     assert final_decision is not None
     assert final_decision.status == DecisionStatus.RECONCILED
-    assert g.get_execution_receipt(proposal.proposal_id) == "spectra-e2e-1"
+    assert (
+        g.get_execution_receipt(proposal.proposal_id) == call["executor_config"]["id"]
+    )
 
     provenance = g.get_execution_provenance(proposal.proposal_id)
     assert provenance is not None
+    assert provenance.executor_id == call["executor_config"]["id"]
     assert provenance.account_name == "master_account"
     assert provenance.connector_name == "kraken"
     assert provenance.controller_id == "spectra"

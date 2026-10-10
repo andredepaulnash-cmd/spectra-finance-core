@@ -386,7 +386,7 @@ def test_cash_and_exact_partial_manifest_resume_without_dispatch_result(
 
         async def create_executor(*, executor_config, account_name, controller_id):
             submitted.append((executor_config, account_name, controller_id))
-            return {"executor_id": "replacement-limit"}
+            return {"executor_id": executor_config["id"]}
 
         async def rules(**kwargs):
             return {
@@ -450,7 +450,7 @@ def test_cash_and_exact_partial_manifest_resume_without_dispatch_result(
                 spectra_fee_allowance_bps=0,
             )
         )
-        assert created.get("executor_id") == "replacement-limit", created
+        assert created.get("executor_id") == submitted[0][0]["id"], created
         config, account, controller = submitted[0]
         assert len(submitted) == 1 and account == "account" and controller == "spectra"
         assert (
@@ -707,10 +707,12 @@ def add_protected_buy_policy_breach(case, monkeypatch, *, lagging=False, breache
         )
 
     original_create = case.client.executors.create_executor
+    source_calls = []
 
     async def create(**kwargs):
         assert kwargs["executor_config"]["execution_strategy"] == "LIMIT"
-        return {"executor_id": "policy-source-executor"}
+        source_calls.append(kwargs["executor_config"])
+        return {"executor_id": kwargs["executor_config"]["id"]}
 
     monkeypatch.setattr(create_tool.settings, "agent_slug", "spectra")
     monkeypatch.setattr(create_tool, "get_capital_governor", lambda: case.governor)
@@ -739,7 +741,9 @@ def add_protected_buy_policy_breach(case, monkeypatch, *, lagging=False, breache
             spectra_fee_allowance_bps=0,
         )
     )
-    assert created.get("executor_id") == "policy-source-executor", created
+    assert len(source_calls) == 1
+    source_executor_id = source_calls[0]["id"]
+    assert created.get("executor_id") == source_executor_id, created
     case.state = replace(
         case.state,
         recovery_proposal_ids=(*case.state.recovery_proposal_ids, proposal.proposal_id),
@@ -750,7 +754,7 @@ def add_protected_buy_policy_breach(case, monkeypatch, *, lagging=False, breache
     assert case.governor.cash_authority_snapshot().productive_quote == D("99")
     occurred = time.time() - 0.01
     order = ExecutorOrderEvidence(
-        "policy-source-executor",
+        source_executor_id,
         "policy-source-order",
         "LIMIT",
         "BUY",
@@ -779,12 +783,12 @@ def add_protected_buy_policy_breach(case, monkeypatch, *, lagging=False, breache
     original_trades = health_tool.fetch_executor_trade_snapshot
 
     async def orders(client, *, executor_id):
-        if executor_id == "policy-source-executor":
+        if executor_id == source_executor_id:
             return ExecutorOrderSnapshot(executor_id, (order,))
         return await original_orders(client, executor_id=executor_id)
 
     async def trades(client, *, executor_id):
-        if executor_id == "policy-source-executor":
+        if executor_id == source_executor_id:
             return ExecutorTradeSnapshot(executor_id, (trade,))
         return await original_trades(client, executor_id=executor_id)
 
@@ -890,7 +894,7 @@ def test_structural_source_conflict_still_blocks_policy_hold_sell_exception(
 
     async def cross_proposal_order(client, *, executor_id):
         snapshot = await original(client, executor_id=executor_id)
-        if executor_id == "policy-source-executor":
+        if executor_id == case.governor.get_execution_receipt(source.proposal_id):
             return replace(
                 snapshot, orders=(replace(snapshot.orders[0], order_id="buy"),)
             )

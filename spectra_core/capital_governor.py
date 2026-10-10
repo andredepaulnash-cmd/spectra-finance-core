@@ -2810,9 +2810,13 @@ class CapitalGovernor:
         transition COMMITTED -> RECONCILED.
 
         Exact replay of the same proposal/executor mapping is idempotent.
-        Conflicting mappings fail closed.
+        Protected BUY receipts must match the immutable committed attempt ID.
+        Conflicting mappings fail closed, including recovery after a timeout.
         """
         proposal_id = proposal_id.strip()
+        if not isinstance(executor_id, str):
+            raise ValueError("executor_id must be a non-empty string")
+        exact_executor_id = executor_id
         executor_id = executor_id.strip()
 
         if not proposal_id:
@@ -2897,6 +2901,56 @@ class CapitalGovernor:
                 if reservation is None:
                     conn.rollback()
                     return False
+
+                protected = conn.execute(
+                    "SELECT config_json,config_sha256 FROM protected_buy_submissions "
+                    "WHERE proposal_id=?",
+                    (proposal_id,),
+                ).fetchone()
+                if protected is not None:
+                    payload = protected["config_json"]
+                    if (
+                        not isinstance(payload, str)
+                        or hashlib.sha256(payload.encode()).hexdigest()
+                        != protected["config_sha256"]
+                    ):
+                        raise ValueError(
+                            "protected BUY committed configuration evidence is corrupt"
+                        )
+                    try:
+                        committed_config = json.loads(payload)
+                    except (TypeError, ValueError) as exc:
+                        raise ValueError(
+                            "protected BUY committed configuration evidence is invalid"
+                        ) from exc
+                    committed_id = (
+                        committed_config.get("id")
+                        if isinstance(committed_config, dict)
+                        else None
+                    )
+                    if (
+                        not isinstance(committed_id, str)
+                        or not committed_id
+                        or committed_id != committed_id.strip()
+                        or len(committed_id) > 128
+                        or any(
+                            ord(char) < 32 or ord(char) == 127 for char in committed_id
+                        )
+                    ):
+                        raise ValueError(
+                            "protected BUY committed configuration lacks its exact executor_id"
+                        )
+                    try:
+                        committed_id.encode("utf-8")
+                    except UnicodeEncodeError as exc:
+                        raise ValueError(
+                            "protected BUY committed executor_id is invalid UTF-8"
+                        ) from exc
+                    if exact_executor_id != committed_id:
+                        raise RuntimeError(
+                            "execution receipt conflicts with the immutable protected "
+                            f"BUY attempt for {proposal_id}"
+                        )
 
                 cash_bound = cash.binding(conn)
                 if cash_bound is not None:
