@@ -1,0 +1,200 @@
+{
+  "author_read_candidate_outcomes": false,
+  "authority": "Root explicitly approved max3 total episodes/rung, max3 times original nominal profile turnover, original sequential priority, exact profitable disposal and same-owner release proof, fresh observed post-confirmation cross, renewal-only armed-profit-floor veto; existing first-pass bytes remain frozen.",
+  "before_historical_evaluation": {
+    "immutable_new_driver_and_source_hashes_required": true,
+    "independent_synthetic_and_source_admission_required": true,
+    "matched_comparison_rule": "only recurrence changes within each fixed-ticket/one-percent-ticket/current-cost comparator; preserve all other frozen flags/data/costs/seed/profile assumptions",
+    "neutral_new_driver_v2_first_pass_reproduction_required": true,
+    "no_implementation_or_new_strategy_run_authorized_by_this_file_alone": true,
+    "root_separate_evaluation_registry_and_cap_required": true
+  },
+  "bookkeeping_contract": {
+    "class_suggestion": "RecurringLadderBook; implementation name nonnormative",
+    "method_semantics": {
+      "checkpoint_restore": "serialize all identities/evidence/turnover/latches and verify external manifest SHA plus replay invariants; no claim of live venue restart proof",
+      "confirm_disposal": "validate and register exact all-lot positive disposal + owned settlement/release proof; receipt alone creates no new cash",
+      "confirmed_entry": "freeze original parent/base/anchor/seed/profile from exact ENTRY fill",
+      "confirmed_recovery": "bind source-native lot/buy receipt; consume selected episode and exact actual all-in turnover once",
+      "observe_completed_close": "observe source-completed causal reset/cross state only; no cash mutation or floor-memory mutation",
+      "rejected_order": "exact zero-fill terminal proof releases only that reservation; no episode/turnover consumption; retry crossing preserved subject to current gates",
+      "requested_budget": "return original selected candidate or deepest eligible renewal candidate plus exact reason; no admission fallback",
+      "reserve_recovery": "bind selected parent/rung/next episode/order and all-in turnover hold; no second parent commitment",
+      "retire_parent": "terminal full-exit proof permanently retires original lineage"
+    },
+    "required_episode_fields": [
+      "episode_identity",
+      "accepted_order_id",
+      "reservation_receipt_id",
+      "buy_receipt_id",
+      "exact_recovery_lot_ids",
+      "actual_confirmed_all_in",
+      "remaining_quantity_basis_fees_by_lot",
+      "sale_allocation_receipt_ids",
+      "sale_net_profit_by_lot",
+      "same_owner_release_proof_ids",
+      "proof_confirmed_execution_index"
+    ],
+    "required_parent_fields": [
+      "frozen_parent_fields",
+      "next_original_rung_index",
+      "confirmed_turnover_exact",
+      "pending_turnover_holds",
+      "retired_full_exit_receipt_id"
+    ],
+    "required_rung_fields": [
+      "rung_index",
+      "confirmed_episode_count",
+      "episode_records",
+      "reset_completed_bar_index",
+      "reset_completion_timestamp",
+      "cross_completed_bar_index",
+      "retry_crossing_active"
+    ]
+  },
+  "causal_price_episode": {
+    "completed_bar_indices": "strictly monotonic per observed parent; no same-bar reset and cross",
+    "cross": "distinct later observed completed bar closes AT_OR_BELOW threshold",
+    "fok_rejection_retry": "crossing remains retryable while completed close stays at/below; all current gates revalidate; later above close creates new reset without creating duplicate purchases",
+    "intrabar_or_future_or_missing_prices_allowed": false,
+    "passive_close_observer_order": "after due source fills and marking, before planners; admission reads current planner updated profit state; observation alone authorizes neither purchase nor profit-state mutation",
+    "reset": "observed completed close strictly ABOVE threshold after full disposal + settlement + explicit release are confirmed",
+    "sale_at_open_index_i": "completed close of bar i may reset after confirmation; crossing requires bar index greater than reset bar",
+    "threshold_definition": "original native precision28 ROUND_HALF_EVEN entry_anchor * (1 - fixed rung drop_fraction)"
+  },
+  "disposal_proof": {
+    "aggregate_profit_may_subsidize_losing_episode_lot": false,
+    "cash_authority": "existing OwnedCashLedger available(VCAP,equity_before) after all holds; receipt is eligibility proof only, never a second cash credit or ownership transfer",
+    "entire_episode_inventory_zero_fields": [
+      "remaining_quantity",
+      "remaining_gross_basis",
+      "remaining_charged_entry_fees"
+    ],
+    "episode_identity": [
+      "parent_id",
+      "rung_index",
+      "episode_ordinal"
+    ],
+    "pending_parent_inventory_required": "complete and empty across accepted buys/sells/partial fills/cancel-pending/reservations/unresolved terminal receipts; unknown fails closed",
+    "per_lot_positive_net_definition": "sum(actual confirmed gross sale proceeds - charged exit fees) - original gross purchase basis - charged buy fees > 0 for EACH episode lot",
+    "profit_split_unchanged": {
+      "PRODUCTIVE": "0.75",
+      "VCAP": "0.25"
+    },
+    "proof_replay": "identical receipt replay idempotent; conflicting receipt/lot/episode reassignment rejected",
+    "release_required": "exact RELEASE_PARTIAL journal receipt references every settled PARTIAL sale receipt; same-owner VCAP release confirmed; sale alone or PARK alone insufficient",
+    "required_confirmed_buy_members": [
+      "accepted_order_id",
+      "proposal_id",
+      "buy_receipt_id",
+      "exact_recovery_lot_ids",
+      "actual_quantity_by_lot",
+      "gross_purchase_basis_by_lot",
+      "charged_buy_fees_by_lot"
+    ],
+    "required_confirmed_sale_members": [
+      "sale_receipt_id",
+      "sale_kind_PARTIAL",
+      "same_parent_id",
+      "same_pair",
+      "exact_episode_lot_id",
+      "confirmed_disposed_quantity",
+      "gross_sale_proceeds",
+      "charged_exit_fee",
+      "gross_basis_release",
+      "charged_entry_fee_release",
+      "source_fill_id",
+      "confirmed_execution_open_index"
+    ],
+    "residual_tolerance_for_renewal": "0",
+    "settlement_required": "exact owned SALE journal receipt and source-native consumed-lot proof; sale allocations captured before native consumption"
+  },
+  "frozen_at_utc": "2026-10-10T21:59:54.573199+00:00",
+  "holdout_access": false,
+  "immutable_adapter": {
+    "file": "research/danger_room/owned_profitability_campaign_v2.py",
+    "sha256": "8acfb0aadf570294fe0855a0ca49cc87dfaa093d728238474d7de031e6b14024"
+  },
+  "implementation_performed_by_spec_author": false,
+  "module_compatibility": {
+    "DTSS_DTSSR_PSSM_enabled": false,
+    "current_cost": "unchanged separately declared fee/slippage for actual fills and positive-profit proof",
+    "durable_production_lifecycle_verified": false,
+    "fixed_ticket": "actual original ENTRY all-in seed fixed for lifetime",
+    "live_venue_execution_verified": false,
+    "one_percent_ticket": "existing ENTRY target 1% completed marked equity subject to owner/cap/reserve/minima; actual original confirmed fill becomes fixed lifetime seed; later equity/profit never resizes it",
+    "recovery_quality": "existing enabled quality flag and thresholds rechecked causally; no new quality parameters",
+    "selector_and_directional": "existing ENTRY flags/thresholds and frozen comparator; do not replace/resize original owned base parent"
+  },
+  "parent_protocols": {
+    "native_profit_policy_protocol.json": "f622c1ce307adb7bb25fcb5f6a1726aab0b15cd664bd6c6fe764180c2afcbaa7",
+    "owned_cash_protocol.json": "29f5abe77e7ed27aec6a63393411c7e9b0875cec7b1537d85ad5cb13ee9464f9",
+    "productive_sizing_protocol.json": "de40c6ec9d865175dd6ecd9d59cb9af0bbc4a79d9bfa589dbc2fe406a0a23575",
+    "profitability_protocol.json": "a10def9591d19bc8c775d136b5c845383d42778f274e824ad1d77af88552e374"
+  },
+  "policy": {
+    "first_pass_behavior": "unchanged V2 original budgeting/sequential policy and existing native_dttp/hard-target flags",
+    "frozen_parent_fields": [
+      "parent_id",
+      "pair",
+      "base_entry_lot_id",
+      "initial_entry_price_anchor",
+      "initial_confirmed_all_in_seed",
+      "profile_name",
+      "profile_drop_fractions",
+      "profile_seed_multiples",
+      "original_nominal_profile",
+      "lifetime_turnover_cap"
+    ],
+    "max_confirmed_purchase_episodes_per_rung_including_original": 3,
+    "max_parent_lifetime_turnover_multiple_of_original_nominal_profile": "3",
+    "max_parent_proposals_per_completed_bar": 1,
+    "new_ladder_selector_quality_or_cost_parameters": false,
+    "new_parameter_search": false,
+    "nominal_profile_definition": "exact initial confirmed all-in ENTRY seed * exact sum(frozen profile seed multiples)",
+    "original_first_pass_recovery_profit_state_pop_reset_unchanged": true,
+    "original_rung_selection": "existing next-unused sequential rung; no skips; next-unused price eligibility blocks renewal fallback even if admission fails",
+    "partial_sized_positive_buy_consumes_one_episode": true,
+    "pending_turnover_definition": "every accepted RECOVERY all-in hold occupies remaining turnover cap until exact terminal proof; no double reservation",
+    "preserve_existing_profit_state_on_confirmed_renewal_buy": true,
+    "renewal_floor_veto": "current native profit_floor_reached_at must be None; unknown state fails closed; never clear/reset/rebase floor or peak memory",
+    "renewal_selection": "only if next-unused original rung is not price-eligible; choose deepest eligible prior used rung; no second-choice fallback after admission failure",
+    "turnover_definition": "exact sum of confirmed RECOVERY gross purchase quote + charged buy fees for original and renewed episodes; each once; never decreased by sale",
+    "whole_parent_exit": "permanently retire lineage; no old-parent renewal; later ENTRY requires new economic parent identity",
+    "zero_fill_terminal_rejection_consumes_episode": false,
+    "zero_fill_terminal_rejection_consumes_turnover": false
+  },
+  "production_activation": false,
+  "renewal_admission": {
+    "all_in_maximum": "min(frozen original rung seed multiple budget, native recovery/tranche authority, remaining exact turnover authorization after holds, confirmed VCAP availability, physical reserve spendable, remaining pair cap)",
+    "bootstrap_floor_quote": "40",
+    "future_sale_proceeds_allowed": false,
+    "numeric_comparison": "exact Fraction interpretations of finite recorded Decimal components for nominal/turnover caps; native fill recipe unchanged precision28 ROUND_HALF_EVEN",
+    "original_numeric_recipe_changed": false,
+    "pair_exposure_cap_fraction": "0.05",
+    "physical_reserve_floor_fraction": "0.20",
+    "physical_reserve_target_fraction": "0.25",
+    "productive_owner_borrow_allowed": false,
+    "protected_reserve_release_allowed": false,
+    "recheck_at_current_completed_bar": [
+      "native recovery fingerprint freshness/confidence/geometry",
+      "enabled independent recovery-quality gate",
+      "authoritative empty pending parent state",
+      "strict renewal armed-floor veto",
+      "owner cash and physical reserve after all pending holds",
+      "pair exposure cap",
+      "source exchange/minimum/capacity rules"
+    ],
+    "renewal_rounding_safeguard": "reduce renewal ticket toward zero if needed until exact native budget-to-gross/fee all-in sum meets each ceiling; fail minima if necessary; strict post-fill cap assertion; never alter source fill/fees or widen cap tolerance",
+    "vcap_funding_only": true
+  },
+  "research_only": true,
+  "schema": 1,
+  "source_audit": {
+    "file": "docs/research-results/profitability-campaign-20261010/ladder-lifecycle-source-audit.md",
+    "scope": "23 imported preserved native core files matched; immutable V2/core/bridge static source only; no strategy outcome or holdout reads",
+    "sha256": "7b27d6ded18a936640f532ee92cf245928bd90c0b46ff70ea0028358988c1d0a"
+  },
+  "specification_id": "receipt-bound-rung-recurrence-v1",
+  "status": "ROOT_APPROVED_FROZEN_SEMANTICS_DRIVER_ADMISSION_PENDING"
+}

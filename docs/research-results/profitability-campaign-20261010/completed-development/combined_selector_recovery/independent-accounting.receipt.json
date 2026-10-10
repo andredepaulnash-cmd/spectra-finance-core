@@ -1,0 +1,108 @@
+{
+  "passed": true,
+  "status": "PASS",
+  "arm": "combined_selector_recovery",
+  "strategy_imported": false,
+  "scope": "Independent actual serialized-fill accounting, immutable lot disposal, entire native-five-minute equity/basis/marks path, declared exit-floor behavior, immediate actual-next-open prices and declared FOK volume surrogate; not venue or full production ownership proof",
+  "arithmetic_precision": 60,
+  "arithmetic_tolerance": "1E-18",
+  "samples_checked": 52128,
+  "execution_fee_bps": "40",
+  "execution_slippage_bps": "5",
+  "execution_exit_floor_bps": "174",
+  "sample_scalar_checks": {
+    "cash": 52128,
+    "parked_cash": 52128,
+    "deployable_cash": 52128,
+    "committed_basis": 52128,
+    "marked_value": 52128,
+    "equity": 52128,
+    "cumulative_realized": 52128,
+    "cumulative_fees": 52128
+  },
+  "fills_checked": {
+    "ENTRY": 93,
+    "EXIT": 74,
+    "RECOVERY": 290,
+    "PARTIAL_RECYCLE": 176
+  },
+  "fill_price_capacity_checks": 633,
+  "surviving_lots": 49,
+  "disposed_lots": 334,
+  "surviving_parents": 19,
+  "independent_cash": "1666.32286875306128371196611042232",
+  "independent_parked_cash": "1666.07943420052817227523452823794",
+  "minimum_deployable_cash": "8.8843081008E-19",
+  "independent_marked_inventory": "186.968999244082501267073965296056349",
+  "independent_equity": "1853.291867997143784979040075718376349",
+  "independent_realized_pnl": "53.58817733214176865961441043980",
+  "independent_unrealized_pnl": "-200.296309334997983680574334721423651",
+  "independent_fees": "21.01151777243658839700412373568",
+  "native_5m_drawdown": "0.104498945552472211918059867002005776575821098846843698789161",
+  "capital_dollar_days": "74536.1514425370222205019872914784188888888888888888888888889",
+  "occupied_slot_fraction": "0.366709637814610190300798035604665438919582565991405770411295",
+  "all_minutes_below50_including_initialization": 260640,
+  "maximum_mark_age_seconds": 6300,
+  "sealed_holdout_read": false,
+  "full_cash_owner_adapter_verified": false,
+  "owner_proof": null,
+  "rotation_proof": null,
+  "neutral_control_proof": null,
+  "research_adapter_sha256": "32df8739dc34e90b1c10b71f0ba357dc2a99ba7c1f57901f3149ae8dc9864451",
+  "policy_sources": null,
+  "input_array_sha256": "bf9ad858e2b696d189a42cb7f5d084f5312611bdc4b841f8a10219110ce552b1",
+  "input_metadata_sha256": "0e8753e7436e8bff4a2065b9abdaddb8846a2546f1a107cefa4e7baaa3f00732",
+  "results_sha256": "2429df9e7eb755a59dc496966ff8d1cd3f4aaa2de78217ac19a385c239e92c9f",
+  "artifacts": [
+    {
+      "file": "account_5m.csv.gz",
+      "bytes": 2038845,
+      "sha256": "0c6420c7b7d8512c6f0c968747e88bdfcca1311fd02e10a914ead149b5651781"
+    },
+    {
+      "file": "fills.csv",
+      "bytes": 102621,
+      "sha256": "f700781357fe47729706b024283daa84a42f2de2a363e918c4a1b897663aaba9"
+    },
+    {
+      "file": "generated_campaign_body.py",
+      "bytes": 30594,
+      "sha256": "793355c2893904ac307a2f5954eac604556e762a6d1aef519688c719a0202efc"
+    },
+    {
+      "file": "ownership_events.json.gz",
+      "bytes": 1178541,
+      "sha256": "0d21aea63efc618ab872e46b14719a40fac6624ffb94bcd2c2f8b9cd7702704e"
+    },
+    {
+      "file": "pending_orders.jsonl.gz",
+      "bytes": 792730,
+      "sha256": "617ad8a14af1e71ff97f6b83b2a297aa8b4ddf9858ae78248afa0e2ff1b57199"
+    },
+    {
+      "file": "results.json",
+      "bytes": 10578,
+      "sha256": "2429df9e7eb755a59dc496966ff8d1cd3f4aaa2de78217ac19a385c239e92c9f"
+    },
+    {
+      "file": "run_admission.receipt.json",
+      "bytes": 891,
+      "sha256": "b0591ef76557d8fbd3217c5ae5a56f058615f00a5a91de3ad19bd286dfad5499"
+    },
+    {
+      "file": "terminal.json",
+      "bytes": 6192,
+      "sha256": "286d31f61e9abe21ce5fbbc2c35c9e8e12e7d8377888b97385eabd82ccce5ce5"
+    },
+    {
+      "file": "terminal_lots.json",
+      "bytes": 216259,
+      "sha256": "ecbcb1f133b719ecca8a3e292aed0858b1452f71204ca75587ea495200026921"
+    },
+    {
+      "file": "watchlist_updates.jsonl.gz",
+      "bytes": 8206038,
+      "sha256": "43abc9efc0c6de3cfa0d950366943d5246246da6420ce2a5bf677e0948a42944"
+    }
+  ]
+}

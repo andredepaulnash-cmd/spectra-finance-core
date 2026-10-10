@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "campaign": "profitability-campaign-20261010",
-  "updated_at": "2026-10-10T21:56:02.477943+00:00",
+  "updated_at": "2026-10-10T22:10:17.851480+00:00",
   "status": "FIXED_RESEARCH_BATCH_RUNNING",
   "original_controls_running": 0,
-  "new_strategy_evaluations_completed": 10,
-  "mechanics_tests_passed": 247,
+  "new_strategy_evaluations_completed": 12,
+  "mechanics_tests_passed": 265,
   "canonical_six_month_tape_restored": true,
   "original_core_modules_verified": 23,
-  "maximum_cumulative_strategy_evaluations": 40,
+  "maximum_cumulative_strategy_evaluations": 44,
   "verified_profitable_candidate": false,
   "owner_adapter": "BOTH_COST_COHORT_CONTROLS_FULL_PATH_AUDIT_PASS",
   "real_hedge_route": "BLOCKED_ACTUAL_INSTRUMENT_HISTORY",
@@ -24,24 +24,23 @@
     "control_174_park": "1941.810623175947518508197294"
   },
   "native_comparison_arms_running": [
-    "combined_selector_recovery"
+    "combined_selector_ladder"
   ],
-  "completed_strategy_evaluations": 12,
-  "independently_audited_evaluations": 12,
-  "mechanics_test_count": 247,
+  "completed_strategy_evaluations": 14,
+  "independently_audited_evaluations": 14,
+  "mechanics_test_count": 265,
   "profitability_established": false,
   "owner_control_arms_running": [],
   "native_exit_policy_arms_running": [],
-  "last_published_CI_tests_passed": 196,
+  "last_published_CI_tests_passed": 247,
   "running_arms": [
-    "causal_category_ladders",
     "combined_full_supported",
-    "combined_selector_recovery",
+    "combined_selector_ladder",
     "confirmed_principal_redeployment",
     "current_cost_owned_full",
-    "owned_full_sized",
-    "rotation_owned_control_174"
+    "owned_full_dttp",
+    "owned_full_sized"
   ],
   "rotation_adapter": "SYNTHETICALLY_AUDITED_NEUTRAL_MATCHED_CONTROL_RUNNING",
-  "recurring_ladder_extension": "SOURCE_ONLY_SPECIFICATION_IN_PREPARATION_NOT_RUN"
+  "recurring_ladder_extension": "NEW_SPEC_AND_CAP44_FROZEN_DRIVER_IMPLEMENTATION_NOT_RUN"
 }

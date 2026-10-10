@@ -2,7 +2,7 @@
 
 Architect identified three missing economic ingredients: a list of coins with frequent usable moves, coin-specific funded recovery ladders, and keeping up to 50 distinct trading positions productive through appropriate replacement. This campaign tests those ideas causally against the preserved native January–June five-minute research bridge.
 
-Both original controls reproduced exactly and passed independent audits of all 104,256 five-minute samples and every serialized fill. They ended at $1,898.28 and $1,941.81 from $2,000. Twelve completed runs now pass independent accounting audit, and all have negative whole-account profit. CI verifies fictional causal and accounting fixtures; a passing CI run does not prove financial profitability. Exact finalized results and terminal valuation sensitivities are retained in `completed-development-results.json`.
+Both original controls reproduced exactly and passed independent audits of all 104,256 five-minute samples and every serialized fill. They ended at $1,898.28 and $1,941.81 from $2,000. Fourteen completed runs now pass independent accounting audit, and all have negative whole-account profit. CI verifies fictional causal and accounting fixtures; a passing CI run does not prove financial profitability. Exact finalized results and terminal valuation sensitivities are retained in `completed-development-results.json`.
 
 The exact-owner control kept 99.97% of its 50-slot capacity occupied after initialization, yet lost $163.17: $203.92 realized gains were outweighed by $367.09 open losses. Keeping slots full alone therefore did not make the account productive. Weekly membership refresh lost $61.63 with 6.65% drawdown; its lower drawdown does not establish profitability. Current-cost comparisons must stay within their matched owner/cost cohort because changing costs also changes the execution path.
 
@@ -22,7 +22,9 @@ The unchanged $2,000 control realized $202.03 through June while its remaining i
 | Funded productive sizing and its current-cost counterpart | 2 |
 | Native DTTP policy and matched owner full-combination policy | 2 |
 | Matched rotation-adapter owner control | 1 |
-| Total cap | 40 |
+| Matched recurring-ladder full-combination control | 1 |
+| Fixed receipt-bound recurrence, sized recurrence and current-cost recurrence | 3 |
+| Total cap | 44 |
 
 Blocked arms and unit tests are not completed strategy runs. Fresh data is not yet identified. The October 9–November 9 sealed holdout remains unread. January–September already inspected data cannot become independent validation by renaming it. The six fresh evaluations test absolute profitability; additional comparative fresh controls need a separately declared budget before new outcomes.
 
@@ -32,7 +34,7 @@ All 23 archived native core modules match both their historical SHA256 manifest 
 
 Architect's exact original hotlist and coin-to-ladder map remain unavailable. The shallow, medium and deep profiles are explicitly NEW bounded hypotheses, assigned from sufficiently covered completed pre-entry observations and frozen for each parent. Their price anchor is the first confirmed entry; their multiplier denominator is its initial all-in cash. Rejected orders consume no rung. Crossing several thresholds cannot spend all rungs at once.
 
-The frozen ladder currently allows one confirmed purchase per rung during an open parent's lifetime. Profitable partial disposal does not re-enable a rung. A confirmed purchase consumes the rung even when finite cash or pair limits clip its requested maximum. Early ladder-only parents can receive UNKNOWN and remain ineligible for recovery; selector combinations wait for sufficient history. These differences must be reported with results rather than presented as recovered original coin settings. A source-only specification for separately bounded, receipt-proven recurring episodes is being prepared; it has not been evaluated.
+The original frozen ladder allows one confirmed purchase per rung during an open parent's lifetime. Profitable partial disposal does not re-enable a rung. A confirmed purchase consumes the rung even when finite cash or pair limits clip its requested maximum. Early ladder-only parents can receive UNKNOWN and remain ineligible for recovery; selector combinations wait for sufficient history. These differences must be reported with results rather than presented as recovered original coin settings. A new outcome-blind source audit and separately bounded receipt-recurrence specification are frozen; the new driver is being implemented and has not been historically evaluated. It permits at most three confirmed episodes per rung, with exact profitable disposal, actual settlement/release, fresh crossing, unchanged seed and finite turnover. `receipt_recurrence_protocol.json` declares four additional evaluations before implementation; all are retrospective development research.
 
 The recurrence selector measures historical completed close-to-close recovery episodes exceeding a declared net target plus both sides of fees and slippage. These are screening proxies, not obtainable profit or evidence of buying the trough. The native account replay must show which opportunities were actually captured.
 

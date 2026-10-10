@@ -17,6 +17,9 @@ on:
       - 'research/danger_room/rotation_profitability_campaign_v3_precache.py'
       - 'research/danger_room/rotation_policy.py'
       - 'research/danger_room/rotation_protocol.json'
+      - 'research/danger_room/completed_run_diagnostics.py'
+      - 'research/danger_room/receipt_recurrence_protocol.json'
+      - 'research/danger_room/cost_cohort_stress_clarification.json'
       - 'research/danger_room/productive_sizing_protocol.json'
       - 'research/danger_room/native_profit_policy_protocol.json'
       - 'research/danger_room/*profitability*protocol.json'
@@ -30,6 +33,7 @@ on:
       - 'tests/test_productive_sizing.py'
       - 'tests/test_rotation_policy.py'
       - 'tests/test_rotation_campaign.py'
+      - 'tests/test_completed_run_diagnostics.py'
       - 'docs/research-results/profitability-campaign-20261010/**'
       - '.github/workflows/profitability-research.yml'
 permissions:
@@ -61,6 +65,7 @@ jobs:
           python -B -m unittest discover -s tests -p 'test_terminal_valuation.py'
           python -B -m unittest discover -s tests -p 'test_rotation_policy.py'
           python -B -m unittest discover -s tests -p 'test_rotation_campaign.py'
+          python -B -m unittest discover -s tests -p 'test_completed_run_diagnostics.py'
       - name: Verify protocol identities without evaluating strategy
         run: |
           python - <<'PY'
@@ -71,7 +76,9 @@ jobs:
                 'productive_sizing_protocol.json':'de40c6ec9d865175dd6ecd9d59cb9af0bbc4a79d9bfa589dbc2fe406a0a23575',
                 'native_profit_policy_protocol.json':'f622c1ce307adb7bb25fcb5f6a1726aab0b15cd664bd6c6fe764180c2afcbaa7',
                 'terminal_valuation_protocol.json':'a0de80a3022c3e918f69d4565e7463a032f408dcf551ac598e876862f184e909',
-                'rotation_protocol.json':'6b6b3a83a159e09d0df8d9407d169cd85bf1b800c6462644a3c30d6a06e91da2'}
+                'rotation_protocol.json':'6b6b3a83a159e09d0df8d9407d169cd85bf1b800c6462644a3c30d6a06e91da2',
+                'receipt_recurrence_protocol.json':'47c7e948fc510dfc67e29d4d294e75d238a93269da1f53a7f77370ea5d8dabe1',
+                'cost_cohort_stress_clarification.json':'9917ca5f4e791815f5c0be1ac4dc6dddd8df6babbb09e13cfe5f6d61be9b9358'}
           for name,wanted in pins.items():
               assert hashlib.sha256((root/name).read_bytes()).hexdigest()==wanted,name
           print('Frozen protocols exact; CI tests fictional mechanics only')
