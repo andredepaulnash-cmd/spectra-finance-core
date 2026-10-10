@@ -34,7 +34,7 @@ jobs:
       - name: Test dependency preparation and read-only repair collector
         run: |
           python -B -m unittest discover -s tests -p 'test_runtime_dependency_preparation.py' -v
-          python -B -m pytest -q tests/test_repair_runtime_attestation.py -p no:cacheprovider
+          python -B -m pytest --noconftest -q tests/test_repair_runtime_attestation.py -p no:cacheprovider
       - name: Check the selected repaired source bytes without runtime authority
         run: |
           set +e
