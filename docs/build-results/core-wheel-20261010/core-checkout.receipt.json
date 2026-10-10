@@ -1,0 +1,30 @@
+{
+  "checked_at": "2026-10-10T13:23:43.483657+00:00",
+  "repository": "hummingbot/hummingbot",
+  "head": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "tree": "06c31cf98f8573c2f2a1c819bcfbcebe56d8ee2a",
+  "clean_before_overlay": true,
+  "full_git_tree_entries_verified": 1892,
+  "core_source_files": [
+    {
+      "path": "setup.py",
+      "git_blob_sha": "0b7b751439e618889f0876d9ace10b9355ddb67f",
+      "sha256": "ba4c5760e8ece5993a2e9bfc5d4381318b142674208bc65fc5a0649d209f6c6a",
+      "bytes": 5099
+    },
+    {
+      "path": "setup/pip_packages.txt",
+      "git_blob_sha": "848aceadfc86b66110243b022211aac7118731bc",
+      "sha256": "6bfa6b389b6f2c00dec4443d7bfe50a177cd7ddf8b417221c7d5e3964ec55b17",
+      "bytes": 15
+    },
+    {
+      "path": "LICENSE",
+      "git_blob_sha": "e998fcfee5d9d1ba105679b6a755d10fa68cdc97",
+      "sha256": "f0dd03c14db3dfbce03c166645f88fda96599ad1a5d217fddb49134de8c72a29",
+      "bytes": 11352
+    }
+  ],
+  "private_api_checkout_performed": false,
+  "approved_for_live": false
+}

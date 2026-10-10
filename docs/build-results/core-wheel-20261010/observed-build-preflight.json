@@ -1,0 +1,44 @@
+{
+  "approved_for_live": false,
+  "base_image_declaration": null,
+  "base_image_digest_format_valid": false,
+  "base_image_independently_reviewed": false,
+  "build_status": "NOT_RUN",
+  "checked_source_files": 16,
+  "compiled_wheel_verified_by_this_preflight": false,
+  "daemon_and_buildkit_verified": false,
+  "dependencies_fully_locked": false,
+  "host": {
+    "architecture": "x86_64",
+    "os_id": "ubuntu",
+    "python_version": "3.12.14"
+  },
+  "image_built_by_this_preflight": false,
+  "input_errors": [],
+  "installed_bazzite_verified": false,
+  "private_api_source_access_verified": false,
+  "production_modified": false,
+  "remaining_requirements": [
+    "A usable isolated Docker BuildKit builder.",
+    "An independently reviewed immutable Miniconda base digest and intended platform.",
+    "Separately supplied private API read authorization via a BuildKit secret.",
+    "Successful exact-recipe image build and compiled installed-module guard.",
+    "Review of resolved dependencies, wheel identity and image digest.",
+    "Separate read-only evidence from the actual Bazzite host."
+  ],
+  "reviewed_source_commit": "fad5f320b2f87cc7c089bea2750dd8344aa1b661",
+  "reviewed_source_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+  "schema_version": 1,
+  "scope": "static_isolated_build_preflight",
+  "source_inputs_verified": true,
+  "tool_presence": {
+    "buildah": false,
+    "conda": false,
+    "docker": false,
+    "g++": true,
+    "gcc": true,
+    "git": true,
+    "podman": false
+  },
+  "venue_requests_performed": false
+}

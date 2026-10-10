@@ -1,0 +1,454 @@
+{
+  "filename": "hummingbot-20260922-cp312-cp312-linux_x86_64.whl",
+  "bytes": 20910055,
+  "sha256": "b92048954145b055ac7bbf85cfdfa4e042c4153eb66aabc29740f4ec34a76dbc",
+  "core_commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "core_tree": "06c31cf98f8573c2f2a1c819bcfbcebe56d8ee2a",
+  "overlay_source_commit": "fad5f320b2f87cc7c089bea2750dd8344aa1b661",
+  "overlay_manifest_sha256": "c46ab17432c51297219eef692b93ab78f9c5450f22ad11f1677c448bb795ef77",
+  "python_abi": "cp312",
+  "platform_tag": "linux_x86_64",
+  "wheel_metadata": "Wheel-Version: 1.0\nGenerator: setuptools (80.8.0)\nRoot-Is-Purelib: false\nTag: cp312-cp312-linux_x86_64\n\n",
+  "compiled_cython_extensions": 61,
+  "all_pinned_pyx_extensions_present_as_x86_64_elf": true,
+  "binary_entries": [
+    {
+      "path": "hummingbot/connector/connector_base.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 1788000,
+      "sha256": "8ac6ec7849779fbdcb1ae535c5cbe2d8d79e05e33af5f483ac71965b2c022754",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange_base.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 1792712,
+      "sha256": "95f2d20a93dde6b0f9862163b850f2efecf3fad1d8529305e7823ac9ca0576a8",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/in_flight_order_base.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 1079224,
+      "sha256": "c2c5583426d9b897841b38b36db8de38ba7f6fca3ded1d0c998fbea5a4bc44cb",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/trading_rule.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 567608,
+      "sha256": "dae91ae7b744d2062962c3967547dd353b9e1e49e52b123af7c5d0ae40fa2e31",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/aevo_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353392,
+      "sha256": "8e2775b3f3015424f8188164576d197517e2c8d0188d415d6f735fce3c1eb306",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/binance_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353488,
+      "sha256": "a01d78be64e9f89876b688f721dfc1275412297ec521525e4051563e28941dd0",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/bybit_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353424,
+      "sha256": "f4e4626c4e7c9e6e38680a31cc6c09bfe3fb710e0ba46fdabfb9008d683e66fe",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/decibel_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 86056,
+      "sha256": "7ca8af1d67789fb262338a58a35500af144dcedf4ffb7de1b11a74a4fa77c00c",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/derive_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353448,
+      "sha256": "12572e96be687bdc35f34ff6c8e84d873eae3bb313a4e862a389d1cdecabd168",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/gate_io_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353488,
+      "sha256": "ae61133b902d9e9c3033c82c11064a88757a8d6ec194a4d6c9d57261e0197180",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/hyperliquid_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353616,
+      "sha256": "3281a22961ba0d367e538964fa8cea44fefa2dabdce81504576fc33098de06b9",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/kalshi_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353448,
+      "sha256": "1d554b1027be211ca9f968c3025431d315a69a2246846c1a487120982409af86",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/kucoin_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353448,
+      "sha256": "c03533dc2eb194c3696b02f5f6faf966738ce2191759d0363ad005eab9879ec7",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/derivative/pacifica_perpetual/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353520,
+      "sha256": "bc3c21fbbef469cb64e630828412e1c350fc5f3815b4dfd34a2b22e3530efe5f",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/binance/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348952,
+      "sha256": "dbde29ec4e02db53376d0d2ddb313054e740cab8a921b670b18c4a2d9953930f",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/bitget/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348920,
+      "sha256": "e2672c7e4ed4cb09c37067e6da2fe705b8bdc48c3c97591b0939f627be4094d0",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/bitmart/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348952,
+      "sha256": "deee945cc9578d15589d9c46a42ca165d2a923d8c9d7e144edf8294b7b48823c",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/bitstamp/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 86016,
+      "sha256": "c1f425dc51112d6088f7941de91aadd04d709824d80aecf227e751e7c362c156",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/bybit/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348888,
+      "sha256": "4993afdb58af4df7bf1f2fc25aaeb32d8c33d07323c44f3d398be12184510467",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/coinbase_advanced_trade/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353592,
+      "sha256": "611a2e4a9bd0b2f8921aa8ef1c9168f5e6ee540b7fe1ab2682501d7e3b60c051",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/foxbit/foxbit_connector.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 354240,
+      "sha256": "d2850818839b2087d49c7540654f755f0e4be2740674cf96934df55fc99a199e",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/gate_io/placeholder.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 353544,
+      "sha256": "f584572fcfcb4b09956a85271106bf6e73a65c60e29cc6e3db1f01248fad19b3",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/gemini/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348920,
+      "sha256": "b2b21f1c6ef56941e4fd4aa2e2148e3ee4531aec251984b0d403bc758c3c1b00",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/kucoin/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348920,
+      "sha256": "17f1c6b39b60cbd3baccca553fe15ca6354439869d780f250ee0eac3611be57d",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/mexc/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348848,
+      "sha256": "a525e99ccf3901a701ea2557e68480fc21fa2f5a93a5a0d025ac85c0813a4ce4",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/paper_trade/paper_trade_exchange.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 3754032,
+      "sha256": "306f8e0887ca556ab8bed3b5c6a1db199766d7aafd46ccf46533c8ee753e595f",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/exchange/xrpl/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348848,
+      "sha256": "cdbd64bab20d0610743eeb289a97961fba711f8c1fd15a62be5099bb406b077b",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/connector/test_support/mock_paper_exchange.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 1127512,
+      "sha256": "db4b34e0faa0b01412bb646ba5f9e7b0bc85d660e7ccf28c6f77ae76fd286022",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/clock.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 983200,
+      "sha256": "09ee393cc29c6d518fa9434a47a0719796ae1edc14dd508b006c5c412f79da34",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/network_iterator.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 902152,
+      "sha256": "f5f4920c93906e290caf8fa4309a9cbc2cb7ce81919e97525d6430969ee40d39",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/pubsub.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 977160,
+      "sha256": "a053e5a98e4a639b81067f325e54b14bab589c466621e36d55f03548ef66a6f8",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/py_time_iterator.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 393784,
+      "sha256": "5dee597f8ddad61ee3c7c937caaf810d0760f1e6f0ba19d108660b6d57535c10",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/time_iterator.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 475816,
+      "sha256": "51703defd98bc498ac5c77a55ec0824542c8f8a09a8b28c4d350068435ded802",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/data_type/composite_order_book.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 994608,
+      "sha256": "7ef212d7827780e6e2496588d59e37d472b559b18d9f7107dbf281f0804c77bc",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/data_type/limit_order.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 1020344,
+      "sha256": "b22103c56adcfdbe6cd5ddf17d5517a5f0e89f200fdbfa2aeb2b511b6fb6bae3",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/data_type/order_book.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 1777432,
+      "sha256": "e1c348df951335aa6f1bbf4097f7fea15a02116d5b8cc0c4888c698cceebdcf8",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/data_type/order_book_query_result.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 314264,
+      "sha256": "7c44be389c705332d558877dc7eaaaa3698e1f5425e44980a0a3e052d270ba96",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/data_type/order_expiration_entry.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 553728,
+      "sha256": "b3c3a9d21a5898276fba7277f41a454512a88e360899c66d9df3094c97d931cc",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/data_type/transaction_tracker.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 434184,
+      "sha256": "9e5d0164fa9f0db9a4b59e4691b0b86eae5765cce7686afd103ef83705a56667",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/event/event_listener.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 530328,
+      "sha256": "34bae31a7458476d1dc3729dcd74bf0b64084dfd74cbf1bcbe321d94dc8cd77a",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/event/event_logger.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 856984,
+      "sha256": "87ab476bc24744b5007b3fc8143111eded99ade493d585c05dacaa9c174af631",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/core/event/event_reporter.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 680952,
+      "sha256": "eaacf0ef13e827a051f4109a84181f607abcd68c13143e56af83283ccb6683cf",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/api_asset_price_delegate.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 625640,
+      "sha256": "371620388720e7eb7e4990312c64b1071e1f097e48eefbb9f5f1abc5a78de302",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/asset_price_delegate.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 385616,
+      "sha256": "596535491c792f261639a4f8bf7894bdcbdf3c3a7c53449b7af389d61bfe0aae",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/order_book_asset_price_delegate.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 609632,
+      "sha256": "15474665d447ed9c7bd65c4ba079beee0a05cf413cef023128fece42d98f059d",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/order_tracker.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 1171384,
+      "sha256": "0dfe73fab16d5ca3985068c2c7464668a40b7be0720f4175bc205287aade9ce8",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/strategy_base.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 2838264,
+      "sha256": "311ebceab8a46eda39c453722e04aef05fbe81e55f62a920db4fea31ef77ff9e",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/strategy_py_base.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 793872,
+      "sha256": "51f9ec690d1f1cbbec93a9bfbdc0e57e8eaf2dbea5c8f4c61e7a6c1700b854b5",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/__utils__/ring_buffer.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 1375840,
+      "sha256": "9b6f558a0499eb39c02d2854ffc3d977d5a5f53245829e191105b05d2f6eeb00",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/__utils__/trailing_indicators/trading_intensity.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 1086528,
+      "sha256": "2bf71b5122d2725bfae9ea262012534855ff30192ffd3176a92644961c0f3c29",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/amm_arb/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348600,
+      "sha256": "ca2dce0692a5de3be2b20589cb803743fc918b959576abcf93dce374e407cb68",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/avellaneda_market_making/avellaneda_market_making.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 4150128,
+      "sha256": "f5629d098d40ddf91d47248ffc4c29e058a16004c9974b717a90a7fe701b856c",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/cross_exchange_market_making/order_id_market_pair_tracker.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 797144,
+      "sha256": "01a3e3cf6c59cf49dec1d59a8d48973bba8ef71b1e19423aafc406086666f061",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/cross_exchange_mining/cross_exchange_mining.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 2391280,
+      "sha256": "bc05e7956ea3ccaceb043a46c5fd3bc6e01b1c81ac20d272b1ddcd4d0e39e585",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/cross_exchange_mining/order_id_market_pair_tracker.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 713392,
+      "sha256": "8be3e5f47d8a9a076b74743e419b236d1597391c965ae8c795b89fc6765966e5",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/liquidity_mining/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 348920,
+      "sha256": "87307863d2b1083c9b2a6f3fcb41ebf70833001ef78ee6be875ac55364f3ebbc",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/perpetual_market_making/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 349144,
+      "sha256": "e148331f49fe45656261cdcade64dba14eb6ebce5a7ccb77a86e2c19b4e720c2",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/pure_market_making/inventory_skew_calculator.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 412280,
+      "sha256": "ad89a384404c801d460b686df0933cacc001e8f6f0be39b9dc56187075d36dec",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/pure_market_making/pure_market_making.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 4017608,
+      "sha256": "77feefa99e3d5169121482b2b15e6443b0322af7ee73253a7cee8fa496bea808",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/pure_market_making/pure_market_making_order_tracker.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 565624,
+      "sha256": "1fe9ed8690f96941d705c64ca5999d050de214835bf4263e07414ae882cdb0cc",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    },
+    {
+      "path": "hummingbot/strategy/spot_perpetual_arbitrage/dummy.cpython-312-x86_64-linux-gnu.so",
+      "bytes": 349176,
+      "sha256": "288c3c7cd151b4938c685e62969573a46c13d42d0900572c3b7e505f1ea03f12",
+      "elf_class": 64,
+      "elf_machine": "x86_64"
+    }
+  ],
+  "archive_entries": 1007,
+  "image_digest": null,
+  "api_image_built": false,
+  "dependencies_fully_locked": false,
+  "installed_bazzite_verified": false,
+  "approved_for_live": false,
+  "core_apache_license_sha256": "f0dd03c14db3dfbce03c166645f88fda96599ad1a5d217fddb49134de8c72a29",
+  "preferred_final_artifact": true,
+  "compiler_tool_sha256": "f8210780923e9944d4029f3ad4c702e2db39171e6c7738ac60d0fb439a810b01",
+  "compiled_module_check_sha256": "cca3d6987fde2d0bcb814fe4946844fc9aeff86fa8dea7f659f4673b32ebc5ec",
+  "reproducible_binary_build_proven": false
+}

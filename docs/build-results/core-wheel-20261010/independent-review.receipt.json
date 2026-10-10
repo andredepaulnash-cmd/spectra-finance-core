@@ -1,0 +1,56 @@
+{
+  "schema": "spectra-isolated-core-build-independent-review-v1",
+  "status": "PASS",
+  "review_scope": "EXACT_PR33_INPUTS_PHYSICAL_SOURCE_REFUSALS_FINAL_WHEEL_BYTES_AND_ONE_INERT_INSTALLED_DATA_MODULE",
+  "source_sha256": {
+    "scripts/spectra_isolated_build_preflight.py": "33307cc295f0837112a86fa44eed3683d0729fd9d543d5d082b4419ae504f545",
+    "scripts/spectra_compile_isolated_core_wheel.py": "f8210780923e9944d4029f3ad4c702e2db39171e6c7738ac60d0fb439a810b01",
+    "scripts/spectra_check_compiled_data_module.py": "cca3d6987fde2d0bcb814fe4946844fc9aeff86fa8dea7f659f4673b32ebc5ec",
+    "tests/test_isolated_build_preflight.py": "38fa36bdbc07cbf3b908f521ec9c6b649d4e3393c075bb8902971c61637d2ce8",
+    "tests/test_isolated_compile_wheel.py": "a5a4bdfcb842f43460d0a7e83260c4239e0fc5b4b7570d17aa8cc07f8fe8fe95",
+    "docs/build-results/core-wheel-20261010/README.md": "2d0ec95416c05d4ad1b633eacee5b92e41d17b2889db4a23a5d11be20bf65bb6"
+  },
+  "reviewed_PR33_commit": "fad5f320b2f87cc7c089bea2750dd8344aa1b661",
+  "reviewed_PR33_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+  "core_commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "core_tree": "06c31cf98f8573c2f2a1c819bcfbcebe56d8ee2a",
+  "independent_validation": {
+    "sixteen_PR33_inputs_individually_modified_and_rejected": 16,
+    "preflight_authority_flags_remain_false": true,
+    "all_61_ELF_extensions_match_pinned_pyx_catalog": true,
+    "ELF_header_class": 64,
+    "ELF_header_machine": "x86_64",
+    "five_exact_overlay_wheel_member_hashes_match": true,
+    "final_installed_one_data_module_ABI_check": "PASS",
+    "five_installed_overlay_hashes_match": true,
+    "data_class_round_trip": "PASS",
+    "network_and_process_audit_guard_enabled": true,
+    "optimized_ABI_invocation_refused": true,
+    "tracked_physical_hashes_do_not_rely_on_index_flags": true,
+    "ignored_and_extra_source_inputs_refused_before_build": true
+  },
+  "wheel": {
+    "filename": "hummingbot-20260922-cp312-cp312-linux_x86_64.whl",
+    "sha256": "b92048954145b055ac7bbf85cfdfa4e042c4153eb66aabc29740f4ec34a76dbc",
+    "bytes": 20910055,
+    "extension_count": 61,
+    "python_abi": "cp312",
+    "compiled_data_module_sha256": "7c44be389c705332d558877dc7eaaaa3698e1f5425e44980a0a3e052d270ba96"
+  },
+  "limitations": [
+    "Only one inert installed data module ABI was exercised; the connector, executor, API and full backend were not imported or started.",
+    "Full runtime dependency environment is incomplete; exact image recipe/Conda/private API compilation remains untested.",
+    "No container image or actual Bazzite installation was built or attested.",
+    "The Python audit hook is a bounded test guard, not an operating-system network sandbox.",
+    "Wheel binary reproducibility and Bazzite/manylinux portability are not established."
+  ],
+  "connector_imported": false,
+  "executor_imported": false,
+  "API_started": false,
+  "full_installed_backend_guard_run": false,
+  "API_image_built": false,
+  "Bazzite_installation_verified": false,
+  "new_item3_market_data_acquisition": false,
+  "production_source_modified_by_review": false,
+  "approved_for_live": false
+}

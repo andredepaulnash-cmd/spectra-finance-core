@@ -1,0 +1,36 @@
+name: Isolated Core Build Evidence
+on:
+  pull_request:
+    branches: [fix/protected-limit-attempts-20261010]
+    paths:
+      - 'scripts/spectra_isolated_build_preflight.py'
+      - 'scripts/spectra_compile_isolated_core_wheel.py'
+      - 'scripts/spectra_check_compiled_data_module.py'
+      - 'tests/test_isolated_build_preflight.py'
+      - 'tests/test_isolated_compile_wheel.py'
+      - 'docs/build-results/core-wheel-20261010/**'
+      - '.github/workflows/isolated-core-build-preflight.yml'
+permissions:
+  contents: read
+jobs:
+  preflight:
+    name: Read-only build input checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Record checked source tree
+        run: |
+          git rev-parse HEAD
+          git rev-parse 'HEAD^{tree}'
+      - name: Verify immutable PR33 recipe inputs
+        run: python -I -S -B scripts/spectra_isolated_build_preflight.py --source-root .
+      - name: Exercise refusals and authority boundary
+        run: python -B -m unittest discover -s tests -p 'test_isolated_*.py' -v
+      - name: Check isolated compilation command surface
+        run: |
+          python -I -S -B scripts/spectra_compile_isolated_core_wheel.py --help
+          python -I -S -B scripts/spectra_check_compiled_data_module.py --help
