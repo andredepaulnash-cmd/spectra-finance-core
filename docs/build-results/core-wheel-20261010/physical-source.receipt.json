@@ -1,0 +1,10 @@
+{
+  "scope": "physical_pinned_core_source_preflight",
+  "core_commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "core_tree": "06c31cf98f8573c2f2a1c819bcfbcebe56d8ee2a",
+  "pinned_source_files_verified": 1892,
+  "overlay_files_verified": 5,
+  "ignored_or_extra_inputs_admitted": false,
+  "compiled_by_this_invocation": false,
+  "approved_for_live": false
+}

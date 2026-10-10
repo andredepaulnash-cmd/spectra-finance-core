@@ -1,0 +1,119 @@
+{
+  "source_commit": "fad5f320b2f87cc7c089bea2750dd8344aa1b661",
+  "source_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+  "files": [
+    {
+      "path": "deploy/hummingbot_core/Dockerfile",
+      "git_blob_sha": "a8ecec08b5fb2b579a64b93b50aff3d329bb6048",
+      "sha256": "fc21f6554de090f2360e6a167e4c8f4a936568e19bb10d0df3bc92502284f390",
+      "bytes": 5395,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/README.md",
+      "git_blob_sha": "a9d8575f0ba342ef50d8b411f438da144d03bf4c",
+      "sha256": "3ff98a25f112b533a9a0b0dbab0b31fe71aad34010bdfff8843bc55cd3f0212b",
+      "bytes": 9115,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/apply_overlay.py",
+      "git_blob_sha": "f18e7fb62950afd23ff8dbdca10b6869b9fc1030",
+      "sha256": "abf8790cb143256049ba3d9ecb3801515015fd71b58099536460310f7b3a4965",
+      "bytes": 22659,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/build.contract.json",
+      "git_blob_sha": "1a25bac071816ceac640b659903cd775fa50b558",
+      "sha256": "c88dab7a004cee717dbd8632e266b94b01c31364341263a769a65ba547b2c2d9",
+      "bytes": 1785,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/licenses/NOTICE",
+      "git_blob_sha": "c7cf490c00dfe57497eed702fff5a11bbc50043d",
+      "sha256": "9f8dc51cb56aea0f63ef4a673d8a782b55a85468046979a2f8e56a295db83558",
+      "bytes": 1531,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/licenses/hummingbot-api-LICENSE",
+      "git_blob_sha": "e810392727633e61bfde4629c3138562c8475616",
+      "sha256": "a809254b8a99d3b1ea974cc6bce5eaf216a6bc575778a6ef35428a09e1ec0ebf",
+      "bytes": 1078,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/licenses/hummingbot-core-LICENSE",
+      "git_blob_sha": "e998fcfee5d9d1ba105679b6a755d10fa68cdc97",
+      "sha256": "f0dd03c14db3dfbce03c166645f88fda96599ad1a5d217fddb49134de8c72a29",
+      "bytes": 11352,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/overlay.manifest.json",
+      "git_blob_sha": "529116319efdb32062de8f252f5b833005864071",
+      "sha256": "c46ab17432c51297219eef692b93ab78f9c5450f22ad11f1677c448bb795ef77",
+      "bytes": 1721,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/patches/client_order_tracker.py",
+      "git_blob_sha": "127307448c8ea98c9e69448de030a7c27ed929eb",
+      "sha256": "ea83dce5ef7ccf33f9901a2eacbf8096376ced0e737629b50c0be42f8be3ae8a",
+      "bytes": 32106,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/patches/kraken_exchange.py",
+      "git_blob_sha": "9dd3fa06036ac8da6c043e49143f702401e4ed4e",
+      "sha256": "164df576f47f15a2412f1fc03ca4de7e5667937785de7f3ca3a7e26dd59b87e9",
+      "bytes": 49446,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/patches/order_executor.py",
+      "git_blob_sha": "7e890be26271cb3249c1baff6a88928b2612d908",
+      "sha256": "d1ec8cbf68a54a2917f98e2263bcae60120f5f7d2c0c7d8613aeba7f872ecab0",
+      "bytes": 63371,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/patches/rest_connection.py",
+      "git_blob_sha": "91dc3bc78afe04c685e61979fae3665aa5011283",
+      "sha256": "5fbd84aaed827615784e7275a9690d0aaabe030d4adc755111801e9a1225325a",
+      "bytes": 1323,
+      "git_mode": "100644"
+    },
+    {
+      "path": "deploy/hummingbot_core/patches/spectra_attempt_guard.py",
+      "git_blob_sha": "d0bfe0925f8e2b9fd4fa554c53cbcc6ef6bfbdc5",
+      "sha256": "b2af358dde7403178cac0aebbd26c0a30170f90beba07007e3ebc014404ee69f",
+      "bytes": 26608,
+      "git_mode": "100644"
+    },
+    {
+      "path": "scripts/spectra_runtime_attest.py",
+      "git_blob_sha": "74ce01c3a9da22420fa343eb5a338712f81d19d4",
+      "sha256": "ec9b9e99907a26f6b4a2d4ccede905fe2b618cb46d7d83b25a78bc2fe397c0a8",
+      "bytes": 25503,
+      "git_mode": "100644"
+    },
+    {
+      "path": "spectra-runtime.contract.json",
+      "git_blob_sha": "8f812fc1a00707757ed7f2b9333ccd65d30d7539",
+      "sha256": "48861ede8a0bff0a87f5cee11c7338eec54116868afbc0dcc72e59ca04a9955b",
+      "bytes": 3307,
+      "git_mode": "100644"
+    },
+    {
+      "path": "spectra-stack.lock.json",
+      "git_blob_sha": "c88bddd1dbff70e1e826b2755c617320a123a1ea",
+      "sha256": "1495dda29faaa963c19b2dd97ad7189e0d37c5828621682fdfec17c0e10e8199",
+      "bytes": 1267,
+      "git_mode": "100644"
+    }
+  ],
+  "all_checked_files_match_exact_commit": true
+}

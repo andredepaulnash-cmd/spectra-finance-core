@@ -1,0 +1,36 @@
+{
+  "files": [
+    {
+      "path": "scripts/spectra_isolated_build_preflight.py",
+      "sha256": "33307cc295f0837112a86fa44eed3683d0729fd9d543d5d082b4419ae504f545",
+      "bytes": 5275
+    },
+    {
+      "path": "scripts/spectra_compile_isolated_core_wheel.py",
+      "sha256": "f8210780923e9944d4029f3ad4c702e2db39171e6c7738ac60d0fb439a810b01",
+      "bytes": 6595
+    },
+    {
+      "path": "scripts/spectra_check_compiled_data_module.py",
+      "sha256": "cca3d6987fde2d0bcb814fe4946844fc9aeff86fa8dea7f659f4673b32ebc5ec",
+      "bytes": 4999
+    },
+    {
+      "path": "tests/test_isolated_build_preflight.py",
+      "sha256": "38fa36bdbc07cbf3b908f521ec9c6b649d4e3393c075bb8902971c61637d2ce8",
+      "bytes": 3375
+    },
+    {
+      "path": "tests/test_isolated_compile_wheel.py",
+      "sha256": "a5a4bdfcb842f43460d0a7e83260c4239e0fc5b4b7570d17aa8cc07f8fe8fe95",
+      "bytes": 5785
+    },
+    {
+      "path": ".github/workflows/isolated-core-build-preflight.yml",
+      "sha256": "8bf8562f6d988cbf338466505cc074ec33bede74933037a9badef97c017d32c3",
+      "bytes": 1393
+    }
+  ],
+  "unit_tests_passed": 18,
+  "approved_for_live": false
+}

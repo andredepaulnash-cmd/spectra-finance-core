@@ -1,0 +1,92 @@
+[
+  {
+    "name": "container_image_build_prerequisite",
+    "argv": [
+      "docker",
+      "version",
+      "--format",
+      "{{json .Client.Version}}"
+    ],
+    "started_at": "2026-10-10T13:20:57.320133+00:00",
+    "exit_code": null,
+    "spawn_errno": 2,
+    "blocker": "required executable absent; build did not start"
+  },
+  {
+    "name": "conda_dependency_resolver",
+    "argv": [
+      "conda",
+      "--version"
+    ],
+    "started_at": "2026-10-10T13:20:57.320967+00:00",
+    "exit_code": null,
+    "spawn_errno": 2,
+    "blocker": "required executable absent; build did not start"
+  },
+  {
+    "name": "public_source_checkout_transport",
+    "argv": [
+      "git",
+      "-c",
+      "credential.helper=",
+      "-c",
+      "core.askPass=/bin/false",
+      "ls-remote",
+      "--exit-code",
+      "https://github.com/hummingbot/hummingbot.git",
+      "HEAD"
+    ],
+    "started_at": "2026-10-10T13:20:57.321335+00:00",
+    "exit_code": 128,
+    "stdout_bytes": 0,
+    "stderr_bytes": 108,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_sha256": "8e7094d84eeadb27e58194e5c37c84893e402c3f7c829632a4ca82da9f8dcbe3",
+    "blocker": "tool invocation failed; diagnostics withheld from public receipt"
+  },
+  {
+    "name": "pypi_index_reachability",
+    "url": "https://pypi.org/simple/cython/",
+    "method": "HEAD",
+    "timeout_seconds": 15,
+    "authentication_sent": false,
+    "http_status": 200
+  },
+  {
+    "name": "conda_repository_reachability",
+    "url": "https://repo.anaconda.com/pkgs/main/linux-64/repodata.json",
+    "method": "HEAD",
+    "timeout_seconds": 15,
+    "authentication_sent": false,
+    "http_status": 200
+  },
+  {
+    "name": "public_container_registry_reachability",
+    "url": "https://registry-1.docker.io/v2/",
+    "method": "HEAD",
+    "timeout_seconds": 15,
+    "authentication_sent": false,
+    "http_status": 401
+  },
+  {
+    "name": "public_source_checkout_with_normal_network_proxy",
+    "argv": [
+      "git",
+      "-c",
+      "credential.helper=",
+      "-c",
+      "core.askPass=/bin/false",
+      "clone",
+      "--filter=blob:none",
+      "--no-checkout",
+      "https://github.com/hummingbot/hummingbot.git",
+      "isolated_build_20261010/core-source"
+    ],
+    "started_at": "2026-10-10T13:21:46.253650+00:00",
+    "account_credentials_allowed": false,
+    "exit_code": 0,
+    "stdout_bytes": 0,
+    "stderr_bytes": 54,
+    "stderr_sha256": "cb48a5629674a793b941936fe1943b0f8ea7382abf4950cb4a31840ec2a9b043"
+  }
+]

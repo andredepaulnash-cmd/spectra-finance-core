@@ -1,0 +1,84 @@
+{
+  "core_commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "api_commit": "84426ffbf9ba09522b4444664f9770236205ae29",
+  "checked_files": [
+    {
+      "repository_kind": "api",
+      "path": "Dockerfile",
+      "git_blob_sha": "27e4b497848c6a5ebc5e93dcdcbbb98b0d984c04",
+      "sha256": "050212d290b07c93e9c977fff3745f587d45adaba310c77b6ede501e00642298",
+      "bytes": 1516
+    },
+    {
+      "repository_kind": "api",
+      "path": "environment.yml",
+      "git_blob_sha": "4fb7d7280a897435fee5f9fe78b153b4798c362b",
+      "sha256": "82131a516ad12161e74322082ddee9d9aecd3ab6db8c098ca2d9a5addfb66321",
+      "bytes": 1294
+    },
+    {
+      "repository_kind": "api",
+      "path": "docker-compose.yml",
+      "git_blob_sha": "b760ed27c7d54ae41996d52837ff4251f504305c",
+      "sha256": "48f5f004cf39baeab78bb984c97f53e5fc8dd6e59eb1cb0845db94f4b81f601e",
+      "bytes": 6710
+    },
+    {
+      "repository_kind": "api",
+      "path": "utils/core_compatibility.py",
+      "git_blob_sha": "1f8e35028e14a07f3e5b818401213bcbaa6cfe7b",
+      "sha256": "4dc2df773e609aa7651b6dc19e07800ad80a6150cbe272a4495944f01ad4f94f",
+      "bytes": 2712
+    },
+    {
+      "repository_kind": "api",
+      "path": "main.py",
+      "git_blob_sha": "c87d226ae3a3930f5232ca1a53f7bada8b70f1c1",
+      "sha256": "02d3c31f770503a3dc0f941405ea2efb45f7689c2e8bd9683388366437c718e4",
+      "bytes": 22434
+    },
+    {
+      "repository_kind": "api",
+      "path": "config.py",
+      "git_blob_sha": "f667b44b361feb1333ef572c9286b8d4b8a29872",
+      "sha256": "52776d9aabe144fba8dd77236cd7322dba9f84b3e35daa02f763dd99ad186d99",
+      "bytes": 14092
+    },
+    {
+      "repository_kind": "core",
+      "path": "setup.py",
+      "git_blob_sha": "0b7b751439e618889f0876d9ace10b9355ddb67f",
+      "sha256": "ba4c5760e8ece5993a2e9bfc5d4381318b142674208bc65fc5a0649d209f6c6a",
+      "bytes": 5099
+    },
+    {
+      "repository_kind": "core",
+      "path": "Dockerfile",
+      "git_blob_sha": "bba7a4e754431ee9ccac8fd982e1f1a48562aa5e",
+      "sha256": "dd53b9522b690b98c83e5f9836774a53020dda9d2bb002517eea0f8c87bb0a2e",
+      "bytes": 2887
+    },
+    {
+      "repository_kind": "core",
+      "path": "setup/environment.yml",
+      "git_blob_sha": "7cfcd0b7b58ffcca85520f0e96230518690960ce",
+      "sha256": "e7c7f7cc3ad29a5dc95a52ed4f230d9bd2df47f8d8d675cf224b134bfe00928c",
+      "bytes": 1805
+    },
+    {
+      "repository_kind": "core",
+      "path": "setup/pip_packages.txt",
+      "git_blob_sha": "848aceadfc86b66110243b022211aac7118731bc",
+      "sha256": "6bfa6b389b6f2c00dec4443d7bfe50a177cd7ddf8b417221c7d5e3964ec55b17",
+      "bytes": 15
+    },
+    {
+      "repository_kind": "core",
+      "path": "pyproject.toml",
+      "git_blob_sha": "af96a8e58ecaee17ef1c882329a6991a67db994c",
+      "sha256": "e85650c33216ef0ebc8b04108b5602ef098ee4eef08d75cf74851328e78d4109",
+      "bytes": 894
+    }
+  ],
+  "full_private_api_checkout_performed": false
+}
