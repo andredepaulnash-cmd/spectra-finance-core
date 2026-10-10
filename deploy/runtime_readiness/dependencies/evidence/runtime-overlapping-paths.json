@@ -1,0 +1,65 @@
+[
+  {
+    "path": "docs/Makefile",
+    "distributions": [
+      "eth-rlp",
+      "eth_abi"
+    ]
+  },
+  {
+    "path": "docs/code_of_conduct.rst",
+    "distributions": [
+      "eth-rlp",
+      "eth_abi"
+    ]
+  },
+  {
+    "path": "docs/conf.py",
+    "distributions": [
+      "eth-rlp",
+      "eth_abi"
+    ]
+  },
+  {
+    "path": "docs/contributing.rst",
+    "distributions": [
+      "eth-rlp",
+      "eth_abi"
+    ]
+  },
+  {
+    "path": "docs/index.rst",
+    "distributions": [
+      "eth-rlp",
+      "eth_abi"
+    ]
+  },
+  {
+    "path": "docs/release_notes.rst",
+    "distributions": [
+      "eth-rlp",
+      "eth_abi"
+    ]
+  },
+  {
+    "path": "msgpack/__init__.py",
+    "distributions": [
+      "msgpack",
+      "msgpack-python"
+    ]
+  },
+  {
+    "path": "msgpack/exceptions.py",
+    "distributions": [
+      "msgpack",
+      "msgpack-python"
+    ]
+  },
+  {
+    "path": "msgpack/fallback.py",
+    "distributions": [
+      "msgpack",
+      "msgpack-python"
+    ]
+  }
+]

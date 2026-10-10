@@ -1,0 +1,255 @@
+{
+  "account_connected": false,
+  "all_declared_core_wheel_requirements_included": true,
+  "api_image_digest": null,
+  "api_python_requirements_included": true,
+  "api_started": false,
+  "approved_for_live": false,
+  "cleanup_proposal": {
+    "new_compiled_artifact_identity_required": true,
+    "original_five_overlay_compiler_may_attest_modified_setup": false,
+    "receipt_sha256": "68ad8a29cd712f0686c27f0c5a120bccec14e34ab29ac6a0f874c0e9b1ba5585",
+    "sixth_packaging_overlay_needed": true,
+    "status": "PROPOSED_NOT_APPLIED"
+  },
+  "compiled_wheel_numpy_headers": "2.3.5",
+  "evidence_files_sha256": {
+    "runtime-bootstrap-install.log": "84fdf5d9b2cc36863a6eebb0d4bf66d4774e1bf469cb2401fdd7b3212ec5076c",
+    "runtime-bootstrap-resolution.json": "c69c2cefd68bddfcb1f5bb073f35d24cceec7ccbef6ad81b1b665f1bae116c46",
+    "runtime-core-api-install.log": "3a2b5d7401f916aa754be5bbe5788db0283b9662180271442e1c6272fbd136dd",
+    "runtime-core-api-resolution.json": "e9296c03ac10e2789ffc83b6d36ac669ff3bd7493c7e46f702c308785b739e89",
+    "runtime-core-wheel-install.json": "4212c6c5f31c15b488e9f95b3a096b2f21bffb01791678657f55f95e5616c2df",
+    "runtime-core-wheel-install.log": "51755d7d0fbeaf837e7abe245455fd0a31e18f791630ef972bc53ba5534523b7",
+    "runtime-data-module-abi.log": "e828891f41ff54bf8ed94f1e83fe20c45511f45fafc68bfeb8aff43bc08b6cdc",
+    "runtime-dependency-bootstrapped-install.log": "3a0df8d6fe43acf07aef0daa6f5b33e25de4caa67cbb6d9b654331300460937d",
+    "runtime-dependency-eip712-diagnostic.log": "b1292b0ab023245232052764310587a82f7b082612679129f430ab450b1c06e1",
+    "runtime-dependency-install.log": "961b172e80cd90526d6b13a06ac63cd017b8138dedc2c58dfec94d4ff0f59a6e",
+    "runtime-dependency-rejected-matched-build.log": "22ce65f2195aed710b31725657207cef9b93e20c6333688618be0553deb8445d",
+    "runtime-dependency-tests.log": "c6df31c11dcf534e3d5db5e6a91b990b47792771ca21724e1ee6f9ac4823f9b5",
+    "runtime-eth-typing-repair.json": "a86bbcd308c0ebbbe85d266ab082e25c72ccb8488da40f51bd419751c540b539",
+    "runtime-eth-typing-repair.log": "612d3d5cee429e66a37171aaca01f3f12e7de3d4e59d88d8a85a64370a9200d5",
+    "runtime-final-installed-guards.receipt.json": "a85571ac333c9d0695946ccfe60b59cafdf3f286b776f0755c71fcfc794ffe03",
+    "runtime-final-runtime-dependency-venv-installed-guard.log": "d5c929338d0d0b409c89ee809ba5ed1c7cfb9b38fc598174eb4a921685fa9ff8",
+    "runtime-final-runtime-offline-venv-installed-guard.log": "d5c929338d0d0b409c89ee809ba5ed1c7cfb9b38fc598174eb4a921685fa9ff8",
+    "runtime-installed-packages.json": "23543b47bc89b3b77ccea82b0fa5ff845d60ef211cd835d3b04d0d64b7452d85",
+    "runtime-msgpack-round-trip.receipt.json": "ff25f26c82209ae407114739e13fbf99a50169e00d1a70278bbda594e0032f5a",
+    "runtime-offline-checks.receipt.json": "41adb00bb6ea9e532fc84236afa89238f79dddc0d8718780b683172edbae645c",
+    "runtime-offline-data-module-abi.log": "e828891f41ff54bf8ed94f1e83fe20c45511f45fafc68bfeb8aff43bc08b6cdc",
+    "runtime-offline-install.json": "c02272f537bcdeeeb80bd3ae1451d3f02e18b15f687263c8ba015daadf2314fd",
+    "runtime-offline-install.log": "6354a828201ebdf3baeb08a41a61eb7dc0e1e986468b2ff2d7cd3298ab22f318",
+    "runtime-offline-msgpack.receipt.json": "2887243a8045ad6cfbe9c61250e64e2679c3f1f5cc9eb2076ac840320aa8b5e0",
+    "runtime-offline-pip-check.log": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+    "runtime-offline-pr33-installed-guard.log": "d5c929338d0d0b409c89ee809ba5ed1c7cfb9b38fc598174eb4a921685fa9ff8",
+    "runtime-overlapping-paths.json": "a77f21811d6040669736568e3fab0467a088faf4428c23b5b9d8d81258c66bcd",
+    "runtime-pip-check.log": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+    "runtime-pr33-installed-guard.log": "d5c929338d0d0b409c89ee809ba5ed1c7cfb9b38fc598174eb4a921685fa9ff8",
+    "runtime-sdk-diagnostic.log": "802f109f583703a757a5627d7cf8cf2b0e3782b7e34cc71cdd8b8be4ccd425df",
+    "runtime-seed-pip-origin.json": "caae5c3ebc5dd6450ec9c152a038c48243ebc76cfede8ce5eaf872ff0d9775de",
+    "runtime-wheelhouse.log": "69a093c57ec519c74fb74b56d2b31583c50aa13821b205225894e82f2ced7c96"
+  },
+  "excluded_extra_is_not_in_wheel_requires_dist": true,
+  "excluded_legacy_extra": [
+    "eip712-structs"
+  ],
+  "full_api_environment_compatibility_verified": false,
+  "full_api_image_built": false,
+  "immutable_base_image_reference": null,
+  "installed_bazzite_verified": false,
+  "installed_numpy_runtime": "2.2.6",
+  "installed_pandas_runtime": "2.3.2",
+  "instantiated_connector_or_executor": false,
+  "journal_checked": false,
+  "namespace_ownership": {
+    "actual_winner_in_both_installations": "msgpack1.2.3",
+    "conflicting_distributions": [
+      "msgpack-python0.5.6",
+      "msgpack1.2.3"
+    ],
+    "constructed_serializer_round_trip_passed": true,
+    "documentation_overlap_files": 6,
+    "receipt_sha256": "2887243a8045ad6cfbe9c61250e64e2679c3f1f5cc9eb2076ac840320aa8b5e0",
+    "release_blocker_remains": true,
+    "runtime_collision_files": 3
+  },
+  "offline_reconstruction": {
+    "already_installed_seed_pip_25_0_1_retained": true,
+    "checks": [
+      {
+        "check": "offline-pip-check",
+        "elapsed_seconds": 1.174151464991155,
+        "exit_code": 0,
+        "log_path": "runtime-offline-pip-check.log"
+      },
+      {
+        "check": "offline-data-module-abi",
+        "elapsed_seconds": 1.52775008000026,
+        "exit_code": 0,
+        "log_path": "runtime-offline-data-module-abi.log"
+      },
+      {
+        "check": "offline-pr33-installed-guard",
+        "elapsed_seconds": 8.135806043996126,
+        "exit_code": 0,
+        "log_path": "runtime-offline-pr33-installed-guard.log"
+      }
+    ],
+    "final_guard": {
+      "elapsed_seconds": 6.026568092987873,
+      "exit_code": 0,
+      "log": "runtime-final-runtime-offline-venv-installed-guard.log",
+      "venv_role": "offline-reconstruction"
+    },
+    "hashed_wheel_lock_used": true,
+    "index_used": false,
+    "install_exit_code": 0,
+    "install_log": "runtime-offline-install.log",
+    "system_packages_inherited": false
+  },
+  "python_artifact_lock": {
+    "all_artifact_origins_bound": true,
+    "all_artifacts_physically_hashed": true,
+    "artifact_count": 197,
+    "artifact_origins_sha256": "a635b76813818a1ecedf5c45faccd82001d0cf5c75c5ac349d0db5bb46c6378e",
+    "binary_build_reproducibility_proven": false,
+    "bytes": 267835299,
+    "complete_inherited_image_recipe_locked": false,
+    "full_native_conda_environment_locked": false,
+    "manifest_sha256": "6474ea9b28019757ba8b2879402c9b6514f1f8cfbd6bcbb37234911b8e53109f",
+    "partial_lock_sha256": "009e58fbf813c77ff1c3496e684006de14b75bebbf0c87107cede9114c1e582d"
+  },
+  "python_audit_hook_is_operating_system_sandbox": false,
+  "recipe_faithful_attempts": [
+    {
+      "constraint_file": "constraints.rejected-matched-build.txt",
+      "exit_code": 1,
+      "log": "runtime-dependency-rejected-matched-build.log",
+      "name": "matched_compile_numpy",
+      "reason": "pandas-ta pins numba0.61.2 requiring numpy<2.3; trial constrained numpy2.3.5",
+      "status": "FAIL"
+    },
+    {
+      "exit_code": 1,
+      "log": "runtime-dependency-install.log",
+      "name": "runtime_numpy2.2.6_isolated_build",
+      "reason": "eip712-structs undeclared build metadata import eth_utils",
+      "status": "FAIL"
+    },
+    {
+      "exit_code": 1,
+      "log": "runtime-dependency-bootstrapped-install.log",
+      "name": "metadata_bootstrapped_full_recipe",
+      "reason": "resolver backtracked to old eip712-structs sdist missing requirements.txt",
+      "status": "FAIL"
+    },
+    {
+      "constraint_file": "constraints.eip712-diagnostic.txt",
+      "exit_code": 1,
+      "log": "runtime-dependency-eip712-diagnostic.log",
+      "name": "latest_legacy_extra_diagnostic",
+      "reason": "pip rejected SDK/Web3/websockets combination in this resolver attempt",
+      "status": "FAIL"
+    }
+  ],
+  "resolved_venv": {
+    "data_module_abi_exit_code": 0,
+    "data_module_abi_log": "runtime-data-module-abi.log",
+    "exact_pr33_installed_source_guard_exit_code": 0,
+    "final_guard": {
+      "elapsed_seconds": 5.64446262200363,
+      "exit_code": 0,
+      "log": "runtime-final-runtime-dependency-venv-installed-guard.log",
+      "venv_role": "resolved"
+    },
+    "pip_check_exit_code": 0,
+    "pip_check_log": "runtime-pip-check.log",
+    "system_packages_inherited": false
+  },
+  "schema_version": 1,
+  "scope": "pre_machine_dependency_resolution_and_installed_core_trial",
+  "separate_trial_attempts": [
+    {
+      "exit_code": 1,
+      "log": "runtime-core-api-install.log",
+      "name": "without_legacy_extra_broad_sdk",
+      "reason": "pip rejected SDK/Web3/websockets combination in this resolver attempt",
+      "status": "FAIL"
+    },
+    {
+      "constraint_file": "constraints.sdk-diagnostic.txt",
+      "exit_code": 0,
+      "log": "runtime-sdk-diagnostic.log",
+      "name": "without_legacy_extra_explicit_sdk_pins",
+      "status": "PASS"
+    },
+    {
+      "exit_code": 1,
+      "fix_log": "runtime-eth-typing-repair.log",
+      "name": "initial_pip_check_after_bootstrap",
+      "reason": "bootstrap eth-typing6.0.0 conflicts with eth-pydantic-types<6 requirement",
+      "status": "FAIL",
+      "subsequent_explicit_fix": "eth-typing5.2.1"
+    }
+  ],
+  "separate_trial_requirement_rows": 78,
+  "source_and_product_files_sha256": {
+    "README.md": "053556f3de10dc5f3c572b7127d49c60ff4793cb276dd44faf0594efc9c35104",
+    "api-source-retrieval.receipt.json": "661bbeebcd3a67cd5eb4cc24337244b17f2313922a2b85ecac1d8617b753d163",
+    "artifact-origins.partial.json": "a635b76813818a1ecedf5c45faccd82001d0cf5c75c5ac349d0db5bb46c6378e",
+    "check_installed_guard.py": "95c817570aa3165f3c24ea4755699b532572c69d9738e925c517e34174ea21e7",
+    "cleanup-proposal.md": "711dd925e57ce9aba3f563dbc084fec6b44d0b57f39447e00bc8eeacd6d70002",
+    "cleanup-proposal.receipt.json": "68ad8a29cd712f0686c27f0c5a120bccec14e34ab29ac6a0f874c0e9b1ba5585",
+    "cleanup-source-references.receipt.json": "fc8372e48cabd00bc0f2b17a2f750bd00fddb88e6975f7669f4ace491f94c207",
+    "constraints.compatibility.txt": "3f45bb493ffc3ad591abea4f55fb5c645c570c48d4c871efdadfd7afe80d2795",
+    "constraints.eip712-diagnostic.txt": "684b4263dde436ada5cb2a54b7b9a409d8cb3900b1613d3abc7e3e0a2b008260",
+    "constraints.rejected-matched-build.txt": "72af16644104ca5f2b9cf669fdb519a9f14f1a05dd6d34449700a43d47efbadd",
+    "constraints.sdk-diagnostic.txt": "a2db6b2b769d8555799d0293573e97d4040f7f0b9d871910d08a82a45f27b5b0",
+    "core-packaging-cleanup.proposed.patch": "c8b6a400df8846956f94d564b2f0460b38adbe69b3eeee4db3d5c732af169644",
+    "environment.no-pypi-core.yml": "a3df686e89839681710d46faab22603320ad6df34882461568f6c03c24cd152a",
+    "image-recipe-cleanup.proposed.patch": "4bf47a9bb7c1cce52cda5638001dfb84e8ddbf83c3e4cd83d982e8b99ff8406f",
+    "locally-built-wheels.receipt.json": "ca2c95864abd1d3da667ef479e5d887250e0aa92087c6914566269fdb8be231b",
+    "preparation.receipt.json": "4b24d9499ec4a7b44e2c97922df03cc6962235771a56082f119fd84c7eef61b7",
+    "requirements.core-api-without-legacy-extra.txt": "a4a620862b3389d26e0ba59480b875143f1bc60b7f988ef59a634e8048aa1762",
+    "requirements.installed-exact.txt": "f9e66d585cca6ddf3574fa96965d395ffbf77cc33c7bc802be74632f02ffb65b",
+    "requirements.legacy-extra.txt": "6bfa6b389b6f2c00dec4443d7bfe50a177cd7ddf8b417221c7d5e3964ec55b17",
+    "requirements.python-wheelhouse.partial.lock": "009e58fbf813c77ff1c3496e684006de14b75bebbf0c87107cede9114c1e582d",
+    "requirements.source-derived.txt": "ad9c9190a494d906a7f08aedef95260e33c6574f227b7f86ba435b7b23181796",
+    "wheelhouse.partial.manifest.json": "6474ea9b28019757ba8b2879402c9b6514f1f8cfbd6bcbb37234911b8e53109f"
+  },
+  "source_binding": {
+    "api_commit": "84426ffbf9ba09522b4444664f9770236205ae29",
+    "core_commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+    "core_wheel": {
+      "bytes": 20910055,
+      "package": "hummingbot",
+      "requires_dist_count": 47,
+      "sha256": "b92048954145b055ac7bbf85cfdfa4e042c4153eb66aabc29740f4ec34a76dbc",
+      "version": "20260922"
+    },
+    "sources_sha256": {
+      "api-environment.yml": "82131a516ad12161e74322082ddee9d9aecd3ab6db8c098ca2d9a5addfb66321",
+      "core-environment.yml": "e7c7f7cc3ad29a5dc95a52ed4f230d9bd2df47f8d8d675cf224b134bfe00928c",
+      "core-extra-requirements.txt": "6bfa6b389b6f2c00dec4443d7bfe50a177cd7ddf8b417221c7d5e3964ec55b17",
+      "core-setup.py": "ba4c5760e8ece5993a2e9bfc5d4381318b142674208bc65fc5a0649d209f6c6a"
+    }
+  },
+  "source_derived_requirement_rows": 79,
+  "source_retrieval": {
+    "api_application_source_blobs_verified": 224,
+    "api_application_source_bytes": 2696547,
+    "complete_docker_recipe_application_sources": true,
+    "complete_repository_checkout": false,
+    "excluded_credential_template_paths": 6,
+    "receipt_sha256": "661bbeebcd3a67cd5eb4cc24337244b17f2313922a2b85ecac1d8617b753d163"
+  },
+  "target": {
+    "arch": "x86_64",
+    "implementation": "CPython",
+    "os": "linux",
+    "python": "3.12"
+  },
+  "unit_tests": {
+    "elapsed_seconds": 0.1793760820000898,
+    "exit_code": 0,
+    "tests": 26
+  }
+}

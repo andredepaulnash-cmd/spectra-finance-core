@@ -1,0 +1,15 @@
+{
+  "additional_packaging_overlay_count": 1,
+  "core_source_commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "current_five_overlay_compiler_may_attest_modified_setup": false,
+  "financial_parameters_unchanged": true,
+  "live_approval_granted": false,
+  "must_use_new_six_overlay_build_provenance": true,
+  "original_recipe_sha256": "fc21f6554de090f2360e6a167e4c8f4a936568e19bb10d0df3bc92502284f390",
+  "preferred_core_wheel_unchanged": true,
+  "proposed_recipe_sha256": "e434026c36c87061bb09949798a7229045c81d076b722a07ed7e285c0f1f23f5",
+  "proposed_setup_sha256": "30ace2a533a0243288765aeefd92fbc12a910785ab55a5a9d51819bfec9b647d",
+  "rebuild_required": true,
+  "setup_original_sha256": "ba4c5760e8ece5993a2e9bfc5d4381318b142674208bc65fc5a0649d209f6c6a",
+  "status": "PROPOSED_NOT_APPLIED"
+}

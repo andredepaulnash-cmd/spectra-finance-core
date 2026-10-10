@@ -1,0 +1,9 @@
+numpy==2.2.6
+pandas==2.3.2
+setuptools==80.8.0
+Cython==3.0.12
+wheel==0.48.0
+aiohttp<3.14
+injective-py==1.14.*
+xrpl-py==4.4.0
+eip712-structs==1.1.0

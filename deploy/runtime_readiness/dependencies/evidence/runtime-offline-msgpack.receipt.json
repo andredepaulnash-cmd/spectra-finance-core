@@ -1,0 +1,48 @@
+{
+  "scope": "offline_reconstruction_namespace_ownership_and_constructed_serializer_check",
+  "installed_distributions": {
+    "msgpack": "1.2.3",
+    "msgpack-python": "0.5.6"
+  },
+  "imported_module_version": "1.2.3",
+  "module_is_in_disposable_venv": true,
+  "constructed_round_trip_passed": true,
+  "namespace_ownership_collisions": [
+    {
+      "path": "msgpack/__init__.py",
+      "owners": {
+        "msgpack": "422314cf8f068c7e3be9a5c3a2f8039cf133f5a2764216c09749224420ee5733",
+        "msgpack-python": "296b7c76b8224e8630db1055646ceecfe780716b282e630ccb77395243f7969f"
+      },
+      "installed_source_sha256": "422314cf8f068c7e3be9a5c3a2f8039cf133f5a2764216c09749224420ee5733",
+      "installed_bytes_match_owners": [
+        "msgpack"
+      ]
+    },
+    {
+      "path": "msgpack/exceptions.py",
+      "owners": {
+        "msgpack": "7424d67a2f1da64accb100dc8d093be004e5f47b08047d326edf3338f36a3187",
+        "msgpack-python": "94f9008bfbb5d8d9456a30f3e0510b48711d7d4f21ad1df3793bca5fc690bb3e"
+      },
+      "installed_source_sha256": "7424d67a2f1da64accb100dc8d093be004e5f47b08047d326edf3338f36a3187",
+      "installed_bytes_match_owners": [
+        "msgpack"
+      ]
+    },
+    {
+      "path": "msgpack/fallback.py",
+      "owners": {
+        "msgpack": "47dd6573f352e62c3f45b7e915beda8e80eb00893af6cb6f281a4d492447f8a0",
+        "msgpack-python": "9f93db7891410eab01488686a22488f2206122166cd88cbea0aadc80090fbe02"
+      },
+      "installed_source_sha256": "47dd6573f352e62c3f45b7e915beda8e80eb00893af6cb6f281a4d492447f8a0",
+      "installed_bytes_match_owners": [
+        "msgpack"
+      ]
+    }
+  ],
+  "api_environment_release_blocked": true,
+  "full_api_compatibility_verified": false,
+  "no_cleanup_applied": true
+}

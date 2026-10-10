@@ -1,0 +1,27 @@
+{
+  "scope": "two_locally_built_dependency_wheels_for_partial_trial",
+  "wheels": [
+    {
+      "binary_reproducibility_proven": false,
+      "built_without_build_isolation": true,
+      "local_wheel_bytes": 10475,
+      "local_wheel_filename": "msgpack_python-0.5.6-cp312-cp312-linux_x86_64.whl",
+      "local_wheel_sha256": "313d6b52973b5d4ab6357bd3f0546a6f14d9a61834a894bd5c8d50b44f2269a8",
+      "package": "msgpack-python",
+      "source_sha256": "378cc8a6d3545b532dfd149da715abae4fda2a3adb6d74e525d0d5e51f46909b",
+      "source_url": "https://files.pythonhosted.org/packages/8a/20/6eca772d1a5830336f84aca1d8198e5a3f4715cd1c7fc36d3cc7f7185091/msgpack-python-0.5.6.tar.gz",
+      "version": "0.5.6"
+    },
+    {
+      "binary_reproducibility_proven": false,
+      "built_without_build_isolation": true,
+      "local_wheel_bytes": 18909,
+      "local_wheel_filename": "crcmod-1.7-py3-none-any.whl",
+      "local_wheel_sha256": "8682e779ffd416b4ce91a8d000f5c96096ad94fac1ade8261254d153bacc3a77",
+      "package": "crcmod",
+      "source_sha256": "dc7051a0db5f2bd48665a990d3ec1cc305a466a77358ca4492826f41f283601e",
+      "source_url": "https://files.pythonhosted.org/packages/6b/b0/e595ce2a2527e169c3bcd6c33d2473c1918e0b7f6826a043ca1245dd4e5b/crcmod-1.7.tar.gz",
+      "version": "1.7"
+    }
+  ]
+}

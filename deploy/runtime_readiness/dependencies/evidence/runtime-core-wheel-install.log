@@ -1,0 +1,6 @@
+Processing ./isolated_build_20261010/final-wheels/hummingbot-20260922-cp312-cp312-linux_x86_64.whl
+Installing collected packages: hummingbot
+Successfully installed hummingbot-20260922
+
+[notice] A new release of pip is available: 25.0.1 -> 26.2.1
+[notice] To update, run: python -m pip install --upgrade pip

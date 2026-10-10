@@ -1,0 +1,11 @@
+--- a/deploy/hummingbot_core/Dockerfile
++++ b/deploy/hummingbot_core/Dockerfile
+@@ -19,7 +19,7 @@
+ RUN conda env create -f /build/environment.no-pypi-core.yml && conda clean -afy
+ ENV PATH="/opt/conda/envs/hummingbot-api/bin:$PATH"
+ RUN python -m pip install "setuptools==80.8.0" wheel "cython>=3.0.12"
+-RUN python -m pip install -r /build/core-runtime-requirements.txt -r /build/core/setup/pip_packages.txt
++RUN python -m pip install -r /build/core-runtime-requirements.txt
+ RUN python -m pip wheel --no-deps --no-build-isolation /build/core --wheel-dir /build/wheels
+ RUN mkdir -p /build/evidence
+ RUN python -c 'import pathlib,subprocess,sys; wheels=list(pathlib.Path("/build/wheels").glob("hummingbot-*.whl")); assert len(wheels)==1,"Exactly one locally built core wheel required"; verified=subprocess.run([sys.executable,"/build/repair/apply_overlay.py","--manifest","/build/repair/overlay.manifest.json","--expected-manifest-sha256-file","/build/manifest.sha256","--verify-wheel",str(wheels[0])],check=True,capture_output=True,text=True); pathlib.Path("/build/evidence/wheel-identity.json").write_text(verified.stdout); subprocess.run([sys.executable,"-m","pip","install","--no-deps","--force-reinstall",str(wheels[0])],check=True)'

@@ -1,0 +1,20 @@
+[
+  {
+    "check": "offline-pip-check",
+    "exit_code": 0,
+    "elapsed_seconds": 1.174151464991155,
+    "log_path": "runtime-offline-pip-check.log"
+  },
+  {
+    "check": "offline-data-module-abi",
+    "exit_code": 0,
+    "elapsed_seconds": 1.52775008000026,
+    "log_path": "runtime-offline-data-module-abi.log"
+  },
+  {
+    "check": "offline-pr33-installed-guard",
+    "exit_code": 0,
+    "elapsed_seconds": 8.135806043996126,
+    "log_path": "runtime-offline-pr33-installed-guard.log"
+  }
+]

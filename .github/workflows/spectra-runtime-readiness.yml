@@ -1,0 +1,60 @@
+name: Runtime Dependency and Repair Preparation
+on:
+  pull_request:
+    branches: [verify/compiled-core-wheel-20261010]
+    paths:
+      - 'scripts/spectra_prepare_runtime_dependencies.py'
+      - 'scripts/spectra_repair_runtime_attest.py'
+      - 'tests/test_runtime_dependency_preparation.py'
+      - 'tests/test_repair_runtime_attestation.py'
+      - 'deploy/runtime_readiness/**'
+      - 'docs/runtime-readiness-results/20261010/**'
+      - 'docs/spectra-machine-verification-runbook.md'
+      - '.github/workflows/spectra-runtime-readiness.yml'
+permissions:
+  contents: read
+jobs:
+  preparation:
+    name: Source and refusal tests only
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Record tested source identity
+        run: |
+          git rev-parse HEAD
+          git rev-parse 'HEAD^{tree}'
+      - name: Verify inherited immutable PR33 build inputs
+        run: python -I -S -B scripts/spectra_isolated_build_preflight.py --source-root .
+      - name: Install the isolated test runner
+        run: python -m pip install 'pytest==9.0.2'
+      - name: Test dependency preparation and read-only repair collector
+        run: |
+          python -B -m unittest discover -s tests -p 'test_runtime_dependency_preparation.py' -v
+          python -B -m pytest -q tests/test_repair_runtime_attestation.py -p no:cacheprovider
+      - name: Check the selected repaired source bytes without runtime authority
+        run: |
+          set +e
+          python -I -S -B scripts/spectra_repair_runtime_attest.py --contract deploy/runtime_readiness/repair-attestation.contract.json --spectra-path . > "$RUNNER_TEMP/repair-source.json"
+          result=$?
+          set -e
+          test "$result" -eq 2
+          python - "$RUNNER_TEMP/repair-source.json" <<'PY'
+          import json,sys
+          report=json.load(open(sys.argv[1]))
+          assert report['source']['status']=='MATCH'
+          assert report['source']['selected_file_bytes_match'] is True
+          assert len(report['source']['files'])==32
+          assert all(row['status']=='MATCH' for row in report['source']['files'])
+          assert report['approved_for_live'] is False
+          assert report['runtime_attestation_complete'] is False
+          assert report['installed_bazzite_verified'] is False
+          print('32 selected repaired source files match; installed runtime remains unverified')
+          PY
+      - name: Check command surfaces without resolving or installing dependencies
+        run: |
+          python -I -S -B scripts/spectra_prepare_runtime_dependencies.py --help
+          python -I -S -B scripts/spectra_repair_runtime_attest.py --help

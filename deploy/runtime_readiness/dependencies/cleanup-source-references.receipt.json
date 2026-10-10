@@ -1,0 +1,49 @@
+{
+  "api_python_files": 202,
+  "api_source_commit": "84426ffbf9ba09522b4444664f9770236205ae29",
+  "core_python_files": 1653,
+  "core_source_commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "dynamic_optional_imports_are_not_generalized": true,
+  "protected_overlay_source_hashes": [
+    {
+      "path": "hummingbot/strategy_v2/executors/order_executor/order_executor.py",
+      "sha256": "d1ec8cbf68a54a2917f98e2263bcae60120f5f7d2c0c7d8613aeba7f872ecab0"
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_exchange.py",
+      "sha256": "164df576f47f15a2412f1fc03ca4de7e5667937785de7f3ca3a7e26dd59b87e9"
+    },
+    {
+      "path": "hummingbot/core/web_assistant/connections/rest_connection.py",
+      "sha256": "5fbd84aaed827615784e7275a9690d0aaabe030d4adc755111801e9a1225325a"
+    },
+    {
+      "path": "hummingbot/connector/client_order_tracker.py",
+      "sha256": "ea83dce5ef7ccf33f9901a2eacbf8096376ced0e737629b50c0be42f8be3ae8a"
+    },
+    {
+      "path": "hummingbot/strategy_v2/executors/order_executor/spectra_attempt_guard.py",
+      "sha256": "b2af358dde7403178cac0aebbd26c0a30170f90beba07007e3ebc014404ee69f"
+    }
+  ],
+  "protected_overlay_sources_unchanged": true,
+  "references": [
+    {
+      "imported_module": "msgpack",
+      "line": 7,
+      "path": "hummingbot/connector/derivative/hyperliquid_perpetual/hyperliquid_perpetual_auth.py",
+      "repository": "core",
+      "source_sha256": "16f6619ed6fc90284eabd8d6bb582f89a630d0befc8adee5a8dcd1ca25af2049"
+    },
+    {
+      "imported_module": "msgpack",
+      "line": 8,
+      "path": "hummingbot/connector/exchange/hyperliquid/hyperliquid_auth.py",
+      "repository": "core",
+      "source_sha256": "a0f7177fa9e297e2adf0284294d63f5ab319b159f41de268435503a93de94cec"
+    }
+  ],
+  "runnable_eip712_structs_imports_found": 0,
+  "scanned_python_files": 1855,
+  "scope": "physical_static_import_scan_of_pinned_core_api_python_sources"
+}

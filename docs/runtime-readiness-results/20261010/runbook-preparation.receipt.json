@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "scope": "machine_verification_runbook_preparation_only",
+  "prepared_at_utc": "2026-10-10T16:40:36.436589+00:00",
+  "status": "PREPARED_MACHINE_RUNTIME_PROOF_PENDING",
+  "document": {
+    "path": "docs/spectra-machine-verification-runbook.md",
+    "bytes": 20194,
+    "sha256": "15f5d1d2884fcb22d9bdddc736c4827b0c4caa885c0696009b304d5b9f6b6322"
+  },
+  "timing": {
+    "perform_available_preparation_now": true,
+    "machine_tests_when_explicit_mcp_runner_available": true,
+    "no_work_scheduled_for": "2026-10-15",
+    "automation_created": false
+  },
+  "source_identity_references": {
+    "production_expected_unchanged": "6e894fa9c2b55384d0f6120f41ca91892e1fe207",
+    "pr33_commit": "fad5f320b2f87cc7c089bea2750dd8344aa1b661",
+    "pr33_tree": "6d15736a95b20bbd0e5aee8e34a07217f8143b91",
+    "core_commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+    "api_commit": "84426ffbf9ba09522b4444664f9770236205ae29",
+    "overlay_manifest_sha256": "c46ab17432c51297219eef692b93ab78f9c5450f22ad11f1677c448bb795ef77",
+    "preferred_wheel_sha256": "b92048954145b055ac7bbf85cfdfa4e042c4153eb66aabc29740f4ec34a76dbc",
+    "these_references_are_not_fresh_host_attestation": true
+  },
+  "preparation_checks": [
+    {
+      "check": "repair_attestor_help_accepts_documented_flags",
+      "argv": [
+        "python3.12",
+        "-I",
+        "-S",
+        "-B",
+        "scripts/spectra_repair_runtime_attest.py",
+        "--help"
+      ],
+      "exit_code": 0,
+      "runtime_modules_imported": false
+    },
+    {
+      "check": "dependency_preparer_help_accepts_documented_flags",
+      "argv": [
+        "python3.12",
+        "-I",
+        "-S",
+        "-B",
+        "scripts/spectra_prepare_runtime_dependencies.py",
+        "--help"
+      ],
+      "exit_code": 0,
+      "dependency_installation_performed": false
+    },
+    {
+      "check": "runbook_utf8_decode",
+      "passed": true
+    },
+    {
+      "check": "document_receipt_bytes_and_sha256_bound",
+      "passed": true
+    },
+    {
+      "check": "document_relative_links_present",
+      "paths": [
+        "deploy/hummingbot_core/README.md",
+        "deploy/runtime_readiness/dependencies/README.md"
+      ],
+      "passed": true
+    }
+  ],
+  "receipt_semantics": {
+    "collector_incomplete_proof_exit_code": 2,
+    "well_formed_json_is_not_complete_proof": true,
+    "per_stage_pass_fail_not_run_required": true
+  },
+  "isolation_requirements": {
+    "explicit_physical_absolute_paths": true,
+    "new_private_test_directory": true,
+    "private_uv_project_environment_and_cache": true,
+    "disposable_pytest_base_directory": true,
+    "empty_docker_configuration_directory": true,
+    "explicit_observed_local_unix_docker_socket": true,
+    "immutable_image_id_and_pull_never": true,
+    "container_network_none_read_only_caps_dropped": true,
+    "production_journals_not_fixture_inputs": true,
+    "real_journal_and_claim_anchor_never_auto_reset": true
+  },
+  "pending_evidence": [
+    "actual_mcp_runner_and_bazzite_inventory",
+    "clean_runtime_dependency_installation_and_successful_pip_check",
+    "reviewed_base_platform_digest_and_actual_builder",
+    "full_pinned_api_checkout_and_immutable_image_provenance",
+    "target_machine_installed_artifact_fingerprints",
+    "target_machine_bounded_full_installed_backend_guard",
+    "isolated_full_api_startup_restart_and_installed_lifecycle_integration"
+  ],
+  "machine_access_used": false,
+  "image_built_by_runbook_preparation": false,
+  "api_started": false,
+  "credentials_used": false,
+  "venue_requests_made": false,
+  "market_payloads_read": false,
+  "sealed_holdout_read_or_scored": false,
+  "production_modified": false,
+  "approved_for_live": false,
+  "independent_review": {
+    "agent": "/root/runtime_prep_independent_review",
+    "status": "PASS_SCOPED_RUNBOOK_REVIEW",
+    "changes": [
+      "private lifecycle venv and uv cache",
+      "private pytest fixture base",
+      "explicit local Docker socket and pull-never",
+      "immutable image ID validation",
+      "physical canonical selector paths"
+    ],
+    "scope": "Runbook commands, isolation, proof boundaries and recovery instructions only; dependency execution evidence remains separate.",
+    "publication_prerequisite": "Linked deploy/runtime_readiness/dependencies/README.md must exist before final freeze."
+  }
+}

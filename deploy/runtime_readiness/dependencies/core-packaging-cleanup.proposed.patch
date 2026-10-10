@@ -1,0 +1,11 @@
+--- a/setup.py
++++ b/setup.py
+@@ -58,7 +58,7 @@
+         "decibel-python-sdk==0.2.1",
+         "eth-account>=0.13.0",
+         "injective-py>=1.13",
+-        "msgpack-python",
++        "msgpack>=1.0.5",
+         "numba>=0.61.2",
+         "numpy>=2.2.6",
+         "objgraph",
