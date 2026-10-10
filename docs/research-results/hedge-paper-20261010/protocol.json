@@ -1,0 +1,69 @@
+{
+  "baseline": "saved hard_100_park Jan-Jun unchanged spot trade/accounting trace",
+  "bounds": [
+    "conditional paper instrument; fractional short availability not established",
+    "no historical futures basis, orderbook liquidity, real borrow/funding, exchange margin or account eligibility certification",
+    "saved spot values can contain stale marks and are not executable liquidation quotes",
+    "no original2000-account funded profit claim; all hedge collateral comes from explicit equal extra cash",
+    "no production code changes, live orders or holdout access"
+  ],
+  "carry_cost_assumption": "synthetic constant adverse net funding/borrow charge on open-time short notional prorated each5m bar; no actual historical venue funding used",
+  "drawdown": "total account sampled only at authentic saved hourly spot observations (and independently verified exactJune boundary if available), not full5m portfolio max drawdown",
+  "equal_additional_reserve_for_all_arms": true,
+  "execution": "first exact 5m OPEN at signal_timestamp +300; missing exact opening bar => reject pending order, no delayed stale fill",
+  "extra_cash_reserve_usd": [
+    "250",
+    "500",
+    "2000"
+  ],
+  "frozen_at_utc": "2026-10-10T16:37:55.447671+00:00",
+  "hedge_ratios": [
+    "0",
+    "0.25",
+    "0.50",
+    "0.75",
+    "1.00"
+  ],
+  "historical_window_end_exclusive": 1782864000,
+  "historical_window_start_inclusive": 1767225600,
+  "initial_margin_fraction": "1.00",
+  "liquidation_model": "if synthetic collateral at full5m BTC HIGH breaches maintenance, conservatively cover at HIGH with adverse costs and penalty; prohibit further hedges after first liquidation; retain negative balances as liabilities; spot and PARK never seized",
+  "liquidation_penalty_bps": "10",
+  "maintenance_margin_fraction": "0.80",
+  "margin_rules": "synthetic 100%-notional initial reserve and80%-notional maintenance; these are paper stress assumptions not actual venue specifications",
+  "minimum_order_latency_seconds": 300,
+  "missing_btc_bar_policy": "Never fabricate OHLC. Preserve last observed mark as state until next actual observed price, cancel any exact-time missing execution, apply synthetic carry on last observed notional for missing interval, report every open-position missing interval; intra-gap margin breach remains UNKNOWN and results are conditional on no unseen liquidation.",
+  "policy": "target fractional BTC-index short units = ratio * latest OBSERVED marked spot inventory / observed completed BTC close; no beta or parameter fitting",
+  "primary_carry_bps_per_day": "5",
+  "primary_reserve_usd": "2000",
+  "primary_transaction_scenario": "moderate",
+  "read_real_btc_prices_before_freeze": false,
+  "research_only": true,
+  "schema": "spectra-historical-paper-hedge-protocol-v1",
+  "short_carry_cost_bps_per_day": [
+    "0",
+    "5",
+    "20"
+  ],
+  "signal_frequency": "saved hourly portfolio observations, first at Jan1 00:05UTC; no constructed intrahour spot marks",
+  "source_base_commit": "d903789aba7564ec2ab228dca07b5ff1640ad26e",
+  "starting_spot_capital_usd": "2000",
+  "terminal": "retain short marked at final completed BTC close, disclose exposure and unrealized status; do not assume future close fill",
+  "transaction_scenarios": [
+    {
+      "fee_bps": "0",
+      "name": "frictionless",
+      "slippage_bps": "0"
+    },
+    {
+      "fee_bps": "10",
+      "name": "moderate",
+      "slippage_bps": "5"
+    },
+    {
+      "fee_bps": "40",
+      "name": "stress",
+      "slippage_bps": "5"
+    }
+  ]
+}

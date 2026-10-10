@@ -1,0 +1,20 @@
+{
+  "schema": "root-paper-batch-validation-v1",
+  "observed_at": "2026-10-10T16:52:46.420091+00:00",
+  "data_preparation_tests": 12,
+  "paper_accounting_tests": 19,
+  "unchanged_strict_hedge_harness_tests": 27,
+  "selected_tests_passed": 58,
+  "actual_paper_scenarios": 135,
+  "price_data_independently_verified": true,
+  "protocol_sha256": "952aa51955da1feaca9e0b09245ce1ef7dd156a97c5f9db714ceec9617a81dd0",
+  "engine_sha256": "b5ee6481ff778a2a96a2a3635686ba3f89359e545c9276fab248bfd76e498819",
+  "results_sha256": "d045cd8eba7f13014955ab52a23fe2757692fc8bb2ffe7edcb0dbb74992c06d1",
+  "independent_financial_review_sha256": "bdfae33248ab62ca318e0e217ac65aa8d9593250a54b410bd34c37da41ece519",
+  "actual_venue_profit_proven": false,
+  "original_2000_account_funding_proven": false,
+  "production_modified": false,
+  "sealed_holdout_read": false,
+  "new_external_market_history_acquired": false,
+  "approved_for_live": false
+}

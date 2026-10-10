@@ -1,0 +1,26 @@
+{
+  "schema": "spectra-owned-history-preparation-validation-v1",
+  "source_sha256": {
+    "research/danger_room/prepare_existing_btc_history.py": "3b0414ddd177dbc03cfb31c67277c3da4f84edb0ca079488e673b94777a8cf19",
+    "research/danger_room/prepare_saved_park_history.py": "4bc272c01cf28aace1613b0d9d4736e84a9d15b6b4a2b63db023fa47e27b3768",
+    "research/danger_room/tests/test_owned_historical_preparers.py": "118bbe820b62e693b4106d7a26e9cf781e682b4739795f301843063a70b6b2ba"
+  },
+  "unit_tests_passed": 12,
+  "test_scope": "Constructed fixture admission tests: provenance mutations, missing genuine observations, exact source symbol, causal completed times, duplicate/off-grid/nonfinite/incoherent rows, symlink files, saved prefix conservation and terminal-only boundary",
+  "btc_calendar_rows": 52128,
+  "btc_observed_rows": 52122,
+  "btc_missing_rows": 6,
+  "btc_tape_sha256": "a27fbaa17e5a5a92ebb354f8e24aed5faf522db220238765dd1e932527c12114",
+  "saved_park_hourly_rows": 4344,
+  "saved_park_observations_including_exact_boundary": 4345,
+  "saved_park_tape_sha256": "20ab93ef1add5973d6add0743513c3b41c09720fc5a2de7eaf76ef93f021723c",
+  "mutable_path_reopen_after_verification": false,
+  "immutable_byte_snapshots_parsed": true,
+  "market_history_acquisition_from_external_source": false,
+  "existing_owned_history_materialized": true,
+  "sealed_holdout_read": false,
+  "new_spot_strategy_replay": false,
+  "financial_parameters_or_universe_changed": false,
+  "production_changed": false,
+  "historical_derivative_execution_or_live_authority": false
+}

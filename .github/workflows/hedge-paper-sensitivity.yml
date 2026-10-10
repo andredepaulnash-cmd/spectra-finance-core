@@ -1,0 +1,47 @@
+name: Historical Paper Hedge Sensitivity
+on:
+  pull_request:
+    branches: [research/funded-replay-preparation-20261010]
+    paths:
+      - 'research/danger_room/paper_hedge_sensitivity.py'
+      - 'research/danger_room/prepare_existing_btc_history.py'
+      - 'research/danger_room/prepare_saved_park_history.py'
+      - 'research/danger_room/tests/test_owned_historical_preparers.py'
+      - 'tests/test_paper_hedge_sensitivity.py'
+      - 'docs/research-results/hedge-paper-20261010/**'
+      - 'docs/research-results/hedge-historical-readiness-20261010/**'
+      - '.github/workflows/hedge-paper-sensitivity.yml'
+permissions:
+  contents: read
+jobs:
+  paper-mechanics:
+    name: Offline paper accounting and data admission tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Record tested source identity
+        run: |
+          git rev-parse HEAD
+          git rev-parse 'HEAD^{tree}'
+      - name: Test historical data admission on fictional fixture bytes
+        run: python -B -m unittest discover -s research/danger_room/tests -p 'test_owned_historical_preparers.py' -v
+      - name: Test paper cash accounting, timing and liquidation
+        run: python -B -m unittest discover -s tests -p 'test_paper_hedge_sensitivity.py' -v
+      - name: Verify the frozen paper protocol and existing strict hedge harness
+        run: |
+          python - <<'PY'
+          import hashlib,pathlib
+          protocol=pathlib.Path('docs/research-results/hedge-paper-20261010/protocol.json').read_bytes()
+          assert hashlib.sha256(protocol).hexdigest()=='952aa51955da1feaca9e0b09245ce1ef7dd156a97c5f9db714ceec9617a81dd0'
+          print('Paper protocol exact; CI exercises fictional accounting fixtures, not historical market outcomes')
+          PY
+          python -B -m unittest discover -s research/danger_room/tests -p 'test_hedge_replay.py' -v
+      - name: Check commands without opening market inputs
+        run: |
+          python -I -S -B research/danger_room/paper_hedge_sensitivity.py --help
+          python -I -S -B research/danger_room/prepare_existing_btc_history.py --help
+          python -I -S -B research/danger_room/prepare_saved_park_history.py --help
