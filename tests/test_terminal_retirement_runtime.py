@@ -14,8 +14,8 @@ from spectra_core.vcap_state import VCAPStateStore
 from spectra_core.vcap_runtime import VCAPRuntimeStore
 from spectra_core.accounting_health import AccountingHealthSupervisor
 
-from test_residual_position_lifecycle import fixture, D
-from test_vcap_runtime_supervisor import healthy, fingerprint, lifecycle_state
+from tests.test_residual_position_lifecycle import fixture, D
+from tests.test_vcap_runtime_supervisor import healthy, fingerprint, lifecycle_state
 
 
 def remote(monkeypatch, evidence, *, empty=False):

@@ -9,7 +9,7 @@ from decimal import Decimal as D
 
 import pytest
 from aiohttp import ClientResponseError
-from test_partial_recovery_recycling import (
+from tests.test_partial_recovery_recycling import (
     FakeClient,
     governor,
     ledger,

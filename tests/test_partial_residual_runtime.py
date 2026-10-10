@@ -20,8 +20,8 @@ from spectra_core.partial_recycle import PartialRecycleAction, PartialRecycleSto
 from spectra_core.vcap_lifecycle import VCAPLifecycleAction
 from spectra_core.vcap_runtime import VCAPRuntimePhase, VCAPRuntimePolicy, VCAPRuntimeStore
 from spectra_core.vcap_state import VCAPStateStore
-from test_residual_position_lifecycle import fixture, D
-from test_vcap_runtime_supervisor import lifecycle_state
+from tests.test_residual_position_lifecycle import fixture, D
+from tests.test_vcap_runtime_supervisor import lifecycle_state
 
 
 def test_terminal_partial_residue_retires_through_real_runtime_and_durable_source_proof(tmp_path, monkeypatch):

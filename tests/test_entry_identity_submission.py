@@ -288,7 +288,7 @@ def test_fresh_identical_terminal_accounting_survives_restart_without_recredit(m
 
 
 def test_verified_empty_terminal_certificate_allows_replacement_entry_after_restart(tmp_path):
-    from test_residual_position_lifecycle import fixture
+    from tests.test_residual_position_lifecycle import fixture
     g,ledger,kwargs=fixture(tmp_path,empty=True,guarded_empty_noorders=True)
     certificate=ledger.retire_terminal_position(**kwargs)
     assert certificate["kind"]=="EMPTY_TERMINAL"
@@ -303,7 +303,7 @@ def test_verified_empty_terminal_certificate_allows_replacement_entry_after_rest
 
 def test_corrupt_terminal_certificate_keeps_old_entry_protected(tmp_path):
     import json
-    from test_residual_position_lifecycle import fixture
+    from tests.test_residual_position_lifecycle import fixture
     g,ledger,kwargs=fixture(tmp_path,empty=True,guarded_empty_noorders=True)
     certificate=ledger.retire_terminal_position(**kwargs)
     certificate["proof"]["current_price"]="corrupt-proof"
@@ -337,7 +337,7 @@ def test_uncertified_legacy_recovery_blocks_alias_entry_before_create(monkeypatc
 
 
 def test_certified_legacy_recovery_does_not_block_alias_entry_rotation(tmp_path):
-    from test_residual_position_lifecycle import fixture
+    from tests.test_residual_position_lifecycle import fixture
     g,ledger,kwargs=fixture(tmp_path,intent=IntentKind.RECOVERY)
     certificate=ledger.retire_terminal_position(**kwargs)
     assert certificate["proposal_ids"]==["owner"]
@@ -347,7 +347,7 @@ def test_certified_legacy_recovery_does_not_block_alias_entry_rotation(tmp_path)
 
 
 def test_guarded_recovery_basis_floor_survives_release_restart_and_missing_ledger(tmp_path):
-    from test_residual_position_lifecycle import fixture
+    from tests.test_residual_position_lifecycle import fixture
     g,ledger,_=fixture(tmp_path,intent=IntentKind.RECOVERY,guarded_recovery=True)
     g.reconcile_executor_accounting(ExecutorAccountingObservation("executor","TERMINATED",
         D("149.99"),D(".3"),position_size_quote=D(0),close_type="COMPLETED",executor_type="dca_executor"))
