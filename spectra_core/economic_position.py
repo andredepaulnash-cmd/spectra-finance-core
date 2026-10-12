@@ -239,6 +239,19 @@ class EconomicPositionLedger:
                     FOREIGN KEY(position_id)
                         REFERENCES economic_positions(position_id)
                 );
+
+                CREATE TABLE IF NOT EXISTS economic_exit_allocations (
+                    event_id TEXT NOT NULL,
+                    lot_id TEXT NOT NULL,
+                    position_id TEXT NOT NULL,
+                    proposal_id TEXT,
+                    executor_id TEXT,
+                    ownership TEXT NOT NULL,
+                    base_sold TEXT NOT NULL,
+                    allocated_cost_basis_quote TEXT NOT NULL,
+                    allocated_entry_fees_quote TEXT NOT NULL,
+                    PRIMARY KEY(event_id, lot_id)
+                );
                 """
             )
 
@@ -946,6 +959,7 @@ class EconomicPositionLedger:
                 allocated_entry_fees = ZERO
                 remaining_to_sell = sold
                 updates: list[tuple[Decimal, Decimal, Decimal, str]] = []
+                allocations: list[tuple] = []
 
                 for index, lot in enumerate(lots):
                     if remaining_to_sell <= ZERO:
@@ -971,6 +985,13 @@ class EconomicPositionLedger:
                     allocated_entry_fees += fee_piece
                     remaining_to_sell -= lot_sale
 
+                    allocations.append(
+                        (
+                            eid, lot.lot_id, pid, lot.proposal_id,
+                            lot.executor_id, lot.ownership.value,
+                            str(lot_sale), str(basis_piece), str(fee_piece),
+                        )
+                    )
                     updates.append(
                         (
                             lot.base_remaining - lot_sale,
@@ -986,6 +1007,18 @@ class EconomicPositionLedger:
                     # reject than silently reassign inventory.
                     raise RuntimeError("exit allocation did not close exactly")
 
+                # Preserve exact new-event owner allocation evidence atomically.
+                # Historical allocation rows are not reconstructed or guessed.
+                conn.executemany(
+                    """
+                    INSERT INTO economic_exit_allocations (
+                        event_id, lot_id, position_id, proposal_id, executor_id,
+                        ownership, base_sold, allocated_cost_basis_quote,
+                        allocated_entry_fees_quote
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    allocations,
+                )
                 for base_left, basis_left, fees_left, lot_id in updates:
                     conn.execute(
                         """

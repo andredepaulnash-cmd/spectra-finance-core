@@ -8,6 +8,7 @@ from math import isfinite
 from pathlib import Path
 
 from .asset_fingerprint import AssetFingerprint
+from .decision_trace import append_decision_trace, initialize_decision_trace
 
 
 class VCAPRuntimePhase(StrEnum):
@@ -56,9 +57,7 @@ class VCAPRuntimePolicy:
     def __post_init__(self) -> None:
         max_age = float(self.market_max_age_seconds)
         if not isfinite(max_age) or max_age <= 0:
-            raise ValueError(
-                "market_max_age_seconds must be finite and positive"
-            )
+            raise ValueError("market_max_age_seconds must be finite and positive")
         if (
             isinstance(self.order_book_depth, bool)
             or not isinstance(self.order_book_depth, int)
@@ -105,8 +104,8 @@ class VCAPRuntimeStore:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
-            conn.executescript(
-                """
+            initialize_decision_trace(conn)
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS vcap_runtime_cycles (
                     cycle_id TEXT PRIMARY KEY,
                     position_id TEXT NOT NULL,
@@ -134,8 +133,7 @@ class VCAPRuntimeStore:
                     fingerprint_json TEXT NOT NULL,
                     updated_at REAL NOT NULL
                 );
-                """
-            )
+                """)
 
     @staticmethod
     def _cycle_from_row(row: sqlite3.Row) -> VCAPRuntimeCycle:
@@ -157,9 +155,7 @@ class VCAPRuntimeStore:
             sequence=int(row["sequence"]),
             phase=VCAPRuntimePhase(str(row["phase"])),
             planned_action=(
-                None
-                if row["planned_action"] is None
-                else str(row["planned_action"])
+                None if row["planned_action"] is None else str(row["planned_action"])
             ),
             mutation_key=(
                 None if row["mutation_key"] is None else str(row["mutation_key"])
@@ -174,13 +170,9 @@ class VCAPRuntimeStore:
             created_at=float(row["created_at"]),
             heartbeat_at=float(row["heartbeat_at"]),
             completed_at=(
-                None
-                if row["completed_at"] is None
-                else float(row["completed_at"])
+                None if row["completed_at"] is None else float(row["completed_at"])
             ),
-            last_error=(
-                None if row["last_error"] is None else str(row["last_error"])
-            ),
+            last_error=(None if row["last_error"] is None else str(row["last_error"])),
         )
 
     def load(self, cycle_id: str) -> VCAPRuntimeCycle | None:
@@ -287,6 +279,15 @@ class VCAPRuntimeStore:
                         timestamp,
                     ),
                 )
+                append_decision_trace(
+                    conn,
+                    subject_id=cycle_id,
+                    stage="VCAP_RUNTIME",
+                    disposition=VCAPRuntimePhase.STARTED.value,
+                    reasons=("runtime_cycle_started",),
+                    observed_at=timestamp,
+                    facts={"position_id": pid, "envelope_proposal_id": envelope},
+                )
                 conn.commit()
             except Exception:
                 conn.rollback()
@@ -362,11 +363,7 @@ class VCAPRuntimeStore:
                     if execution_result is None
                     else execution_result
                 )
-                completed_at = (
-                    timestamp
-                    if phase in TERMINAL_RUNTIME_PHASES
-                    else None
-                )
+                completed_at = timestamp if phase in TERMINAL_RUNTIME_PHASES else None
 
                 conn.execute(
                     """
@@ -399,6 +396,24 @@ class VCAPRuntimeStore:
                         last_error,
                         cid,
                     ),
+                )
+                append_decision_trace(
+                    conn,
+                    subject_id=cid,
+                    stage="VCAP_RUNTIME",
+                    disposition=phase.value,
+                    reasons=reasons_value or ("runtime_phase_transition",),
+                    observed_at=timestamp,
+                    facts={
+                        "position_id": current.position_id,
+                        "envelope_proposal_id": current.envelope_proposal_id,
+                        "previous_phase": current.phase.value,
+                        "planned_action": action_value,
+                        "mutation_key": key_value,
+                        "mutation_proposal_id": proposal_value,
+                        "terminal": phase in TERMINAL_RUNTIME_PHASES,
+                        "has_error": last_error is not None,
+                    },
                 )
                 conn.commit()
             except Exception:

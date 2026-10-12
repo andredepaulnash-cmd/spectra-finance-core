@@ -7,6 +7,7 @@ import time
 from decimal import Decimal
 from pathlib import Path
 
+from .decision_trace import append_decision_trace, initialize_decision_trace
 from .executor_accounting import (
     assess_recovery_exposure,
     reconcile_recovery_exposure_with_position_holds,
@@ -95,6 +96,7 @@ class CapitalGovernor:
 
     def _initialize(self) -> None:
         with self._connect() as conn:
+            initialize_decision_trace(conn)
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS capital_reservations (
@@ -566,6 +568,36 @@ class CapitalGovernor:
                     ),
                 )
 
+                append_decision_trace(
+                    conn,
+                    trace_id=f"capital-reserve:{proposal.proposal_id}",
+                    subject_id=proposal.proposal_id,
+                    stage="CAPITAL_RESERVATION",
+                    disposition=status.value,
+                    reasons=(reason,),
+                    observed_at=now,
+                    facts={
+                        "pair": pair,
+                        "intent": proposal.intent.value,
+                        "requested_quote": amount,
+                        "leverage": proposal.leverage,
+                        "free_quote": snapshot.free_quote,
+                        "committed_quote": snapshot.committed_quote,
+                        "pair_exposure_quote": snapshot.pair_exposure_quote,
+                        "position_exposure_quote": snapshot.position_exposure_quote,
+                        "snapshot_recovery_exposure_quote": snapshot.recovery_exposure_quote,
+                        "protected_total_quote": active_total,
+                        "protected_pair_quote": active_pair,
+                        "protected_recovery_quote": active_recovery,
+                        "reconciled_recovery_quote": reconciled_recovery,
+                        "available_after_quote": available_after,
+                        "reserve_floor_quote": self.policy.reserve_floor_quote,
+                        "max_total_committed_quote": self.policy.max_total_committed_quote,
+                        "max_pair_quote": self.policy.max_pair_quote,
+                        "max_position_quote": self.policy.max_position_quote,
+                        "max_recovery_quote": self.policy.max_recovery_quote,
+                    },
+                )
                 conn.commit()
 
                 return CapitalDecision(
