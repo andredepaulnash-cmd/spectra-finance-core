@@ -1382,9 +1382,15 @@ class EconomicPositionLedger:
 
         return proposal_allowed(self, pair, proposal_id)
 
+    def create_selected_recovery_exit_scope(self, **kwargs) -> None:
+        from .selected_recovery_ledger import create_exit_scope
 
+        create_exit_scope(self, **kwargs)
 
+    def record_selected_recovery_exit(self, **kwargs) -> list[dict]:
+        from .selected_recovery_ledger import record_exit
 
+        return record_exit(self, **kwargs)
 
     def release_selected_recovery_lock(self, position_id: str, owner_id: str) -> bool:
         from .position_mutation import release_lock
