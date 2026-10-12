@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -10,9 +11,10 @@ from .models import (
     CapitalDecision,
     CapitalProposal,
     CapitalSnapshot,
+    DecisionStatus,
     IntentKind,
 )
-from .runtime import get_capital_governor
+from .runtime import get_capital_governor, get_dust_lifecycle
 
 
 @dataclass(frozen=True)
@@ -20,6 +22,7 @@ class KrakenCapitalAuthorization:
     proposal: CapitalProposal
     decision: CapitalDecision
     snapshot: CapitalSnapshot
+    economic_position_id: str | None = None
 
 
 def _positive_decimal(value: Any, field: str) -> Decimal:
@@ -80,9 +83,7 @@ async def reserve_kraken_capital(
         client,
         account_name=account,
         trading_pair=pair,
-        recovery_exposure_quote=(
-            capital_governor.current_recovery_exposure_quote()
-        ),
+        recovery_exposure_quote=(capital_governor.current_recovery_exposure_quote()),
         refresh=refresh,
     )
 
@@ -94,10 +95,25 @@ async def reserve_kraken_capital(
         leverage=Decimal("1"),
     )
 
+    # The portfolio fetch above is an await boundary. Recheck durable dust and
+    # duplicate-position admission afterwards, before reserving new capital.
+    dust_lifecycle = get_dust_lifecycle(governor=capital_governor)
+    economic_position_id = dust_lifecycle.prepare_entry(
+        proposal=proposal, account_name=account, now=time.time()
+    )
     decision = capital_governor.reserve(proposal, snapshot)
+    if decision.status in {
+        DecisionStatus.REJECTED,
+        DecisionStatus.EXPIRED,
+        DecisionStatus.RELEASED,
+    }:
+        dust_lifecycle.cancel_unsubmitted_entry(
+            proposal_id=proposal.proposal_id, now=time.time()
+        )
 
     return KrakenCapitalAuthorization(
         proposal=proposal,
         decision=decision,
         snapshot=snapshot,
+        economic_position_id=economic_position_id,
     )

@@ -7,13 +7,10 @@ import time
 from decimal import Decimal
 from pathlib import Path
 
+from .decision_trace import append_decision_trace, initialize_decision_trace
 from .executor_accounting import (
     assess_recovery_exposure,
     reconcile_recovery_exposure_with_position_holds,
-)
-from .position_hold_accounting import (
-    PositionHoldAccounting,
-    position_hold_accounting_from_raw,
 )
 from .models import (
     CapitalDecision,
@@ -21,12 +18,15 @@ from .models import (
     CapitalProposal,
     CapitalSnapshot,
     DecisionStatus,
-    IntentKind,
     ExecutionProvenance,
-    ExecutorAccountingObservation,
     ExecutorAccountingDelta,
+    ExecutorAccountingObservation,
+    IntentKind,
 )
-
+from .position_hold_accounting import (
+    PositionHoldAccounting,
+    position_hold_accounting_from_raw,
+)
 
 ZERO = Decimal("0")
 
@@ -52,9 +52,7 @@ def validate_capital_policy(policy: CapitalPolicy) -> None:
         or isinstance(policy.reservation_ttl_seconds, bool)
         or policy.reservation_ttl_seconds <= 0
     ):
-        raise ValueError(
-            "reservation_ttl_seconds must be a positive integer"
-        )
+        raise ValueError("reservation_ttl_seconds must be a positive integer")
 
     if (
         not isinstance(policy.position_hold_snapshot_ttl_seconds, int)
@@ -95,8 +93,8 @@ class CapitalGovernor:
 
     def _initialize(self) -> None:
         with self._connect() as conn:
-            conn.execute(
-                """
+            initialize_decision_trace(conn)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS capital_reservations (
                     proposal_id TEXT PRIMARY KEY,
                     pair TEXT NOT NULL,
@@ -109,29 +107,23 @@ class CapitalGovernor:
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_capital_reservations_status_pair
                 ON capital_reservations(status, pair)
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS execution_receipts (
                     proposal_id TEXT PRIMARY KEY,
                     executor_id TEXT NOT NULL UNIQUE,
                     created_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS executor_accounting_observations (
                     observation_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     proposal_id TEXT NOT NULL,
@@ -150,8 +142,7 @@ class CapitalGovernor:
                     realized_pnl_quote TEXT,
                     observed_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
             accounting_columns = {
                 row["name"]
@@ -165,19 +156,26 @@ class CapitalGovernor:
                     "ADD COLUMN executor_type TEXT"
                 )
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_executor_accounting_executor
                 ON executor_accounting_observations(
                     executor_id,
                     observation_id
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS executor_accounting_refresh_receipts (
+                    refresh_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    observation_id INTEGER NOT NULL,
+                    proposal_id TEXT NOT NULL,
+                    executor_id TEXT NOT NULL,
+                    observed_at REAL NOT NULL
+                )
+                """)
+
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS position_hold_snapshots (
                     snapshot_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     account_name TEXT NOT NULL,
@@ -186,11 +184,9 @@ class CapitalGovernor:
                     controller_id TEXT NOT NULL,
                     observed_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_position_hold_snapshots_scope
                 ON position_hold_snapshots(
@@ -201,11 +197,9 @@ class CapitalGovernor:
                     observed_at,
                     snapshot_id
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS position_hold_snapshot_rows (
                     snapshot_id INTEGER NOT NULL,
                     hold_index INTEGER NOT NULL,
@@ -219,30 +213,34 @@ class CapitalGovernor:
                     last_updated TEXT,
                     PRIMARY KEY(snapshot_id, hold_index)
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS recovery_recycle_releases (
                     release_id TEXT PRIMARY KEY,
                     proposal_id TEXT NOT NULL,
                     amount_quote TEXT NOT NULL,
                     created_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_recovery_recycle_release_proposal
                 ON recovery_recycle_releases(proposal_id)
-                """
-            )
+                """)
 
-            conn.execute(
-                """
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS selected_recovery_sealed_basis (
+                    proposal_id TEXT PRIMARY KEY, executor_id TEXT NOT NULL UNIQUE,
+                    pair TEXT NOT NULL, account_name TEXT NOT NULL,
+                    connector_name TEXT NOT NULL, controller_id TEXT NOT NULL,
+                    authorized_quote TEXT NOT NULL, gross_basis_quote TEXT NOT NULL,
+                    entry_fee_quote TEXT NOT NULL, payload_json TEXT NOT NULL
+                )
+                """)
+
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS execution_provenance (
                     proposal_id TEXT PRIMARY KEY,
                     executor_id TEXT NOT NULL UNIQUE,
@@ -255,8 +253,7 @@ class CapitalGovernor:
                     controller_id TEXT,
                     created_at REAL NOT NULL
                 )
-                """
-            )
+                """)
 
             provenance_columns = {
                 row["name"]
@@ -377,10 +374,7 @@ class CapitalGovernor:
         now: float | None = None,
     ) -> int:
         current_time = time.time() if now is None else now
-        cutoff = (
-            current_time
-            - self.policy.reservation_ttl_seconds
-        )
+        cutoff = current_time - self.policy.reservation_ttl_seconds
 
         cursor = conn.execute(
             """
@@ -443,14 +437,8 @@ class CapitalGovernor:
             proposal_id=row["proposal_id"],
             status=DecisionStatus(row["status"]),
             reason=row["reason"],
-            reserved_quote=(
-                Decimal(row["amount_quote"])
-                if active
-                else ZERO
-            ),
-            available_after_quote=Decimal(
-                row["available_after_quote"]
-            ),
+            reserved_quote=(Decimal(row["amount_quote"]) if active else ZERO),
+            available_after_quote=Decimal(row["available_after_quote"]),
         )
 
     def reserve(
@@ -503,17 +491,11 @@ class CapitalGovernor:
                 # transaction as RESERVED/COMMITTED claims. Otherwise a
                 # COMMITTED -> RECONCILED handoff could briefly disappear
                 # from both buckets between two separate reads.
-                reconciled_recovery = (
-                    self._current_recovery_exposure_quote(conn)
-                )
+                reconciled_recovery = self._current_recovery_exposure_quote(conn)
 
                 amount = proposal.amount_quote
 
-                available_after = (
-                    snapshot.free_quote
-                    - active_total
-                    - amount
-                )
+                available_after = snapshot.free_quote - active_total - amount
 
                 reason = self._rejection_reason(
                     proposal=proposal,
@@ -529,10 +511,7 @@ class CapitalGovernor:
                     status = DecisionStatus.REJECTED
                 else:
                     status = DecisionStatus.RESERVED
-                    reason = (
-                        "authorized within deterministic "
-                        "capital envelope"
-                    )
+                    reason = "authorized within deterministic " "capital envelope"
 
                 now = time.time()
 
@@ -566,6 +545,36 @@ class CapitalGovernor:
                     ),
                 )
 
+                append_decision_trace(
+                    conn,
+                    trace_id=f"capital-reserve:{proposal.proposal_id}",
+                    subject_id=proposal.proposal_id,
+                    stage="CAPITAL_RESERVATION",
+                    disposition=status.value,
+                    reasons=(reason,),
+                    observed_at=now,
+                    facts={
+                        "pair": pair,
+                        "intent": proposal.intent.value,
+                        "requested_quote": amount,
+                        "leverage": proposal.leverage,
+                        "free_quote": snapshot.free_quote,
+                        "committed_quote": snapshot.committed_quote,
+                        "pair_exposure_quote": snapshot.pair_exposure_quote,
+                        "position_exposure_quote": snapshot.position_exposure_quote,
+                        "snapshot_recovery_exposure_quote": snapshot.recovery_exposure_quote,
+                        "protected_total_quote": active_total,
+                        "protected_pair_quote": active_pair,
+                        "protected_recovery_quote": active_recovery,
+                        "reconciled_recovery_quote": reconciled_recovery,
+                        "available_after_quote": available_after,
+                        "reserve_floor_quote": self.policy.reserve_floor_quote,
+                        "max_total_committed_quote": self.policy.max_total_committed_quote,
+                        "max_pair_quote": self.policy.max_pair_quote,
+                        "max_position_quote": self.policy.max_position_quote,
+                        "max_recovery_quote": self.policy.max_recovery_quote,
+                    },
+                )
                 conn.commit()
 
                 return CapitalDecision(
@@ -573,9 +582,7 @@ class CapitalGovernor:
                     status=status,
                     reason=reason,
                     reserved_quote=(
-                        amount
-                        if status == DecisionStatus.RESERVED
-                        else ZERO
+                        amount if status == DecisionStatus.RESERVED else ZERO
                     ),
                     available_after_quote=available_after,
                 )
@@ -653,11 +660,7 @@ class CapitalGovernor:
             )
 
         # Global committed-capital ceiling.
-        total_after = (
-            snapshot.committed_quote
-            + active_total
-            + amount
-        )
+        total_after = snapshot.committed_quote + active_total + amount
 
         if total_after > p.max_total_committed_quote:
             return (
@@ -667,25 +670,15 @@ class CapitalGovernor:
             )
 
         # Per-pair concentration ceiling.
-        pair_after = (
-            snapshot.pair_exposure_quote
-            + active_pair
-            + amount
-        )
+        pair_after = snapshot.pair_exposure_quote + active_pair + amount
 
         if pair_after > p.max_pair_quote:
             return (
-                f"pair exposure cap exceeded: "
-                f"{pair_after} > "
-                f"{p.max_pair_quote}"
+                f"pair exposure cap exceeded: " f"{pair_after} > " f"{p.max_pair_quote}"
             )
 
         # Per-position ceiling.
-        position_after = (
-            snapshot.position_exposure_quote
-            + active_pair
-            + amount
-        )
+        position_after = snapshot.position_exposure_quote + active_pair + amount
 
         if position_after > p.max_position_quote:
             return (
@@ -696,11 +689,7 @@ class CapitalGovernor:
 
         # Recovery capital is separately bounded.
         if proposal.intent == IntentKind.RECOVERY:
-            recovery_after = (
-                reconciled_recovery
-                + active_recovery
-                + amount
-            )
+            recovery_after = reconciled_recovery + active_recovery + amount
 
             if recovery_after > p.max_recovery_quote:
                 return (
@@ -840,8 +829,7 @@ class CapitalGovernor:
                         and child["intent"] == IntentKind.RECOVERY.value
                         and Decimal(child["amount_quote"])
                         == tranche_proposal.amount_quote
-                        and Decimal(child["leverage"])
-                        == tranche_proposal.leverage
+                        and Decimal(child["leverage"]) == tranche_proposal.leverage
                     )
                     conn.commit()
                     return exact_replay
@@ -864,8 +852,7 @@ class CapitalGovernor:
                     parent["status"] == DecisionStatus.RESERVED.value
                     and parent["intent"] == IntentKind.RECOVERY.value
                     and parent["pair"] == pair
-                    and Decimal(parent["leverage"])
-                    == tranche_proposal.leverage
+                    and Decimal(parent["leverage"]) == tranche_proposal.leverage
                     and parent_amount >= tranche_proposal.amount_quote
                 )
                 if not matches:
@@ -1001,9 +988,7 @@ class CapitalGovernor:
             DecisionStatus.COMMITTED,
             DecisionStatus.RELEASED,
         }:
-            raise ValueError(
-                f"unsupported reservation transition: {target}"
-            )
+            raise ValueError(f"unsupported reservation transition: {target}")
 
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -1111,10 +1096,7 @@ class CapitalGovernor:
             "connector_name": connector_name,
             "controller_id": controller_id,
         }
-        supplied_scope = [
-            value is not None
-            for value in scope_inputs.values()
-        ]
+        supplied_scope = [value is not None for value in scope_inputs.values()]
 
         if any(supplied_scope) and not all(supplied_scope):
             raise ValueError(
@@ -1129,14 +1111,10 @@ class CapitalGovernor:
 
             for field, value in scope_inputs.items():
                 if not isinstance(value, str) or not value.strip():
-                    raise ValueError(
-                        f"{field} must be a non-empty string"
-                    )
+                    raise ValueError(f"{field} must be a non-empty string")
                 normalized[field] = value.strip()
 
-            normalized["connector_name"] = (
-                normalized["connector_name"].lower()
-            )
+            normalized["connector_name"] = normalized["connector_name"].lower()
 
             normalized_scope = (
                 normalized["account_name"],
@@ -1307,21 +1285,9 @@ class CapitalGovernor:
                         reservation["intent"],
                         reservation["amount_quote"],
                         reservation["leverage"],
-                        (
-                            None
-                            if normalized_scope is None
-                            else normalized_scope[0]
-                        ),
-                        (
-                            None
-                            if normalized_scope is None
-                            else normalized_scope[1]
-                        ),
-                        (
-                            None
-                            if normalized_scope is None
-                            else normalized_scope[2]
-                        ),
+                        (None if normalized_scope is None else normalized_scope[0]),
+                        (None if normalized_scope is None else normalized_scope[1]),
+                        (None if normalized_scope is None else normalized_scope[2]),
                         now,
                     ),
                 )
@@ -1419,19 +1385,13 @@ class CapitalGovernor:
             authorized_quote=Decimal(str(row["authorized_quote"])),
             leverage=Decimal(str(row["leverage"])),
             account_name=(
-                None
-                if row["account_name"] is None
-                else str(row["account_name"])
+                None if row["account_name"] is None else str(row["account_name"])
             ),
             connector_name=(
-                None
-                if row["connector_name"] is None
-                else str(row["connector_name"])
+                None if row["connector_name"] is None else str(row["connector_name"])
             ),
             controller_id=(
-                None
-                if row["controller_id"] is None
-                else str(row["controller_id"])
+                None if row["controller_id"] is None else str(row["controller_id"])
             ),
         )
 
@@ -1533,9 +1493,7 @@ class CapitalGovernor:
                     else Decimal(previous["filled_amount_quote"])
                 )
                 previous_fees = (
-                    ZERO
-                    if previous is None
-                    else Decimal(previous["cum_fees_quote"])
+                    ZERO if previous is None else Decimal(previous["cum_fees_quote"])
                 )
 
                 # GridExecutor changes the meaning of filled_amount_quote when
@@ -1561,8 +1519,7 @@ class CapitalGovernor:
                     and not grid_position_hold_rebase
                 ):
                     raise RuntimeError(
-                        "filled_amount_quote moved backwards for "
-                        f"{executor_id}"
+                        "filled_amount_quote moved backwards for " f"{executor_id}"
                     )
 
                 if observation.cum_fees_quote < previous_fees:
@@ -1615,6 +1572,19 @@ class CapitalGovernor:
                     )
 
                     if comparable == previous_comparable:
+                        # A fresh, identical read is evidence without another
+                        # economic delta. Preserve the original observation.
+                        conn.execute(
+                            """INSERT INTO executor_accounting_refresh_receipts
+                            (observation_id, proposal_id, executor_id, observed_at)
+                            VALUES (?, ?, ?, ?)""",
+                            (
+                                previous["observation_id"],
+                                provenance["proposal_id"],
+                                executor_id,
+                                time.time(),
+                            ),
+                        )
                         conn.commit()
                         return ExecutorAccountingDelta(
                             proposal_id=str(provenance["proposal_id"]),
@@ -1631,7 +1601,7 @@ class CapitalGovernor:
                             executor_type=executor_type,
                         )
 
-                conn.execute(
+                observation_row = conn.execute(
                     """
                     INSERT INTO executor_accounting_observations (
                         proposal_id,
@@ -1683,6 +1653,18 @@ class CapitalGovernor:
                     ),
                 )
 
+                conn.execute(
+                    """INSERT INTO executor_accounting_refresh_receipts
+                    (observation_id, proposal_id, executor_id, observed_at)
+                    VALUES (?, ?, ?, ?)""",
+                    (
+                        observation_row.lastrowid,
+                        provenance["proposal_id"],
+                        executor_id,
+                        time.time(),
+                    ),
+                )
+
                 conn.commit()
 
                 return ExecutorAccountingDelta(
@@ -1703,7 +1685,6 @@ class CapitalGovernor:
             except Exception:
                 conn.rollback()
                 raise
-
 
     @staticmethod
     def _position_hold_scope(
@@ -1771,9 +1752,7 @@ class CapitalGovernor:
             or not math.isfinite(float(timestamp))
             or float(timestamp) < 0
         ):
-            raise ValueError(
-                "observed_at must be a finite non-negative timestamp"
-            )
+            raise ValueError("observed_at must be a finite non-negative timestamp")
 
         timestamp = float(timestamp)
 
@@ -1781,9 +1760,7 @@ class CapitalGovernor:
 
         for hold in holds:
             if not isinstance(hold, PositionHoldAccounting):
-                raise ValueError(
-                    "holds must contain PositionHoldAccounting values"
-                )
+                raise ValueError("holds must contain PositionHoldAccounting values")
 
             raw = {
                 "account_name": hold.account_name,
@@ -1922,17 +1899,12 @@ class CapitalGovernor:
         observed_at = float(snapshot["observed_at"])
 
         if not math.isfinite(observed_at):
-            raise RuntimeError(
-                "persisted PositionHold snapshot timestamp is invalid"
-            )
+            raise RuntimeError("persisted PositionHold snapshot timestamp is invalid")
 
         age = current_time - observed_at
 
         # Future-dated or stale evidence is never allowed to reduce exposure.
-        if (
-            age < 0
-            or age > self.policy.position_hold_snapshot_ttl_seconds
-        ):
+        if age < 0 or age > self.policy.position_hold_snapshot_ttl_seconds:
             return None
 
         rows = conn.execute(
@@ -1947,8 +1919,7 @@ class CapitalGovernor:
 
         if len(rows) > 1:
             raise RuntimeError(
-                "persisted exact PositionHold snapshot contains "
-                "multiple ACTIVE rows"
+                "persisted exact PositionHold snapshot contains " "multiple ACTIVE rows"
             )
 
         holds: list[PositionHoldAccounting] = []
@@ -2086,9 +2057,7 @@ class CapitalGovernor:
                         str(existing["proposal_id"]) != pid
                         or Decimal(str(existing["amount_quote"])) != amount_quote
                     ):
-                        raise RuntimeError(
-                            "recovery recycle release replay conflicts"
-                        )
+                        raise RuntimeError("recovery recycle release replay conflicts")
                     conn.commit()
                     return self._recovery_recycle_release_quote(conn, pid)
 
@@ -2164,9 +2133,7 @@ class CapitalGovernor:
                 authorized_quote=Decimal(str(row["authorized_quote"])),
                 leverage=Decimal(str(row["leverage"])),
                 account_name=(
-                    None
-                    if row["account_name"] is None
-                    else str(row["account_name"])
+                    None if row["account_name"] is None else str(row["account_name"])
                 ),
                 connector_name=(
                     None
@@ -2174,11 +2141,51 @@ class CapitalGovernor:
                     else str(row["connector_name"])
                 ),
                 controller_id=(
-                    None
-                    if row["controller_id"] is None
-                    else str(row["controller_id"])
+                    None if row["controller_id"] is None else str(row["controller_id"])
                 ),
             )
+
+            # Selected-child mode alone can seal exact gross opening basis
+            # after terminal orders, trades, native lots, and passive executor
+            # counters agree. This avoids treating an all-in fee reserve as
+            # unsold inventory; ordinary POSITION_HOLD behavior is unchanged.
+            sealed = conn.execute(
+                "SELECT * FROM selected_recovery_sealed_basis WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchone()
+            if sealed is not None and row["observation_id"] is not None:
+                exact_scope = (
+                    str(sealed["executor_id"]) == provenance.executor_id
+                    and str(sealed["pair"]) == provenance.pair
+                    and sealed["account_name"] == provenance.account_name
+                    and sealed["connector_name"] == provenance.connector_name
+                    and sealed["controller_id"] == provenance.controller_id
+                    and Decimal(sealed["authorized_quote"])
+                    == provenance.authorized_quote
+                )
+                gross = Decimal(sealed["gross_basis_quote"])
+                fee = Decimal(sealed["entry_fee_quote"])
+                exact_terminal = (
+                    row["obs_executor_type"] == "dca_executor"
+                    and row["obs_status"] == "TERMINATED"
+                    and row["obs_close_type"] == "POSITION_HOLD"
+                    and Decimal(row["obs_filled_amount_quote"]) == gross
+                    and Decimal(row["obs_cum_fees_quote"]) == fee
+                )
+                if (
+                    exact_scope
+                    and exact_terminal
+                    and gross.is_finite()
+                    and fee.is_finite()
+                    and gross >= ZERO
+                    and fee >= ZERO
+                    and gross + fee <= provenance.authorized_quote
+                ):
+                    released = self._recovery_recycle_release_quote(
+                        conn, provenance.proposal_id
+                    )
+                    total += max(gross - released, ZERO)
+                    continue
 
             if row["observation_id"] is None:
                 released = self._recovery_recycle_release_quote(
@@ -2204,12 +2211,8 @@ class CapitalGovernor:
                     if row["obs_close_type"] is None
                     else str(row["obs_close_type"])
                 ),
-                filled_amount_quote=Decimal(
-                    str(row["obs_filled_amount_quote"])
-                ),
-                cum_fees_quote=Decimal(
-                    str(row["obs_cum_fees_quote"])
-                ),
+                filled_amount_quote=Decimal(str(row["obs_filled_amount_quote"])),
+                cum_fees_quote=Decimal(str(row["obs_cum_fees_quote"])),
                 position_size_quote=(
                     None
                     if row["obs_position_size_quote"] is None
@@ -2263,12 +2266,10 @@ class CapitalGovernor:
                 # Missing/stale evidence and even a fresh empty exact scope
                 # remain fail-closed through the reconciliation helper.
                 if holds is not None:
-                    assessment = (
-                        reconcile_recovery_exposure_with_position_holds(
-                            observation,
-                            provenance,
-                            holds,
-                        )
+                    assessment = reconcile_recovery_exposure_with_position_holds(
+                        observation,
+                        provenance,
+                        holds,
                     )
 
             released = self._recovery_recycle_release_quote(
@@ -2318,3 +2319,9 @@ class CapitalGovernor:
             return None
 
         return self._decision_from_row(row)
+
+    def seal_selected_recovery_opening_basis(self, **kwargs) -> None:
+        """Accept only the selected adapter's exact terminal source receipt."""
+        from .selected_recovery_ledger import seal_opening_basis
+
+        seal_opening_basis(self, **kwargs)

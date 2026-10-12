@@ -12,10 +12,16 @@ from .economic_position import (
     EconomicPositionStatus,
 )
 from .kraken_market_fabric import KrakenTradingRule
+from .partial_attempt import (
+    PartialAttemptDisposition,
+    PartialAttemptPolicy,
+    assess_partial_attempt,
+)
 from .partial_recycle import (
     PartialRecycleAction,
     PartialRecycleDecision,
     PartialRecyclePolicy,
+    PartialRecycleStore,
     plan_partial_recycle,
 )
 from .recovery_fingerprint import (
@@ -41,7 +47,6 @@ from .vcap_state import (
     VCAPStateStore,
 )
 from .vcap_tranches import VCAPTranchePolicy
-
 
 ZERO = Decimal("0")
 
@@ -80,9 +85,7 @@ def _checkpoint_state(
         cost_basis_quote=position.cost_basis_quote,
         last_known_price=position.current_price,
         profit_state=(
-            state.profit_state
-            if profit_decision is None
-            else profit_decision.state
+            state.profit_state if profit_decision is None else profit_decision.state
         ),
         recovery_proposal_ids=(
             state.recovery_proposal_ids
@@ -178,10 +181,7 @@ def plan_vcap_lifecycle(
             reasons=tuple(profit.reasons) + ("profit_exit_has_priority",),
         )
 
-    if (
-        profit.action == VCAPProfitExitAction.EXTEND
-        and profit.profit_floor_reached
-    ):
+    if profit.action == VCAPProfitExitAction.EXTEND and profit.profit_floor_reached:
         store.save(checkpoint)
         return VCAPLifecycleDecision(
             action=VCAPLifecycleAction.PROTECT_PROFIT,
@@ -253,9 +253,7 @@ def plan_vcap_lifecycle(
         state=hold_state,
         profit_decision=profit,
         execution_decision=execution,
-        reasons=tuple(profit.reasons)
-        + tuple(execution.reasons)
-        + (lifecycle_reason,),
+        reasons=tuple(profit.reasons) + tuple(execution.reasons) + (lifecycle_reason,),
     )
 
 
@@ -308,9 +306,7 @@ def checkpoint_vcap_tranche_execution(
     updated = replace(
         state,
         next_sequence=state.next_sequence + 1,
-        remaining_authorized_quote=(
-            state.remaining_authorized_quote - amount
-        ),
+        remaining_authorized_quote=(state.remaining_authorized_quote - amount),
         status=VCAPLifecycleStatus.ACTIVE,
         updated_at=float(now),
     )
@@ -350,7 +346,6 @@ def checkpoint_vcap_exit_result(
     return hold
 
 
-
 def plan_vcap_lifecycle_from_ledger(
     *,
     position_id: str,
@@ -372,6 +367,9 @@ def plan_vcap_lifecycle_from_ledger(
     partial_recycle_policy: PartialRecyclePolicy | None = None,
     governor: CapitalGovernor | None = None,
     accounting_health: AccountingHealthDecision | None = None,
+    partial_attempt_policy: PartialAttemptPolicy | None = None,
+    partial_price_observed_at: float | None = None,
+    pending_order_ids: tuple[str, ...] | None = None,
 ) -> VCAPLifecycleDecision:
     """Plan one VCAP cycle from authoritative economic-position ownership.
 
@@ -400,9 +398,7 @@ def plan_vcap_lifecycle_from_ledger(
         )
 
     if accounting_health.position_id != position_id:
-        raise ValueError(
-            "accounting health belongs to another economic position"
-        )
+        raise ValueError("accounting health belongs to another economic position")
 
     if not accounting_health.allows_live_mutation(now=now):
         hold_state = replace(
@@ -425,9 +421,7 @@ def plan_vcap_lifecycle_from_ledger(
 
     snapshot = ledger.snapshot(position_id)
     if snapshot.pair != state.pair:
-        raise ValueError(
-            "economic position pair does not match VCAP lifecycle state"
-        )
+        raise ValueError("economic position pair does not match VCAP lifecycle state")
     if snapshot.status != EconomicPositionStatus.ACTIVE:
         raise ValueError("economic position is not active")
 
@@ -449,13 +443,10 @@ def plan_vcap_lifecycle_from_ledger(
         previous_state=state.profit_state,
         policy=profit_policy,
     )
-    if (
-        governor is not None
-        and profit.action not in {
-            VCAPProfitExitAction.EXIT,
-            VCAPProfitExitAction.EXTEND,
-        }
-    ):
+    if governor is not None and profit.action not in {
+        VCAPProfitExitAction.EXIT,
+        VCAPProfitExitAction.EXTEND,
+    }:
         partial = plan_partial_recycle(
             ledger=ledger,
             governor=governor,
@@ -468,6 +459,41 @@ def plan_vcap_lifecycle_from_ledger(
             policy=partial_recycle_policy,
         )
         if partial.action == PartialRecycleAction.RECYCLE:
+            if partial_attempt_policy is not None and partial_attempt_policy.enabled:
+                if partial.manifest is None:
+                    raise RuntimeError("partial recycle lost immutable manifest")
+                assessment = assess_partial_attempt(
+                    manifest=partial.manifest,
+                    ledger=ledger,
+                    governor=governor,
+                    store=PartialRecycleStore(ledger.path),
+                    trading_rule=trading_rule,
+                    current_price=current_price,
+                    observed_at=partial_price_observed_at,
+                    now=now,
+                    expected_exit_fee_bps=expected_exit_fee_bps,
+                    slippage_allowance_bps=slippage_allowance_bps,
+                    target_net_profit_bps=(
+                        partial_recycle_policy or PartialRecyclePolicy()
+                    ).target_net_profit_bps,
+                    pending_order_ids=pending_order_ids,
+                    policy=partial_attempt_policy,
+                )
+                if assessment.disposition != PartialAttemptDisposition.ELIGIBLE:
+                    # Keep sale intent, owner scope, pending state, reservations
+                    # and ladder checkpoint exactly intact. A later call must
+                    # reassess new evidence. No recovery-buy fallthrough.
+                    return VCAPLifecycleDecision(
+                        action=VCAPLifecycleAction.HOLD,
+                        state=state,
+                        profit_decision=profit,
+                        execution_decision=None,
+                        reasons=(
+                            "partial_attempt_" + assessment.disposition.value.lower(),
+                            *assessment.reasons,
+                        ),
+                        partial_recycle_decision=partial,
+                    )
             checkpoint = _checkpoint_state(
                 state,
                 position=position,
