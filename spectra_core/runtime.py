@@ -46,9 +46,7 @@ def get_breaker_mode() -> BreakerMode:
         return BreakerMode.HALTED
 
     try:
-        return BreakerMode(
-            str(raw.get("mode") or "").strip().upper()
-        )
+        return BreakerMode(str(raw.get("mode") or "").strip().upper())
     except ValueError:
         return BreakerMode.HALTED
 
@@ -59,9 +57,7 @@ def load_capital_policy() -> CapitalPolicy:
     policy_path = state_dir / "capital_policy.json"
 
     if not policy_path.is_file():
-        raise RuntimeError(
-            f"Spectra capital policy is not configured: {policy_path}"
-        )
+        raise RuntimeError(f"Spectra capital policy is not configured: {policy_path}")
 
     try:
         raw = json.loads(policy_path.read_text())
@@ -88,28 +84,20 @@ def load_capital_policy() -> CapitalPolicy:
 
     missing = [name for name in required if name not in raw]
     if missing:
-        raise RuntimeError(
-            "Spectra capital policy is missing: " + ", ".join(missing)
-        )
+        raise RuntimeError("Spectra capital policy is missing: " + ", ".join(missing))
 
     try:
         ttl = raw["reservation_ttl_seconds"]
         if not isinstance(ttl, int) or isinstance(ttl, bool):
-            raise ValueError(
-                "reservation_ttl_seconds must be an integer"
-            )
+            raise ValueError("reservation_ttl_seconds must be an integer")
 
         hold_ttl = raw["position_hold_snapshot_ttl_seconds"]
         if not isinstance(hold_ttl, int) or isinstance(hold_ttl, bool):
-            raise ValueError(
-                "position_hold_snapshot_ttl_seconds must be an integer"
-            )
+            raise ValueError("position_hold_snapshot_ttl_seconds must be an integer")
 
         policy = CapitalPolicy(
             reserve_floor_quote=Decimal(str(raw["reserve_floor_quote"])),
-            max_total_committed_quote=Decimal(
-                str(raw["max_total_committed_quote"])
-            ),
+            max_total_committed_quote=Decimal(str(raw["max_total_committed_quote"])),
             max_pair_quote=Decimal(str(raw["max_pair_quote"])),
             max_position_quote=Decimal(str(raw["max_position_quote"])),
             max_recovery_quote=Decimal(str(raw["max_recovery_quote"])),
@@ -129,9 +117,7 @@ def load_capital_policy() -> CapitalPolicy:
 
 @lru_cache(maxsize=1)
 def get_economic_position_ledger() -> EconomicPositionLedger:
-    return EconomicPositionLedger(
-        spectra_state_dir() / "economic_positions.sqlite3"
-    )
+    return EconomicPositionLedger(spectra_state_dir() / "economic_positions.sqlite3")
 
 
 @lru_cache(maxsize=1)
@@ -154,9 +140,7 @@ def get_vcap_runtime_store() -> VCAPRuntimeStore:
 
 @lru_cache(maxsize=1)
 def get_runtime_scheduler_store() -> RuntimeSchedulerStore:
-    return RuntimeSchedulerStore(
-        spectra_state_dir() / "runtime_scheduler.sqlite3"
-    )
+    return RuntimeSchedulerStore(spectra_state_dir() / "runtime_scheduler.sqlite3")
 
 
 @lru_cache(maxsize=1)
@@ -166,6 +150,18 @@ def get_capital_governor() -> CapitalGovernor:
     policy = load_capital_policy()
 
     return CapitalGovernor(db_path, policy)
+
+
+def get_dust_lifecycle(*, governor=None):
+    """Read the rollout gate on each admission; never enable it implicitly."""
+    from .dust_lifecycle import DustLifecycle
+
+    enabled = (os.getenv("SPECTRA_DUST_LIFECYCLE_ENABLED") or "").strip() == "1"
+    return DustLifecycle(
+        ledger=get_economic_position_ledger(),
+        governor=governor or get_capital_governor(),
+        enabled=enabled,
+    )
 
 
 def reset_runtime_cache() -> None:

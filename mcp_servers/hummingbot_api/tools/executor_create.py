@@ -22,6 +22,7 @@ a live API server. See ``mcp_servers/TOOL_STYLE.md``.
 """
 
 import logging
+import time
 from decimal import Decimal
 from typing import Any
 
@@ -30,7 +31,11 @@ from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
 from mcp_servers.hummingbot_api.settings import settings
 from spectra_core import CapitalProposal, IntentKind
 from spectra_core.models import BreakerMode
-from spectra_core.runtime import get_breaker_mode, get_capital_governor, get_economic_position_ledger
+from spectra_core.runtime import (
+    get_breaker_mode,
+    get_capital_governor,
+    get_dust_lifecycle,
+)
 
 logger = logging.getLogger("hummingbot-mcp")
 
@@ -179,7 +184,11 @@ async def _base_amount_violation(
 
 
 async def _trading_rule_violation(
-    client: Any, executor_type: str, config: dict[str, Any]
+    client: Any,
+    executor_type: str,
+    config: dict[str, Any],
+    *,
+    dust_rules: dict | None = None,
 ) -> str | None:
     """Name the venue rule this config breaks, or ``None`` to let it through.
 
@@ -194,7 +203,19 @@ async def _trading_rule_violation(
     if not isinstance(connector, str) or not isinstance(pair, str):
         return None
 
-    rules = await trading_rules_cache.get(client, connector, pair)
+    if dust_rules is not None:
+        # Dust admission cannot rely on a cached rule across a venue-threshold
+        # change. Require the exact requested pair from a fresh response.
+        try:
+            response = await client.connectors.get_trading_rules(
+                connector_name=connector, trading_pairs=[pair]
+            )
+            rules = response.get(pair) if isinstance(response, dict) else None
+        except Exception:
+            rules = None
+        dust_rules["rules"] = rules
+    else:
+        rules = await trading_rules_cache.get(client, connector, pair)
 
     # Generic Condor historically treats unavailable venue rules as fail-open.
     # Spectra's real-money seat does not: unknown exchange constraints mean
@@ -235,12 +256,8 @@ async def _trading_rule_violation(
         return None
 
     if executor_type == "grid_executor":
-        per_level = _amount(
-            config.get("min_order_amount_quote")
-        )
-        total = _amount(
-            config.get("total_amount_quote")
-        )
+        per_level = _amount(config.get("min_order_amount_quote"))
+        total = _amount(config.get("total_amount_quote"))
 
         if settings.agent_slug == "spectra":
             start_price = _amount(config.get("start_price"))
@@ -268,9 +285,7 @@ async def _trading_rule_violation(
             # floor, derive an explicit venue-legal one.
             if per_level is None:
                 per_level = required_per_level
-                config["min_order_amount_quote"] = float(
-                    required_per_level
-                )
+                config["min_order_amount_quote"] = float(required_per_level)
 
             if per_level < required_per_level:
                 return (
@@ -327,10 +342,7 @@ async def _trading_rule_violation(
                     "must contain at least one level"
                 )
 
-            if (
-                not isinstance(prices, (list, tuple))
-                or len(prices) != len(levels)
-            ):
+            if not isinstance(prices, (list, tuple)) or len(prices) != len(levels):
                 return (
                     "Spectra DCA execution refused: prices and "
                     "amounts_quote must contain the same number "
@@ -346,8 +358,7 @@ async def _trading_rule_violation(
 
                 if value is None or price is None:
                     return (
-                        f"Spectra DCA level {index} has an invalid "
-                        "amount or price"
+                        f"Spectra DCA level {index} has an invalid " "amount or price"
                     )
 
                 required = max(
@@ -398,6 +409,8 @@ def _authorize_spectra_execution(
     config: dict[str, Any],
     proposal_id: str | None,
     intent: str | None,
+    account_name: str = "master_account",
+    dust_rules: dict | None = None,
 ) -> str | None:
     """Commit the exact Spectra capital claim before any external mutation."""
     if settings.agent_slug != "spectra":
@@ -412,10 +425,7 @@ def _authorize_spectra_execution(
         )
 
     if breaker_mode == BreakerMode.HALTED:
-        return (
-            "Spectra breaker is HALTED; execution refused before "
-            "capital commit"
-        )
+        return "Spectra breaker is HALTED; execution refused before " "capital commit"
 
     if breaker_mode not in {
         BreakerMode.NORMAL,
@@ -495,12 +505,18 @@ def _authorize_spectra_execution(
 
     try:
         governor = get_capital_governor()
-        mutation_ledger = get_economic_position_ledger()
-        if not mutation_ledger.selected_recovery_proposal_allowed(pair, proposal.proposal_id):
-            return "Spectra exact position mutation owns this asset"
+        dust = get_dust_lifecycle(governor=governor)
+        if not dust.ledger.selected_recovery_proposal_allowed(
+            pair, proposal.proposal_id
+        ):
+            return "Spectra selected-recovery ownership lock refused this proposal"
+        dust.assert_dispatch(
+            proposal=proposal,
+            account_name=account_name,
+            now=time.time(),
+            venue_rules=None if dust_rules is None else dust_rules.get("rules"),
+        )
         committed = governor.commit_if_matches(proposal)
-        if committed and not mutation_ledger.selected_recovery_proposal_allowed(pair, proposal.proposal_id):
-            return "Spectra exact position mutation changed during capital commit"
     except Exception as exc:
         return f"Spectra capital governor unavailable: {exc}"
 
@@ -509,6 +525,23 @@ def _authorize_spectra_execution(
             "Spectra capital claim refused: missing, expired, already used, "
             "or its pair/amount/intent/leverage does not match this execution"
         )
+
+    try:
+        # Capital commit is itself a durable-state transition. Recheck after
+        # it, and consume the exact dust admission immediately before dispatch.
+        if not dust.ledger.selected_recovery_proposal_allowed(
+            pair, proposal.proposal_id
+        ):
+            return "Spectra selected-recovery ownership lock changed before dispatch"
+        dust.assert_dispatch(
+            proposal=proposal,
+            account_name=account_name,
+            now=time.time(),
+            claim=True,
+            venue_rules=None if dust_rules is None else dust_rules.get("rules"),
+        )
+    except Exception as exc:
+        return f"Spectra entry admission refused before dispatch: {exc}"
 
     return None
 
@@ -532,11 +565,7 @@ async def create_executor(
     (``validate_executor_config``) existed only because the config was an opaque dict.
     """
     account = account_name or "master_account"
-    tag = (
-        "spectra"
-        if settings.agent_slug == "spectra"
-        else (controller_id or "main")
-    )
+    tag = "spectra" if settings.agent_slug == "spectra" else (controller_id or "main")
 
     merged_config = executor_preferences.merge_with_defaults(executor_type, config)
     merged_config["type"] = executor_type
@@ -553,7 +582,24 @@ async def create_executor(
         merged_config.get("trading_pair"),
     )
 
-    violation = await _trading_rule_violation(client, executor_type, merged_config)
+    dust_rules = None
+    if settings.agent_slug == "spectra":
+        try:
+            if get_dust_lifecycle(
+                governor=get_capital_governor()
+            ).has_guarded_entry_state(str(merged_config.get("trading_pair") or "")):
+                dust_rules = {}
+        except Exception as exc:
+            error = f"Spectra entry admission unavailable: {exc}"
+            return {
+                "action": "create",
+                "executor_type": executor_type,
+                "error": error,
+                "formatted_output": error,
+            }
+    violation = await _trading_rule_violation(
+        client, executor_type, merged_config, dust_rules=dust_rules
+    )
     if violation:
         # Refused here, not by the backend: below a venue minimum the API answers
         # with an opaque error or accepts an order that never fills.
@@ -570,9 +616,13 @@ async def create_executor(
         merged_config,
         spectra_proposal_id,
         spectra_intent,
+        account,
+        dust_rules,
     )
     if spectra_error:
-        logger.warning("create_%s refused by Spectra Core: %s", executor_type, spectra_error)
+        logger.warning(
+            "create_%s refused by Spectra Core: %s", executor_type, spectra_error
+        )
         return {
             "action": "create",
             "executor_type": executor_type,
@@ -595,6 +645,7 @@ async def create_executor(
         }
 
     executor_id = result.get("executor_id") or result.get("id")
+    economic_position_id = None
 
     if settings.agent_slug == "spectra":
         if not executor_id:
@@ -617,11 +668,16 @@ async def create_executor(
                 proposal_id=str(spectra_proposal_id or ""),
                 executor_id=str(executor_id),
                 account_name=account,
-                connector_name=str(
-                    merged_config.get("connector_name") or ""
-                ),
+                connector_name=str(merged_config.get("connector_name") or ""),
                 controller_id=tag,
             )
+            if reconciled:
+                economic_position_id = get_dust_lifecycle(
+                    governor=get_capital_governor()
+                ).record_entry_receipt(
+                    proposal_id=str(spectra_proposal_id or ""),
+                    executor_id=str(executor_id),
+                )
         except Exception as exc:
             error = (
                 "Spectra executor was created but receipt reconciliation failed; "
@@ -675,6 +731,7 @@ async def create_executor(
         "controller_id": tag,
         "config_used": merged_config,
         "saved_as_default": save_as_default,
+        "spectra_position_id": economic_position_id,
         "result": result,
         "formatted_output": formatted,
     }

@@ -97,6 +97,15 @@ class CapitalGovernor:
     def _initialize(self) -> None:
         with self._connect() as conn:
             initialize_decision_trace(conn)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS executor_accounting_refresh_receipts (
+                    refresh_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    observation_id INTEGER NOT NULL,
+                    proposal_id TEXT NOT NULL,
+                    executor_id TEXT NOT NULL,
+                    observed_at REAL NOT NULL
+                )
+                """)
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS capital_reservations (
@@ -1565,9 +1574,7 @@ class CapitalGovernor:
                     else Decimal(previous["filled_amount_quote"])
                 )
                 previous_fees = (
-                    ZERO
-                    if previous is None
-                    else Decimal(previous["cum_fees_quote"])
+                    ZERO if previous is None else Decimal(previous["cum_fees_quote"])
                 )
 
                 # GridExecutor changes the meaning of filled_amount_quote when
@@ -1593,8 +1600,7 @@ class CapitalGovernor:
                     and not grid_position_hold_rebase
                 ):
                     raise RuntimeError(
-                        "filled_amount_quote moved backwards for "
-                        f"{executor_id}"
+                        "filled_amount_quote moved backwards for " f"{executor_id}"
                     )
 
                 if observation.cum_fees_quote < previous_fees:
@@ -1647,6 +1653,19 @@ class CapitalGovernor:
                     )
 
                     if comparable == previous_comparable:
+                        # A fresh, identical read is evidence without another
+                        # economic delta. Preserve the original observation.
+                        conn.execute(
+                            """INSERT INTO executor_accounting_refresh_receipts
+                            (observation_id, proposal_id, executor_id, observed_at)
+                            VALUES (?, ?, ?, ?)""",
+                            (
+                                previous["observation_id"],
+                                provenance["proposal_id"],
+                                executor_id,
+                                time.time(),
+                            ),
+                        )
                         conn.commit()
                         return ExecutorAccountingDelta(
                             proposal_id=str(provenance["proposal_id"]),
@@ -1663,7 +1682,7 @@ class CapitalGovernor:
                             executor_type=executor_type,
                         )
 
-                conn.execute(
+                observation_row = conn.execute(
                     """
                     INSERT INTO executor_accounting_observations (
                         proposal_id,
@@ -1711,6 +1730,18 @@ class CapitalGovernor:
                             if observation.realized_pnl_quote is None
                             else str(observation.realized_pnl_quote)
                         ),
+                        time.time(),
+                    ),
+                )
+
+                conn.execute(
+                    """INSERT INTO executor_accounting_refresh_receipts
+                    (observation_id, proposal_id, executor_id, observed_at)
+                    VALUES (?, ?, ?, ?)""",
+                    (
+                        observation_row.lastrowid,
+                        provenance["proposal_id"],
+                        executor_id,
                         time.time(),
                     ),
                 )
