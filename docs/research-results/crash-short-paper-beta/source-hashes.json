@@ -1,0 +1,12 @@
+{
+  "scripts/make_crash_short_synthetic_fixture.py": "5c0db5010a71985a31cf3f6623018adfb592f07768a54ae5fdfba3bf67611cc5",
+  "scripts/verify_crash_short_paper.py": "6202065f82bd3a680a93ac8373742f103b4992b38662e3a692aea51d8dbbda88",
+  "spectra_core/crash_short_model.py": "f95216f8c0a5b931d9888d0098c89f41ea92038695bdb21e80c856fb02653429",
+  "spectra_core/crash_short_paper.py": "f5f2a7e4466d77f1e2a7e9c13b1e7122a7b6cab427d742e5784bfaaeb2b966e9",
+  "spectra_core/crash_short_runtime.py": "29923b541e8e378c12a1162b704cc7351218ba09aa2bc688ed80a54c553c65a9",
+  "spectra_core/crash_short_signal.py": "3c721747272a0ba7640e642afb659e63bbac853773761ebc4cf83e8bc78dab27",
+  "tests/test_crash_short_paper.py": "f54183c389f79e8687891f07ffcb99051803e2748adfcb51dea6699b11d51d63",
+  "tests/test_crash_short_review.py": "9442e92e1ac8a9cc530ba42963db219d6d3f9eb02df5e2a12bde7d3528465038",
+  "tests/test_crash_short_runtime.py": "5536b5d5218d832166668a0dd5e21e52dc9e811aa4ca728ae332cebffdef9615",
+  "tests/test_crash_short_signal.py": "c95062cb3c0ccc4c1e6b3e346bf46287127773f112590aad99cc2acb4446b7b3"
+}
