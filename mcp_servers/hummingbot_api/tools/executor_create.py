@@ -30,7 +30,7 @@ from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
 from mcp_servers.hummingbot_api.settings import settings
 from spectra_core import CapitalProposal, IntentKind
 from spectra_core.models import BreakerMode
-from spectra_core.runtime import get_breaker_mode, get_capital_governor
+from spectra_core.runtime import get_breaker_mode, get_capital_governor, get_economic_position_ledger
 
 logger = logging.getLogger("hummingbot-mcp")
 
@@ -495,7 +495,12 @@ def _authorize_spectra_execution(
 
     try:
         governor = get_capital_governor()
+        mutation_ledger = get_economic_position_ledger()
+        if not mutation_ledger.selected_recovery_proposal_allowed(pair, proposal.proposal_id):
+            return "Spectra exact position mutation owns this asset"
         committed = governor.commit_if_matches(proposal)
+        if committed and not mutation_ledger.selected_recovery_proposal_allowed(pair, proposal.proposal_id):
+            return "Spectra exact position mutation changed during capital commit"
     except Exception as exc:
         return f"Spectra capital governor unavailable: {exc}"
 

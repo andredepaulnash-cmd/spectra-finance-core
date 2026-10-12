@@ -178,7 +178,9 @@ class EconomicPositionLedger:
         return conn
 
     def _init_schema(self) -> None:
+        from .position_mutation import initialize_position_mutation
         with self._connect() as conn:
+            initialize_position_mutation(conn)
             conn.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS economic_positions (
@@ -864,6 +866,7 @@ class EconomicPositionLedger:
         exit_fee_quote: Decimal = Decimal("0"),
         occurred_at: float,
         eligible_lot_ids: tuple[str, ...] | None = None,
+        mutation_owner_id: str | None = None,
     ) -> EconomicExitResult:
         eid = _text(event_id, "event_id")
         pid = _text(position_id, "position_id")
@@ -895,6 +898,13 @@ class EconomicPositionLedger:
                     conn.rollback()
                     return replay
 
+                from .position_mutation import lock_owner
+
+                held_owner = lock_owner(conn, pid)
+                if held_owner is not None and held_owner != mutation_owner_id:
+                    raise ValueError("selected recovery owns exact position exit scope")
+                if mutation_owner_id is not None and held_owner != mutation_owner_id:
+                    raise ValueError("exact position mutation owner is not held")
                 position = self._position_row(conn, pid)
                 pair = str(position["pair"])
                 if str(position["status"]) != EconomicPositionStatus.ACTIVE.value:
@@ -925,20 +935,15 @@ class EconomicPositionLedger:
                     lots = all_active_lots
                 else:
                     if not eligible_lot_ids:
-                        raise ValueError(
-                            "eligible_lot_ids cannot be empty"
-                        )
+                        raise ValueError("eligible_lot_ids cannot be empty")
                     normalized_scope = tuple(
-                        _text(lot_id, "eligible_lot_id")
-                        for lot_id in eligible_lot_ids
+                        _text(lot_id, "eligible_lot_id") for lot_id in eligible_lot_ids
                     )
                     if len(set(normalized_scope)) != len(normalized_scope):
                         raise ValueError("eligible_lot_ids cannot contain duplicates")
                     by_id = {lot.lot_id: lot for lot in all_active_lots}
                     missing = [
-                        lot_id
-                        for lot_id in normalized_scope
-                        if lot_id not in by_id
+                        lot_id for lot_id in normalized_scope if lot_id not in by_id
                     ]
                     if missing:
                         raise ValueError(
@@ -987,11 +992,18 @@ class EconomicPositionLedger:
 
                     allocations.append(
                         (
-                            eid, lot.lot_id, pid, lot.proposal_id,
-                            lot.executor_id, lot.ownership.value,
-                            str(lot_sale), str(basis_piece), str(fee_piece),
+                            eid,
+                            lot.lot_id,
+                            pid,
+                            lot.proposal_id,
+                            lot.executor_id,
+                            lot.ownership.value,
+                            str(lot_sale),
+                            str(basis_piece),
+                            str(fee_piece),
                         )
                     )
+
                     updates.append(
                         (
                             lot.base_remaining - lot_sale,
@@ -1007,8 +1019,8 @@ class EconomicPositionLedger:
                     # reject than silently reassign inventory.
                     raise RuntimeError("exit allocation did not close exactly")
 
-                # Preserve exact new-event owner allocation evidence atomically.
-                # Historical allocation rows are not reconstructed or guessed.
+                # New events have exact per-owner allocation evidence. Legacy
+                # events are intentionally not reconstructed or guessed.
                 conn.executemany(
                     """
                     INSERT INTO economic_exit_allocations (
@@ -1019,6 +1031,7 @@ class EconomicPositionLedger:
                     """,
                     allocations,
                 )
+
                 for base_left, basis_left, fees_left, lot_id in updates:
                     conn.execute(
                         """
@@ -1039,12 +1052,7 @@ class EconomicPositionLedger:
                         ),
                     )
 
-                realized = (
-                    proceeds
-                    - exit_fee
-                    - allocated_basis
-                    - allocated_entry_fees
-                )
+                realized = proceeds - exit_fee - allocated_basis - allocated_entry_fees
 
                 active_after = total_active_base - sold
                 closed = active_after == ZERO
@@ -1336,3 +1344,31 @@ class EconomicPositionLedger:
         pid = _text(position_id, "position_id")
         with self._connect() as conn:
             return self._snapshot_with_conn(conn, pid)
+
+    def selected_recovery_lock_owner(self, position_id: str) -> str | None:
+        from .position_mutation import lock_owner
+
+        with self._connect() as conn:
+            return lock_owner(conn, _text(position_id, "position_id"))
+
+    def claim_selected_recovery_lock(self, position_id: str, owner_id: str) -> None:
+        from .position_mutation import claim_lock
+
+        claim_lock(self, position_id, owner_id)
+
+    def allow_selected_recovery_proposal(
+        self, position_id: str, owner_id: str, proposal_id: str
+    ) -> None:
+        from .position_mutation import allow_proposal
+
+        allow_proposal(self, position_id, owner_id, proposal_id)
+
+    def selected_recovery_proposal_allowed(self, pair: str, proposal_id: str) -> bool:
+        from .position_mutation import proposal_allowed
+
+        return proposal_allowed(self, pair, proposal_id)
+
+    def release_selected_recovery_lock(self, position_id: str, owner_id: str) -> bool:
+        from .position_mutation import release_lock
+
+        return release_lock(self, position_id, owner_id)

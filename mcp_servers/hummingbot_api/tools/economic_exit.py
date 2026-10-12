@@ -22,8 +22,6 @@ from spectra_core.vcap_profit_exit import (
 )
 
 
-
-
 async def reconcile_economic_exit_owner_accounting(
     client: Any,
     *,
@@ -57,33 +55,21 @@ async def reconcile_economic_exit_owner_accounting(
                 {
                     "status": observation.status,
                     "close_type": observation.close_type,
-                    "accounting_filled_delta_quote": str(
-                        delta.filled_delta_quote
-                    ),
-                    "accounting_fee_delta_quote": str(
-                        delta.fee_delta_quote
-                    ),
+                    "accounting_filled_delta_quote": str(delta.filled_delta_quote),
+                    "accounting_fee_delta_quote": str(delta.fee_delta_quote),
                 }
             )
             if owner.intent == IntentKind.RECOVERY:
-                provenance = governor.get_execution_provenance(
-                    owner.proposal_id
-                )
+                provenance = governor.get_execution_provenance(owner.proposal_id)
                 if provenance is None:
-                    raise RuntimeError(
-                        "recovery owner provenance disappeared"
-                    )
+                    raise RuntimeError("recovery owner provenance disappeared")
                 exposure = assess_recovery_exposure(
                     observation,
                     provenance,
                 )
                 released = exposure.exposure_quote == 0
-                all_recovery_budget_released = (
-                    all_recovery_budget_released and released
-                )
-                row["remaining_recovery_exposure_quote"] = str(
-                    exposure.exposure_quote
-                )
+                all_recovery_budget_released = all_recovery_budget_released and released
+                row["remaining_recovery_exposure_quote"] = str(exposure.exposure_quote)
                 row["recovery_budget_released"] = released
         except Exception as exc:
             if owner.intent == IntentKind.RECOVERY:
@@ -95,6 +81,7 @@ async def reconcile_economic_exit_owner_accounting(
         "all_recovery_budget_released": all_recovery_budget_released,
         "owners": rows,
     }
+
 
 async def execute_economic_position_exit(
     client: Any,
@@ -127,6 +114,12 @@ async def execute_economic_position_exit(
     if decision.pair != trading_rule.trading_pair.strip().upper():
         raise ValueError("profit exit pair does not match Kraken trading rule")
 
+    if ledger.selected_recovery_lock_owner(position_id) is not None:
+        return {
+            "action": "EXIT",
+            "exit_requested": False,
+            "reasons": ["exact_position_mutation_pending"],
+        }
     store = EconomicExitManifestStore(ledger.path)
     manifest = create_or_load_position_exit_manifest(
         ledger=ledger,
@@ -162,6 +155,12 @@ async def execute_economic_position_exit(
             owner_results.append(row)
             continue
 
+        if ledger.selected_recovery_lock_owner(position_id) is not None:
+            row["state"] = "EXACT_MUTATION_PENDING"
+            all_stop_requests_accepted = False
+            all_recovery_budget_released = False
+            owner_results.append(row)
+            continue
         attempted = True
         try:
             stop_result = await client.executors.stop_executor(
@@ -181,29 +180,19 @@ async def execute_economic_position_exit(
                 {
                     "executor_status": observation.status,
                     "close_type": observation.close_type,
-                    "accounting_filled_delta_quote": str(
-                        delta.filled_delta_quote
-                    ),
-                    "accounting_fee_delta_quote": str(
-                        delta.fee_delta_quote
-                    ),
+                    "accounting_filled_delta_quote": str(delta.filled_delta_quote),
+                    "accounting_fee_delta_quote": str(delta.fee_delta_quote),
                 }
             )
 
             if owner.intent == IntentKind.RECOVERY:
                 exposure = assess_recovery_exposure(
                     observation,
-                    governor.get_execution_provenance(
-                        owner.proposal_id
-                    ),
+                    governor.get_execution_provenance(owner.proposal_id),
                 )
                 released = exposure.exposure_quote == 0
-                all_recovery_budget_released = (
-                    all_recovery_budget_released and released
-                )
-                row["remaining_recovery_exposure_quote"] = str(
-                    exposure.exposure_quote
-                )
+                all_recovery_budget_released = all_recovery_budget_released and released
+                row["remaining_recovery_exposure_quote"] = str(exposure.exposure_quote)
                 row["recovery_budget_released"] = released
         except Exception as exc:
             all_stop_requests_accepted = False
@@ -223,16 +212,15 @@ async def execute_economic_position_exit(
 
     return {
         "action": "EXIT",
-        "exit_requested": attempted or progress.state == EconomicExitProgressState.COMPLETED,
+        "exit_requested": attempted
+        or progress.state == EconomicExitProgressState.COMPLETED,
         "manifest_id": manifest.manifest_id,
         "position_id": manifest.position_id,
         "pair": manifest.pair,
         "target_active_base": str(manifest.target_active_base),
         "remaining_active_base": str(progress.remaining_active_base),
         "realized_net_pnl_quote": str(progress.realized_pnl_quote),
-        "strategic_retained_base": str(
-            progress.strategic_retained_base
-        ),
+        "strategic_retained_base": str(progress.strategic_retained_base),
         "retained_inventory_in_manifest": False,
         "all_stop_requests_accepted": all_stop_requests_accepted,
         "all_recovery_budget_released": all_recovery_budget_released,

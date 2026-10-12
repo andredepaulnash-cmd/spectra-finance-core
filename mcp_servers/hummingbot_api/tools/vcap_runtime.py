@@ -1,8 +1,29 @@
 from __future__ import annotations
 
+import sqlite3
+from contextlib import closing
+from dataclasses import replace
 from decimal import Decimal
-from typing import Any, Iterable
+from time import monotonic
+from typing import Any, Callable, Iterable
 
+from aiohttp import ClientResponseError
+
+from mcp_servers.hummingbot_api.tools.accounting_health import (
+    synchronize_position_accounting_health,
+)
+from mcp_servers.hummingbot_api.tools.economic_exit import (
+    reconcile_economic_exit_owner_accounting,
+)
+from mcp_servers.hummingbot_api.tools.executor_provenance import (
+    fetch_executor_order_snapshot,
+)
+from mcp_servers.hummingbot_api.tools.partial_recycle import (
+    synchronize_partial_recycle_executor,
+)
+from mcp_servers.hummingbot_api.tools.vcap_lifecycle import (
+    execute_vcap_lifecycle_decision,
+)
 from spectra_core.accounting_health import (
     AccountingHealthState,
     AccountingHealthSupervisor,
@@ -17,14 +38,20 @@ from spectra_core.economic_exit import (
     EconomicExitProgressState,
     assess_position_exit_manifest,
 )
-from spectra_core.economic_position import EconomicPositionLedger
-from spectra_core.partial_recycle import (
-    PartialRecycleStore,
-    assess_partial_recycle_manifest,
-)
+from spectra_core.economic_position import EconomicPositionLedger, normalized_base_asset
 from spectra_core.kraken_market_fabric import (
     KrakenTradingRule,
     collect_kraken_universe,
+)
+from spectra_core.partial_attempt import (
+    PartialAttemptDisposition,
+    PartialAttemptPolicy,
+    assess_partial_attempt,
+)
+from spectra_core.partial_recycle import (
+    PartialRecyclePolicy,
+    PartialRecycleStore,
+    assess_partial_recycle_manifest,
 )
 from spectra_core.recovery_fingerprint import (
     RecoveryFingerprintPolicy,
@@ -45,20 +72,6 @@ from spectra_core.vcap_runtime import (
 )
 from spectra_core.vcap_state import VCAPStateStore
 from spectra_core.vcap_tranches import VCAPTranchePolicy
-
-from mcp_servers.hummingbot_api.tools.accounting_health import (
-    synchronize_position_accounting_health,
-)
-from mcp_servers.hummingbot_api.tools.economic_exit import (
-    reconcile_economic_exit_owner_accounting,
-)
-from mcp_servers.hummingbot_api.tools.partial_recycle import (
-    synchronize_partial_recycle_executor,
-)
-from mcp_servers.hummingbot_api.tools.vcap_lifecycle import (
-    execute_vcap_lifecycle_decision,
-)
-
 
 _PREPLAN_PHASES = (
     VCAPRuntimePhase.STARTED,
@@ -131,9 +144,7 @@ async def _refresh_market(
         raise RuntimeError("market observation timestamp is ahead of runtime clock")
     age = float(now) - observation.timestamp
     if age > policy.market_max_age_seconds:
-        raise RuntimeError(
-            f"market observation is stale by {age:.3f}s"
-        )
+        raise RuntimeError(f"market observation is stale by {age:.3f}s")
 
     prior = runtime_store.load_fingerprint(pair)
     if prior is None:
@@ -144,9 +155,7 @@ async def _refresh_market(
         # Exact retry/restart of the same market snapshot is idempotent.
         fingerprint = prior
     else:
-        raise RuntimeError(
-            "market observation predates persisted asset fingerprint"
-        )
+        raise RuntimeError("market observation predates persisted asset fingerprint")
 
     runtime_store.save_fingerprint(fingerprint, now=now)
     return (
@@ -193,6 +202,70 @@ async def _refresh_accounting(
         supervisor=supervisor,
         now=now,
     )
+
+
+async def _partial_pending_orders(
+    client: Any,
+    *,
+    position_id: str,
+    ledger: EconomicPositionLedger,
+    governor: CapitalGovernor,
+    now: float,
+) -> tuple[str, ...]:
+    """Fresh exact executor evidence; an unavailable surface is not empty."""
+    executor_ids = set()
+    pending = []
+    base = normalized_base_asset(ledger.snapshot(position_id).pair)
+    # A committed create with no receipt/lot can still represent an in-flight
+    # or ambiguous same-asset order. Source-lot enumeration cannot discover it.
+    with closing(
+        sqlite3.connect(governor.db_path.resolve().as_uri() + "?mode=ro", uri=True)
+    ) as conn:
+        for proposal_id, pair in conn.execute(
+            "SELECT proposal_id, pair FROM capital_reservations WHERE status='COMMITTED'"
+        ):
+            if normalized_base_asset(pair) == base:
+                pending.append("committed-claim:" + proposal_id)
+    for proposal_id in ledger.active_proposal_ids(position_id):
+        provenance = governor.get_execution_provenance(proposal_id)
+        if (
+            provenance is None
+            or governor.get_execution_receipt(proposal_id) != provenance.executor_id
+        ):
+            raise RuntimeError("partial attempt owner provenance unavailable")
+        executor_ids.add(provenance.executor_id)
+    manifest = PartialRecycleStore(ledger.path).open_for_position(position_id)
+    if manifest is not None:
+        try:
+            existing = await client.executors.get_executor(manifest.sell_executor_id)
+        except ClientResponseError as exc:
+            if exc.status != 404:
+                raise
+            existing = None
+        if existing is not None:
+            executor_ids.add(manifest.sell_executor_id)
+    for executor_id in sorted(executor_ids):
+        snapshot = await fetch_executor_order_snapshot(client, executor_id=executor_id)
+        for order in snapshot.orders:
+            if (
+                order.created_at > now
+                or (order.updated_at is not None and order.updated_at > now)
+                or order.filled_amount > order.amount
+                or (
+                    order.status.upper() == "FILLED"
+                    and order.filled_amount != order.amount
+                )
+            ):
+                raise RuntimeError("partial pending-order evidence is inconsistent")
+            if order.status.upper() not in {
+                "FILLED",
+                "CANCELED",
+                "CANCELLED",
+                "FAILED",
+                "REJECTED",
+            }:
+                pending.append(order.order_id)
+    return tuple(sorted(set(pending)))
 
 
 def _mutation_key(decision: VCAPLifecycleDecision) -> tuple[str, str | None]:
@@ -265,18 +338,12 @@ async def _resume_reconciliation(
             if isinstance(raw_manifest_id, str) and raw_manifest_id.strip():
                 manifest_id = raw_manifest_id.strip()
         exit_manifest = (
-            None
-            if manifest_id is None
-            else exit_manifest_store.load(manifest_id)
+            None if manifest_id is None else exit_manifest_store.load(manifest_id)
         )
         if exit_manifest is None:
-            exit_manifest = exit_manifest_store.open_for_position(
-                cycle.position_id
-            )
+            exit_manifest = exit_manifest_store.open_for_position(cycle.position_id)
         if exit_manifest is None:
-            exit_manifest = exit_manifest_store.latest_for_position(
-                cycle.position_id
-            )
+            exit_manifest = exit_manifest_store.latest_for_position(cycle.position_id)
         if exit_manifest is None:
             conflict = runtime_store.transition(
                 cycle.cycle_id,
@@ -303,14 +370,10 @@ async def _resume_reconciliation(
             if isinstance(raw_manifest_id, str) and raw_manifest_id.strip():
                 manifest_id = raw_manifest_id.strip()
         partial_manifest = (
-            None
-            if manifest_id is None
-            else partial_store.load(manifest_id)
+            None if manifest_id is None else partial_store.load(manifest_id)
         )
         if partial_manifest is None:
-            partial_manifest = partial_store.open_for_position(
-                cycle.position_id
-            )
+            partial_manifest = partial_store.open_for_position(cycle.position_id)
         if partial_manifest is None:
             conflict = runtime_store.transition(
                 cycle.cycle_id,
@@ -395,13 +458,10 @@ async def _resume_reconciliation(
     if health.state == AccountingHealthState.HEALTHY:
         if cycle.planned_action == VCAPLifecycleAction.EXECUTE_TRANCHE.value:
             proposal_id = cycle.mutation_proposal_id
-            reconciled = (
-                proposal_id is not None
-                and _tranche_fill_confirmed(
-                    position_id=cycle.position_id,
-                    proposal_id=proposal_id,
-                    ledger=ledger,
-                )
+            reconciled = proposal_id is not None and _tranche_fill_confirmed(
+                position_id=cycle.position_id,
+                proposal_id=proposal_id,
+                ledger=ledger,
             )
         elif cycle.planned_action == VCAPLifecycleAction.EXIT.value:
             if exit_manifest is None or exit_manifest_store is None:
@@ -442,13 +502,8 @@ async def _resume_reconciliation(
                     reasons=hold.decision_reasons,
                 )
 
-            if (
-                progress.state == EconomicExitProgressState.COMPLETED
-                and bool(
-                    owner_accounting.get(
-                        "all_recovery_budget_released"
-                    )
-                )
+            if progress.state == EconomicExitProgressState.COMPLETED and bool(
+                owner_accounting.get("all_recovery_budget_released")
             ):
                 checkpoint_vcap_exit_result(
                     state=state,
@@ -568,6 +623,7 @@ async def run_vcap_runtime_cycle(
     runtime_policy: VCAPRuntimePolicy | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
+    monotonic_clock: Callable[[], float] = monotonic,
 ) -> dict[str, Any]:
     """Run or resume exactly one closed-loop VCAP runtime cycle.
 
@@ -578,6 +634,13 @@ async def run_vcap_runtime_cycle(
     """
 
     policy = runtime_policy or VCAPRuntimePolicy()
+    # Keep legacy economics and caller timestamps unchanged when disabled.
+    # Enabled send-boundary checks include real time elapsed across all awaits.
+    started_at = monotonic_clock() if policy.partial_attempt_deferral_enabled else 0.0
+
+    def partial_check_time() -> float:
+        return float(now) + max(0.0, monotonic_clock() - started_at)
+
     cycle = runtime_store.begin_or_resume(
         position_id=position_id,
         envelope_proposal_id=envelope_proposal_id,
@@ -596,17 +659,13 @@ async def run_vcap_runtime_cycle(
             cycle.phase == VCAPRuntimePhase.MUTATION_DISPATCHING
             and cycle.mutation_proposal_id is not None
         ):
-            receipt = governor.get_execution_receipt(
-                cycle.mutation_proposal_id
-            )
+            receipt = governor.get_execution_receipt(cycle.mutation_proposal_id)
             if receipt is not None:
                 cycle = runtime_store.transition(
                     cycle.cycle_id,
                     phase=VCAPRuntimePhase.MUTATION_DISPATCHED,
                     now=now,
-                    expected_phases=(
-                        VCAPRuntimePhase.MUTATION_DISPATCHING,
-                    ),
+                    expected_phases=(VCAPRuntimePhase.MUTATION_DISPATCHING,),
                     execution_result={
                         "recovered_after_restart": True,
                         "executor_id": receipt,
@@ -729,6 +788,27 @@ async def run_vcap_runtime_cycle(
         expected_phases=(VCAPRuntimePhase.ACCOUNTING_PRECHECKED,),
     )
 
+    partial_options = {}
+    if policy.partial_attempt_deferral_enabled:
+        try:
+            pending = await _partial_pending_orders(
+                client,
+                position_id=position_id,
+                ledger=ledger,
+                governor=governor,
+                now=now,
+            )
+        except Exception:
+            pending = None
+        partial_options = {
+            "partial_attempt_policy": PartialAttemptPolicy(
+                enabled=True,
+                max_observation_age_seconds=policy.market_max_age_seconds,
+            ),
+            "partial_price_observed_at": fingerprint.last_seen_at,
+            "pending_order_ids": pending,
+        }
+
     decision = plan_vcap_lifecycle_from_ledger(
         position_id=position_id,
         ledger=ledger,
@@ -748,6 +828,7 @@ async def run_vcap_runtime_cycle(
         profit_policy=profit_policy,
         governor=governor,
         accounting_health=health,
+        **partial_options,
     )
 
     mutation_key = None
@@ -872,6 +953,70 @@ async def run_vcap_runtime_cycle(
             reasons=blocked.decision_reasons,
         )
 
+    partial_dispatch_options = {}
+    if (
+        policy.partial_attempt_deferral_enabled
+        and decision.action == VCAPLifecycleAction.PARTIAL_RECYCLE
+    ):
+        partial = decision.partial_recycle_decision
+        if partial is None or partial.manifest is None:
+            raise RuntimeError("partial dispatch lost exact manifest")
+
+        async def final_partial_guard():
+            try:
+                pending = await _partial_pending_orders(
+                    client,
+                    position_id=position_id,
+                    ledger=ledger,
+                    governor=governor,
+                    now=partial_check_time(),
+                )
+            except Exception:
+                pending = None
+            checked_at = partial_check_time()
+            assessment = assess_partial_attempt(
+                manifest=partial.manifest,
+                ledger=ledger,
+                governor=governor,
+                store=PartialRecycleStore(ledger.path),
+                trading_rule=trading_rule,
+                current_price=current_price,
+                observed_at=fingerprint.last_seen_at,
+                now=checked_at,
+                expected_exit_fee_bps=expected_exit_fee_bps,
+                slippage_allowance_bps=slippage_allowance_bps,
+                target_net_profit_bps=PartialRecyclePolicy().target_net_profit_bps,
+                pending_order_ids=pending,
+                policy=partial_options["partial_attempt_policy"],
+            )
+            if not preexec_health.allows_live_mutation(now=checked_at):
+                return replace(
+                    assessment,
+                    disposition=PartialAttemptDisposition.BLOCKED,
+                    reasons=(*assessment.reasons, "partial_final_accounting_stale"),
+                )
+            return assessment
+
+        partial_dispatch_options["partial_attempt_guard"] = final_partial_guard
+        assessment = await final_partial_guard()
+        if assessment.disposition != PartialAttemptDisposition.ELIGIBLE:
+            hold = runtime_store.transition(
+                cycle.cycle_id,
+                phase=VCAPRuntimePhase.HOLD,
+                now=now,
+                decision_reasons=(
+                    "partial_attempt_revalidation_blocked",
+                    *assessment.reasons,
+                ),
+            )
+            return _runtime_result(
+                hold,
+                accounting_state=preexec_health.state.value,
+                action=decision.action.value,
+                executed=False,
+                reasons=hold.decision_reasons,
+            )
+
     cycle = runtime_store.transition(
         cycle.cycle_id,
         phase=VCAPRuntimePhase.MUTATION_DISPATCHING,
@@ -893,6 +1038,7 @@ async def run_vcap_runtime_cycle(
             accounting_health=preexec_health,
             account_name=account_name,
             controller_id=controller_id,
+            **partial_dispatch_options,
         )
     except Exception as exc:
         waiting = runtime_store.transition(
@@ -951,8 +1097,7 @@ async def run_vcap_runtime_cycle(
                 now=now,
                 expected_phases=(VCAPRuntimePhase.MUTATION_DISPATCHED,),
                 last_error=str(
-                    dispatch.get("error")
-                    or "partial recycle was not dispatched"
+                    dispatch.get("error") or "partial recycle was not dispatched"
                 ),
                 decision_reasons=(
                     *decision.reasons,
