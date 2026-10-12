@@ -3,7 +3,6 @@ from dataclasses import replace
 from decimal import Decimal as D
 
 import pytest
-from test_spectra_core import base_snapshot, governor, proposal
 
 import spectra_core.capital_governor as governor_module
 from spectra_core.decision_trace import (
@@ -13,6 +12,7 @@ from spectra_core.decision_trace import (
 )
 from spectra_core.models import DecisionStatus
 from spectra_core.vcap_runtime import VCAPRuntimePhase, VCAPRuntimeStore
+from tests.test_spectra_core import base_snapshot, governor, proposal
 
 
 def test_rejected_capital_carries_exact_observed_limits_and_no_authority(tmp_path):

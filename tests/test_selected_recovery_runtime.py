@@ -9,7 +9,6 @@ from fractions import Fraction as F
 from types import SimpleNamespace
 
 import pytest
-from test_selected_recovery import LADDER, Harness, decimal
 
 from spectra_core.accounting_health import (
     AccountingHealthDecision,
@@ -27,6 +26,7 @@ from spectra_core.selected_recovery_runtime import (
     SelectedRecoveryRuntimePolicy,
     run_selected_recovery_cycle,
 )
+from tests.test_selected_recovery import LADDER, Harness, decimal
 
 D = Decimal
 

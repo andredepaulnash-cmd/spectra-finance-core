@@ -3,8 +3,6 @@ from dataclasses import replace
 from decimal import Decimal as D
 
 import pytest
-from test_partial_recovery_recycling import add_recovery, governor, ledger, rule
-from test_vcap_lifecycle_controller import healthy_accounting
 
 from spectra_core.asset_fingerprint import AssetFingerprint, AssetObservation
 from spectra_core.partial_attempt import PartialAttemptDisposition as Outcome
@@ -19,6 +17,8 @@ from spectra_core.vcap_state import (
     VCAPLifecycleStatus,
     VCAPStateStore,
 )
+from tests.test_partial_recovery_recycling import add_recovery, governor, ledger, rule
+from tests.test_vcap_lifecycle_controller import healthy_accounting
 
 
 @pytest.fixture
