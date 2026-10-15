@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "action": "public_ohlc_capture",
+  "capture_date_utc": "2026-10-15",
+  "requested_utc": "2026-10-15T12:25:57Z",
+  "protocol_sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+  "no_strategy_evaluation": true
+}
