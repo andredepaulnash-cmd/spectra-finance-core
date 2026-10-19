@@ -47,4 +47,5 @@ jobs:
         shell: bash
         run: |
           mapfile -t suites < tests/weekly-reversal-suite.txt
-          uv run python -m pytest -q --tb=short "${suites[@]}"
+          # Shared research helpers use sibling imports inside the tests package.
+          uv run python -m pytest -o pythonpath=tests -q --tb=short "${suites[@]}"

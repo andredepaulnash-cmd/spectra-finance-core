@@ -41,8 +41,12 @@ HOME and real repository `tests/conftest.py`; no safety fixture was removed.
 export PYTHONDONTWRITEBYTECODE=1
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 mapfile -t suites < tests/weekly-reversal-suite.txt
-uv run python -m pytest -q --tb=short "${suites[@]}"
+uv run python -m pytest -o pythonpath=tests -q --tb=short "${suites[@]}"
 ```
+
+The explicit test path keeps sibling research helper imports available with the
+complete checkout's existing `tests/__init__.py`. It changes import resolution,
+not the suite manifest, fixtures or assertions.
 
 The complete application environment, frontend build and unrelated application
 suites are separate from this focused integration check. Recovered research files
