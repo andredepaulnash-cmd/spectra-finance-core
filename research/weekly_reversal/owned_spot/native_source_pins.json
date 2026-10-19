@@ -1,0 +1,166 @@
+[
+  {
+    "path": "spectra_core/__init__.py",
+    "sha256": "c9a6f5bb98d46c8b794bb470069615863a71fa3ffb5c45ecaca845be477d69da"
+  },
+  {
+    "path": "spectra_core/accounting_health.py",
+    "sha256": "65b989efa827f52e8b2d61ff0aefc1f8895cef50e3820bb9931238a009bf3c25"
+  },
+  {
+    "path": "spectra_core/asset_fingerprint.py",
+    "sha256": "884106e1c7556618937032ff1b6445414457326fc864ccb03d7434ff53a9751a"
+  },
+  {
+    "path": "spectra_core/binance_kline_import.py",
+    "sha256": "e97d371eb424a2fed47d95af238f8ef50784fb9b44f0dcdf884b28bf25ed4813"
+  },
+  {
+    "path": "spectra_core/capital_governor.py",
+    "sha256": "b139c8e5dfcaf21cfb0f4c0182ad33500f7b769134d2eed4a6847bb8b556a2ff"
+  },
+  {
+    "path": "spectra_core/cycle_reconciliation.py",
+    "sha256": "9d680aadbee02a6b43468262bd6228e99cfb76fa81aec3e217d51094168ef122"
+  },
+  {
+    "path": "spectra_core/decision_trace.py",
+    "sha256": "b25a901b968141ab1cb27d02e41161eb1dc416eea91f5dad1bd802ca46907d45"
+  },
+  {
+    "path": "spectra_core/dust_lifecycle.py",
+    "sha256": "bff5327a2370e1e551bc38ca1cd8180531990256d567711431996cd2b4314b9d"
+  },
+  {
+    "path": "spectra_core/economic_exit.py",
+    "sha256": "2244f2fd264431e54fbd84d6a2d09a45ed186882734bfff6817091c0f076aaed"
+  },
+  {
+    "path": "spectra_core/economic_position.py",
+    "sha256": "36ce92449c04e61f05159abf51cb31f9d862c8e55108a7e0abfad9c8c2b825d9"
+  },
+  {
+    "path": "spectra_core/executor_accounting.py",
+    "sha256": "4fff4d1e03dcf6241331d360315654af4a12a77ef08458fc5a5f113862ac5ff5"
+  },
+  {
+    "path": "spectra_core/executor_provenance_bridge.py",
+    "sha256": "d44681b936b15d691d318e680d977841996dcc8953369b6edb70b00d54a30b52"
+  },
+  {
+    "path": "spectra_core/fill_reconciliation.py",
+    "sha256": "d07dbd56ddd4fccd0af9782361655a08d1a276898eef412e30c9b5ec6d070638"
+  },
+  {
+    "path": "spectra_core/kraken_authorization.py",
+    "sha256": "a66f449ad39134062c4e2e4bc11fcbf65e79a96f26757802ca09218682963190"
+  },
+  {
+    "path": "spectra_core/kraken_market_fabric.py",
+    "sha256": "784ec7f9a5b5d3e2ea2e854bea978ff19fab9dec29f89f4f1afd858c9e460bd8"
+  },
+  {
+    "path": "spectra_core/kraken_snapshot.py",
+    "sha256": "e0d76fb250912dcda04a87acdd8c10647d4a20f5d44d52a07d95206fbb7fa995"
+  },
+  {
+    "path": "spectra_core/kraken_tardis_import.py",
+    "sha256": "4e8da9089156cf75a3962258717f7d2e43d61266d124759372f8463d9b814f91"
+  },
+  {
+    "path": "spectra_core/models.py",
+    "sha256": "6ad0e6d336b0eabefc4f6a90d3ab190a05d9d3da531a041acb10a27b47f6891e"
+  },
+  {
+    "path": "spectra_core/partial_attempt.py",
+    "sha256": "2a6231aa1dcd2165c2ad8edbddbfcddf750cbc16ecc559eb162a5e7523e110ef"
+  },
+  {
+    "path": "spectra_core/partial_recycle.py",
+    "sha256": "c7139cdca7fa0d030a4e72788e077afc0c324889b759bb20c507d96f4e37fa36"
+  },
+  {
+    "path": "spectra_core/position_hold_accounting.py",
+    "sha256": "7b9dcc6287776964b4c7e72244ae35ae0a930f925079fd51d6108191d2a1c33e"
+  },
+  {
+    "path": "spectra_core/position_mutation.py",
+    "sha256": "a9a6983737e776e36845aa685c35980ac4198aeda24efd4d95bbbb5d39b29920"
+  },
+  {
+    "path": "spectra_core/recovery_fingerprint.py",
+    "sha256": "e9f06fe779a359606b266cc8c1714af118e4ce63d84a4a62875387145322a36b"
+  },
+  {
+    "path": "spectra_core/rotating_fleet.py",
+    "sha256": "6a49c674e3b353e389b61818090a6851db2a81cd3f70dbeca307417ad84fadb6"
+  },
+  {
+    "path": "spectra_core/runtime.py",
+    "sha256": "b82de32da4cbf1f4c9a425fa0fce09d0de6106faa4cb76a32a67bf156fc30a23"
+  },
+  {
+    "path": "spectra_core/runtime_scheduler.py",
+    "sha256": "b91ef0be31eb825a5267acfcf951a397eab55ca5428c2efec814b5dca48b7c55"
+  },
+  {
+    "path": "spectra_core/selected_recovery.py",
+    "sha256": "700baa483a2f228d20a7dfa3474208c97b54034ba96e9983eb11bc37a62b8214"
+  },
+  {
+    "path": "spectra_core/selected_recovery_ledger.py",
+    "sha256": "3597c5dedbe00409614fa6a5ce06e01712ac9b4c7593653904339f23ec73cad0"
+  },
+  {
+    "path": "spectra_core/selected_recovery_runtime.py",
+    "sha256": "794489c2bd792d30cd3e968e5a0bf79822ca469573a47106ac9d706b93368c90"
+  },
+  {
+    "path": "spectra_core/strategy_dataset.py",
+    "sha256": "f83b9e1e8c9b1618f9d073c6582df0fd9ce8ab7a7db9711c2772e6439f10d1fa"
+  },
+  {
+    "path": "spectra_core/strategy_lab.py",
+    "sha256": "ce1176d8c3eff4bc56debeab4002c0db59dd65659d418cadd08a24949c5a657e"
+  },
+  {
+    "path": "spectra_core/strategy_lab_scenarios.py",
+    "sha256": "99ac3b7936311a3888c8506db719e922ae6aae5054eb971683a74130984b7ec4"
+  },
+  {
+    "path": "spectra_core/strategy_lab_validation.py",
+    "sha256": "4c41770267fb59f4156e9bf555e2f25b2a904ffba47f5d492b1715b3359e7b51"
+  },
+  {
+    "path": "spectra_core/strategy_replay.py",
+    "sha256": "261a77699cff071c3b7b39272c342fb9d763bcf7e84d07e1aa7e1563c6538270"
+  },
+  {
+    "path": "spectra_core/strategy_replay_vcap.py",
+    "sha256": "85713fccf2369c15da9cff220a11defe4fb9e6e9996328347db763163323e112"
+  },
+  {
+    "path": "spectra_core/vcap_execution.py",
+    "sha256": "afef2261001bce95f6a87c79cd108c236a0e4d0e0645a696c230fcc1dca53d7a"
+  },
+  {
+    "path": "spectra_core/vcap_lifecycle.py",
+    "sha256": "2009c419554137ca4657b8adc2a5e5a3cebbbcdc34b2011d62904af3aba06667"
+  },
+  {
+    "path": "spectra_core/vcap_profit_exit.py",
+    "sha256": "360d40d403224722fad484d8a111808c7937b8784f9cd4d647300a046244786b"
+  },
+  {
+    "path": "spectra_core/vcap_runtime.py",
+    "sha256": "40cbb6521b07f56ca5839550f8b35834706810c504131d46b7ce27fd69d91889"
+  },
+  {
+    "path": "spectra_core/vcap_state.py",
+    "sha256": "76963c509f6598739809fdca3ed6b84569756fabb2ba55c8c83f1e5f746bff9e"
+  },
+  {
+    "path": "spectra_core/vcap_tranches.py",
+    "sha256": "966d21756cc0d1c728262e2bc7e62a7596fd1e1368df9b87f545516b2487fb9d"
+  }
+]

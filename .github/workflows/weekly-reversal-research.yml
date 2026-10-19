@@ -1,0 +1,50 @@
+name: Weekly Reversal Research
+
+on:
+  pull_request:
+    branches:
+      - support/decision-accounting-dust-20261012
+    paths:
+      - "spectra_core/**"
+      - "research/weekly_reversal/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/weekly-reversal-research.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-reversal-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  research-regressions:
+    name: Synthetic Accounting and Recovery
+    runs-on: ubuntu-latest
+    # Fixed end-to-end SQLite fixtures can take hours; do not shorten coverage.
+    timeout-minutes: 360
+    env:
+      UV_PYTHON: "3.12"
+      PYTHONDONTWRITEBYTECODE: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+      - name: Install locked dependencies
+        run: uv sync --dev --frozen
+      - name: Run serial synthetic research and capital-safety regressions
+        shell: bash
+        run: |
+          mapfile -t suites < tests/weekly-reversal-suite.txt
+          uv run python -m pytest -q --tb=short "${suites[@]}"
