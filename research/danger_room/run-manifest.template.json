@@ -1,0 +1,381 @@
+{
+  "schema": "spectra-danger-room-run-manifest-v1",
+  "campaign_id": "crash-defense-danger-room-20261010",
+  "stage": "H1",
+  "research_only": true,
+  "approved_for_live": false,
+  "permissions": {
+    "network_access": false,
+    "submit_orders": false,
+    "load_credentials": false,
+    "mutate_production": false,
+    "mutate_holdout": false,
+    "live_execution": false
+  },
+  "holdout": {
+    "start_utc": "2026-10-09T15:36:31.317254Z",
+    "end_exclusive_utc": "2026-11-09T00:00:00Z",
+    "read_prices": false,
+    "score": false,
+    "mutate": false
+  },
+  "artifacts": {
+    "protocol": {
+      "path": null,
+      "sha256": null,
+      "kind": "protocol",
+      "captured_utc": null
+    },
+    "spot_control": {
+      "path": null,
+      "sha256": null,
+      "kind": "inventory",
+      "captured_utc": null
+    },
+    "native_adapter": {
+      "path": null,
+      "sha256": null,
+      "kind": "source",
+      "captured_utc": null
+    },
+    "initial_books": {
+      "path": null,
+      "sha256": null,
+      "kind": "inventory",
+      "captured_utc": null
+    },
+    "initial_owners": {
+      "path": null,
+      "sha256": null,
+      "kind": "inventory",
+      "captured_utc": null
+    },
+    "universe": {
+      "path": null,
+      "sha256": null,
+      "kind": "inventory",
+      "captured_utc": null
+    },
+    "asset_identity": {
+      "path": null,
+      "sha256": null,
+      "kind": "inventory",
+      "captured_utc": null
+    },
+    "coverage": {
+      "path": null,
+      "sha256": null,
+      "kind": "receipt",
+      "captured_utc": null
+    },
+    "route_evidence": {
+      "path": null,
+      "sha256": null,
+      "kind": "official_evidence",
+      "captured_utc": null
+    },
+    "preflight": {
+      "path": null,
+      "sha256": null,
+      "kind": "receipt",
+      "captured_utc": null
+    },
+    "spot_prices": {
+      "path": null,
+      "sha256": null,
+      "kind": "market_data",
+      "captured_utc": null,
+      "start_utc": null,
+      "end_exclusive_utc": null
+    },
+    "hedge_prices": {
+      "path": null,
+      "sha256": null,
+      "kind": "market_data",
+      "captured_utc": null,
+      "start_utc": null,
+      "end_exclusive_utc": null
+    },
+    "funding": {
+      "path": null,
+      "sha256": null,
+      "kind": "market_data",
+      "captured_utc": null,
+      "start_utc": null,
+      "end_exclusive_utc": null
+    },
+    "costs": {
+      "path": null,
+      "sha256": null,
+      "kind": "official_evidence",
+      "captured_utc": null
+    }
+  },
+  "sections": {
+    "protocol_hash_and_frozen_source_commits": {
+      "protocol_ref": "protocol",
+      "source_pins": {
+        "spectra_finance_core": {
+          "repository": "andredepaulnash-cmd/spectra-finance-core",
+          "commit_sha": null
+        },
+        "hummingbot_core": {
+          "repository": "hummingbot/hummingbot",
+          "commit_sha": null
+        },
+        "hummingbot_api": {
+          "repository": "andredepaulnash-cmd/spectra-hummingbot-api",
+          "commit_sha": null
+        }
+      },
+      "parameters_frozen_utc": null
+    },
+    "experiment_class_and_exact_period_selection": {
+      "experiment_class": null,
+      "selection_rule": null,
+      "train_window": {
+        "start_utc": null,
+        "end_exclusive_utc": null
+      },
+      "evaluation_window": {
+        "start_utc": null,
+        "end_exclusive_utc": null
+      },
+      "observed_as_of_utc": null,
+      "no_post_outcome_tuning": true
+    },
+    "point_in_time_universe_and_asset_identity_hashes": {
+      "universe_ref": "universe",
+      "asset_identity_ref": "asset_identity",
+      "membership_is_point_in_time": true,
+      "maximum_spot_assets": 50,
+      "excluded_spot_assets": [
+        "BTC",
+        "ETH"
+      ]
+    },
+    "input_files_and_coverage_hashes": {
+      "input_refs": [
+        "spot_prices",
+        "hedge_prices",
+        "funding"
+      ],
+      "coverage_ref": "coverage"
+    },
+    "spot_control_and_native_adapter_hashes": {
+      "spot_trace_ref": "spot_control",
+      "native_adapter_ref": "native_adapter",
+      "trace_immutable": true,
+      "hedge_profit_feedback_to_spot": false
+    },
+    "exact_initial_books_and_all_source_owners": {
+      "starting_equity_quote": null,
+      "quote_currency": null,
+      "initial_books_ref": "initial_books",
+      "source_owners_ref": "initial_owners",
+      "cash_sources": [
+        {
+          "source_id": null,
+          "owner": null,
+          "amount_quote": null,
+          "unencumbered": null
+        }
+      ],
+      "same_initial_units_basis_all_arms": true
+    },
+    "route_specs_costs_account_eligibility_and_collateral_recourse": {
+      "route_id": null,
+      "route_type": null,
+      "evidence_captured_utc": null,
+      "official_evidence_ref": "route_evidence",
+      "account_jurisdiction": null,
+      "eligibility_evidence": {
+        "verified": null,
+        "evidence_ref": "route_evidence",
+        "scope": null
+      },
+      "api_availability": {
+        "verified": null,
+        "evidence_ref": "route_evidence",
+        "scope": null
+      },
+      "allowed_direction": "SHORT_HEDGE_ONLY",
+      "instrument_id": null,
+      "underlying": "BTC",
+      "contract_type": null,
+      "quote_currency": null,
+      "settlement_currency": null,
+      "contract_multiplier": null,
+      "minimum_quantity": null,
+      "quantity_increment": null,
+      "price_increment": null,
+      "position_limit": null,
+      "borrow_availability_or_not_applicable": null,
+      "initial_margin_schedule": null,
+      "maintenance_margin_schedule": null,
+      "margin_change_events_or_frozen_adverse_scenarios": null,
+      "collateral_eligibility": null,
+      "collateral_haircuts": null,
+      "cross_collateral_and_legal_recourse": {
+        "verified": null,
+        "evidence_ref": "route_evidence",
+        "scope": null
+      },
+      "liquidation_waterfall": null,
+      "liquidation_costs": null,
+      "funding_formula_and_series": {
+        "formula_version": null,
+        "series_ref": "funding",
+        "verified": null
+      },
+      "borrow_and_rollover_costs_or_not_applicable": null,
+      "maker_taker_fee_schedule": {
+        "maker_bps": null,
+        "taker_bps": null,
+        "as_of_utc": null,
+        "evidence_ref": "costs"
+      },
+      "reduce_only_semantics": null,
+      "order_types": null,
+      "conditional_stop_semantics": null,
+      "suspension_and_contract_removal_policy": null,
+      "tradeable_status_history": null,
+      "point_in_time_terms_verified": null
+    },
+    "finite_hedge_budget_and_matched_control_allocation": {
+      "budget_quote": null,
+      "cash_source_id": null,
+      "source_owner": null,
+      "unencumbered_verified": null,
+      "same_budget_reserved_all_arms": null,
+      "control_holds_budget_as_cash": null,
+      "unchanged_spot_trace_feasibility_verified": null,
+      "no_park_or_vcap_claim": null
+    },
+    "causal_estimator_and_signal_state_machine": {
+      "estimator_formula_version": null,
+      "lookback_bars": null,
+      "return_interval_seconds": null,
+      "minimum_observations": null,
+      "missing_data_rule": null,
+      "beta_min": null,
+      "beta_max": null,
+      "exposure_mark_max_age_seconds": null,
+      "rebalance_cadence_seconds": null,
+      "rebalance_tolerance_quote": null,
+      "target_formula": null,
+      "economic_notional_cap": null,
+      "triggers": {
+        "states": null,
+        "signal_expression": null,
+        "signal_timeframes_seconds": null,
+        "entry_thresholds": null,
+        "exit_thresholds": null,
+        "confirmation_bars": null,
+        "minimum_state_dwell_seconds": null,
+        "cooldown_seconds": null,
+        "transition_priority": null,
+        "stale_signal_policy": null
+      },
+      "decision_execution_order": null
+    },
+    "execution_margin_funding_and_terminal_event_rules": {
+      "decision_timestamp_rule": null,
+      "submission_latency": null,
+      "order_type": null,
+      "time_in_force": null,
+      "spread_data_or_conservative_model": null,
+      "slippage_model": null,
+      "order_capacity_and_participation": null,
+      "partial_and_no_fill_model": null,
+      "minimum_and_increment_enforcement": null,
+      "mark_index_and_basis_paths": null,
+      "stale_price_policy": null,
+      "unavailable_api_policy": null,
+      "gap_and_stop_execution": null,
+      "rebound_and_short_squeeze_stress": null,
+      "margin_and_liquidation_event_order": null,
+      "open_terminal_order_policy": null,
+      "execution_finality_rule": null,
+      "funding_mode": null,
+      "funding_ref": "funding",
+      "costs_ref": "costs",
+      "financial_performance_claims_allowed": null
+    },
+    "all_fixed_arms_and_ratios": {
+      "arms": [
+        {
+          "name": "PARK_OFF",
+          "ratio": "0",
+          "starting_equity_quote": null,
+          "hedge_budget_quote": null,
+          "cash_source_id": null,
+          "spot_trace_ref": "spot_control"
+        },
+        {
+          "name": "PARK_BTC_25",
+          "ratio": "0.25",
+          "starting_equity_quote": null,
+          "hedge_budget_quote": null,
+          "cash_source_id": null,
+          "spot_trace_ref": "spot_control"
+        },
+        {
+          "name": "PARK_BTC_50",
+          "ratio": "0.50",
+          "starting_equity_quote": null,
+          "hedge_budget_quote": null,
+          "cash_source_id": null,
+          "spot_trace_ref": "spot_control"
+        },
+        {
+          "name": "PARK_BTC_75",
+          "ratio": "0.75",
+          "starting_equity_quote": null,
+          "hedge_budget_quote": null,
+          "cash_source_id": null,
+          "spot_trace_ref": "spot_control"
+        },
+        {
+          "name": "PARK_BTC_100",
+          "ratio": "1.00",
+          "starting_equity_quote": null,
+          "hedge_budget_quote": null,
+          "cash_source_id": null,
+          "spot_trace_ref": "spot_control"
+        }
+      ]
+    },
+    "adverse_scenario_matrix_and_numeric_success_bounds": {
+      "scenarios": null,
+      "rebound_drag_bound_quote": null,
+      "minimum_liquidity_quote": null,
+      "minimum_liquidation_buffer_fraction": null,
+      "accounting_tolerance_quote": null,
+      "all_scenarios_required_for_candidate": null
+    },
+    "report_definitions_checkpoint_censoring_and_tolerances": {
+      "equity_identity": null,
+      "cost_counting_convention": null,
+      "unit_and_basis_conservation": null,
+      "inventory_definition": null,
+      "concentration_denominators": null,
+      "checkpoints": null,
+      "checkpoint_censoring": null,
+      "unknown_mark_policy": null,
+      "report_all_arms_and_regimes": null
+    },
+    "run_budget_output_locations_and_abort_rules": {
+      "maximum_seconds_per_arm": null,
+      "output_directory": null,
+      "abort_rules": null,
+      "incomplete_is_not_complete": null
+    },
+    "independent_preflight_receipt": {
+      "receipt_ref": "preflight",
+      "reviewer_id": null,
+      "independently_reviewed": null,
+      "contract_body_sha256": null
+    }
+  }
+}

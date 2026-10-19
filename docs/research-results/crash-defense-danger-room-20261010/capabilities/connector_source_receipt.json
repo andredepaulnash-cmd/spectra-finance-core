@@ -1,0 +1,211 @@
+{
+  "repository": "hummingbot/hummingbot",
+  "commit": "9af100d6822da7d2d0291a906c730ef172284ee2",
+  "tree_truncated": false,
+  "kraken_entries": [
+    {
+      "path": "hummingbot/connector/exchange/kraken",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b4d127034342c82c7dbd35ec312bb48f1a85d641"
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_api_order_book_data_source.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "4fedd4d094fa149355db17b8ecec203eb83a388d",
+      "size": 11439
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_api_user_stream_data_source.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "9f436560cf44da1fa555d95a70245f5658c926ae",
+      "size": 3909
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_auth.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "574401a8f6fede22a0f1929b5b901d1fa6f83017",
+      "size": 2929
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_constants.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8c00ffbc828f61de5981d20322af1310acacf48",
+      "size": 4146
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_exchange.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "454c6bd4bf700e8d778f82af3d75b53e4417da0b",
+      "size": 29888
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_order_book.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0c17770a12c435d6497a384149f1931385a698b6",
+      "size": 2903
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_utils.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "85ae01788e1328f953ef9afa68217a75d143756a",
+      "size": 7948
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_web_utils.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f5011d406c5d487b300bcf770989a1f6d18234f",
+      "size": 1660
+    },
+    {
+      "path": "hummingbot/data_feed/candles_feed/kraken_spot_candles",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2b8d914f96d53eebc2fdcb6a30637a5ca7afb7c7"
+    },
+    {
+      "path": "hummingbot/data_feed/candles_feed/kraken_spot_candles/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ad6b0baaea0b8f1768a6b1b51bd64f34e8fe99f7",
+      "size": 137
+    },
+    {
+      "path": "hummingbot/data_feed/candles_feed/kraken_spot_candles/constants.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fa4f8abe55dc6f2eb595841bb7297c243340b194",
+      "size": 1319
+    },
+    {
+      "path": "hummingbot/data_feed/candles_feed/kraken_spot_candles/kraken_spot_candles.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6ace278c4d94e34d4606ead3877f53f5960c6126",
+      "size": 6163
+    },
+    {
+      "path": "test/hummingbot/connector/exchange/kraken",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d844c4c62867e137c75305a5740dfe9869b7ae7f"
+    },
+    {
+      "path": "test/hummingbot/connector/exchange/kraken/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "test/hummingbot/connector/exchange/kraken/test_kraken_api_order_book_data_source.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "891345a7c1124ba7c6e95506175bfab49018e1cb",
+      "size": 20348
+    },
+    {
+      "path": "test/hummingbot/connector/exchange/kraken/test_kraken_api_user_stream_data_source.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "26a6a2deeec514ae705e2bf7c5665e21f0ae1385",
+      "size": 6743
+    },
+    {
+      "path": "test/hummingbot/connector/exchange/kraken/test_kraken_auth.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "290ee5d7e1dcfed7df21a95eb9c81fa4dddcab93",
+      "size": 2658
+    },
+    {
+      "path": "test/hummingbot/connector/exchange/kraken/test_kraken_exchange.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b5e800c63473baf99edbeb7ff2560b359ed67464",
+      "size": 52880
+    },
+    {
+      "path": "test/hummingbot/connector/exchange/kraken/test_kraken_order_book.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "52e37186773e731f85af079517f55c332959c24e",
+      "size": 3691
+    },
+    {
+      "path": "test/hummingbot/connector/exchange/kraken/test_kraken_utils.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "73eeaf088af0881553674243a54ce6032a87c8a2",
+      "size": 2153
+    },
+    {
+      "path": "test/hummingbot/connector/exchange/kraken/test_kraken_web_utils.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ce0af60fd7a19d4c6430bc4df7e7e24fc3c961b2",
+      "size": 1460
+    },
+    {
+      "path": "test/hummingbot/data_feed/candles_feed/kraken_spot_candles",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b4cfbda7d0329aad7b5ea569300f1d0b91ec0abe"
+    },
+    {
+      "path": "test/hummingbot/data_feed/candles_feed/kraken_spot_candles/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "test/hummingbot/data_feed/candles_feed/kraken_spot_candles/test_kraken_spot_candles.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4bcecfb0fe59c64bc1a314b3b77ff9f0e27ed641",
+      "size": 6229
+    }
+  ],
+  "source_files": [
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_exchange.py",
+      "url": "https://github.com/hummingbot/hummingbot/blob/9af100d6822da7d2d0291a906c730ef172284ee2/hummingbot/connector/exchange/kraken/kraken_exchange.py",
+      "git_blob_sha": "454c6bd4bf700e8d778f82af3d75b53e4417da0b",
+      "sha256": "8429899dec3d8eba902ecdab3e34fad6d26a1db730ef420b6dd4391ba83c0807",
+      "verified_git_blob": true,
+      "size": 29888
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_constants.py",
+      "url": "https://github.com/hummingbot/hummingbot/blob/9af100d6822da7d2d0291a906c730ef172284ee2/hummingbot/connector/exchange/kraken/kraken_constants.py",
+      "git_blob_sha": "d8c00ffbc828f61de5981d20322af1310acacf48",
+      "sha256": "c054e5dec27a6e3a6b3531bfda91cf9a6deb69af487b16e786b8c460bd923c76",
+      "verified_git_blob": true,
+      "size": 4146
+    },
+    {
+      "path": "hummingbot/connector/exchange/kraken/kraken_utils.py",
+      "url": "https://github.com/hummingbot/hummingbot/blob/9af100d6822da7d2d0291a906c730ef172284ee2/hummingbot/connector/exchange/kraken/kraken_utils.py",
+      "git_blob_sha": "85ae01788e1328f953ef9afa68217a75d143756a",
+      "sha256": "c46b850d18e8e9600f166e3046f68b702c8c3bc98378077850a638faac52ed86",
+      "verified_git_blob": true,
+      "size": 7948
+    }
+  ]
+}

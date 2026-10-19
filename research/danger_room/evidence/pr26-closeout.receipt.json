@@ -1,0 +1,37 @@
+{
+  "schema": "spectra-pr26-closeout-v1",
+  "completed_scope": "Previously viewed July historical capital-quality factorial research",
+  "state": "closed",
+  "merged": false,
+  "repository": "andredepaulnash-cmd/spectra-finance-core",
+  "pr_number": 26,
+  "source_head_sha": "931d296775425fbea26140ecf2a654767b691874",
+  "source_tree_sha": "a1142f6142065efaf8c9fa5ad25cf593a8c70a10",
+  "production_head_sha": "6e894fa9c2b55384d0f6120f41ca91892e1fe207",
+  "production_modified": false,
+  "closeout_audit_sha256": "0873678b4877376bf30f5fc19a590506faef38d1d85515cbee08543fdeba82e4",
+  "independently_recomputed_historical_rows": 43200,
+  "arm_frames_each": 8640,
+  "evidence_files_verified": 85,
+  "frozen_holdout_source_pins_verified": 11,
+  "candidate_decision": "All four candidates rejected; retain PARK",
+  "holdout": {
+    "protocol_sha256": "ef3148ec5b896aded5e812b71d687ea64eddc931c5e86533bfca6f0d08c37134",
+    "freeze_utc": "2026-10-09T15:36:31.317254Z",
+    "end_utc": "2026-11-09T00:00:00Z",
+    "collector_branch": "research/parked-cash-workflow-20261009",
+    "collector_enabled": true,
+    "requires_pr_open": false,
+    "branch_and_frozen_bytes_preserved": true,
+    "market_outcomes_read": false,
+    "scored": false,
+    "fresh_cash_replay_adapter_status": "NOT_BUILT"
+  },
+  "source_limitations": [
+    "Previously examined historical July window; not an untouched holdout",
+    "Modeled fills/marks/fees are not venue execution guarantees",
+    "Prospective fresh-cash scoring remains pending independent replay-adapter audit"
+  ],
+  "venue_orders_submitted": false,
+  "approved_for_live": false
+}

@@ -1,0 +1,354 @@
+{
+  "validator_sha256": "68b510b5c7ea071b5c29357dd43ac59ea415a36d3ca4acb4544512e3fa0b5273",
+  "owner_fixture_sha256": "3fbf323911a3e9c7a3d7552d8327b7aa0d8ae27fa0893fd879d50447b3faae51",
+  "independent_probe_count": 45,
+  "passed": true,
+  "checks": [
+    {
+      "name": "space_unresolved_margin",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "MISSING_CONTRACT"
+      ]
+    },
+    {
+      "name": "blank_margin",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "MISSING_CONTRACT"
+      ]
+    },
+    {
+      "name": "space_not_applicable",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "MISSING_CONTRACT"
+      ]
+    },
+    {
+      "name": "false_cash_owner",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "CASH_OWNERSHIP"
+      ]
+    },
+    {
+      "name": "false_cash_encumbrance_number",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "CASH_OWNERSHIP"
+      ]
+    },
+    {
+      "name": "false_campaign_id",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "CAMPAIGN_ID"
+      ]
+    },
+    {
+      "name": "space_campaign_id",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "MISSING_CONTRACT"
+      ]
+    },
+    {
+      "name": "holdout_integer_flag",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "HOLDOUT_BOUNDARY"
+      ]
+    },
+    {
+      "name": "holdout_price_access_flag",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "HOLDOUT_BOUNDARY"
+      ]
+    },
+    {
+      "name": "network_permission",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "PERMISSION_ESCALATION"
+      ]
+    },
+    {
+      "name": "credentials_permission",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "PERMISSION_ESCALATION"
+      ]
+    },
+    {
+      "name": "trades_permission",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "PERMISSION_ESCALATION"
+      ]
+    },
+    {
+      "name": "arm_ratio_shift",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "FIXED_RATIO"
+      ]
+    },
+    {
+      "name": "arm_added_capital",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "UNEQUAL_ARM_CAPITAL"
+      ]
+    },
+    {
+      "name": "arm_other_source",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "UNEQUAL_ARM_CAPITAL"
+      ]
+    },
+    {
+      "name": "spot_hedge_feedback",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "SPOT_CONTROL"
+      ]
+    },
+    {
+      "name": "spot_coverage_before_eval_end",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "MARKET_COVERAGE_GAP"
+      ]
+    },
+    {
+      "name": "hedge_coverage_after_train_start",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "MARKET_COVERAGE_GAP"
+      ]
+    },
+    {
+      "name": "funding_coverage_before_eval_end",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "MARKET_COVERAGE_GAP"
+      ]
+    },
+    {
+      "name": "future_market_coverage",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "ARTIFACT_CAUSAL_WINDOW"
+      ]
+    },
+    {
+      "name": "signal_official_evidence_input",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "TRIGGER_INPUT_KIND"
+      ]
+    },
+    {
+      "name": "unknown_recourse",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "VENUE_SCOPE_UNKNOWN"
+      ]
+    },
+    {
+      "name": "account_eligibility_integer",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "VENUE_SCOPE_UNKNOWN"
+      ]
+    },
+    {
+      "name": "negative_cost",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "INVALID_NUMBER"
+      ]
+    },
+    {
+      "name": "infinite_cost",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "INVALID_NUMBER"
+      ]
+    },
+    {
+      "name": "nan_contract_increment",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "INVALID_NUMBER"
+      ]
+    },
+    {
+      "name": "insufficient_estimator_samples",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "ESTIMATOR_CONTRACT"
+      ]
+    },
+    {
+      "name": "negative_cooldown",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "INVALID_NUMBER"
+      ]
+    },
+    {
+      "name": "nan_trigger",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "INVALID_NUMBER"
+      ]
+    },
+    {
+      "name": "false_funding_kind",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "INVALID_ARTIFACT",
+        "MARKET_INPUT_KIND"
+      ]
+    },
+    {
+      "name": "sealed_named_artifact",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "SEALED_SOURCE_PATH"
+      ]
+    },
+    {
+      "name": "path_parent_escape",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "ARTIFACT_PATH"
+      ]
+    },
+    {
+      "name": "path_absolute_escape",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "ARTIFACT_PATH"
+      ]
+    },
+    {
+      "name": "vcap_budget_owner",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "CROSS_BOOK_CLAIM",
+        "UNFUNDED_COLLATERAL"
+      ]
+    },
+    {
+      "name": "too_large_budget",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "UNEQUAL_ARM_CAPITAL",
+        "UNFUNDED_COLLATERAL"
+      ]
+    },
+    {
+      "name": "cash_exceeds_equity",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "CASH_EXCEEDS_EQUITY"
+      ]
+    },
+    {
+      "name": "missing_source_pin",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "MISSING_CONTRACT",
+        "SOURCE_PINS"
+      ]
+    },
+    {
+      "name": "untyped_trigger_expression",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "TRIGGER_CONTRACT"
+      ]
+    },
+    {
+      "name": "fractional_count",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "TRIGGER_CONTRACT"
+      ]
+    },
+    {
+      "name": "wrong_currency",
+      "passed": true,
+      "status": "BLOCKED",
+      "codes": [
+        "CURRENCY_MISMATCH"
+      ]
+    },
+    {
+      "name": "fictional_declarations_cannot_prove_real_world_facts_or_authorize_execution",
+      "passed": true
+    },
+    {
+      "name": "real_template_remains_blocked_without_any_artifact_reads",
+      "passed": true
+    },
+    {
+      "name": "changed_bytes_reject_same_declared_hash",
+      "passed": true
+    },
+    {
+      "name": "symlinked_evidence_rejected",
+      "passed": true
+    },
+    {
+      "name": "duplicate_key_cli_fails_closed",
+      "passed": true
+    }
+  ],
+  "scope": "Independent declaration-consistency and read-boundary probes only; fictional fixtures, no strategy, market, account or venue execution evidence.",
+  "holdout_market_payloads_read": false
+}

@@ -1,0 +1,61 @@
+{
+  "schema": "spectra-portable-artifact-sha256-v1",
+  "manifest_self_reference_excluded": true,
+  "members": [
+    {
+      "path": "Data_Availability_And_Gaps.json",
+      "size_bytes": 11407,
+      "sha256": "1e7de41f4b574035079fa296addd38e0fec84f6fad69ea35227833ae276bdbab"
+    },
+    {
+      "path": "Data_Provenance_Verification.json",
+      "size_bytes": 26360,
+      "sha256": "5de47d04ffe316b0af8636b172ef95321a2c307ca7618fb1f956febe736730bb"
+    },
+    {
+      "path": "PARK_Current_Public_Hedge_Catalog_Overlap.csv",
+      "size_bytes": 860,
+      "sha256": "1c28c5acacb19a715a810bc7f9106477b181b91c55b8367bf4bfdc4456d6121d"
+    },
+    {
+      "path": "PARK_Current_Public_Hedge_Catalog_Overlap.json",
+      "size_bytes": 4460,
+      "sha256": "e51ac14637784316c601393f0885113378ede4e9cd3e4e0b22872095b8291211"
+    },
+    {
+      "path": "PARK_January_June_Asset_Inventory.csv",
+      "size_bytes": 38648,
+      "sha256": "8e732a0069c4fc681edf8612f0411d150e306a1583dae8efc815c50d0308b534"
+    },
+    {
+      "path": "PARK_January_June_Saved_Accounting_Summary.json",
+      "size_bytes": 1545,
+      "sha256": "405509794840496df929fd73d9b23ca60b1dd203e475f76dc20d8d8cf73c5e4e"
+    },
+    {
+      "path": "PARK_July_Asset_Inventory.csv",
+      "size_bytes": 21447,
+      "sha256": "a84cfb258ae7dd956033b1eb7c908baa426b407a5a1c55c5c3a066adba23763f"
+    },
+    {
+      "path": "PARK_July_Exact_Lot_Ownership.csv",
+      "size_bytes": 11414,
+      "sha256": "1e2a8ce488d82e323a8df97b30e218e55df991fe5ca34f2a6cd59a402c9afa31"
+    },
+    {
+      "path": "PARK_July_Inventory_Summary.json",
+      "size_bytes": 3403,
+      "sha256": "c8bcc62a68cf4dcf73ccce6f448acb03f44a73fff5c6c0fba69ebd776a5c25bd"
+    },
+    {
+      "path": "PARK_July_Saved_Fill_Tape.csv",
+      "size_bytes": 6232,
+      "sha256": "5b0a2bd035716c0521c36844f0708ca2223c10ed458f79a407757d7ee951152f"
+    },
+    {
+      "path": "README.md",
+      "size_bytes": 3866,
+      "sha256": "10beb0597f9d2e4bc3e61894718d0487713db16eb4f65e3b2965527ceefe77af"
+    }
+  ]
+}

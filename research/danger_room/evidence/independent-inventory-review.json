@@ -1,0 +1,16 @@
+{
+  "data_artifact_hashes_passed": 14,
+  "July_asset_rows_units_basis_marks_lot_aggregation_passed": 47,
+  "July_terminal_lots_uniquely_aggregated": 57,
+  "known_valued_July_owned_assets": 36,
+  "inventory_quote_reconciled": "195.7626187038313546713693149531785",
+  "basis_quote_reconciled": "503.226472434184139657863893486",
+  "market_value_HHI_recomputed": "0.0377350968520021798733576859046988091188579869365760417021726101020528115763355615229063137",
+  "effective_holdings_recomputed": "26.5005282462112238016447288852501241844822985807384196249220760785330858987815345808310047",
+  "January_June_same_asset_unit_rows_recomputed": 224,
+  "tolerance_quote": "1e-18",
+  "mark_age_cutoff_timestamp": 1785456000,
+  "mark_prices_not_current_executable_quotes": true,
+  "no_cross_asset_unit_sum": true,
+  "source_truth_scope": "Checked saved exports and internal reconciliation, not original raw tape recomputation or current venue execution."
+}
