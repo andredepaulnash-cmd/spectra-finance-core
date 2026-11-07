@@ -258,6 +258,7 @@ async def synchronize_partial_recycle_executor(
     for fill in trades.trades:
         if fill.order_id not in known_orders:
             raise RuntimeError("partial recycle fill references unknown executor order")
+    order_evidence_mismatch = False
     for order in orders.orders:
         filled = exact_decimal_sum(
             fill.amount_base for fill in trades.trades if fill.order_id == order.order_id
@@ -267,7 +268,7 @@ async def synchronize_partial_recycle_executor(
             or filled != order.filled_amount
             or (order.status.upper() == "FILLED" and order.filled_amount != order.amount)
         ):
-            conflicts.append("partial_order_fill_totals_mismatch:" + order.order_id)
+            order_evidence_mismatch = True
     try:
         raw = await client.executors.get_executor(manifest.sell_executor_id)
         observation = executor_accounting_observation_from_raw(
@@ -331,6 +332,19 @@ async def synchronize_partial_recycle_executor(
             )
     if outstanding > remaining_partial_recycle_base(manifest, ledger=ledger):
         conflicts.append("outstanding_orders_exceed_manifest_inventory")
+
+    if order_evidence_mismatch:
+        return {
+            "manifest_id": manifest.manifest_id,
+            "sell_executor_id": manifest.sell_executor_id,
+            "applied_fills": 0,
+            "replayed_fills": 0,
+            "remaining_base": str(remaining_partial_recycle_base(manifest, ledger=ledger)),
+            "realized_net_pnl_quote": None,
+            "completed": False,
+            "terminal": False,
+            "reasons": ["partial_order_fill_totals_mismatch"],
+        }
 
     # Persist known order violations before any fill/accounting mutation.
     for conflict in conflicts:
@@ -493,6 +507,18 @@ async def synchronize_partial_recycle_executor(
     ):
         raise RuntimeError("protected BUY source conflict requires reconciliation")
 
+    if store.protection_conflicts(manifest.manifest_id):
+        return {
+            "manifest_id": manifest.manifest_id,
+            "sell_executor_id": manifest.sell_executor_id,
+            "applied_fills": applied,
+            "replayed_fills": replayed,
+            "remaining_base": str(remaining_partial_recycle_base(manifest, ledger=ledger)),
+            "realized_net_pnl_quote": None,
+            "completed": False,
+            "terminal": False,
+            "reasons": ["partial_protection_conflict_requires_resolution"],
+        }
     progress = assess_partial_recycle_manifest(
         manifest,
         ledger=ledger,
@@ -722,7 +748,7 @@ async def execute_partial_recycle(
         return blocked("another_exact_position_mutation_pending")
     if current_lock_owner == mutation_owner and attempt_guard is None:
         return blocked(
-            "recycle_dispatch_claim_requires_reconciliation",
+            "guarded_partial_mutation_requires_reconciliation",
             "CLAIMED_REQUIRES_RECONCILIATION",
         )
 
