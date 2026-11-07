@@ -48,10 +48,11 @@ async def build_kraken_capital_snapshot(
     account_name: str,
     trading_pair: str,
     recovery_exposure_quote: Decimal,
+    connector_name: str = "kraken",
     refresh: bool = True,
 ) -> CapitalSnapshot:
     """
-    Build a fail-closed capital snapshot from the real Kraken account.
+    Build a fail-closed capital snapshot from the configured Kraken spot or paper account.
 
     free_quote:
         Exchange-reported available units of the pair's quote asset.
@@ -80,7 +81,7 @@ async def build_kraken_capital_snapshot(
 
     state = await client.portfolio.get_state(
         account_names=[account_name],
-        connector_names=["kraken"],
+        connector_names=[connector_name],
         refresh=refresh,
     )
 
@@ -93,7 +94,7 @@ async def build_kraken_capital_snapshot(
             f"Kraken account {account_name!r} is missing from portfolio state"
         )
 
-    balances = account.get("kraken")
+    balances = account.get(connector_name)
     if not isinstance(balances, list):
         raise RuntimeError(f"Kraken balances are missing for account {account_name!r}")
 
@@ -152,6 +153,6 @@ async def build_kraken_capital_snapshot(
         position_exposure_quote=pair_exposure,
         recovery_exposure_quote=recovery_exposure,
         account_name=account_name,
-        connector_name="kraken",
+        connector_name=connector_name,
         quote_asset=quote,
     )
