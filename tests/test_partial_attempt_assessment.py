@@ -189,3 +189,59 @@ def test_native_additive_cost_floor_is_not_weakened_by_compounding(harness):
     )
     assert result.disposition == Outcome.BLOCKED
     assert result.reasons == ("cost_policy_invalid",)
+
+
+def test_lifecycle_deferral_preserves_rungs_intent_reservations_and_rechecks(
+    harness, tmp_path
+):
+    args = harness
+    store = VCAPStateStore(tmp_path / "lifecycle.db")
+    state = VCAPLifecycleState(
+        envelope_proposal_id="envelope",
+        pair="XRP-USD",
+        next_sequence=3,
+        remaining_authorized_quote=D(50),
+        recovery_proposal_ids=("owner",),
+        position_base=D(10),
+        cost_basis_quote=D(4),
+        last_known_price=D("0.3"),
+        profit_state=None,
+        status=VCAPLifecycleStatus.ACTIVE,
+        updated_at=2000,
+    )
+    store.save(state)
+    params = dict(
+        position_id="xrp-position-1",
+        ledger=args["ledger"],
+        state=state,
+        store=store,
+        fingerprint=AssetFingerprint.cold_start(
+            AssetObservation("XRP-USD", 2000, 0.3, 1000000)
+        ),
+        trading_rule=args["trading_rule"],
+        current_price=D("0.3"),
+        seed_quote=D(40),
+        expected_exit_fee_bps=D(40),
+        slippage_allowance_bps=D(5),
+        now=2000,
+        governor=args["governor"],
+        accounting_health=healthy_accounting("xrp-position-1", 2000),
+    )
+    before = snapshot(args)
+    default = plan_vcap_lifecycle_from_ledger(**params)
+    assert default.action == VCAPLifecycleAction.PARTIAL_RECYCLE
+    store.save(state)
+    for _ in range(3):
+        result = plan_vcap_lifecycle_from_ledger(
+            **params,
+            partial_attempt_policy=PartialAttemptPolicy(enabled=True),
+            partial_price_observed_at=2000,
+            pending_order_ids=(),
+        )
+        assert result.action == VCAPLifecycleAction.HOLD
+        assert result.state == state
+        assert result.execution_decision is None
+        assert store.load("envelope") == state
+    assert snapshot(args) == before
+    assert args["store"].open_for_position("xrp-position-1") == args["manifest"]
+
