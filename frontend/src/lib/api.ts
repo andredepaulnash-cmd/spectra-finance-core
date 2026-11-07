@@ -83,6 +83,16 @@ export interface ServerMember {
   display_name: string;
 }
 
+export interface SpectraRuntimeStatus {
+  product?: string;
+  mode: "PAPER_ONLY" | "LEGACY" | "UNSUPPORTED" | "UNAVAILABLE" | string;
+  paper_only: boolean;
+  live_dispatch_available: boolean;
+  paper_connector_count: number;
+  paper_connectors?: string[];
+  error?: string;
+}
+
 export interface ServerInfo {
   name: string;
   host: string;
@@ -2319,6 +2329,11 @@ export interface PendingConfirmation {
 
 export const api = {
   getServers: () => apiFetch<ServerInfo[]>("/api/v1/servers"),
+
+  getSpectraRuntime: (server: string) =>
+    apiFetch<SpectraRuntimeStatus>(
+      `/api/v1/servers/${encodeURIComponent(server)}/spectra/runtime`,
+    ),
 
   /** Build identity — shown to the user when they file an issue. */
   getEnv: () => apiFetch<AppEnvResponse>("/api/v1/meta/env"),
