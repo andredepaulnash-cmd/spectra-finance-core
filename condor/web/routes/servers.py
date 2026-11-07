@@ -86,6 +86,40 @@ async def list_servers(user: WebUser = Depends(get_current_user)):
     return await server_rows(user)
 
 
+@router.get("/servers/{name}/spectra/runtime")
+async def spectra_runtime_status(
+    name: str,
+    user: WebUser = Depends(get_current_user),
+):
+    """Return the server's authenticated Spectra paper/live execution boundary."""
+    cm = get_config_manager()
+    if not cm.has_server_access(user.id, name):
+        raise HTTPException(status_code=404, detail="Server not found")
+    sds = get_server_data_service()
+    try:
+        status = await sds.get_or_fetch(name, ServerDataType.SPECTRA_RUNTIME)
+    except Exception as e:
+        logger.warning("Spectra runtime status unavailable for %s: %s", name, e)
+        return {
+            "product": "Spectra Finance",
+            "mode": "UNAVAILABLE",
+            "paper_only": False,
+            "live_dispatch_available": True,
+            "paper_connector_count": 0,
+            "error": "Spectra runtime status could not be verified",
+        }
+    if isinstance(status, dict):
+        return status
+    return {
+        "product": "Spectra Finance",
+        "mode": "UNAVAILABLE",
+        "paper_only": False,
+        "live_dispatch_available": True,
+        "paper_connector_count": 0,
+        "error": "Spectra runtime status is unavailable",
+    }
+
+
 @router.get("/servers/{name}/status")
 async def server_status(name: str, user: WebUser = Depends(get_current_user)):
     cm = get_config_manager()
