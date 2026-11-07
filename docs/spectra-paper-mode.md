@@ -18,7 +18,7 @@ The API's paper-only runtime then:
 - starts the executor control loop and accounts service only against paper connectors; and
 - reports the effective mode and initialized paper connectors at authenticated `GET /spectra/runtime`.
 
-The Core MCP execution tool separately requires `kraken_paper_trade` when paper mode is enabled. It refuses live Kraken or any other connector before market-data lookup, then performs the existing protected BUY preflight and commits the exact proposal through the Capital Governor before the Hummingbot executor create call.
+The Core MCP execution tool separately requires `kraken_paper_trade` when paper mode is enabled. Capital snapshot collection, the CapitalProposal connector scope, protected BUY trading-rule lookup, and executor authorization all use that same paper connector identity. It refuses live Kraken or any other connector before market-data lookup, then performs the existing protected BUY preflight and commits the exact proposal through the Capital Governor before the Hummingbot executor create call.
 
 ## State and ledger isolation
 
