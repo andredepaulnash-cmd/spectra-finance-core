@@ -148,3 +148,18 @@ PR #44 now includes `spectra_core/partial_attempt.py` and its assessment-focused
 The runtime deferral adapter is **not yet ported**. Specifically, the VCAP lifecycle planner/runtime policy, asynchronous pending-order rechecks, partial-recycle dispatch claim and MCP adapter still require a coordinated port. Do not enable or call this evaluator as a replacement for the existing protected partial-sale path.
 
 Validation on PR #44 head `c9a5a6b5b4ac8523fa5d7240140ba3db7829c4ef`: **844 passed in 39.35 seconds** in the focused Spectra Phase 1 CI. This validates the integrated tree's current focused tests; it is not full-project, production-image, Bazzite or live-exchange acceptance.
+
+
+### Runtime-deferral integration decision — reverted to preserve protected baseline
+
+A first attempt to connect the partial-attempt assessment to the asynchronous VCAP/partial-recycle dispatch adapter exposed compatibility regressions in PR #31's stronger protected-exit and reconciliation tests. The candidate adapter changes were not accepted as safe. The runtime-specific code and its experimental tests were reverted from PR #44; the original protected partial-recycle adapter and VCAP runtime were restored.
+
+Retained:
+- The default-off, read-only `partial_attempt.py` assessment module and its tests.
+- The optional planner-level assessment hook in `vcap_lifecycle.py`, which is inert unless an explicit policy is passed.
+- The exclusive mutation lock, exact owner-allocation journal, and lock release only after durable terminal proof.
+
+Not retained:
+- The experimental asynchronous runtime pending-order scan, monotonic-clock dispatch guard and adapter attempt callback. These need a more careful port against PR #31's existing cash/terminal/protection semantics before they can be reintroduced.
+
+The restored candidate's latest focused CI is green: **845 passed in 37.50 seconds** on PR #44 head `938d3f97adff28c07e6aee17e736453367cfdfb6`. This is the current validated checkpoint; it does not validate live trading, image packaging, Bazzite or the API receipt boundary.
