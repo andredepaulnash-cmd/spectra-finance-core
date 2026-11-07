@@ -2,6 +2,8 @@ import asyncio
 import time
 from decimal import Decimal
 
+import pytest
+
 from mcp_servers.hummingbot_api.tools import execution_book, executor_create
 from spectra_core import (
     CapitalGovernor,
@@ -15,6 +17,9 @@ D = Decimal
 
 
 class Portfolio:
+    def __init__(self, connector_name):
+        self.connector_name = connector_name
+
     async def get_state(
         self,
         *,
@@ -23,12 +28,12 @@ class Portfolio:
         refresh,
     ):
         assert account_names == ["master_account"]
-        assert connector_names == ["kraken"]
+        assert connector_names == [self.connector_name]
         assert refresh is True
 
         return {
             "master_account": {
-                "kraken": [
+                self.connector_name: [
                     {
                         "token": "USD",
                         "units": 500,
@@ -103,8 +108,8 @@ class Executors:
 
 
 class Client:
-    def __init__(self):
-        self.portfolio = Portfolio()
+    def __init__(self, connector_name):
+        self.portfolio = Portfolio(connector_name)
         self.connectors = Connectors()
         self.executors = None
 
@@ -123,9 +128,20 @@ def governor(tmp_path):
     )
 
 
-def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
+@pytest.mark.parametrize(
+    "paper_mode,connector_name",
+    [
+        (False, "kraken"),
+        (True, "kraken_paper_trade"),
+    ],
+)
+def test_kraken_snapshot_to_authorization_to_hummingbot(
+    monkeypatch, tmp_path, paper_mode, connector_name
+):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true" if paper_mode else "false")
+    monkeypatch.setattr(executor_create.settings, "paper_only", paper_mode)
     g = governor(tmp_path)
-    client = Client()
+    client = Client(connector_name)
     ledger = EconomicPositionLedger(tmp_path / "economic-e2e.sqlite3")
     ledger.open_position(position_id="e2e-entry", pair="BTC-USD", created_at=1000)
     monkeypatch.setattr(executor_create, "get_economic_position_ledger", lambda: ledger)
@@ -221,7 +237,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
 
     assert len(client.connectors.calls) == 1
     assert client.connectors.calls[0] == {
-        "connector_name": "kraken",
+        "connector_name": connector_name,
         "trading_pairs": ["BTC-USD"],
     }
 
@@ -230,7 +246,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
     call = client.executors.calls[0]
 
     assert call["account_name"] == "master_account"
-    assert call["executor_config"]["connector_name"] == "kraken"
+    assert call["executor_config"]["connector_name"] == connector_name
     assert call["executor_config"]["trading_pair"] == "BTC-USD"
     assert call["executor_config"]["type"] == "order_executor"
     assert call["executor_config"]["execution_strategy"] == "LIMIT"
@@ -249,5 +265,5 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
     provenance = g.get_execution_provenance(proposal.proposal_id)
     assert provenance is not None
     assert provenance.account_name == "master_account"
-    assert provenance.connector_name == "kraken"
+    assert provenance.connector_name == connector_name
     assert provenance.controller_id == "spectra"
