@@ -116,3 +116,17 @@ The named suites were inspected, not inferred from workflow totals:
 - PR #40 `test_cycle_reconciliation.py`: 14 test functions covering read-only reports, exact owner conservation, incomplete legacy evidence, impossible chronology and non-finite/corrupt evidence.
 
 These tests are strong source-level evidence for each branch's own feature set. They do **not** prove the cross-branch combination. The missing combined tests are specifically the seams where PR #31's protected cash/BUY/SELL/retirement transactions meet PR #40's shared position locks, dust checkpoint and selected-child mutation owner. The integration gate in section 5 is therefore mandatory; separate successful CI runs cannot substitute for it.
+
+
+## 10. Composition progress — 2026-11-07
+
+A separate code-bearing draft, [PR #44](https://github.com/andredepaulnash-cmd/spectra-finance-core/pull/44), now starts from the exact PR #31 protected-execution head and adds only the independent append-only decision trace component:
+
+- Added `spectra_core/decision_trace.py` and its focused tests.
+- Added transaction-coupled trace writes to PR #31's existing `CapitalGovernor.reserve` decision and VCAP runtime cycle creation/transition. The protected cash, reservation, BUY and SELL code was not replaced.
+- Added observability documentation.
+- Added the trace test file to the existing focused CI command.
+
+Validation: the first workflow attempt ran the original 788 tests successfully but exposed a missing shell continuation in the newly extended test command; no trace tests ran in that attempt. The command was corrected. The subsequent exact-head workflow completed successfully with **802 passed in 43.13 seconds**. This is a focused CI result for PR #44's current head, not a full all-project, runtime-image, Bazzite or live-exchange validation.
+
+The next code composition remains position mutation ownership and recovery-specific ledger changes. Do not port `cycle_reconciliation.py` unchanged: PR #40 expects an `economic_exit_allocations` schema with per-allocation owner fields, while PR #31 currently stores `economic_exit_lot_allocations` with a different column layout. A schema-aware read-only adapter and matching tests are required before that module can be included. Selected recovery, dust lifecycle and partial-attempt deferral remain unported.
