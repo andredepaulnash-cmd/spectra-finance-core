@@ -112,7 +112,7 @@ def test_confirmed_exit_writes_exact_per_owner_allocation_receipt(tmp_path):
         ).fetchone()
 
     assert row == (
-        "p",
+        "xrp-position-1",
         "entry",
         "entry-exec",
         "ACTIVE_TRADE",
