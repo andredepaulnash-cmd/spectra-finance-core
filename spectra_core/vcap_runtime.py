@@ -53,8 +53,11 @@ def _time(value: object, field: str) -> float:
 class VCAPRuntimePolicy:
     market_max_age_seconds: float = 30.0
     order_book_depth: int = 10
+    partial_attempt_deferral_enabled: bool = False
 
     def __post_init__(self) -> None:
+        if type(self.partial_attempt_deferral_enabled) is not bool:
+            raise TypeError("partial_attempt_deferral_enabled must be bool")
         max_age = float(self.market_max_age_seconds)
         if not isfinite(max_age) or max_age <= 0:
             raise ValueError("market_max_age_seconds must be finite and positive")
