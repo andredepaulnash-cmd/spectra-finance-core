@@ -585,6 +585,7 @@ class PartialRecycleStore:
         current_price: Decimal,
         expected_exit_cost_bps: Decimal | None = None,
         market_observed_at: float | None = None,
+        freshness_verified: bool = False,
     ) -> PartialRecycleDispatchGuard | None:
         """Atomically recheck exact ownership and claim one external create.
 
@@ -595,6 +596,8 @@ class PartialRecycleStore:
             raise ValueError("partial dispatch claim must share the economic ledger")
         mid = _text(manifest.manifest_id, "manifest_id")
         timestamp = _time(now, "now")
+        if not isinstance(freshness_verified, bool):
+            raise ValueError("freshness_verified must be bool")
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             row = conn.execute(
@@ -622,7 +625,6 @@ class PartialRecycleStore:
                 expected_exit_cost_bps=expected_exit_cost_bps,
                 _connection=conn,
             )
-            market_now = wall_time()
             if market_observed_at is None:
                 guard = replace(
                     guard,
@@ -631,12 +633,14 @@ class PartialRecycleStore:
                 )
             else:
                 observed_at = _time(market_observed_at, "market_observed_at")
-                if observed_at > market_now or market_now - observed_at > 30.0:
-                    guard = replace(
-                        guard,
-                        allowed=False,
-                        reasons=(*guard.reasons, "market_observation_stale_or_future"),
-                    )
+                if not freshness_verified:
+                    market_now = wall_time()
+                    if observed_at > market_now or market_now - observed_at > 30.0:
+                        guard = replace(
+                            guard,
+                            allowed=False,
+                            reasons=(*guard.reasons, "market_observation_stale_or_future"),
+                        )
             if _whole_exit_blocks_partial(conn, manifest.position_id):
                 guard = replace(
                     guard,
