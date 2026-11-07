@@ -936,6 +936,7 @@ async def run_vcap_runtime_cycle(
     account_name: str = "master_account",
     controller_id: str = "spectra",
     allow_new_dispatch: bool = True,
+    monotonic_clock: Callable[[], float] = time.monotonic,
 ) -> dict[str, Any]:
     """Run or resume exactly one closed-loop VCAP runtime cycle.
 
