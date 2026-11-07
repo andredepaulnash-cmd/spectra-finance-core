@@ -130,9 +130,10 @@ No real exchange credentials, wallet keys, live orders, or capital are required 
 
 ## New integration work opened 2026-11-07
 
-- Core PR #46: native selected-recovery runtime integration; latest focused CI **924 passed**. Draft/unmerged; selected recovery remains default-off.
-- Hummingbot API PR #6: `SPECTRA_PAPER_ONLY` API mode. It restricts connector discovery/creation to `*_paper_trade`, permits only paper executor/order routes and paper connector provisioning without secrets, skips bots/Gateway/Docker, filters legacy live executor/portfolio state, and exposes authenticated `GET /spectra/runtime`. The latest expanded API CI is running. This is a paper-connector integration candidate, not yet a verified Core-authorized end-to-end paper flow.
+- Core PR #46: native selected-recovery runtime integration; focused CI passed **924 tests**. Draft/unmerged; selected recovery remains default-off. Dust lifecycle remains deliberately deferred because it needs coordinated position/retirement changes.
+- Hummingbot API PR #6: `SPECTRA_PAPER_ONLY` API mode. It restricts connector discovery/creation to `*_paper_trade`, permits only paper executor/order routes and paper connector provisioning without secrets, skips bots/Gateway/Docker, filters legacy live executor/portfolio state, and exposes authenticated `GET /spectra/runtime`. Latest focused API CI passed. Exact Hummingbot core revision remains unpinned, so connector compatibility and local execution are not yet certified.
 - Core PR #47: first Spectra Finance UI branding slice. Browser title, shell wordmark, login, package metadata, and PWA manifest are rebranded while preserving Condor as the analysis subsystem. Frontend production build and Core focused CI both passed. Existing live-capable pages are not yet safe to expose as a Spectra installation until runtime status and paper-mode integration are connected.
+- Core PR #49: governed paper-execution integration candidate. It adds a distinct paper state directory and binds Core proposals, capital snapshots, protected BUY checks, and executor authorization to `kraken_paper_trade`. Focused CI is running. Its end-to-end tests use synthetic market/portfolio evidence and a fake Hummingbot client; actual local Hummingbot paper connector compatibility and fill reconciliation remain to be verified.
 
 ## 7. Evidence and guardrails
 
