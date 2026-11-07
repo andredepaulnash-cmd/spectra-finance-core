@@ -12,6 +12,7 @@ from spectra_core.runtime import (
     load_capital_policy,
     reset_runtime_cache,
     spectra_live_state_dir,
+    spectra_paper_only_enabled,
     spectra_state_dir,
 )
 
@@ -412,3 +413,15 @@ def test_uninitialized_client_fails_closed():
         assert "not initialized" in str(exc)
     else:
         raise AssertionError("uninitialized Hummingbot client was accepted")
+
+
+
+def test_spectra_agent_defaults_to_paper_only_unless_explicitly_overridden(
+    monkeypatch,
+):
+    monkeypatch.delenv("SPECTRA_PAPER_ONLY", raising=False)
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    assert spectra_paper_only_enabled() is True
+
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    assert spectra_paper_only_enabled() is False
