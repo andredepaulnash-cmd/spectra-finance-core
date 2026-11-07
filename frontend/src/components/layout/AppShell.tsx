@@ -1,9 +1,10 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Bug, Eye, Moon, Sun } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { ChatBubble } from "@/components/chat/ChatBubble";
+import { api } from "@/lib/api";
 import { ConnectKeysOverlay } from "@/components/ConnectKeysOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RelaunchBanner } from "@/components/RelaunchBanner";
@@ -53,6 +54,30 @@ export function AppShell() {
 function AppShellBody() {
   const { server } = useServer();
   const { pathname, search } = useLocation();
+  const {
+    data: spectraRuntime,
+    isLoading: spectraRuntimeLoading,
+    isError: spectraRuntimeError,
+  } = useQuery({
+    queryKey: ["spectra-runtime", server],
+    queryFn: () => api.getSpectraRuntime(server!),
+    enabled: Boolean(server),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    retry: 1,
+  });
+  const paperModeConfirmed = Boolean(
+    !spectraRuntimeError &&
+      spectraRuntime?.mode === "PAPER_ONLY" &&
+      spectraRuntime.paper_only === true &&
+      spectraRuntime.live_dispatch_available === false,
+  );
+  const paperConnectorReady = Boolean(
+    paperModeConfirmed && (spectraRuntime?.paper_connector_count ?? 0) > 0,
+  );
+  const visibleNavItems = paperModeConfirmed
+    ? NAV_ITEMS.filter(({ to }) => ["/", "/portfolio", "/settings"].includes(to))
+    : NAV_ITEMS.filter(({ to }) => to === "/");
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { hasKeys, isLoading: keysLoading } = useCredentials();
@@ -73,7 +98,11 @@ function AppShellBody() {
   // prefixes every route in the app.
   const exemptRoutes = ["/routines", "/settings"];
   const showKeysOverlay =
-    server && !keysLoading && !hasKeys && pathname !== "/" &&
+    paperModeConfirmed &&
+    server &&
+    !keysLoading &&
+    !hasKeys &&
+    pathname !== "/" &&
     !exemptRoutes.some((r) => pathname.startsWith(r));
 
   // ⌘K used to toggle the overlay panel. It now goes to the chat, so the
@@ -109,12 +138,12 @@ function AppShellBody() {
         {/* Left: logo + nav */}
         <div className="flex items-center gap-6">
           <NavLink to="/" className="flex items-center gap-2 font-bold tracking-tight">
-            <img src="/condor_old.jpeg" alt="Condor" className="h-6 w-6 rounded-full" />
-            <span className="text-sm">Condor</span>
+            <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--color-primary)] text-xs font-black text-[var(--on-primary)]">S</span>
+            <span className="text-sm">Spectra Finance</span>
           </NavLink>
 
           <nav className="flex items-center">
-            {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+            {visibleNavItems.map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -136,6 +165,25 @@ function AppShellBody() {
 
         {/* Right: server selector + controls */}
         <div className="ml-auto flex items-center gap-3">
+          <span
+            aria-live="polite"
+            title={
+              paperConnectorReady
+                ? "Spectra paper-only runtime confirmed; only simulated connectors are available."
+                : paperModeConfirmed
+                  ? "Paper-only mode is confirmed, but no paper connector is initialized yet."
+                  : "Execution locked: this server has not confirmed Spectra paper-only mode."
+            }
+            className="rounded-full border border-[var(--color-border)] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
+          >
+            {paperConnectorReady
+              ? "Paper only"
+              : paperModeConfirmed
+                ? "Paper setup"
+                : spectraRuntimeLoading
+                  ? "Checking"
+                  : "Execution locked"}
+          </span>
           <ServerSelector />
           <CurrencySelector />
 
@@ -172,6 +220,16 @@ function AppShellBody() {
           </div>
         </div>
       </header>
+
+      {server && (
+        <div className="shrink-0 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs text-[var(--color-text-muted)]">
+          {paperConnectorReady
+            ? "Spectra paper-only runtime verified. Orders must use the isolated simulated connector; live trading controls remain hidden."
+            : paperModeConfirmed
+              ? "Paper-only runtime verified. Add a dedicated *_paper_trade connector to enable paper portfolio views."
+              : "Execution locked. This server has not verified Spectra paper-only mode, so trading, DEX, bot deployment, and routine controls are hidden."}
+        </div>
+      )}
 
       {/* An update landed but this process is still the old one, so the bundle
           in the browser is ahead of the API answering it. Above `main` for the
