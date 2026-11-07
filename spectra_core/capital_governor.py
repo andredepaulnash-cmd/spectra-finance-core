@@ -199,6 +199,31 @@ class CapitalGovernor:
                 """)
 
             conn.execute("""
+                CREATE TABLE IF NOT EXISTS executor_accounting_refresh_receipts (
+                    refresh_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    observation_id INTEGER NOT NULL,
+                    proposal_id TEXT NOT NULL,
+                    executor_id TEXT NOT NULL,
+                    observed_at REAL NOT NULL
+                )
+                """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS selected_recovery_sealed_basis (
+                    proposal_id TEXT PRIMARY KEY,
+                    executor_id TEXT NOT NULL UNIQUE,
+                    pair TEXT NOT NULL,
+                    account_name TEXT NOT NULL,
+                    connector_name TEXT NOT NULL,
+                    controller_id TEXT NOT NULL,
+                    authorized_quote TEXT NOT NULL,
+                    gross_basis_quote TEXT NOT NULL,
+                    entry_fee_quote TEXT NOT NULL,
+                    payload_json TEXT NOT NULL
+                )
+                """)
+
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS executor_accounting_observations (
                     observation_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     proposal_id TEXT NOT NULL,
@@ -4247,3 +4272,9 @@ class CapitalGovernor:
             return None
 
         return self._decision_from_row(row)
+
+    def seal_selected_recovery_opening_basis(self, **kwargs) -> None:
+        """Accept only the selected adapter's exact terminal source receipt."""
+        from .selected_recovery_ledger import seal_opening_basis
+
+        seal_opening_basis(self, **kwargs)
