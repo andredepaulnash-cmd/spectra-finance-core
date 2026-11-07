@@ -51,6 +51,7 @@ class ServerDataType(Enum):
     BOT_RUNS = "bot_runs"
     CANDLE_CONNECTORS = "candle_connectors"
     SERVER_STATUS = "server_status"
+    SPECTRA_RUNTIME = "spectra_runtime"
     #: Whether this server serves the shared /performance/history route
     #: (FEAT-087). A property of the API build, not of any scope.
     PERF_HISTORY_CAPABILITY = "perf_history_capability"
@@ -123,6 +124,9 @@ _DEFAULTS: Dict[ServerDataType, DataTypeDefaults] = {
     ServerDataType.BOT_RUNS: DataTypeDefaults(interval=30, ttl=120),
     ServerDataType.CANDLE_CONNECTORS: DataTypeDefaults(interval=300, ttl=600),
     ServerDataType.SERVER_STATUS: DataTypeDefaults(interval=60, ttl=120),
+    # The local Spectra interface must fail closed when an older/legacy API does
+    # not expose the authenticated paper-only runtime boundary.
+    ServerDataType.SPECTRA_RUNTIME: DataTypeDefaults(interval=15, ttl=30),
     # A capability, not data: the answer changes only when the API image is
     # rebuilt or pulled, so it is asked about as rarely as anything here and
     # is deliberately not in the auto-subscribe set — nothing polls it, the
@@ -988,6 +992,7 @@ def register_default_fetches() -> None:
         fetch_portfolio_history,
         fetch_positions,
         fetch_server_status,
+        fetch_spectra_runtime,
         fetch_ticker_pool,
         fetch_tickers,
         fetch_trading_rules,
@@ -1021,6 +1026,7 @@ def register_default_fetches() -> None:
     sds.register_fetch(ServerDataType.BOT_RUNS, fetch_bot_runs)
     sds.register_fetch(ServerDataType.CANDLE_CONNECTORS, fetch_candle_connectors)
     sds.register_fetch(ServerDataType.SERVER_STATUS, fetch_server_status)
+    sds.register_fetch(ServerDataType.SPECTRA_RUNTIME, fetch_spectra_runtime)
     sds.register_fetch(
         ServerDataType.PERF_HISTORY_CAPABILITY, probe_performance_history
     )
