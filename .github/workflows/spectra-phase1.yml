@@ -11,7 +11,7 @@ on:
       - spectra-core-phase2
       - integration/protected-recovery-composition-20261107
       - integration/spectra-recovery-dust-runtime-20261107
-      - 'product/spectra-paper-dashboard-20261107*'
+      - integration/spectra-governed-paper-execution-20261107b
   workflow_dispatch:
 
 permissions:
