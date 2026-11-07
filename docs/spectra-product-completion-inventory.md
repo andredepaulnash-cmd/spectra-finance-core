@@ -78,7 +78,7 @@ Capabilities visible in the candidate's source and changed-file set include:
 - API-side Core-issued, short-lived, exact-scope dispatch receipts and trusted image provenance.
 - Full integration/verification of every strategy and advanced module in a single end-to-end environment.
 
-The separate `support/decision-accounting-dust-20261012` branch contains substantial selected-recovery runtime/ledger and dust-lifecycle source plus tests. It is not the same as saying that work is safely integrated into PR #44. It must be reviewed and ported in controlled slices; prior asynchronous partial-attempt work caused protected-baseline regressions and was reverted from the candidate.
+The separate `support/decision-accounting-dust-20261012` branch contains selected-recovery runtime/ledger and dust-lifecycle source plus tests. A new draft port PR #46 has brought the selected-recovery native ledger/runtime onto the PR #44 composition candidate, added the required Governor schema/wrappers, and is undergoing focused CI. The first run exposed missing schemas and incompatible dust dependencies; dust was removed from the port and remains deferred. It is not safe to call either feature complete until the updated selected-recovery tests pass and dust is composed with the newer cash/retirement changes. Prior asynchronous partial-attempt work caused protected-baseline regressions and was reverted from the candidate.
 
 ## 3. Execution/API boundary inventory
 
@@ -105,6 +105,10 @@ Branding work must be paired with product-mode and authorization work:
 - Paper mode visibly distinguished from any future live mode.
 - No live mutation controls in the first Spectra paper-only product shell.
 - No API credentials or wallet secrets exposed to Condor or the frontend.
+
+## Additional paper/research implementation found
+
+A separate branch, `paper/btc-eth-crash-short-beta-20261012`, contains a substantial default-off, isolated SQLite paper price-path engine (`crash_short_model.py`, `crash_short_signal.py`, `crash_short_paper.py`, `crash_short_runtime.py`) with synthetic-input tests and frozen research evidence. It is explicitly a hypothetical fractional BTC/ETH spot-price short proxy: no exchange client, credentials, order dispatch, live route, margin model, or Hummingbot integration. It must remain a separate research/paper book and must not be treated as the general Spectra execution simulator or merged into spot/VCAP capital balances.
 
 ## 5. Paper-trading status
 
