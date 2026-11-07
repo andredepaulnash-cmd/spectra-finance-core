@@ -12,7 +12,7 @@ from .models import (
     CapitalSnapshot,
     IntentKind,
 )
-from .runtime import get_capital_governor
+from .runtime import get_capital_governor, spectra_paper_only_enabled
 
 
 @dataclass(frozen=True)
@@ -55,7 +55,7 @@ async def reserve_kraken_capital(
     refresh: bool = True,
 ) -> KrakenCapitalAuthorization:
     """
-    Request capital authority for one Kraken USD spot action.
+    Request capital authority for one Kraken USD spot or isolated paper action.
 
     The caller describes economics; Spectra Core creates the proposal identity.
     This function does NOT execute an order.
@@ -75,12 +75,16 @@ async def reserve_kraken_capital(
     intent_kind = _intent(intent)
 
     capital_governor = governor or get_capital_governor()
+    connector_name = (
+        "kraken_paper_trade" if spectra_paper_only_enabled() else "kraken"
+    )
 
     snapshot = await build_kraken_capital_snapshot(
         client,
         account_name=account,
         trading_pair=pair,
         recovery_exposure_quote=(capital_governor.current_recovery_exposure_quote()),
+        connector_name=connector_name,
         refresh=refresh,
     )
 
@@ -91,7 +95,7 @@ async def reserve_kraken_capital(
         amount_quote=amount,
         leverage=Decimal("1"),
         account_name=account,
-        connector_name="kraken",
+        connector_name=connector_name,
         quote_asset=pair.rsplit("-", 1)[1],
     )
 
