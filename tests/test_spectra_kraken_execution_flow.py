@@ -213,7 +213,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     result = asyncio.run(
         executor_create.create_grid_executor(
             client,
-            connector_name="kraken",
+            connector_name=connector_name,
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
