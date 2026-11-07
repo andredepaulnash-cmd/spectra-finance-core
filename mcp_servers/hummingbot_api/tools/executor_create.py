@@ -442,7 +442,13 @@ def _authorize_spectra_execution(
         return "Spectra execution requires a capital intent"
 
     connector = str(config.get("connector_name") or "").strip().lower()
-    if connector != "kraken":
+    expected_connector = "kraken_paper_trade" if settings.paper_only else "kraken"
+    if connector != expected_connector:
+        if settings.paper_only:
+            return (
+                "Spectra paper-only execution requires kraken_paper_trade; "
+                f"connector {connector!r} is not authorized"
+            )
         return (
             f"Spectra live execution is Kraken spot only; "
             f"connector {connector!r} is not authorized"
@@ -708,6 +714,20 @@ async def create_executor(
     backend_config = merged_config
     protected_buy_policy = None
     if settings.agent_slug == "spectra":
+        expected_connector = (
+            "kraken_paper_trade" if settings.paper_only else "kraken"
+        )
+        if str(merged_config.get("connector_name") or "").strip().lower() != expected_connector:
+            return {
+                "action": "create",
+                "executor_type": executor_type,
+                "error": (
+                    "Spectra paper-only mode requires kraken_paper_trade."
+                    if settings.paper_only
+                    else "Spectra execution is restricted to the Kraken spot connector."
+                ),
+                "formatted_output": "Spectra execution refused before market-data lookup.",
+            }
         try:
             try:
                 mode = get_breaker_mode()
