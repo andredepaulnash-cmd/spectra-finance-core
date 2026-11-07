@@ -697,6 +697,14 @@ async def dispatch_protected_economic_exit(
             obs.status.strip().upper() != "TERMINATED"
             or (obs.close_type or "").strip().upper() != "POSITION_HOLD"
         ):
+            if ledger.selected_recovery_lock_owner(position_id) is not None:
+                return _result(
+                    manifest,
+                    ledger,
+                    store,
+                    now,
+                    reasons=("exact_position_mutation_pending",),
+                )
             await client.executors.stop_executor(
                 executor_id=owner.executor_id, keep_position=True
             )
@@ -859,6 +867,12 @@ async def execute_economic_position_exit(
         }
     if decision.pair != trading_rule.trading_pair.strip().upper():
         raise ValueError("profit exit pair does not match Kraken trading rule")
+    if ledger.selected_recovery_lock_owner(position_id) is not None:
+        return {
+            "action": "EXIT",
+            "exit_requested": False,
+            "reasons": ["exact_position_mutation_pending"],
+        }
     store = EconomicExitManifestStore(ledger.path)
     existing = store.open_for_position(position_id) or store.latest_for_position(
         position_id
