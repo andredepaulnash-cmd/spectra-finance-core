@@ -462,17 +462,6 @@ class PartialRecycleStore:
                     raise PartialRecycleManifestConflict(
                         "open_whole_exit_blocks_partial_manifest_creation"
                     )
-                if conn.execute(
-                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='selected_recovery_position_locks'"
-                ).fetchone():
-                    locked = conn.execute(
-                        "SELECT owner_id FROM selected_recovery_position_locks WHERE position_id=?",
-                        (manifest.position_id,),
-                    ).fetchone()
-                    if locked is not None and locked["owner_id"] != "partial:" + manifest.manifest_id:
-                        raise PartialRecycleManifestConflict(
-                            "another_exact_position_mutation_owns_this_position"
-                        )
                 previous = conn.execute(
                     "SELECT * FROM partial_recycle_manifests "
                     "WHERE position_id = ? ORDER BY rowid DESC LIMIT 1",
@@ -511,6 +500,17 @@ class PartialRecycleStore:
                     ):
                         raise PartialRecycleManifestConflict(
                             "uncertain_partial_dispatch_blocks_new_generation"
+                        )
+                if conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='selected_recovery_position_locks'"
+                ).fetchone():
+                    locked = conn.execute(
+                        "SELECT owner_id FROM selected_recovery_position_locks WHERE position_id=?",
+                        (manifest.position_id,),
+                    ).fetchone()
+                    if locked is not None and locked["owner_id"] != "partial:" + manifest.manifest_id:
+                        raise PartialRecycleManifestConflict(
+                            "another_exact_position_mutation_owns_this_position"
                         )
                 conn.execute(
                     """
@@ -742,6 +742,13 @@ class PartialRecycleStore:
                 "UPDATE partial_recycle_manifests SET status = ?, completed_at = COALESCE(completed_at, ?) WHERE manifest_id = ?",
                 (status.value, timestamp, mid),
             )
+            if conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='selected_recovery_position_locks'"
+            ).fetchone():
+                conn.execute(
+                    "DELETE FROM selected_recovery_position_locks WHERE position_id=? AND owner_id=?",
+                    (manifest.position_id, "partial:" + mid),
+                )
             conn.commit()
 
     def terminal_proof(self, manifest_id: str) -> dict | None:
