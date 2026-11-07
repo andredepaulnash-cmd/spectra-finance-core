@@ -425,3 +425,17 @@ def test_spectra_agent_defaults_to_paper_only_unless_explicitly_overridden(
 
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
     assert spectra_paper_only_enabled() is False
+
+
+
+def test_condor_spectra_runtime_status_route_is_registered():
+    from condor.fetchers import fetch_spectra_runtime
+    from condor.server_data_service import ServerDataType
+    from condor.web.routes.servers import router
+
+    assert callable(fetch_spectra_runtime)
+    assert ServerDataType.SPECTRA_RUNTIME.value == "spectra_runtime"
+    assert any(
+        route.path == "/servers/{name}/spectra/runtime"
+        for route in router.routes
+    )
