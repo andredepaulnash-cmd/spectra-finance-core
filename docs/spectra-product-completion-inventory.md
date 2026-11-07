@@ -24,9 +24,10 @@ Paper mode is the first end-to-end verification environment. It is not a reduced
 |---|---|---|---|
 | DTTP | Core and API default-branch code search; Core branch names; Core commit search | No exact acronym match found in the checked repositories/search surfaces | Recover exact source, definition, owner, inputs/outputs, tests, and integration contract from historical branches, local files, or the governor blueprint |
 | DTSL | Same search surfaces | No exact acronym match found | Same; do not infer an expansion |
-| PSSM | Same search surfaces | No exact acronym match found | Same; do not infer an expansion |
+| PSSM | Spectra agent doctrine in `agents/spectra/AGENT.md` names PSSM as a deterministic alternative when recovery economics deteriorate; no implementation or expansion found in the checked source | Mentioned as an intended decision path, implementation/definition unverified | Recover exact specification and implementation; do not infer an expansion |
 | VCAP | Core package exports, runtime, lifecycle, planner, profit-exit, restart, and MCP tool paths | Strong repository evidence; several modules and tests exist | Complete the lifecycle/recovery integration audit and end-to-end verification |
-| Additional remembered module | No reliable identifier yet | Unresolved | Identify from historical commits, project documents, and Architect-provided governor file; do not guess |
+| MIR (possible match for the additional remembered module) | Spectra agent doctrine in `agents/spectra/AGENT.md` names MIR alongside PSSM; no implementation or expansion found in the checked source | Candidate identity only; not confirmed to be the module the Architect is remembering | Verify with historical source and the Architect's governor blueprint; do not infer an expansion |
+| Additional remembered module | No reliable identifier beyond the MIR candidate | Unresolved | Identify from historical commits, project documents, and Architect-provided governor file; do not guess |
 
 **Important search limitation:** the exact-acronym searches did not find DTTP, DTSL, or PSSM in the two checked repositories. This is not proof that the work is lost. Search indexing, private/archived repositories, old local folders, uploaded blueprints, and unmerged historical branches may contain it.
 
