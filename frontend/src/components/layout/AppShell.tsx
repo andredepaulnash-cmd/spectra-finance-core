@@ -81,6 +81,11 @@ function AppShellBody() {
           (to === "/portfolio" && paperConnectorReady),
       )
     : NAV_ITEMS.filter(({ to }) => to === "/");
+  const isSpectraSafeRoute =
+    pathname === "/" ||
+    pathname.startsWith("/agents/") ||
+    (paperModeConfirmed && pathname.startsWith("/settings")) ||
+    (paperConnectorReady && pathname.startsWith("/portfolio"));
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [reportOpen, setReportOpen] = useState(false);
@@ -233,11 +238,36 @@ function AppShellBody() {
       {/* Main content */}
       <main
         className={`relative flex-1 ${
-          isFullBleed ? "overflow-hidden" : "overflow-auto p-6"
+          isFullBleed && isSpectraSafeRoute ? "overflow-hidden" : "overflow-auto p-6"
         }`}
       >
         <ErrorBoundary resetKey={pathname + server}>
-          <Outlet key={server} />
+          {isSpectraSafeRoute ? (
+            <Outlet key={server} />
+          ) : (
+            <section
+              role="alert"
+              className="mx-auto flex min-h-[50vh] max-w-2xl flex-col items-center justify-center gap-4 text-center"
+            >
+              <div className="rounded-full border border-[var(--color-border)] p-4 text-[var(--color-text-muted)]">
+                <span className="text-2xl font-black">S</span>
+              </div>
+              <h1 className="text-xl font-semibold">Spectra execution locked</h1>
+              <p className="max-w-xl text-sm leading-6 text-[var(--color-text-muted)]">
+                {!paperModeConfirmed
+                  ? "This server has not confirmed Spectra paper-only mode. Trading and account controls stay unavailable until the authenticated runtime reports PAPER_ONLY."
+                  : pathname.startsWith("/portfolio") && !paperConnectorReady
+                    ? "Paper-only mode is confirmed, but no paper connector is initialized. Configure a dedicated *_paper_trade connector in Settings first."
+                    : "This control is intentionally unavailable until it is routed through Spectra Core authorization. Direct Hummingbot, Gateway, bot deployment, and routine execution controls are not exposed."}
+              </p>
+              <button
+                onClick={() => navigate(paperModeConfirmed ? "/settings" : "/")}
+                className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-hover)]"
+              >
+                {paperModeConfirmed ? "Open Spectra settings" : "Return to Spectra"}
+              </button>
+            </section>
+          )}
         </ErrorBoundary>
       </main>
 
