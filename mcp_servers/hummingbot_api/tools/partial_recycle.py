@@ -2,13 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sqlite3
-from contextlib import closing
 from dataclasses import replace
 from decimal import Decimal, localcontext
-from typing import Any, Awaitable, Callable
-
-from aiohttp import ClientResponseError
+from typing import Any
 
 from mcp_servers.hummingbot_api.tools.cash_accounting import (
     bind_sale_cash_authority,
@@ -28,10 +24,6 @@ from spectra_core.executor_accounting import (
 )
 from spectra_core.kraken_market_fabric import KrakenTradingRule
 from spectra_core.models import BreakerMode
-from spectra_core.partial_attempt import (
-    PartialAttemptAssessment,
-    PartialAttemptDisposition,
-)
 from spectra_core.partial_recycle import (
     PartialRecycleAction,
     PartialRecycleDecision,
@@ -174,40 +166,26 @@ def _sell_geometry(fill) -> tuple[Decimal, Decimal, Decimal]:
 def _release_basis_by_owner(
     manifest: PartialRecycleManifest,
     allocated_basis: Decimal,
-    *,
-    event_id: str,
-    ledger: EconomicPositionLedger,
 ) -> tuple[tuple[str, Decimal], ...]:
-    """Release exact sold-lot owners, never stale manifest proportions."""
-    with closing(
-        sqlite3.connect(ledger.path.resolve().as_uri() + "?mode=ro", uri=True)
-    ) as conn:
-        rows = conn.execute(
-            "SELECT lot_id, proposal_id, executor_id, ownership, allocated_cost_basis_quote "
-            "FROM economic_exit_allocations WHERE event_id=? AND position_id=?",
-            (event_id, manifest.position_id),
-        ).fetchall()
-    owners = {owner.proposal_id: owner.executor_id for owner in manifest.owners}
-    allocated: dict[str, Decimal] = {}
-    for lot_id, proposal_id, executor_id, ownership, raw_basis in rows:
-        basis = Decimal(raw_basis)
-        if (
-            lot_id not in manifest.lot_ids
-            or proposal_id not in owners
-            or owners[proposal_id] != executor_id
-            or ownership != "ACTIVE_TRADE"
-            or not basis.is_finite()
-            or basis < ZERO
-        ):
-            raise RuntimeError("partial recycle exact allocation owner evidence conflicts")
-        allocated[proposal_id] = exact_decimal_sum((allocated.get(proposal_id, ZERO), basis))
-    if not rows or exact_decimal_sum(allocated.values()) != allocated_basis:
-        raise RuntimeError("partial recycle exact allocation evidence is incomplete")
-    return tuple(
-        (proposal_id, basis)
-        for proposal_id, basis in sorted(allocated.items())
-        if basis > ZERO
-    )
+    if allocated_basis <= ZERO:
+        return ()
+    total = manifest.target_cost_basis_quote
+    if total <= ZERO:
+        raise RuntimeError("partial recycle manifest has no recovery basis")
+    remaining = allocated_basis
+    rows: list[tuple[str, Decimal]] = []
+    for index, owner in enumerate(manifest.owners):
+        if index == len(manifest.owners) - 1:
+            piece = remaining
+        else:
+            piece = allocated_basis * owner.target_cost_basis_quote / total
+            piece = min(piece, remaining)
+        remaining -= piece
+        if piece > ZERO:
+            rows.append((owner.proposal_id, piece))
+    if remaining != ZERO:
+        raise RuntimeError("partial recycle basis release did not close exactly")
+    return tuple(rows)
 
 
 async def synchronize_partial_recycle_executor(
@@ -249,26 +227,7 @@ async def synchronize_partial_recycle_executor(
         or trades.executor_id != manifest.sell_executor_id
     ):
         raise RuntimeError("partial recycle snapshots cross executor scope")
-    conflicts: list[str] = []
     known_orders = {order.order_id: order for order in orders.orders}
-    if len(known_orders) != len(orders.orders):
-        raise RuntimeError("partial recycle order evidence contains duplicates")
-    if len({fill.trade_id for fill in trades.trades}) != len(trades.trades):
-        raise RuntimeError("partial recycle trade evidence contains duplicates")
-    for fill in trades.trades:
-        if fill.order_id not in known_orders:
-            raise RuntimeError("partial recycle fill references unknown executor order")
-    order_evidence_mismatch = False
-    for order in orders.orders:
-        filled = exact_decimal_sum(
-            fill.amount_base for fill in trades.trades if fill.order_id == order.order_id
-        )
-        if (
-            order.filled_amount > order.amount
-            or filled != order.filled_amount
-            or (order.status.upper() == "FILLED" and order.filled_amount != order.amount)
-        ):
-            order_evidence_mismatch = True
     try:
         raw = await client.executors.get_executor(manifest.sell_executor_id)
         observation = executor_accounting_observation_from_raw(
@@ -277,6 +236,7 @@ async def synchronize_partial_recycle_executor(
     except Exception:
         raw, observation = None, None
 
+    conflicts: list[str] = []
     if (
         manifest.protected_limit_price is not None
         and isinstance(raw, dict)
@@ -333,39 +293,11 @@ async def synchronize_partial_recycle_executor(
     if outstanding > remaining_partial_recycle_base(manifest, ledger=ledger):
         conflicts.append("outstanding_orders_exceed_manifest_inventory")
 
-    if order_evidence_mismatch:
-        return {
-            "manifest_id": manifest.manifest_id,
-            "sell_executor_id": manifest.sell_executor_id,
-            "applied_fills": 0,
-            "replayed_fills": 0,
-            "remaining_base": str(remaining_partial_recycle_base(manifest, ledger=ledger)),
-            "realized_net_pnl_quote": None,
-            "completed": False,
-            "terminal": False,
-            "reasons": ["partial_order_fill_totals_mismatch"],
-        }
-
     # Persist known order violations before any fill/accounting mutation.
     for conflict in conflicts:
         store.record_protection_conflict(
             manifest_id=manifest.manifest_id, conflict=conflict, now=now
         )
-    if any(reason.startswith("partial_order_fill_totals_mismatch:") for reason in conflicts):
-        progress = assess_partial_recycle_manifest(
-            manifest, ledger=ledger, governor=governor, store=store, now=now
-        )
-        return {
-            "manifest_id": manifest.manifest_id,
-            "sell_executor_id": manifest.sell_executor_id,
-            "applied_fills": 0,
-            "replayed_fills": 0,
-            "remaining_base": str(progress.remaining_base),
-            "realized_net_pnl_quote": str(progress.realized_pnl_quote),
-            "completed": False,
-            "terminal": False,
-            "reasons": ["partial_order_fill_totals_mismatch"],
-        }
 
     cash_events = {}
     for fill in trades.trades:
@@ -421,21 +353,31 @@ async def synchronize_partial_recycle_executor(
             exit_fee_quote=exit_fee,
             occurred_at=fill.occurred_at,
             eligible_lot_ids=manifest.lot_ids,
-            mutation_owner_id=(
-                "partial:" + manifest.manifest_id
-                if ledger.selected_recovery_lock_owner(manifest.position_id)
-                == "partial:" + manifest.manifest_id
-                else None
-            ),
         )
 
-        release_rows = _release_basis_by_owner(
-            manifest,
-            result.allocated_cost_basis_quote,
-            event_id=event_id,
-            ledger=ledger,
-        )
-
+        authority = governor.cash_authority_snapshot()
+        if authority is not None and fill.occurred_at > authority.activated_at:
+            allocation = dict(ledger.exit_basis_by_lot(result.event_id))
+            if (
+                exact_decimal_sum(allocation.values())
+                != result.allocated_cost_basis_quote
+            ):
+                raise RuntimeError(
+                    "partial cash release lacks exact lot basis allocations"
+                )
+            release_rows = tuple(
+                (
+                    owner.proposal_id,
+                    exact_decimal_sum(
+                        allocation.get(lot_id, ZERO) for lot_id in owner.lot_ids
+                    ),
+                )
+                for owner in manifest.owners
+            )
+        else:
+            release_rows = _release_basis_by_owner(
+                manifest, result.allocated_cost_basis_quote
+            )
         for proposal_id, released_basis in release_rows:
             if released_basis <= ZERO:
                 continue
@@ -495,6 +437,10 @@ async def synchronize_partial_recycle_executor(
         store.record_protection_conflict(
             manifest_id=manifest.manifest_id, conflict=conflict, now=now
         )
+    if store.protection_conflicts(manifest.manifest_id):
+        raise RuntimeError(
+            "partial recycle profit protection conflict requires resolution"
+        )
 
     if reconciliation_only:
         raise RuntimeError(
@@ -507,18 +453,6 @@ async def synchronize_partial_recycle_executor(
     ):
         raise RuntimeError("protected BUY source conflict requires reconciliation")
 
-    if store.protection_conflicts(manifest.manifest_id):
-        return {
-            "manifest_id": manifest.manifest_id,
-            "sell_executor_id": manifest.sell_executor_id,
-            "applied_fills": applied,
-            "replayed_fills": replayed,
-            "remaining_base": str(remaining_partial_recycle_base(manifest, ledger=ledger)),
-            "realized_net_pnl_quote": None,
-            "completed": False,
-            "terminal": False,
-            "reasons": ["partial_protection_conflict_requires_resolution"],
-        }
     progress = assess_partial_recycle_manifest(
         manifest,
         ledger=ledger,
@@ -625,31 +559,14 @@ async def synchronize_partial_recycle_executor(
         store.record_terminal_dispatch(manifest.manifest_id, proof=proof, now=now)
         terminal = True
 
-    final_progress = assess_partial_recycle_manifest(
-        manifest,
-        ledger=ledger,
-        governor=governor,
-        store=store,
-        now=now,
-    )
-    if (
-        final_progress.completed
-        and store.terminal_proof(manifest.manifest_id) is not None
-        and ledger.selected_recovery_lock_owner(manifest.position_id)
-        == "partial:" + manifest.manifest_id
-    ):
-        ledger.release_selected_recovery_lock(
-            manifest.position_id, "partial:" + manifest.manifest_id
-        )
-
     return {
         "manifest_id": manifest.manifest_id,
         "sell_executor_id": manifest.sell_executor_id,
         "applied_fills": applied,
         "replayed_fills": replayed,
-        "remaining_base": str(final_progress.remaining_base),
-        "realized_net_pnl_quote": str(final_progress.realized_pnl_quote),
-        "completed": final_progress.completed,
+        "remaining_base": str(progress.remaining_base),
+        "realized_net_pnl_quote": str(progress.realized_pnl_quote),
+        "completed": progress.completed,
         "terminal": terminal,
     }
 
@@ -667,7 +584,6 @@ async def execute_partial_recycle(
     controller_id: str = "spectra",
     expected_exit_cost_bps: Decimal | None = None,
     market_observed_at: float | None = None,
-    attempt_guard: Callable[[], Awaitable[PartialAttemptAssessment]] | None = None,
 ) -> dict[str, Any]:
     """Dispatch one exact partial-recycle SELL executor.
 
@@ -742,16 +658,6 @@ async def execute_partial_recycle(
             "reasons": ["existing_partial_recycle_executor_reconciled"],
         }
 
-    mutation_owner = "partial:" + manifest.manifest_id
-    current_lock_owner = ledger.selected_recovery_lock_owner(manifest.position_id)
-    if current_lock_owner is not None and current_lock_owner != mutation_owner:
-        return blocked("another_exact_position_mutation_pending")
-    if current_lock_owner == mutation_owner and attempt_guard is None:
-        return blocked(
-            "guarded_partial_mutation_requires_reconciliation",
-            "CLAIMED_REQUIRES_RECONCILIATION",
-        )
-
     remaining = remaining_partial_recycle_base(
         manifest,
         ledger=ledger,
@@ -822,31 +728,6 @@ async def execute_partial_recycle(
             "reasons": list(passive_reasons),
         }
 
-    if attempt_guard is not None:
-        assessment = await attempt_guard()
-        if (
-            assessment.manifest_id != manifest.manifest_id
-            or assessment.disposition != PartialAttemptDisposition.ELIGIBLE
-        ):
-            return {
-                "action": "PARTIAL_RECYCLE",
-                "executed": False,
-                "manifest_id": manifest.manifest_id,
-                "sell_executor_id": manifest.sell_executor_id,
-                "reasons": [
-                    "partial_final_dispatch_guard_blocked",
-                    *assessment.reasons,
-                ],
-            }
-        validate_partial_recycle_manifest(
-            manifest, ledger=ledger, governor=governor
-        )
-        remaining_after_guard = remaining_partial_recycle_base(
-            manifest, ledger=ledger
-        )
-        if remaining_after_guard != assessment.quantity:
-            return blocked("partial_inventory_changed_after_assessment")
-
     bind_sale_cash_authority(
         governor=governor,
         manifest=manifest,
@@ -865,7 +746,6 @@ async def execute_partial_recycle(
         current_price=current_price,
         expected_exit_cost_bps=expected_exit_cost_bps,
         market_observed_at=market_observed_at,
-        freshness_verified=attempt_guard is not None,
     )
     if guard is None:
         return blocked(
