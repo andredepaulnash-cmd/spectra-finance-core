@@ -131,8 +131,8 @@ No real exchange credentials, wallet keys, live orders, or capital are required 
 ## New integration work opened 2026-11-07
 
 - Core PR #46: native selected-recovery runtime integration; latest focused CI **924 passed**. Draft/unmerged; selected recovery remains default-off.
-- Hummingbot API PR #6: fail-closed `SPECTRA_PAPER_ONLY` API mode. It blocks mutation HTTP routes, prevents connector/executor/bot/Gateway/market-data startup, and exposes authenticated `GET /spectra/runtime`. Focused API CI passed. This is containment, not a paper simulator.
-- Core PR #47: first Spectra Finance UI branding slice. Browser title, shell wordmark, login, package metadata, and PWA manifest are being rebranded while preserving Condor as the analysis subsystem. Frontend build CI is being added. Existing live-capable pages are not yet safe to expose as a Spectra installation until runtime status and paper-mode integration are connected.
+- Hummingbot API PR #6: `SPECTRA_PAPER_ONLY` API mode. It restricts connector discovery/creation to `*_paper_trade`, permits only paper executor/order routes and paper connector provisioning without secrets, skips bots/Gateway/Docker, filters legacy live executor/portfolio state, and exposes authenticated `GET /spectra/runtime`. The latest expanded API CI is running. This is a paper-connector integration candidate, not yet a verified Core-authorized end-to-end paper flow.
+- Core PR #47: first Spectra Finance UI branding slice. Browser title, shell wordmark, login, package metadata, and PWA manifest are rebranded while preserving Condor as the analysis subsystem. Frontend production build and Core focused CI both passed. Existing live-capable pages are not yet safe to expose as a Spectra installation until runtime status and paper-mode integration are connected.
 
 ## 7. Evidence and guardrails
 
