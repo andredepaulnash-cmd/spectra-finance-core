@@ -10,6 +10,8 @@ from spectra_core.runtime import (
     get_capital_governor,
     load_capital_policy,
     reset_runtime_cache,
+    spectra_live_state_dir,
+    spectra_state_dir,
 )
 
 
@@ -238,3 +240,89 @@ def test_position_hold_snapshot_ttl_must_be_positive_integer(
             load_capital_policy()
 
         reset_runtime_cache()
+
+
+
+def test_paper_state_dir_is_separate_from_live_state(
+    monkeypatch,
+    tmp_path,
+):
+    live_dir = tmp_path / "live-state"
+    paper_dir = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(live_dir))
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(paper_dir))
+
+    assert spectra_live_state_dir() == live_dir
+    assert spectra_state_dir() == paper_dir
+    assert spectra_state_dir() != spectra_live_state_dir()
+
+
+def test_paper_state_dir_cannot_equal_live_state(
+    monkeypatch,
+    tmp_path,
+):
+    same_dir = tmp_path / "same-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(same_dir))
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(same_dir))
+
+    with pytest.raises(RuntimeError, match="must be separate"):
+        spectra_state_dir()
+
+
+def test_paper_mode_reads_live_policy_as_read_only_fallback(
+    monkeypatch,
+    tmp_path,
+):
+    live_dir = tmp_path / "live-state"
+    paper_dir = tmp_path / "paper-state"
+    live_dir.mkdir()
+    paper_dir.mkdir()
+    (live_dir / "capital_policy.json").write_text(
+        json.dumps(_valid_policy())
+    )
+
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(live_dir))
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(paper_dir))
+    reset_runtime_cache()
+
+    policy = load_capital_policy()
+
+    assert policy.reserve_floor_quote == Decimal("100")
+    assert policy.max_leverage == Decimal("1")
+    assert not (paper_dir / "capital.sqlite3").exists()
+    assert not (live_dir / "capital.sqlite3").exists()
+
+    reset_runtime_cache()
+
+
+def test_paper_breaker_prefers_paper_file_then_falls_back_live(
+    monkeypatch,
+    tmp_path,
+):
+    live_dir = tmp_path / "live-state"
+    paper_dir = tmp_path / "paper-state"
+    live_dir.mkdir()
+    paper_dir.mkdir()
+    (live_dir / "breaker_state.json").write_text(
+        json.dumps({"mode": "NORMAL"})
+    )
+
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(live_dir))
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(paper_dir))
+
+    assert get_breaker_mode() == BreakerMode.NORMAL
+
+    (paper_dir / "breaker_state.json").write_text(
+        json.dumps({"mode": "HALTED"})
+    )
+    assert get_breaker_mode() == BreakerMode.HALTED
+
+
+def test_invalid_paper_mode_value_fails_closed(monkeypatch):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "sometimes")
+    with pytest.raises(RuntimeError, match="explicit boolean"):
+        spectra_state_dir()
