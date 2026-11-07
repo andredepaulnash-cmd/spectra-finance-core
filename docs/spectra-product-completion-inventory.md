@@ -78,7 +78,7 @@ Capabilities visible in the candidate's source and changed-file set include:
 - API-side Core-issued, short-lived, exact-scope dispatch receipts and trusted image provenance.
 - Full integration/verification of every strategy and advanced module in a single end-to-end environment.
 
-The separate `support/decision-accounting-dust-20261012` branch contains selected-recovery runtime/ledger and dust-lifecycle source plus tests. A new draft port PR #46 has brought the selected-recovery native ledger/runtime onto the PR #44 composition candidate, added the required Governor schema/wrappers, and is undergoing focused CI. The first run exposed missing schemas and incompatible dust dependencies; dust was removed from the port and remains deferred. It is not safe to call either feature complete until the updated selected-recovery tests pass and dust is composed with the newer cash/retirement changes. Prior asynchronous partial-attempt work caused protected-baseline regressions and was reverted from the candidate.
+The separate `support/decision-accounting-dust-20261012` branch contains selected-recovery runtime/ledger and dust-lifecycle source plus tests. A new draft port PR #46 has brought the selected-recovery native ledger/runtime onto the PR #44 composition candidate and added the required Governor schema/wrappers plus the sealed-gross-basis exposure adjustment. The latest focused CI passed 924 tests. The first run exposed missing schemas and incompatible dust dependencies; dust was removed from the port and remains deferred. It is not safe to call dust complete until it is composed with the newer cash/retirement changes. Prior asynchronous partial-attempt work caused protected-baseline regressions and was reverted from the candidate.
 
 ## 3. Execution/API boundary inventory
 
@@ -127,6 +127,12 @@ No real exchange credentials, wallet keys, live orders, or capital are required 
 3. Close the API mutation-authority gap and establish a verified paper-only execution adapter.
 4. Rebrand and adapt the existing frontend as Spectra Finance, beginning with a paper-only shell and read-only/approved views.
 5. Package and verify on the Architect's Bazzite machine only after the repository-side implementation is testable. Do not alter the immutable base OS or perform live execution.
+
+## New integration work opened 2026-11-07
+
+- Core PR #46: native selected-recovery runtime integration; latest focused CI **924 passed**. Draft/unmerged; selected recovery remains default-off.
+- Hummingbot API PR #6: fail-closed `SPECTRA_PAPER_ONLY` API mode. It blocks mutation HTTP routes, prevents connector/executor/bot/Gateway/market-data startup, and exposes authenticated `GET /spectra/runtime`. Focused API CI passed. This is containment, not a paper simulator.
+- Core PR #47: first Spectra Finance UI branding slice. Browser title, shell wordmark, login, package metadata, and PWA manifest are being rebranded while preserving Condor as the analysis subsystem. Frontend build CI is being added. Existing live-capable pages are not yet safe to expose as a Spectra installation until runtime status and paper-mode integration are connected.
 
 ## 7. Evidence and guardrails
 
