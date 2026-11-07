@@ -339,7 +339,10 @@ class EconomicPositionLedger:
         return conn
 
     def _init_schema(self) -> None:
+        from .position_mutation import initialize_position_mutation
+
         with self._connect() as conn:
+            initialize_position_mutation(conn)
             conn.executescript("""
                 CREATE TABLE IF NOT EXISTS economic_positions (
                     position_id TEXT PRIMARY KEY,
@@ -403,6 +406,18 @@ class EconomicPositionLedger:
                     event_id TEXT NOT NULL, lot_id TEXT NOT NULL,
                     base_sold TEXT NOT NULL, cost_basis_quote TEXT NOT NULL,
                     entry_fees_quote TEXT NOT NULL,
+                    PRIMARY KEY (event_id, lot_id)
+                );
+                CREATE TABLE IF NOT EXISTS economic_exit_allocations (
+                    event_id TEXT NOT NULL,
+                    lot_id TEXT NOT NULL,
+                    position_id TEXT NOT NULL,
+                    proposal_id TEXT,
+                    executor_id TEXT,
+                    ownership TEXT NOT NULL,
+                    base_sold TEXT NOT NULL,
+                    allocated_cost_basis_quote TEXT NOT NULL,
+                    allocated_entry_fees_quote TEXT NOT NULL,
                     PRIMARY KEY (event_id, lot_id)
                 );
                 CREATE TABLE IF NOT EXISTS economic_position_retirements (
@@ -1011,6 +1026,7 @@ class EconomicPositionLedger:
         exit_fee_quote: Decimal = Decimal("0"),
         occurred_at: float,
         eligible_lot_ids: tuple[str, ...] | None = None,
+        mutation_owner_id: str | None = None,
     ) -> EconomicExitResult:
         eid = _text(event_id, "event_id")
         pid = _text(position_id, "position_id")
@@ -1041,6 +1057,14 @@ class EconomicPositionLedger:
                 if replay is not None:
                     conn.rollback()
                     return replay
+
+                from .position_mutation import lock_owner
+
+                held_owner = lock_owner(conn, pid)
+                if held_owner is not None and held_owner != mutation_owner_id:
+                    raise ValueError("selected recovery owns exact position exit scope")
+                if mutation_owner_id is not None and held_owner != mutation_owner_id:
+                    raise ValueError("exact position mutation owner is not held")
 
                 position = self._position_row(conn, pid)
                 pair = str(position["pair"])
@@ -1101,6 +1125,7 @@ class EconomicPositionLedger:
                 remaining_to_sell = sold
                 updates: list[tuple[Decimal, Decimal, Decimal, str]] = []
                 allocations = []
+                owner_allocations = []
 
                 for index, lot in enumerate(lots):
                     if remaining_to_sell <= ZERO:
@@ -1165,6 +1190,19 @@ class EconomicPositionLedger:
                             str(fee_piece),
                         )
                     )
+                    owner_allocations.append(
+                        (
+                            eid,
+                            lot.lot_id,
+                            pid,
+                            lot.proposal_id,
+                            lot.executor_id,
+                            lot.ownership.value,
+                            str(lot_sale),
+                            str(basis_piece),
+                            str(fee_piece),
+                        )
+                    )
 
                     updates.append(
                         (
@@ -1208,6 +1246,14 @@ class EconomicPositionLedger:
                 conn.executemany(
                     "INSERT INTO economic_exit_lot_allocations VALUES (?, ?, ?, ?, ?)",
                     allocations,
+                )
+                conn.executemany(
+                    """INSERT INTO economic_exit_allocations (
+                        event_id, lot_id, position_id, proposal_id, executor_id,
+                        ownership, base_sold, allocated_cost_basis_quote,
+                        allocated_entry_fees_quote
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    owner_allocations,
                 )
                 realized = exact_decimal_sum(
                     (
@@ -1501,6 +1547,34 @@ class EconomicPositionLedger:
         pid = _text(position_id, "position_id")
         with self._connect() as conn:
             return self._snapshot_with_conn(conn, pid)
+
+    def selected_recovery_lock_owner(self, position_id: str) -> str | None:
+        from .position_mutation import lock_owner
+
+        with self._connect() as conn:
+            return lock_owner(conn, _text(position_id, "position_id"))
+
+    def claim_selected_recovery_lock(self, position_id: str, owner_id: str) -> None:
+        from .position_mutation import claim_lock
+
+        claim_lock(self, position_id, owner_id)
+
+    def allow_selected_recovery_proposal(
+        self, position_id: str, owner_id: str, proposal_id: str
+    ) -> None:
+        from .position_mutation import allow_proposal
+
+        allow_proposal(self, position_id, owner_id, proposal_id)
+
+    def selected_recovery_proposal_allowed(self, pair: str, proposal_id: str) -> bool:
+        from .position_mutation import proposal_allowed
+
+        return proposal_allowed(self, pair, proposal_id)
+
+    def release_selected_recovery_lock(self, position_id: str, owner_id: str) -> bool:
+        from .position_mutation import release_lock
+
+        return release_lock(self, position_id, owner_id)
 
     def list_residual_position_ids(self) -> tuple[str, ...]:
         """Owned residuals remain visible, distinct from tradable ACTIVE slots."""
