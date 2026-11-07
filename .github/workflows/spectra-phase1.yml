@@ -95,5 +95,5 @@ jobs:
             tests/test_integrated_retirement_exit.py \
             tests/test_integrated_runtime_restart.py \
             tests/test_execution_price_policy.py \
-            tests/test_protected_buy_reconciliation.py
+            tests/test_protected_buy_reconciliation.py \
             tests/test_decision_trace.py
