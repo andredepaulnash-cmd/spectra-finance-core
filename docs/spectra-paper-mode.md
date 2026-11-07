@@ -6,9 +6,7 @@ Spectra paper mode exercises the real Core authorization and Hummingbot executor
 
 ## Enablement
 
-Set `SPECTRA_PAPER_ONLY=true` in both:
-- the Condor/Spectra Core process that runs the Hummingbot MCP tools; and
-- the Hummingbot API process.
+Set `SPECTRA_PAPER_ONLY=true` in the Hummingbot API process. The Core runtime also defaults to paper-only whenever `CONDOR_AGENT_SLUG=spectra` and `SPECTRA_PAPER_ONLY` is unset; setting it explicitly to `false` is an operator-only live-mode decision and is not part of this prototype.
 
 The API's paper-only runtime then:
 - discovers and initializes only connector names ending in `_paper_trade`;
