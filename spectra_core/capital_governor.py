@@ -4103,6 +4103,58 @@ class CapitalGovernor:
                     None if row["controller_id"] is None else str(row["controller_id"])
                 ),
             )
+            # A selected-child recovery source may seal its exact gross
+            # opening basis only after terminal orders, persisted trades,
+            # native lots, and passive executor counters agree. This removes
+            # only the proven fee reserve from the conservative all-in claim;
+            # ordinary recovery/PositionHold accounting keeps its existing
+            # scoped basis floor.
+            sealed = conn.execute(
+                "SELECT * FROM selected_recovery_sealed_basis WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchone()
+            if sealed is not None and row["observation_id"] is not None:
+                exact_scope = (
+                    str(sealed["executor_id"]) == provenance.executor_id
+                    and str(sealed["pair"]) == provenance.pair
+                    and sealed["account_name"] == provenance.account_name
+                    and sealed["connector_name"] == provenance.connector_name
+                    and sealed["controller_id"] == provenance.controller_id
+                    and Decimal(sealed["authorized_quote"])
+                    == provenance.authorized_quote
+                )
+                gross = Decimal(sealed["gross_basis_quote"])
+                fee = Decimal(sealed["entry_fee_quote"])
+                exact_terminal = (
+                    row["obs_executor_type"] == "dca_executor"
+                    and row["obs_status"] == "TERMINATED"
+                    and row["obs_close_type"] == "POSITION_HOLD"
+                    and Decimal(row["obs_filled_amount_quote"]) == gross
+                    and Decimal(row["obs_cum_fees_quote"]) == fee
+                )
+                if (
+                    exact_scope
+                    and exact_terminal
+                    and gross.is_finite()
+                    and fee.is_finite()
+                    and gross >= ZERO
+                    and fee >= ZERO
+                    and gross + fee <= provenance.authorized_quote
+                ):
+                    released = self._recovery_recycle_release_quote(
+                        conn, provenance.proposal_id
+                    )
+                    total = exact_decimal_sum(
+                        (
+                            total,
+                            max(
+                                exact_decimal_difference(gross, released),
+                                ZERO,
+                            ),
+                        )
+                    )
+                    continue
+
             basis_floor = self._scoped_recovery_basis_floor(
                 conn, provenance, recovery_ledgers
             )
