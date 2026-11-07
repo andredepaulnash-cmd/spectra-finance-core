@@ -117,7 +117,7 @@ def test_confirmed_exit_writes_exact_per_owner_allocation_receipt(tmp_path):
         "entry-exec",
         "ACTIVE_TRADE",
         "5",
-        "2.5",
+        "2.50",
         "0.025",
     )
 
