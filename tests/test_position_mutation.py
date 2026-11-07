@@ -75,7 +75,6 @@ def test_lock_release_requires_exact_owner_and_is_idempotent_after_release(tmp_p
 def test_confirmed_exit_writes_exact_per_owner_allocation_receipt(tmp_path):
     g = governor(tmp_path)
     book = ledger(tmp_path)
-    book.open_position(position_id="p", pair="XRP-USD", created_at=0.5)
     prepare_execution(
         g,
         proposal_id="entry",
@@ -85,7 +84,7 @@ def test_confirmed_exit_writes_exact_per_owner_allocation_receipt(tmp_path):
     )
     book.record_entry_fill(
         governor=g,
-        position_id="p",
+        position_id="xrp-position-1",
         lot_id="entry-lot",
         proposal_id="entry",
         base_amount=D(20),
@@ -96,7 +95,7 @@ def test_confirmed_exit_writes_exact_per_owner_allocation_receipt(tmp_path):
 
     book.record_partial_exit(
         event_id="sale-1",
-        position_id="p",
+        position_id="xrp-position-1",
         base_sold=D(5),
         gross_proceeds_quote=D(3),
         exit_fee_quote=D("0.01"),
