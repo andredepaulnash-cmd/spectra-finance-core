@@ -42,7 +42,7 @@ def test_partial_exit_cannot_mutate_a_selected_locked_position(tmp_path):
             occurred_at=2,
         )
 
-    with pytest.raises(ValueError, match="exact position mutation owner is not held"):
+    with pytest.raises(ValueError, match="selected recovery owns exact position exit scope"):
         book.record_partial_exit(
             event_id="wrong-owner-exit",
             position_id="p",
@@ -75,6 +75,7 @@ def test_lock_release_requires_exact_owner_and_is_idempotent_after_release(tmp_p
 def test_confirmed_exit_writes_exact_per_owner_allocation_receipt(tmp_path):
     g = governor(tmp_path)
     book = ledger(tmp_path)
+    book.open_position(position_id="p", pair="XRP-USD", created_at=0)
     prepare_execution(
         g,
         proposal_id="entry",
