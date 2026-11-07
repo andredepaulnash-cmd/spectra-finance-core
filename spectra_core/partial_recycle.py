@@ -645,6 +645,21 @@ class PartialRecycleStore:
                 )
             if not guard.allowed:
                 return guard
+            from .position_mutation import lock_owner
+
+            mutation_owner = "partial:" + mid
+            current_owner = lock_owner(conn, manifest.position_id)
+            if current_owner not in (None, mutation_owner):
+                return replace(
+                    guard,
+                    allowed=False,
+                    reasons=(*guard.reasons, "another_exact_position_mutation_pending"),
+                )
+            if current_owner is None:
+                conn.execute(
+                    "INSERT INTO selected_recovery_position_locks (position_id, owner_id) VALUES (?, ?)",
+                    (manifest.position_id, mutation_owner),
+                )
             conn.execute(
                 "INSERT INTO partial_recycle_dispatch_claims "
                 "(manifest_id, claimed_at) VALUES (?, ?)",
