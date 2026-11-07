@@ -50,7 +50,6 @@ jobs:
 
       - name: Run Spectra Phase 1 focused tests
         run: |
-          python -m py_compile condor/server_data_service.py condor/fetchers/spectra_runtime.py condor/fetchers/__init__.py condor/web/routes/servers.py
           uv run pytest -q \
             tests/test_spectra_core.py \
             tests/test_spectra_kraken_execution_flow.py \
