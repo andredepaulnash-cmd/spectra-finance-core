@@ -98,4 +98,5 @@ jobs:
             tests/test_protected_buy_reconciliation.py \
             tests/test_decision_trace.py \
             tests/test_position_mutation.py \
-            tests/test_cycle_reconciliation.py
+            tests/test_cycle_reconciliation.py \
+            tests/test_partial_attempt_assessment.py
