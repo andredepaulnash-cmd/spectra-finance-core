@@ -28,6 +28,10 @@ from spectra_core.executor_accounting import (
 )
 from spectra_core.kraken_market_fabric import KrakenTradingRule
 from spectra_core.models import BreakerMode
+from spectra_core.partial_attempt import (
+    PartialAttemptAssessment,
+    PartialAttemptDisposition,
+)
 from spectra_core.partial_recycle import (
     PartialRecycleAction,
     PartialRecycleDecision,
@@ -626,6 +630,7 @@ async def execute_partial_recycle(
     controller_id: str = "spectra",
     expected_exit_cost_bps: Decimal | None = None,
     market_observed_at: float | None = None,
+    attempt_guard: Callable[[], Awaitable[PartialAttemptAssessment]] | None = None,
 ) -> dict[str, Any]:
     """Dispatch one exact partial-recycle SELL executor.
 
@@ -700,6 +705,13 @@ async def execute_partial_recycle(
             "reasons": ["existing_partial_recycle_executor_reconciled"],
         }
 
+    mutation_owner = "partial:" + manifest.manifest_id
+    current_lock_owner = ledger.selected_recovery_lock_owner(manifest.position_id)
+    if current_lock_owner is not None and current_lock_owner != mutation_owner:
+        return blocked("another_exact_position_mutation_pending")
+    if current_lock_owner == mutation_owner and attempt_guard is None:
+        return blocked("guarded_partial_mutation_requires_reconciliation")
+
     remaining = remaining_partial_recycle_base(
         manifest,
         ledger=ledger,
@@ -769,6 +781,31 @@ async def execute_partial_recycle(
             "sell_executor_id": manifest.sell_executor_id,
             "reasons": list(passive_reasons),
         }
+
+    if attempt_guard is not None:
+        assessment = await attempt_guard()
+        if (
+            assessment.manifest_id != manifest.manifest_id
+            or assessment.disposition != PartialAttemptDisposition.ELIGIBLE
+        ):
+            return {
+                "action": "PARTIAL_RECYCLE",
+                "executed": False,
+                "manifest_id": manifest.manifest_id,
+                "sell_executor_id": manifest.sell_executor_id,
+                "reasons": [
+                    "partial_final_dispatch_guard_blocked",
+                    *assessment.reasons,
+                ],
+            }
+        validate_partial_recycle_manifest(
+            manifest, ledger=ledger, governor=governor
+        )
+        remaining_after_guard = remaining_partial_recycle_base(
+            manifest, ledger=ledger
+        )
+        if remaining_after_guard != assessment.quantity:
+            return blocked("partial_inventory_changed_after_assessment")
 
     bind_sale_cash_authority(
         governor=governor,
