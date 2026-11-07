@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
+from contextlib import closing
 from dataclasses import replace
 from decimal import Decimal, localcontext
 from typing import Any
@@ -166,26 +168,40 @@ def _sell_geometry(fill) -> tuple[Decimal, Decimal, Decimal]:
 def _release_basis_by_owner(
     manifest: PartialRecycleManifest,
     allocated_basis: Decimal,
+    *,
+    event_id: str,
+    ledger: EconomicPositionLedger,
 ) -> tuple[tuple[str, Decimal], ...]:
-    if allocated_basis <= ZERO:
-        return ()
-    total = manifest.target_cost_basis_quote
-    if total <= ZERO:
-        raise RuntimeError("partial recycle manifest has no recovery basis")
-    remaining = allocated_basis
-    rows: list[tuple[str, Decimal]] = []
-    for index, owner in enumerate(manifest.owners):
-        if index == len(manifest.owners) - 1:
-            piece = remaining
-        else:
-            piece = allocated_basis * owner.target_cost_basis_quote / total
-            piece = min(piece, remaining)
-        remaining -= piece
-        if piece > ZERO:
-            rows.append((owner.proposal_id, piece))
-    if remaining != ZERO:
-        raise RuntimeError("partial recycle basis release did not close exactly")
-    return tuple(rows)
+    """Release basis to the exact owners of the lots actually sold."""
+    with closing(
+        sqlite3.connect(ledger.path.resolve().as_uri() + "?mode=ro", uri=True)
+    ) as conn:
+        rows = conn.execute(
+            "SELECT lot_id, proposal_id, executor_id, ownership, allocated_cost_basis_quote "
+            "FROM economic_exit_allocations WHERE event_id=? AND position_id=?",
+            (event_id, manifest.position_id),
+        ).fetchall()
+    owners = {owner.proposal_id: owner.executor_id for owner in manifest.owners}
+    allocated: dict[str, Decimal] = {}
+    for lot_id, proposal_id, executor_id, ownership, raw_basis in rows:
+        basis = Decimal(raw_basis)
+        if (
+            lot_id not in manifest.lot_ids
+            or proposal_id not in owners
+            or owners[proposal_id] != executor_id
+            or ownership != "ACTIVE_TRADE"
+            or not basis.is_finite()
+            or basis < ZERO
+        ):
+            raise RuntimeError("partial recycle exact allocation owner evidence conflicts")
+        allocated[proposal_id] = exact_decimal_sum((allocated.get(proposal_id, ZERO), basis))
+    if not rows or exact_decimal_sum(allocated.values()) != allocated_basis:
+        raise RuntimeError("partial recycle exact allocation evidence is incomplete")
+    return tuple(
+        (proposal_id, basis)
+        for proposal_id, basis in sorted(allocated.items())
+        if basis > ZERO
+    )
 
 
 async def synchronize_partial_recycle_executor(
@@ -353,31 +369,20 @@ async def synchronize_partial_recycle_executor(
             exit_fee_quote=exit_fee,
             occurred_at=fill.occurred_at,
             eligible_lot_ids=manifest.lot_ids,
+            mutation_owner_id=(
+                "partial:" + manifest.manifest_id
+                if ledger.selected_recovery_lock_owner(manifest.position_id)
+                == "partial:" + manifest.manifest_id
+                else None
+            ),
         )
 
-        authority = governor.cash_authority_snapshot()
-        if authority is not None and fill.occurred_at > authority.activated_at:
-            allocation = dict(ledger.exit_basis_by_lot(result.event_id))
-            if (
-                exact_decimal_sum(allocation.values())
-                != result.allocated_cost_basis_quote
-            ):
-                raise RuntimeError(
-                    "partial cash release lacks exact lot basis allocations"
-                )
-            release_rows = tuple(
-                (
-                    owner.proposal_id,
-                    exact_decimal_sum(
-                        allocation.get(lot_id, ZERO) for lot_id in owner.lot_ids
-                    ),
-                )
-                for owner in manifest.owners
-            )
-        else:
-            release_rows = _release_basis_by_owner(
-                manifest, result.allocated_cost_basis_quote
-            )
+        release_rows = _release_basis_by_owner(
+            manifest,
+            result.allocated_cost_basis_quote,
+            event_id=event_id,
+            ledger=ledger,
+        )
         for proposal_id, released_basis in release_rows:
             if released_basis <= ZERO:
                 continue
