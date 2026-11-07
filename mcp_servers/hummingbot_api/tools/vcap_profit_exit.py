@@ -21,10 +21,10 @@ async def execute_vcap_profit_exit(
     governor: CapitalGovernor,
     proposal_ids: Iterable[str],
 ) -> dict[str, Any]:
-    """Close exact RECOVERY executors only when the profit planner says EXIT.
+    """Reconcile legacy RECOVERY executors without dispatching new sales.
 
-    Capital is not reported as recycled merely because a stop request was sent.
-    Each executor is fetched after the request, reconciled through Spectra's
+    New profit exits require the unified protected economic manifest. Each
+    already-existing executor is fetched and reconciled through Spectra's
     strict accounting path, and assessed for remaining RECOVERY exposure.
     Exact replay is safe: an already-terminated executor is reconciled again
     without creating a second external order.
@@ -75,12 +75,6 @@ async def execute_vcap_profit_exit(
         }
 
         try:
-            stop_result = await client.executors.stop_executor(
-                executor_id=provenance.executor_id,
-                keep_position=False,
-            )
-            row["stop_result"] = stop_result
-
             raw = await client.executors.get_executor(
                 provenance.executor_id
             )
@@ -131,7 +125,7 @@ async def execute_vcap_profit_exit(
 
     return {
         "action": "EXIT",
-        "exit_requested": True,
+        "exit_requested": False,
         "pair": decision.pair,
         "estimated_net_profit_bps": str(
             decision.estimated_net_profit_bps
@@ -143,5 +137,5 @@ async def execute_vcap_profit_exit(
             else "PENDING_RECONCILIATION"
         ),
         "executors": results,
-        "reasons": list(decision.reasons),
+        "reasons": [*decision.reasons, "legacy_profit_exit_requires_unified_protected_manifest"],
     }

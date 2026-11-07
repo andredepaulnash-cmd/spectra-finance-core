@@ -22,15 +22,23 @@ a live API server. See ``mcp_servers/TOOL_STYLE.md``.
 """
 
 import logging
+from dataclasses import replace
 from decimal import Decimal
+from math import isfinite
+from time import time
 from typing import Any
 
 from mcp_servers.hummingbot_api.executor_preferences import executor_preferences
 from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
 from mcp_servers.hummingbot_api.settings import settings
 from spectra_core import CapitalProposal, IntentKind
+from spectra_core.decimal_math import exact_decimal_sum
 from spectra_core.models import BreakerMode
-from spectra_core.runtime import get_breaker_mode, get_capital_governor
+from spectra_core.runtime import (
+    get_breaker_mode,
+    get_capital_governor,
+    get_economic_position_ledger,
+)
 
 logger = logging.getLogger("hummingbot-mcp")
 
@@ -235,12 +243,8 @@ async def _trading_rule_violation(
         return None
 
     if executor_type == "grid_executor":
-        per_level = _amount(
-            config.get("min_order_amount_quote")
-        )
-        total = _amount(
-            config.get("total_amount_quote")
-        )
+        per_level = _amount(config.get("min_order_amount_quote"))
+        total = _amount(config.get("total_amount_quote"))
 
         if settings.agent_slug == "spectra":
             start_price = _amount(config.get("start_price"))
@@ -268,9 +272,7 @@ async def _trading_rule_violation(
             # floor, derive an explicit venue-legal one.
             if per_level is None:
                 per_level = required_per_level
-                config["min_order_amount_quote"] = float(
-                    required_per_level
-                )
+                config["min_order_amount_quote"] = float(required_per_level)
 
             if per_level < required_per_level:
                 return (
@@ -327,10 +329,7 @@ async def _trading_rule_violation(
                     "must contain at least one level"
                 )
 
-            if (
-                not isinstance(prices, (list, tuple))
-                or len(prices) != len(levels)
-            ):
+            if not isinstance(prices, (list, tuple)) or len(prices) != len(levels):
                 return (
                     "Spectra DCA execution refused: prices and "
                     "amounts_quote must contain the same number "
@@ -346,8 +345,7 @@ async def _trading_rule_violation(
 
                 if value is None or price is None:
                     return (
-                        f"Spectra DCA level {index} has an invalid "
-                        "amount or price"
+                        f"Spectra DCA level {index} has an invalid " "amount or price"
                     )
 
                 required = max(
@@ -398,10 +396,18 @@ def _authorize_spectra_execution(
     config: dict[str, Any],
     proposal_id: str | None,
     intent: str | None,
+    *,
+    position_id: str | None = None,
+    account_name: str = "master_account",
+    controller_id: str = "spectra",
+    protected_buy_config: dict[str, Any] | None = None,
+    protected_buy_policy: dict[str, Any] | None = None,
 ) -> str | None:
     """Commit the exact Spectra capital claim before any external mutation."""
     if settings.agent_slug != "spectra":
         return None
+    if protected_buy_config is None or protected_buy_policy is None:
+        return "Spectra capital execution requires its exact bounded BUY config and declared policy"
 
     try:
         breaker_mode = get_breaker_mode()
@@ -412,10 +418,7 @@ def _authorize_spectra_execution(
         )
 
     if breaker_mode == BreakerMode.HALTED:
-        return (
-            "Spectra breaker is HALTED; execution refused before "
-            "capital commit"
-        )
+        return "Spectra breaker is HALTED; execution refused before " "capital commit"
 
     if breaker_mode not in {
         BreakerMode.NORMAL,
@@ -470,9 +473,8 @@ def _authorize_spectra_execution(
             amount_quote = Decimal(str(config["total_amount_quote"]))
         else:
             amounts = config.get("amounts_quote") or []
-            amount_quote = sum(
+            amount_quote = exact_decimal_sum(
                 (Decimal(str(value)) for value in amounts),
-                Decimal("0"),
             )
     except Exception:
         return "Spectra execution quote amount could not be determined"
@@ -491,11 +493,42 @@ def _authorize_spectra_execution(
         intent=intent_kind,
         amount_quote=amount_quote,
         leverage=leverage,
+        account_name=account_name,
+        connector_name=connector,
+        quote_asset=(pair.strip().upper().rsplit("-", 1)[1] if "-" in pair else None),
     )
 
     try:
         governor = get_capital_governor()
-        committed = governor.commit_if_matches(proposal)
+        if intent_kind == IntentKind.ENTRY:
+            if not (position_id or "").strip():
+                return "Spectra ENTRY requires its exact spectra_position_id"
+            ledger = get_economic_position_ledger()
+            committed = governor.commit_entry_submission_if_matches(
+                proposal,
+                position_id=position_id,
+                ledger_path=ledger.path,
+                account_name=account_name,
+                connector_name=connector,
+                controller_id=controller_id,
+                protected_buy_config=protected_buy_config,
+                protected_buy_policy=protected_buy_policy,
+            )
+        else:
+            committed = governor.commit_recovery_submission_if_matches(
+                proposal,
+                position_id=position_id,
+                account_name=account_name,
+                connector_name=connector,
+                controller_id=controller_id,
+                ledger_path=(
+                    get_economic_position_ledger().path
+                    if protected_buy_config is not None
+                    else None
+                ),
+                protected_buy_config=protected_buy_config,
+                protected_buy_policy=protected_buy_policy,
+            )
     except Exception as exc:
         return f"Spectra capital governor unavailable: {exc}"
 
@@ -508,6 +541,139 @@ def _authorize_spectra_execution(
     return None
 
 
+async def _bounded_protected_buy(
+    client: Any,
+    executor_type: str,
+    config: dict[str, Any],
+    *,
+    max_price_slippage_bps: Any,
+    fee_allowance_bps: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Use a fresh venue book and immutable parcel reference before capital commit."""
+    from spectra_core.economic_position import normalized_base_asset
+    from spectra_core.execution_policy import build_protected_buy_limit_config
+    from spectra_core.kraken_market_fabric import normalize_kraken_trading_rules
+
+    from .execution_book import fetch_protected_kraken_book
+
+    if max_price_slippage_bps is None or fee_allowance_bps is None:
+        raise ValueError(
+            "protected BUY requires explicit price-slippage and fee allowances"
+        )
+    if isinstance(max_price_slippage_bps, bool) or isinstance(fee_allowance_bps, bool):
+        raise ValueError("protected BUY policy allowances must be finite decimals")
+    pair = str(config.get("trading_pair") or "").strip().upper()
+    if str(config.get("connector_name") or "").strip().lower() != "kraken":
+        raise ValueError("protected BUY requires Kraken spot")
+    if not pair or "-" not in pair:
+        raise ValueError("protected BUY requires its exact base/quote pair")
+    payload = await client.connectors.get_trading_rules(
+        connector_name="kraken",
+        trading_pairs=[pair],
+    )
+    if not isinstance(payload, dict) or not payload:
+        raise ValueError("protected BUY trading rules unavailable")
+    if not isinstance(payload, dict) or not isinstance(payload.get(pair), dict):
+        raise ValueError("protected BUY trading rules lack exact pair scope")
+    raw_rule = payload[pair]
+    if (
+        raw_rule.get("supports_limit_orders") is not True
+        or "min_order_size" not in raw_rule
+        or not any(
+            field in raw_rule for field in ("min_notional_size", "min_order_value")
+        )
+    ):
+        raise ValueError(
+            "protected BUY trading rules are incomplete or lack LIMIT support"
+        )
+    rules, rejected = normalize_kraken_trading_rules(
+        payload, quote_assets=(pair.rsplit("-", 1)[1],)
+    )
+    rule = rules.get(pair)
+    if rule is None:
+        raise ValueError(
+            f"protected BUY trading rules are invalid: {rejected.get(pair, 'unknown')}"
+        )
+    book = await fetch_protected_kraken_book(rule)
+    if book.pair != pair:
+        raise ValueError("protected BUY venue book pair differs from authorized pair")
+    venue_base = getattr(book, "venue_min_order_size", None)
+    venue_quote = getattr(book, "venue_min_cost_quote", None)
+    rules_time = getattr(book, "venue_rules_observed_at", None)
+    rules_hash = getattr(book, "venue_rules_sha256", None)
+    if (
+        not isinstance(venue_base, Decimal)
+        or not venue_base.is_finite()
+        or venue_base <= 0
+        or not isinstance(venue_quote, Decimal)
+        or not venue_quote.is_finite()
+        or venue_quote <= 0
+        or getattr(book, "venue_base_asset", None) != normalized_base_asset(pair)
+        or getattr(book, "venue_quote_asset", None) != pair.rsplit("-", 1)[1]
+        or isinstance(rules_time, bool)
+        or not isinstance(rules_time, (int, float))
+        or not isfinite(rules_time)
+        or rules_time <= 0
+        or not isinstance(rules_hash, str)
+        or len(rules_hash) != 64
+        or any(char not in "0123456789abcdef" for char in rules_hash)
+    ):
+        raise ValueError("protected BUY lacks exact trusted venue minimum evidence")
+    now = time()
+    if rules_time > now or now - rules_time > 30:
+        raise ValueError("protected BUY venue minimum evidence is stale or future")
+    rule = replace(
+        rule,
+        min_order_size=max(rule.min_order_size, venue_base),
+        min_notional_size=max(rule.min_notional_size, venue_quote),
+    )
+    order = build_protected_buy_limit_config(
+        executor_type,
+        config,
+        trading_rule=rule,
+        best_ask=book.best_ask,
+        market_observed_at=book.market_observed_at,
+        now=time(),
+        max_price_slippage_bps=Decimal(str(max_price_slippage_bps)),
+        fee_allowance_bps=Decimal(str(fee_allowance_bps)),
+    )
+    policy = {
+        field: str(getattr(order, field))
+        for field in (
+            "authorized_quote_budget",
+            "reference_price",
+            "price_cap",
+            "amount_base",
+            "max_principal_quote",
+            "max_fee_quote",
+            "max_total_quote",
+        )
+    }
+    policy.update(
+        max_price_slippage_bps=str(Decimal(str(max_price_slippage_bps))),
+        fee_allowance_bps=str(Decimal(str(fee_allowance_bps))),
+        venue_book={
+            "pair": book.pair,
+            "exchange_pair": book.exchange_pair,
+            "best_bid": str(book.best_bid),
+            "best_ask": str(book.best_ask),
+            "requested_at": book.requested_at,
+            "received_at": book.received_at,
+            "source": book.source,
+            "response_sha256": book.response_sha256,
+            "venue_min_order_size": str(venue_base),
+            "venue_min_cost_quote": str(venue_quote),
+            "venue_base_asset": book.venue_base_asset,
+            "venue_quote_asset": book.venue_quote_asset,
+            "venue_rules_observed_at": rules_time,
+            "venue_rules_sha256": rules_hash,
+            "effective_min_order_size": str(rule.min_order_size),
+            "effective_min_quote": str(rule.effective_min_quote),
+        },
+    )
+    return order.executor_config, policy
+
+
 async def create_executor(
     client: Any,
     executor_type: str,
@@ -518,6 +684,9 @@ async def create_executor(
     save_as_default: bool = False,
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
+    spectra_position_id: str | None = None,
+    spectra_max_price_slippage_bps: str | float | Decimal | None = None,
+    spectra_fee_allowance_bps: str | float | Decimal | None = None,
 ) -> dict[str, Any]:
     """Merge saved defaults, stamp the type, and create the executor.
 
@@ -527,11 +696,7 @@ async def create_executor(
     (``validate_executor_config``) existed only because the config was an opaque dict.
     """
     account = account_name or "master_account"
-    tag = (
-        "spectra"
-        if settings.agent_slug == "spectra"
-        else (controller_id or "main")
-    )
+    tag = "spectra" if settings.agent_slug == "spectra" else (controller_id or "main")
 
     merged_config = executor_preferences.merge_with_defaults(executor_type, config)
     merged_config["type"] = executor_type
@@ -539,6 +704,59 @@ async def create_executor(
     # one the risk gate attributed the position to, so it wins and never travels
     # inside the config.
     merged_config.pop("controller_id", None)
+
+    backend_config = merged_config
+    protected_buy_policy = None
+    if settings.agent_slug == "spectra":
+        try:
+            try:
+                mode = get_breaker_mode()
+            except Exception as exc:
+                raise ValueError(
+                    f"Spectra breaker could not be read; execution is fail-closed as HALTED: {exc}"
+                ) from exc
+            if mode == BreakerMode.HALTED:
+                raise ValueError(
+                    "Spectra breaker is HALTED; execution refused before capital commit"
+                )
+            if mode not in {BreakerMode.NORMAL, BreakerMode.DEFENSIVE}:
+                raise ValueError(
+                    "Spectra breaker returned an unknown state; fail-closed as HALTED"
+                )
+            if executor_type not in {"grid_executor", "dca_executor"}:
+                raise ValueError(
+                    f"Spectra execution is not enabled for {executor_type}"
+                )
+            if not (spectra_proposal_id or "").strip():
+                raise ValueError("Spectra execution requires a capital proposal_id")
+            if not (spectra_intent or "").strip():
+                raise ValueError("Spectra execution requires a capital intent")
+            cash_state = get_capital_governor().cash_authority_snapshot()
+            protected_conflict = get_capital_governor().protected_buy_scope_rejection(
+                account_name=account,
+                connector_name=merged_config.get("connector_name"),
+            )
+            if protected_conflict:
+                raise ValueError(protected_conflict)
+            if cash_state is not None and cash_state.blocked:
+                raise ValueError(
+                    f"protected BUY cash authority is blocked: {cash_state.reason}"
+                )
+            backend_config, protected_buy_policy = await _bounded_protected_buy(
+                client,
+                executor_type,
+                merged_config,
+                max_price_slippage_bps=spectra_max_price_slippage_bps,
+                fee_allowance_bps=spectra_fee_allowance_bps,
+            )
+        except Exception as exc:
+            error = f"Spectra protected BUY refused before capital commit: {exc}"
+            return {
+                "action": "create",
+                "executor_type": executor_type,
+                "error": error,
+                "formatted_output": f"Error creating {executor_type}: {error}",
+            }
 
     logger.info(
         "create_%s: controller_id=%r, account=%s, pair=%s",
@@ -548,7 +766,13 @@ async def create_executor(
         merged_config.get("trading_pair"),
     )
 
-    violation = await _trading_rule_violation(client, executor_type, merged_config)
+    # The protected adapter already validated exact rule/step/minimum geometry.
+    # Generic Condor paths retain their existing venue checks.
+    violation = (
+        None
+        if protected_buy_policy is not None
+        else await _trading_rule_violation(client, executor_type, merged_config)
+    )
     if violation:
         # Refused here, not by the backend: below a venue minimum the API answers
         # with an opaque error or accepts an order that never fills.
@@ -565,9 +789,18 @@ async def create_executor(
         merged_config,
         spectra_proposal_id,
         spectra_intent,
+        position_id=spectra_position_id,
+        account_name=account,
+        controller_id=tag,
+        protected_buy_config=(
+            backend_config if protected_buy_policy is not None else None
+        ),
+        protected_buy_policy=protected_buy_policy,
     )
     if spectra_error:
-        logger.warning("create_%s refused by Spectra Core: %s", executor_type, spectra_error)
+        logger.warning(
+            "create_%s refused by Spectra Core: %s", executor_type, spectra_error
+        )
         return {
             "action": "create",
             "executor_type": executor_type,
@@ -577,7 +810,7 @@ async def create_executor(
 
     try:
         result = await client.executors.create_executor(
-            executor_config=merged_config,
+            executor_config=backend_config,
             account_name=account,
             controller_id=tag,
         )
@@ -612,9 +845,7 @@ async def create_executor(
                 proposal_id=str(spectra_proposal_id or ""),
                 executor_id=str(executor_id),
                 account_name=account,
-                connector_name=str(
-                    merged_config.get("connector_name") or ""
-                ),
+                connector_name=str(merged_config.get("connector_name") or ""),
                 controller_id=tag,
             )
         except Exception as exc:
@@ -655,7 +886,7 @@ async def create_executor(
     formatted = (
         "Executor created successfully!\n\n"
         f"Executor ID: {executor_id or 'N/A'}\n"
-        f"Type: {executor_type}\n"
+        f"Type: {backend_config['type']}\n"
         f"Account: {account}\n"
         f"Controller: {tag}\n"
     )
@@ -665,10 +896,11 @@ async def create_executor(
     return {
         "action": "create",
         "executor_id": executor_id,
-        "executor_type": executor_type,
+        "executor_type": backend_config["type"],
+        "requested_executor_type": executor_type,
         "account": account,
         "controller_id": tag,
-        "config_used": merged_config,
+        "config_used": backend_config,
         "saved_as_default": save_as_default,
         "result": result,
         "formatted_output": formatted,
@@ -765,6 +997,9 @@ async def create_grid_executor(
     save_as_default: bool = False,
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
+    spectra_position_id: str | None = None,
+    spectra_max_price_slippage_bps: str | float | Decimal | None = None,
+    spectra_fee_allowance_bps: str | float | Decimal | None = None,
 ) -> dict[str, Any]:
     """Run a grid of limit orders across a price range.
 
@@ -826,6 +1061,9 @@ async def create_grid_executor(
         save_as_default=save_as_default,
         spectra_proposal_id=spectra_proposal_id,
         spectra_intent=spectra_intent,
+        spectra_position_id=spectra_position_id,
+        spectra_max_price_slippage_bps=spectra_max_price_slippage_bps,
+        spectra_fee_allowance_bps=spectra_fee_allowance_bps,
     )
 
 
@@ -850,6 +1088,9 @@ async def create_dca_executor(
     save_as_default: bool = False,
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
+    spectra_position_id: str | None = None,
+    spectra_max_price_slippage_bps: str | float | Decimal | None = None,
+    spectra_fee_allowance_bps: str | float | Decimal | None = None,
 ) -> dict[str, Any]:
     """Average into a position over a ladder of price levels.
 
@@ -898,6 +1139,9 @@ async def create_dca_executor(
         save_as_default=save_as_default,
         spectra_proposal_id=spectra_proposal_id,
         spectra_intent=spectra_intent,
+        spectra_position_id=spectra_position_id,
+        spectra_max_price_slippage_bps=spectra_max_price_slippage_bps,
+        spectra_fee_allowance_bps=spectra_fee_allowance_bps,
     )
 
 
