@@ -16,8 +16,11 @@ from .vcap_state import VCAPStateStore
 
 
 def spectra_paper_only_enabled() -> bool:
-    """Read the explicit paper-only switch; invalid values fail closed."""
-    value = (os.getenv("SPECTRA_PAPER_ONLY") or "false").strip().lower()
+    """Default Spectra agents to paper-only; explicit false is a later operator choice."""
+    raw = os.getenv("SPECTRA_PAPER_ONLY")
+    if raw is None:
+        return (os.getenv("CONDOR_AGENT_SLUG") or "").strip().lower() == "spectra"
+    value = raw.strip().lower()
     if value not in {"1", "true", "yes", "0", "false", "no"}:
         raise RuntimeError("SPECTRA_PAPER_ONLY must be an explicit boolean")
     return value in {"1", "true", "yes"}
