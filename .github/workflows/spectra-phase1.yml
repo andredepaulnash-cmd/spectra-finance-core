@@ -10,6 +10,7 @@ on:
     branches:
       - spectra-core-phase2
       - integration/protected-recovery-composition-20261107
+      - integration/spectra-recovery-dust-runtime-20261107
   workflow_dispatch:
 
 permissions:
