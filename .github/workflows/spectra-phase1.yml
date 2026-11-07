@@ -11,6 +11,7 @@ on:
       - spectra-core-phase2
       - integration/protected-recovery-composition-20261107
       - integration/spectra-recovery-dust-runtime-20261107
+      - integration/spectra-governed-paper-execution-20261107b
   workflow_dispatch:
 
 permissions:
@@ -105,3 +106,27 @@ jobs:
             tests/test_selected_recovery.py \
             tests/test_selected_recovery_runtime.py \
             tests/test_spectra_runtime.py \
+
+  frontend-build:
+    name: Spectra Finance Frontend Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install locked frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build Spectra Finance frontend
+        run: npm run build
+        working-directory: frontend

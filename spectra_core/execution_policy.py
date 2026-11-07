@@ -156,8 +156,9 @@ def build_protected_buy_limit_config(
     now: float,
     max_price_slippage_bps: Decimal,
     fee_allowance_bps: Decimal,
+    connector_name: str = "kraken",
 ) -> BoundedBuyOrder:
-    """Convert a protected BUY parcel into a bounded, marketable LIMIT config.
+    """Convert a protected BUY parcel into a bounded LIMIT config for Kraken spot or paper.
 
     The native quote budget remains the immutable capital authorization Q.
     The order's maximum principal plus explicit fee allowance stays within Q;
@@ -181,8 +182,11 @@ def build_protected_buy_limit_config(
         field in config for field in ("time_in_force", "timeinforce", "execution_mode")
     ):
         raise ValueError("protected buy config contains unsupported execution fields")
-    if str(config.get("connector_name", "")).strip().lower() != "kraken":
-        raise ValueError("protected normal execution requires Kraken spot")
+    connector = str(connector_name).strip().lower()
+    if connector not in {"kraken", "kraken_paper_trade"}:
+        raise ValueError("protected normal execution requires Kraken spot or paper")
+    if str(config.get("connector_name", "")).strip().lower() != connector:
+        raise ValueError("protected buy connector does not match authorized connector")
     if _decimal(config.get("leverage", 1), "leverage", positive=True) != ONE:
         raise ValueError("protected normal execution requires leverage=1")
     pair = str(config.get("trading_pair", "")).strip().upper()
@@ -245,7 +249,7 @@ def build_protected_buy_limit_config(
         raise RuntimeError("bounded protected buy exceeds its immutable quote budget")
     payload = {
         "type": "order_executor",
-        "connector_name": "kraken",
+        "connector_name": connector,
         "trading_pair": pair,
         "side": 1,
         "amount": str(amount),
