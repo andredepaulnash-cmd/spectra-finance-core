@@ -233,7 +233,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
         )
     )
 
-    assert result["executor_id"] == "spectra-e2e-1"
+    assert result.get("executor_id") == "spectra-e2e-1", result
 
     assert len(client.connectors.calls) == 1
     assert client.connectors.calls[0] == {
