@@ -569,12 +569,17 @@ async def _bounded_protected_buy(
     if isinstance(max_price_slippage_bps, bool) or isinstance(fee_allowance_bps, bool):
         raise ValueError("protected BUY policy allowances must be finite decimals")
     pair = str(config.get("trading_pair") or "").strip().upper()
-    if str(config.get("connector_name") or "").strip().lower() != "kraken":
-        raise ValueError("protected BUY requires Kraken spot")
+    expected_connector = "kraken_paper_trade" if settings.paper_only else "kraken"
+    if str(config.get("connector_name") or "").strip().lower() != expected_connector:
+        raise ValueError(
+            "protected BUY requires the Kraken paper connector"
+            if settings.paper_only
+            else "protected BUY requires Kraken spot"
+        )
     if not pair or "-" not in pair:
         raise ValueError("protected BUY requires its exact base/quote pair")
     payload = await client.connectors.get_trading_rules(
-        connector_name="kraken",
+        connector_name=expected_connector,
         trading_pairs=[pair],
     )
     if not isinstance(payload, dict) or not payload:
