@@ -12,6 +12,11 @@ from .economic_position import (
     EconomicPositionStatus,
 )
 from .kraken_market_fabric import KrakenTradingRule
+from .partial_attempt import (
+    PartialAttemptDisposition,
+    PartialAttemptPolicy,
+    assess_partial_attempt,
+)
 from .partial_recycle import (
     PartialRecycleAction,
     PartialRecycleDecision,
@@ -372,6 +377,9 @@ def plan_vcap_lifecycle_from_ledger(
     partial_recycle_policy: PartialRecyclePolicy | None = None,
     governor: CapitalGovernor | None = None,
     accounting_health: AccountingHealthDecision | None = None,
+    partial_attempt_policy: PartialAttemptPolicy | None = None,
+    partial_price_observed_at: float | None = None,
+    pending_order_ids: tuple[str, ...] | None = None,
 ) -> VCAPLifecycleDecision:
     """Plan one VCAP cycle from authoritative economic-position ownership.
 
@@ -468,6 +476,38 @@ def plan_vcap_lifecycle_from_ledger(
             policy=partial_recycle_policy,
         )
         if partial.action == PartialRecycleAction.RECYCLE:
+            if partial_attempt_policy is not None and partial_attempt_policy.enabled:
+                if partial.manifest is None:
+                    raise RuntimeError("partial recycle lost immutable manifest")
+                assessment = assess_partial_attempt(
+                    manifest=partial.manifest,
+                    ledger=ledger,
+                    governor=governor,
+                    store=PartialRecycleStore(ledger.path),
+                    trading_rule=trading_rule,
+                    current_price=current_price,
+                    observed_at=partial_price_observed_at,
+                    now=now,
+                    expected_exit_fee_bps=expected_exit_fee_bps,
+                    slippage_allowance_bps=slippage_allowance_bps,
+                    target_net_profit_bps=(
+                        partial_recycle_policy or PartialRecyclePolicy()
+                    ).target_net_profit_bps,
+                    pending_order_ids=pending_order_ids,
+                    policy=partial_attempt_policy,
+                )
+                if assessment.disposition != PartialAttemptDisposition.ELIGIBLE:
+                    return VCAPLifecycleDecision(
+                        action=VCAPLifecycleAction.HOLD,
+                        state=state,
+                        profit_decision=profit,
+                        execution_decision=None,
+                        reasons=(
+                            "partial_attempt_" + assessment.disposition.value.lower(),
+                            *assessment.reasons,
+                        ),
+                        partial_recycle_decision=partial,
+                    )
             checkpoint = _checkpoint_state(
                 state,
                 position=position,
