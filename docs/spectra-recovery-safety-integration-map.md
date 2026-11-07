@@ -130,3 +130,12 @@ A separate code-bearing draft, [PR #44](https://github.com/andredepaulnash-cmd/s
 Validation: the first workflow attempt ran the original 788 tests successfully but exposed a missing shell continuation in the newly extended test command; no trace tests ran in that attempt. The command was corrected. The subsequent exact-head workflow completed successfully with **802 passed in 43.13 seconds**. This is a focused CI result for PR #44's current head, not a full all-project, runtime-image, Bazzite or live-exchange validation.
 
 The next code composition remains position mutation ownership and recovery-specific ledger changes. Do not port `cycle_reconciliation.py` unchanged: PR #40 expects an `economic_exit_allocations` schema with per-allocation owner fields, while PR #31 currently stores `economic_exit_lot_allocations` with a different column layout. A schema-aware read-only adapter and matching tests are required before that module can be included. Selected recovery, dust lifecycle and partial-attempt deferral remain unported.
+
+
+### Updated composition evidence — cycle audit and mutation lock
+
+The code-bearing PR #44 now also contains the PR #40 position-mutation primitive and a read-only cycle-conservation audit. The economic ledger initializes the lock tables, records a second owner-attributed allocation journal alongside PR #31's original lot allocation table, and rejects competing partial exits. Partial-recycle manifest creation and whole-position exit dispatch also check the exact lock owner.
+
+The PR #40 cycle-audit module was ported only after the PR #31 ledger gained the exact `economic_exit_allocations` table shape that it expects; this avoids silently querying the older `economic_exit_lot_allocations` table as if it carried owner provenance.
+
+Validation on PR #44's latest tested head `9bdcfc72eec15e2a27d10907de57e75d3409d4cb`: **825 passed in 43.42 seconds** in the focused Spectra Phase 1 CI. The audit is read-only and the mutation lock creates no capital authority. This still does not validate the selected-recovery runtime, dust lifecycle, partial-attempt dispatch adapter, API dispatch receipts, final image or Bazzite runtime.
