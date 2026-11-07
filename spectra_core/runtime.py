@@ -15,12 +15,38 @@ from .vcap_runtime import VCAPRuntimeStore
 from .vcap_state import VCAPStateStore
 
 
-def spectra_state_dir() -> Path:
+def spectra_paper_only_enabled() -> bool:
+    """Read the explicit paper-only switch; invalid values fail closed."""
+    value = (os.getenv("SPECTRA_PAPER_ONLY") or "false").strip().lower()
+    if value not in {"1", "true", "yes", "0", "false", "no"}:
+        raise RuntimeError("SPECTRA_PAPER_ONLY must be an explicit boolean")
+    return value in {"1", "true", "yes"}
+
+
+def spectra_live_state_dir() -> Path:
+    """Resolve the live state directory without ever reusing it for paper data."""
     override = (os.getenv("SPECTRA_STATE_DIR") or "").strip()
     if override:
         return Path(override).expanduser()
-
     return Path(__file__).resolve().parent.parent / "data" / "spectra"
+
+
+def spectra_state_dir() -> Path:
+    """Resolve an isolated state directory for the currently selected mode."""
+    if not spectra_paper_only_enabled():
+        return spectra_live_state_dir()
+
+    override = (os.getenv("SPECTRA_PAPER_STATE_DIR") or "").strip()
+    paper_dir = (
+        Path(override).expanduser()
+        if override
+        else Path(__file__).resolve().parent.parent / "data" / "spectra-paper"
+    )
+    if paper_dir.resolve() == spectra_live_state_dir().resolve():
+        raise RuntimeError(
+            "Spectra paper state directory must be separate from live state"
+        )
+    return paper_dir
 
 
 def get_breaker_mode() -> BreakerMode:
@@ -33,6 +59,11 @@ def get_breaker_mode() -> BreakerMode:
     Missing, malformed, or unknown state fails closed as HALTED.
     """
     path = spectra_state_dir() / "breaker_state.json"
+
+    if not path.is_file() and spectra_paper_only_enabled():
+        # Reuse the operator's current breaker setting as a read-only fallback;
+        # any paper-specific breaker file takes precedence and stays isolated.
+        path = spectra_live_state_dir() / "breaker_state.json"
 
     if not path.is_file():
         return BreakerMode.HALTED
@@ -57,6 +88,12 @@ def load_capital_policy() -> CapitalPolicy:
     """Load and validate Spectra's capital policy without mutating state."""
     state_dir = spectra_state_dir()
     policy_path = state_dir / "capital_policy.json"
+
+    if not policy_path.is_file() and spectra_paper_only_enabled():
+        # Policy limits are configuration, not portfolio state. Reuse the
+        # operator's existing validated policy read-only when no paper override
+        # exists; every paper ledger/database remains in the paper state dir.
+        policy_path = spectra_live_state_dir() / "capital_policy.json"
 
     if not policy_path.is_file():
         raise RuntimeError(
