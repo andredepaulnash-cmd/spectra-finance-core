@@ -224,6 +224,7 @@ async def _partial_pending_orders(
     """Fresh exact executor evidence; an unavailable surface is not empty."""
     executor_ids = set()
     pending = []
+    active_proposals = set(ledger.active_proposal_ids(position_id))
     base = normalized_base_asset(ledger.snapshot(position_id).pair)
     with closing(
         sqlite3.connect(governor.db_path.resolve().as_uri() + "?mode=ro", uri=True)
@@ -232,6 +233,8 @@ async def _partial_pending_orders(
             "SELECT proposal_id, pair FROM capital_reservations WHERE status='COMMITTED'"
         ):
             if normalized_base_asset(pair) != base:
+                continue
+            if proposal_id in active_proposals:
                 continue
             receipt = governor.get_execution_receipt(proposal_id)
             if receipt is None:
