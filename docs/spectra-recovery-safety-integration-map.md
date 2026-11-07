@@ -101,3 +101,18 @@ The API repository also has a build/deploy gap: Compose deploy can use mutable `
 8. Keep live capital, wallet access, exchange credentials, deployment and production merge out of scope until separately reviewed and explicitly authorized.
 
 **Current decision:** no safe combined code head has yet been built or validated. PR #31 is the stronger protected-cash/LIMIT base; PR #40 contributes valuable recovery ownership, deferral, dust and observability mechanisms, but its shared files must be ported deliberately. PR #42 remains separate research.
+
+## 9. Source-level test review completed
+
+The named suites were inspected, not inferred from workflow totals:
+
+- PR #31 `test_integrated_entry_cash_authority.py`: 27 test functions. They explicitly cover PARK/unknown-cash exclusion, wrong-scope reservation, pending-sale restart holds, atomic identity/cash rollback, concurrent alias claims, exact protected config, fee and overrun reconciliation, fresh venue minima, stale book rejection, multi-level refusal, lost create response and durable policy breach.
+- PR #31 `test_protected_buy_reconciliation.py`: 7 test functions covering actual financial truth after policy breach, lagging endpoints, cumulative quantity, direct fill bypass, exact Decimal comparison and restart health tags.
+- PR #31 `test_integrated_partial_exit.py`: 7 test functions covering exact funded source, below-floor/fee-breach truth, zero-fill cancellation, cash/PARK behavior and partial-fill ownership.
+- PR #31 `test_integrated_retirement_exit.py`: 8 test functions covering pending cash after crash, lagging terminal volume, held protection breach, late owned inventory, residual basis/fees and protected dust retirement.
+- PR #40 `test_partial_attempt_runtime.py`: 12 test functions covering default-off behavior, pending/unknown order evidence, post-await rechecks, durable claims, lock retention and final dispatch clock expiry.
+- PR #40 `test_dust_lifecycle.py`: 59 test functions covering default-off, exact rounding, ownership/basis/cash preservation, stale evidence, checkpoint invalidation, concurrency, successor admission and restart-safe single-use claims.
+- PR #40 `test_selected_recovery_runtime.py`: 26 test functions covering default-off, exact reservation, competing locks, stale-after-await, timeout/restart, ambiguous dispatch, exact native partial fills, owner settlement and lock release.
+- PR #40 `test_cycle_reconciliation.py`: 14 test functions covering read-only reports, exact owner conservation, incomplete legacy evidence, impossible chronology and non-finite/corrupt evidence.
+
+These tests are strong source-level evidence for each branch's own feature set. They do **not** prove the cross-branch combination. The missing combined tests are specifically the seams where PR #31's protected cash/BUY/SELL/retirement transactions meet PR #40's shared position locks, dust checkpoint and selected-child mutation owner. The integration gate in section 5 is therefore mandatory; separate successful CI runs cannot substitute for it.
