@@ -9,6 +9,8 @@ on:
   pull_request:
     branches:
       - spectra-core-phase2
+      - integration/protected-recovery-composition-20261107
+      - integration/spectra-recovery-dust-runtime-20261107
   workflow_dispatch:
 
 permissions:
@@ -100,4 +102,6 @@ jobs:
             tests/test_position_mutation.py \
             tests/test_cycle_reconciliation.py \
             tests/test_partial_attempt_assessment.py \
-            tests/test_selected_recovery.py
+            tests/test_selected_recovery.py \
+            tests/test_selected_recovery_runtime.py \
+            tests/test_spectra_runtime.py \

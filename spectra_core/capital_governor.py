@@ -199,6 +199,31 @@ class CapitalGovernor:
                 """)
 
             conn.execute("""
+                CREATE TABLE IF NOT EXISTS executor_accounting_refresh_receipts (
+                    refresh_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    observation_id INTEGER NOT NULL,
+                    proposal_id TEXT NOT NULL,
+                    executor_id TEXT NOT NULL,
+                    observed_at REAL NOT NULL
+                )
+                """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS selected_recovery_sealed_basis (
+                    proposal_id TEXT PRIMARY KEY,
+                    executor_id TEXT NOT NULL UNIQUE,
+                    pair TEXT NOT NULL,
+                    account_name TEXT NOT NULL,
+                    connector_name TEXT NOT NULL,
+                    controller_id TEXT NOT NULL,
+                    authorized_quote TEXT NOT NULL,
+                    gross_basis_quote TEXT NOT NULL,
+                    entry_fee_quote TEXT NOT NULL,
+                    payload_json TEXT NOT NULL
+                )
+                """)
+
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS executor_accounting_observations (
                     observation_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     proposal_id TEXT NOT NULL,
@@ -4078,6 +4103,58 @@ class CapitalGovernor:
                     None if row["controller_id"] is None else str(row["controller_id"])
                 ),
             )
+            # A selected-child recovery source may seal its exact gross
+            # opening basis only after terminal orders, persisted trades,
+            # native lots, and passive executor counters agree. This removes
+            # only the proven fee reserve from the conservative all-in claim;
+            # ordinary recovery/PositionHold accounting keeps its existing
+            # scoped basis floor.
+            sealed = conn.execute(
+                "SELECT * FROM selected_recovery_sealed_basis WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchone()
+            if sealed is not None and row["observation_id"] is not None:
+                exact_scope = (
+                    str(sealed["executor_id"]) == provenance.executor_id
+                    and str(sealed["pair"]) == provenance.pair
+                    and sealed["account_name"] == provenance.account_name
+                    and sealed["connector_name"] == provenance.connector_name
+                    and sealed["controller_id"] == provenance.controller_id
+                    and Decimal(sealed["authorized_quote"])
+                    == provenance.authorized_quote
+                )
+                gross = Decimal(sealed["gross_basis_quote"])
+                fee = Decimal(sealed["entry_fee_quote"])
+                exact_terminal = (
+                    row["obs_executor_type"] == "dca_executor"
+                    and row["obs_status"] == "TERMINATED"
+                    and row["obs_close_type"] == "POSITION_HOLD"
+                    and Decimal(row["obs_filled_amount_quote"]) == gross
+                    and Decimal(row["obs_cum_fees_quote"]) == fee
+                )
+                if (
+                    exact_scope
+                    and exact_terminal
+                    and gross.is_finite()
+                    and fee.is_finite()
+                    and gross >= ZERO
+                    and fee >= ZERO
+                    and gross + fee <= provenance.authorized_quote
+                ):
+                    released = self._recovery_recycle_release_quote(
+                        conn, provenance.proposal_id
+                    )
+                    total = exact_decimal_sum(
+                        (
+                            total,
+                            max(
+                                exact_decimal_difference(gross, released),
+                                ZERO,
+                            ),
+                        )
+                    )
+                    continue
+
             basis_floor = self._scoped_recovery_basis_floor(
                 conn, provenance, recovery_ledgers
             )
@@ -4247,3 +4324,9 @@ class CapitalGovernor:
             return None
 
         return self._decision_from_row(row)
+
+    def seal_selected_recovery_opening_basis(self, **kwargs) -> None:
+        """Accept only the selected adapter's exact terminal source receipt."""
+        from .selected_recovery_ledger import seal_opening_basis
+
+        seal_opening_basis(self, **kwargs)
