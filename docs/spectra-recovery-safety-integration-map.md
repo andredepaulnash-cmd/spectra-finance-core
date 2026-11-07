@@ -139,3 +139,12 @@ The code-bearing PR #44 now also contains the PR #40 position-mutation primitive
 The PR #40 cycle-audit module was ported only after the PR #31 ledger gained the exact `economic_exit_allocations` table shape that it expects; this avoids silently querying the older `economic_exit_lot_allocations` table as if it carried owner provenance.
 
 Validation on PR #44's latest tested head `9bdcfc72eec15e2a27d10907de57e75d3409d4cb`: **825 passed in 43.42 seconds** in the focused Spectra Phase 1 CI. The audit is read-only and the mutation lock creates no capital authority. This still does not validate the selected-recovery runtime, dust lifecycle, partial-attempt dispatch adapter, API dispatch receipts, final image or Bazzite runtime.
+
+
+### Additional validated component — partial-attempt assessment
+
+PR #44 now includes `spectra_core/partial_attempt.py` and its assessment-focused tests. This is the pure, read-only feasibility evaluator only. Its policy defaults to disabled, and its assessment object always reports `permits_dispatch = False`; it does not reserve capital, alter the manifest, or submit an order.
+
+The runtime deferral adapter is **not yet ported**. Specifically, the VCAP lifecycle planner/runtime policy, asynchronous pending-order rechecks, partial-recycle dispatch claim and MCP adapter still require a coordinated port. Do not enable or call this evaluator as a replacement for the existing protected partial-sale path.
+
+Validation on PR #44 head `c9a5a6b5b4ac8523fa5d7240140ba3db7829c4ef`: **844 passed in 39.35 seconds** in the focused Spectra Phase 1 CI. This validates the integrated tree's current focused tests; it is not full-project, production-image, Bazzite or live-exchange acceptance.
