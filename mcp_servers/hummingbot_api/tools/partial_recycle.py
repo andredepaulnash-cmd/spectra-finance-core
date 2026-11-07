@@ -249,6 +249,7 @@ async def synchronize_partial_recycle_executor(
         or trades.executor_id != manifest.sell_executor_id
     ):
         raise RuntimeError("partial recycle snapshots cross executor scope")
+    conflicts: list[str] = []
     known_orders = {order.order_id: order for order in orders.orders}
     if len(known_orders) != len(orders.orders):
         raise RuntimeError("partial recycle order evidence contains duplicates")
@@ -266,7 +267,7 @@ async def synchronize_partial_recycle_executor(
             or filled != order.filled_amount
             or (order.status.upper() == "FILLED" and order.filled_amount != order.amount)
         ):
-            raise RuntimeError("partial recycle order and exact fill totals do not reconcile")
+            conflicts.append("partial_order_fill_totals_mismatch:" + order.order_id)
     try:
         raw = await client.executors.get_executor(manifest.sell_executor_id)
         observation = executor_accounting_observation_from_raw(
@@ -275,7 +276,6 @@ async def synchronize_partial_recycle_executor(
     except Exception:
         raw, observation = None, None
 
-    conflicts: list[str] = []
     if (
         manifest.protected_limit_price is not None
         and isinstance(raw, dict)
@@ -710,7 +710,10 @@ async def execute_partial_recycle(
     if current_lock_owner is not None and current_lock_owner != mutation_owner:
         return blocked("another_exact_position_mutation_pending")
     if current_lock_owner == mutation_owner and attempt_guard is None:
-        return blocked("guarded_partial_mutation_requires_reconciliation")
+        return blocked(
+            "recycle_dispatch_claim_requires_reconciliation",
+            "CLAIMED_REQUIRES_RECONCILIATION",
+        )
 
     remaining = remaining_partial_recycle_base(
         manifest,
