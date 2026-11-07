@@ -8,6 +8,7 @@ from math import isfinite
 from pathlib import Path
 
 from .asset_fingerprint import AssetFingerprint
+from .decision_trace import append_decision_trace, initialize_decision_trace
 
 
 class VCAPRuntimePhase(StrEnum):
@@ -103,6 +104,7 @@ class VCAPRuntimeStore:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
+            initialize_decision_trace(conn)
             conn.executescript("""
                 CREATE TABLE IF NOT EXISTS vcap_runtime_cycles (
                     cycle_id TEXT PRIMARY KEY,
@@ -314,6 +316,15 @@ class VCAPRuntimeStore:
                         timestamp,
                     ),
                 )
+                append_decision_trace(
+                    conn,
+                    subject_id=cycle_id,
+                    stage="VCAP_RUNTIME",
+                    disposition=VCAPRuntimePhase.STARTED.value,
+                    reasons=("runtime_cycle_started",),
+                    observed_at=timestamp,
+                    facts={"position_id": pid, "envelope_proposal_id": envelope},
+                )
                 conn.commit()
             except Exception:
                 conn.rollback()
@@ -422,6 +433,24 @@ class VCAPRuntimeStore:
                         last_error,
                         cid,
                     ),
+                )
+                append_decision_trace(
+                    conn,
+                    subject_id=cid,
+                    stage="VCAP_RUNTIME",
+                    disposition=phase.value,
+                    reasons=reasons_value or ("runtime_phase_transition",),
+                    observed_at=timestamp,
+                    facts={
+                        "position_id": current.position_id,
+                        "envelope_proposal_id": current.envelope_proposal_id,
+                        "previous_phase": current.phase.value,
+                        "planned_action": action_value,
+                        "mutation_key": key_value,
+                        "mutation_proposal_id": proposal_value,
+                        "terminal": phase in TERMINAL_RUNTIME_PHASES,
+                        "has_error": last_error is not None,
+                    },
                 )
                 conn.commit()
             except Exception:
