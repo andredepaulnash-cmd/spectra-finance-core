@@ -231,8 +231,13 @@ async def _partial_pending_orders(
         for proposal_id, pair in conn.execute(
             "SELECT proposal_id, pair FROM capital_reservations WHERE status='COMMITTED'"
         ):
-            if normalized_base_asset(pair) == base:
+            if normalized_base_asset(pair) != base:
+                continue
+            receipt = governor.get_execution_receipt(proposal_id)
+            if receipt is None:
                 pending.append("committed-claim:" + proposal_id)
+            else:
+                executor_ids.add(receipt)
     for proposal_id in ledger.active_proposal_ids(position_id):
         provenance = governor.get_execution_provenance(proposal_id)
         if (
