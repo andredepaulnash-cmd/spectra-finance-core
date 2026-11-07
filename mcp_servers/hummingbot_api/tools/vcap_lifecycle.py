@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from mcp_servers.hummingbot_api.tools.economic_exit import (
     execute_economic_position_exit,
@@ -17,7 +17,6 @@ from spectra_core.accounting_health import AccountingHealthDecision
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.kraken_market_fabric import KrakenTradingRule
-from spectra_core.partial_attempt import PartialAttemptAssessment
 from spectra_core.vcap_lifecycle import (
     VCAPLifecycleAction,
     VCAPLifecycleDecision,
@@ -47,9 +46,6 @@ async def execute_vcap_lifecycle_decision(
     accounting_health: AccountingHealthDecision | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
-    partial_attempt_guard: (
-        Callable[[], Awaitable[PartialAttemptAssessment]] | None
-    ) = None,
 ) -> dict[str, Any]:
     """Dispatch one unified VCAP lifecycle decision.
 
@@ -162,7 +158,6 @@ async def execute_vcap_lifecycle_decision(
             now=now,
             account_name=account_name,
             controller_id=controller_id,
-            attempt_guard=partial_attempt_guard,
         )
         return {
             "action": decision.action.value,
