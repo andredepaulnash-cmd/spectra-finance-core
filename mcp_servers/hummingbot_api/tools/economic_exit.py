@@ -697,7 +697,7 @@ async def dispatch_protected_economic_exit(
             obs.status.strip().upper() != "TERMINATED"
             or (obs.close_type or "").strip().upper() != "POSITION_HOLD"
         ):
-            if ledger.selected_recovery_lock_owner(position_id) is not None:
+            if ledger.selected_recovery_lock_owner(manifest.position_id) is not None:
                 return _result(
                     manifest,
                     ledger,
