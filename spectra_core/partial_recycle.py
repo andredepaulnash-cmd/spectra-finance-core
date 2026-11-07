@@ -501,17 +501,6 @@ class PartialRecycleStore:
                         raise PartialRecycleManifestConflict(
                             "uncertain_partial_dispatch_blocks_new_generation"
                         )
-                if conn.execute(
-                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='selected_recovery_position_locks'"
-                ).fetchone():
-                    locked = conn.execute(
-                        "SELECT owner_id FROM selected_recovery_position_locks WHERE position_id=?",
-                        (manifest.position_id,),
-                    ).fetchone()
-                    if locked is not None and locked["owner_id"] != "partial:" + manifest.manifest_id:
-                        raise PartialRecycleManifestConflict(
-                            "another_exact_position_mutation_owns_this_position"
-                        )
                 conn.execute(
                     """
                     INSERT INTO partial_recycle_manifests (
@@ -585,7 +574,6 @@ class PartialRecycleStore:
         current_price: Decimal,
         expected_exit_cost_bps: Decimal | None = None,
         market_observed_at: float | None = None,
-        freshness_verified: bool = False,
     ) -> PartialRecycleDispatchGuard | None:
         """Atomically recheck exact ownership and claim one external create.
 
@@ -596,8 +584,6 @@ class PartialRecycleStore:
             raise ValueError("partial dispatch claim must share the economic ledger")
         mid = _text(manifest.manifest_id, "manifest_id")
         timestamp = _time(now, "now")
-        if not isinstance(freshness_verified, bool):
-            raise ValueError("freshness_verified must be bool")
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             row = conn.execute(
@@ -625,6 +611,7 @@ class PartialRecycleStore:
                 expected_exit_cost_bps=expected_exit_cost_bps,
                 _connection=conn,
             )
+            market_now = wall_time()
             if market_observed_at is None:
                 guard = replace(
                     guard,
@@ -633,14 +620,12 @@ class PartialRecycleStore:
                 )
             else:
                 observed_at = _time(market_observed_at, "market_observed_at")
-                if not freshness_verified:
-                    market_now = wall_time()
-                    if observed_at > market_now or market_now - observed_at > 30.0:
-                        guard = replace(
-                            guard,
-                            allowed=False,
-                            reasons=(*guard.reasons, "market_observation_stale_or_future"),
-                        )
+                if observed_at > market_now or market_now - observed_at > 30.0:
+                    guard = replace(
+                        guard,
+                        allowed=False,
+                        reasons=(*guard.reasons, "market_observation_stale_or_future"),
+                    )
             if _whole_exit_blocks_partial(conn, manifest.position_id):
                 guard = replace(
                     guard,
@@ -649,21 +634,6 @@ class PartialRecycleStore:
                 )
             if not guard.allowed:
                 return guard
-            from .position_mutation import lock_owner
-
-            mutation_owner = "partial:" + mid
-            current_owner = lock_owner(conn, manifest.position_id)
-            if current_owner not in (None, mutation_owner):
-                return replace(
-                    guard,
-                    allowed=False,
-                    reasons=(*guard.reasons, "another_exact_position_mutation_pending"),
-                )
-            if current_owner is None:
-                conn.execute(
-                    "INSERT INTO selected_recovery_position_locks (position_id, owner_id) VALUES (?, ?)",
-                    (manifest.position_id, mutation_owner),
-                )
             conn.execute(
                 "INSERT INTO partial_recycle_dispatch_claims "
                 "(manifest_id, claimed_at) VALUES (?, ?)",
@@ -746,13 +716,6 @@ class PartialRecycleStore:
                 "UPDATE partial_recycle_manifests SET status = ?, completed_at = COALESCE(completed_at, ?) WHERE manifest_id = ?",
                 (status.value, timestamp, mid),
             )
-            if conn.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='selected_recovery_position_locks'"
-            ).fetchone():
-                conn.execute(
-                    "DELETE FROM selected_recovery_position_locks WHERE position_id=? AND owner_id=?",
-                    (manifest.position_id, "partial:" + mid),
-                )
             conn.commit()
 
     def terminal_proof(self, manifest_id: str) -> dict | None:
