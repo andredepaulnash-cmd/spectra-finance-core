@@ -5,13 +5,11 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { ChatBubble } from "@/components/chat/ChatBubble";
 import { api } from "@/lib/api";
-import { ConnectKeysOverlay } from "@/components/ConnectKeysOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RelaunchBanner } from "@/components/RelaunchBanner";
 import { ReportIssueDialog } from "@/components/ReportIssueDialog";
 import { TelemetryConsentBanner } from "@/components/TelemetryConsentBanner";
 import { ChatProvider } from "@/hooks/useChat";
-import { useCredentials } from "@/hooks/useCredentials";
 import { usePrefetchData } from "@/hooks/usePrefetchData";
 import { useServer } from "@/hooks/useServer";
 import { useTheme } from "@/hooks/useTheme";
@@ -76,11 +74,15 @@ function AppShellBody() {
     paperModeConfirmed && (spectraRuntime?.paper_connector_count ?? 0) > 0,
   );
   const visibleNavItems = paperModeConfirmed
-    ? NAV_ITEMS.filter(({ to }) => ["/", "/portfolio", "/settings"].includes(to))
+    ? NAV_ITEMS.filter(
+        ({ to }) =>
+          to === "/" ||
+          to === "/settings" ||
+          (to === "/portfolio" && paperConnectorReady),
+      )
     : NAV_ITEMS.filter(({ to }) => to === "/");
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const { hasKeys, isLoading: keysLoading } = useCredentials();
   const [reportOpen, setReportOpen] = useState(false);
 
   // A pathname is enough: every full-bleed screen is its own route.
@@ -89,21 +91,6 @@ function AppShellBody() {
     FULL_BLEED_ROUTES.includes(pathname) ||
     FULL_BLEED_PATTERNS.some((re) => re.test(pathname));
 
-  // The home is exempt because it is the chat: the one surface that can talk a
-  // new user through connecting keys, and so the last one that should be
-  // hidden behind a block telling them to. `/fleet` is exempt for the weaker
-  // but sufficient reason that it needs no keys either — it reads agents,
-  // loops and journals, none of which is an exchange — so blocking it would
-  // teach nobody anything. Matched exactly rather than by prefix, because `/`
-  // prefixes every route in the app.
-  const exemptRoutes = ["/routines", "/settings"];
-  const showKeysOverlay =
-    paperModeConfirmed &&
-    server &&
-    !keysLoading &&
-    !hasKeys &&
-    pathname !== "/" &&
-    !exemptRoutes.some((r) => pathname.startsWith(r));
 
   // ⌘K used to toggle the overlay panel. It now goes to the chat, so the
   // reflex still lands somewhere sensible instead of silently doing nothing.
@@ -252,7 +239,6 @@ function AppShellBody() {
         <ErrorBoundary resetKey={pathname + server}>
           <Outlet key={server} />
         </ErrorBoundary>
-        {showKeysOverlay && <ConnectKeysOverlay />}
       </main>
 
       <ReportIssueDialog open={reportOpen} onClose={() => setReportOpen(false)} />
