@@ -75,7 +75,7 @@ def test_lock_release_requires_exact_owner_and_is_idempotent_after_release(tmp_p
 def test_confirmed_exit_writes_exact_per_owner_allocation_receipt(tmp_path):
     g = governor(tmp_path)
     book = ledger(tmp_path)
-    book.open_position(position_id="p", pair="XRP-USD", created_at=0)
+    book.open_position(position_id="p", pair="XRP-USD", created_at=0.5)
     prepare_execution(
         g,
         proposal_id="entry",
