@@ -163,3 +163,12 @@ Not retained:
 - The experimental asynchronous runtime pending-order scan, monotonic-clock dispatch guard and adapter attempt callback. These need a more careful port against PR #31's existing cash/terminal/protection semantics before they can be reintroduced.
 
 The restored candidate's latest focused CI is green: **845 passed in 37.50 seconds** on PR #44 head `938d3f97adff28c07e6aee17e736453367cfdfb6`. This is the current validated checkpoint; it does not validate live trading, image packaging, Bazzite or the API receipt boundary.
+
+
+### Selected-recovery accounting book — isolated, default-off port
+
+PR #44 now includes `spectra_core/selected_recovery.py`, its documentation and the full focused `tests/test_selected_recovery.py` suite. The module is a durable shadow-accounting book for splitting original inventory into selected children, binding exact patch fills, and planning bounded native exits. Its own `enabled` switch defaults to false. The module's docstring explicitly states that it does not authorize capital or submit orders; rational plans are not exchange orders.
+
+This is the accounting/planning book only. The separate `selected_recovery_runtime.py`, native exit-scope/receipt integration in `selected_recovery_ledger.py`, and sealed opening-basis Governor integration remain unported. No runtime caller or API tool exposes this book.
+
+Validation on PR #44 head `a03e5b25c8d987999bb85adcad8280d04a3f223e`: **892 passed in 39.99 seconds** in the focused Spectra Phase 1 CI.
