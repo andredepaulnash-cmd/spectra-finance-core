@@ -21,6 +21,7 @@ from .partial_recycle import (
     PartialRecycleAction,
     PartialRecycleDecision,
     PartialRecyclePolicy,
+    PartialRecycleStore,
     plan_partial_recycle,
 )
 from .recovery_fingerprint import (
