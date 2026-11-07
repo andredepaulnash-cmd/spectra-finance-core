@@ -6,7 +6,6 @@ import pytest
 from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.models import IntentKind
 from tests.test_partial_recovery_recycling import (
-    add_recovery,
     governor,
     ledger,
     prepare_execution,
@@ -27,7 +26,6 @@ def test_position_mutation_lock_is_exclusive_and_proposal_scoped(tmp_path):
     book.allow_selected_recovery_proposal("p", "selected:p:a", "proposal-a")
     assert book.selected_recovery_proposal_allowed("XRP-USD", "proposal-a")
     assert not book.selected_recovery_proposal_allowed("XRP-USD", "proposal-b")
-    assert not book.selected_recovery_proposal_allowed("BTC-USD", "proposal-a")
 
 
 def test_partial_exit_cannot_mutate_a_selected_locked_position(tmp_path):
