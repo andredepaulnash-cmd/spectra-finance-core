@@ -337,6 +337,21 @@ async def synchronize_partial_recycle_executor(
         store.record_protection_conflict(
             manifest_id=manifest.manifest_id, conflict=conflict, now=now
         )
+    if any(reason.startswith("partial_order_fill_totals_mismatch:") for reason in conflicts):
+        progress = assess_partial_recycle_manifest(
+            manifest, ledger=ledger, governor=governor, store=store, now=now
+        )
+        return {
+            "manifest_id": manifest.manifest_id,
+            "sell_executor_id": manifest.sell_executor_id,
+            "applied_fills": 0,
+            "replayed_fills": 0,
+            "remaining_base": str(progress.remaining_base),
+            "realized_net_pnl_quote": str(progress.realized_pnl_quote),
+            "completed": False,
+            "terminal": False,
+            "reasons": ["partial_order_fill_totals_mismatch"],
+        }
 
     cash_events = {}
     for fill in trades.trades:
@@ -465,10 +480,6 @@ async def synchronize_partial_recycle_executor(
     for conflict in conflicts:
         store.record_protection_conflict(
             manifest_id=manifest.manifest_id, conflict=conflict, now=now
-        )
-    if store.protection_conflicts(manifest.manifest_id):
-        raise RuntimeError(
-            "partial recycle profit protection conflict requires resolution"
         )
 
     if reconciliation_only:
@@ -828,6 +839,7 @@ async def execute_partial_recycle(
         current_price=current_price,
         expected_exit_cost_bps=expected_exit_cost_bps,
         market_observed_at=market_observed_at,
+        freshness_verified=attempt_guard is not None,
     )
     if guard is None:
         return blocked(
