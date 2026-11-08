@@ -927,13 +927,12 @@ async def create_executor(
     dispatch_receipt = None
     if settings.agent_slug == "spectra":
         try:
-            if executor_type == "grid_executor":
-                amount_quote = Decimal(str(backend_config["total_amount_quote"]))
-            else:
-                amount_quote = exact_decimal_sum(
-                    Decimal(str(value))
-                    for value in (backend_config.get("amounts_quote") or [])
-                )
+            committed_decision = get_capital_governor().get_decision(
+                str(spectra_proposal_id or "")
+            )
+            if committed_decision is None:
+                raise RuntimeError("committed Governor proposal is unavailable for receipt signing")
+            amount_quote = committed_decision.reserved_quote
             request_body = {
                 "account_name": account,
                 "controller_id": tag,
