@@ -401,7 +401,7 @@ def test_missing_runtime_endpoint_is_explicitly_unsupported():
 
     assert result["mode"] == "UNSUPPORTED"
     assert result["paper_only"] is False
-    assert result["live_dispatch_available"] is True
+    assert result["live_dispatch_available"] is False
 
 
 def test_uninitialized_client_fails_closed():
@@ -426,6 +426,7 @@ def test_spectra_agent_defaults_to_paper_only_unless_explicitly_overridden(
     assert spectra_paper_only_enabled() is True
 
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
     assert spectra_paper_only_enabled() is False
 
 
