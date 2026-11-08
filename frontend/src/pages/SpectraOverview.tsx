@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   Brain,
-  CheckCircle2,
   CircleAlert,
   LockKeyhole,
   Server,
