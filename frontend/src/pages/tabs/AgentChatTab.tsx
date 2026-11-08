@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { brandedAgentName } from "@/lib/brandIdentity";
 
 import { AccountDock } from "@/components/chat/AccountDock";
 import {
@@ -811,7 +812,7 @@ function Hero({
     <div className="flex flex-1 flex-col items-center justify-center px-2">
       <div className="w-full max-w-xl">
         <h2 className="text-center text-xl font-semibold text-[var(--color-text)]">
-          Ask {agent?.name || "Spectra Intelligence"}
+          Ask {brandedAgentName(agent)}
         </h2>
         <p className="mt-1 text-center text-sm text-[var(--color-text-muted)]">
           {agent?.description ||
@@ -836,6 +837,7 @@ function Hero({
               because nothing has been sent anywhere. */}
           <ChatInput
             onSend={onAsk}
+            placeholder={`Ask ${brandedAgentName(agent)}...`}
             autoFocus
             draftKey={`new:${agent?.slug || "condor"}`}
           />
