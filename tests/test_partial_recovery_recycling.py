@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from spectra_test_support import FakeSession, configure_spectra_paper_dispatch
+from tests.spectra_test_support import FakeSession, configure_spectra_paper_dispatch
 from aiohttp import ClientResponseError
 
 import mcp_servers.hummingbot_api.tools.partial_recycle as partial_tool
