@@ -9,7 +9,7 @@ A separate one-command Linux/Bazzite install track is under review. It installs 
 curl -fsSL https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/one-command-paper-demo-20261108/install-alpha.sh | bash
 ```
 
-The Hummingbot API repository is currently private, so the installing GitHub account must have read access. See [ALPHA-TEST.md](ALPHA-TEST.md) for prerequisites, paper-mode behavior, controls, and current validation limitations. This is a developer alpha, not a production multi-user deployment.
+Both source repositories are public, so no GitHub authentication is required. See [ALPHA-TEST.md](ALPHA-TEST.md) for prerequisites, paper-mode behavior, controls, and current validation limitations. This is a developer alpha, not a production multi-user deployment.
 
 
 A Telegram bot for monitoring and trading with Hummingbot via the **Hummingbot API**.
