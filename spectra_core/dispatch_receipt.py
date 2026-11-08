@@ -82,21 +82,22 @@ def issue_executor_dispatch_receipt(
     now: float,
     ttl_seconds: int = 30,
     policy_version: str | None = None,
+    operation: str = "create_executor",
+    method: str = "POST",
+    path: str = "/executors",
+    executor_id: str | None = None,
+    account_name: str | None = None,
+    connector_name: str | None = None,
+    trading_pair: str | None = None,
 ) -> DispatchReceipt:
-    """Sign one exact POST /executors request; no wildcard fields are accepted."""
+    """Sign one exact, single-use executor create or stop request."""
     if not isinstance(request_body, dict):
         raise ValueError("Spectra dispatch request body must be an object")
-    config = request_body.get("executor_config")
-    if not isinstance(config, dict):
-        raise ValueError("Spectra dispatch request requires executor_config")
-    account_name = str(request_body.get("account_name") or "").strip()
-    connector_name = str(config.get("connector_name") or "").strip().lower()
-    trading_pair = str(config.get("trading_pair") or "").strip()
     proposal = str(proposal_id or "").strip()
     normalized_intent = str(intent or "").strip().upper()
     amount = Decimal(str(amount_quote))
-    if not account_name or not connector_name or not trading_pair or not proposal:
-        raise ValueError("Spectra dispatch receipt scope must be exact and non-empty")
+    if not proposal:
+        raise ValueError("Spectra dispatch proposal/manifest identity must be non-empty")
     if normalized_intent not in {"ENTRY", "RECOVERY", "EXIT", "CANCEL"}:
         raise ValueError("Unsupported Spectra dispatch intent")
     if not amount.is_finite() or amount <= 0:
@@ -104,9 +105,42 @@ def issue_executor_dispatch_receipt(
     if not isinstance(ttl_seconds, int) or not 1 <= ttl_seconds <= 60:
         raise ValueError("Spectra dispatch receipt TTL must be between 1 and 60 seconds")
 
+    normalized_method = str(method).upper()
+    normalized_path = "/" + str(path).strip().lstrip("/")
+    if operation == "create_executor":
+        if normalized_method != "POST" or normalized_path.rstrip("/") != "/executors":
+            raise ValueError("Executor creation receipt must target POST /executors")
+        config = request_body.get("executor_config")
+        if not isinstance(config, dict):
+            raise ValueError("Executor creation receipt requires executor_config")
+        resolved_account = str(request_body.get("account_name") or "").strip()
+        resolved_connector = str(config.get("connector_name") or "").strip().lower()
+        resolved_pair = str(config.get("trading_pair") or "").strip()
+        config_hash = canonical_sha256(config)
+        if executor_id is not None:
+            raise ValueError("Executor creation receipt cannot include executor_id")
+    elif operation == "stop_executor":
+        resolved_executor_id = str(executor_id or "").strip()
+        if (
+            normalized_method != "POST"
+            or normalized_path != f"/executors/{resolved_executor_id}/stop"
+            or not resolved_executor_id
+        ):
+            raise ValueError("Executor stop receipt must target its exact POST stop path")
+        if not isinstance(request_body.get("keep_position"), bool):
+            raise ValueError("Executor stop receipt requires a boolean keep_position body")
+        resolved_account = str(account_name or "").strip()
+        resolved_connector = str(connector_name or "").strip().lower()
+        resolved_pair = str(trading_pair or "").strip()
+        config_hash = canonical_sha256({"executor_id": resolved_executor_id})
+    else:
+        raise ValueError("Unsupported Spectra dispatch operation")
+
+    if not resolved_account or not resolved_connector or not resolved_pair:
+        raise ValueError("Spectra dispatch receipt scope must be exact and non-empty")
+
     canonical_body = _clean(request_body)
     body_hash = canonical_sha256(canonical_body)
-    config_hash = canonical_sha256(config)
     receipt_id = uuid.uuid4().hex
     issued_at = float(now)
     expires_at = issued_at + ttl_seconds
@@ -115,21 +149,23 @@ def issue_executor_dispatch_receipt(
         "receipt_id": receipt_id,
         "proposal_id": proposal,
         "intent": normalized_intent,
-        "account_name": account_name,
-        "connector_name": connector_name,
-        "trading_pair": trading_pair,
-        "operation": "create_executor",
+        "account_name": resolved_account,
+        "connector_name": resolved_connector,
+        "trading_pair": resolved_pair,
+        "operation": operation,
         "amount": str(amount),
         "config_sha256": config_hash,
         "body_sha256": body_hash,
-        "method": "POST",
-        "path": "/executors",
+        "method": normalized_method,
+        "path": normalized_path.rstrip("/") or "/",
         "issued_at": issued_at,
         "expires_at": expires_at,
         "policy_version": (
             str(policy_version or os.getenv("SPECTRA_DISPATCH_POLICY_VERSION", "spectra-policy-v1"))
         ),
     }
+    if operation == "stop_executor":
+        payload["executor_id"] = str(executor_id)
     if not payload["policy_version"].strip():
         raise ValueError("Spectra dispatch policy version must be non-empty")
 
@@ -137,6 +173,11 @@ def issue_executor_dispatch_receipt(
     signature = _private_key().sign(payload_bytes)
     token = _b64url_encode(payload_bytes) + "." + _b64url_encode(signature)
     return DispatchReceipt(
+        token=token,
+        receipt_id=receipt_id,
+        expires_at=expires_at,
+        body_sha256=body_hash,
+    )
         token=token,
         receipt_id=receipt_id,
         expires_at=expires_at,
