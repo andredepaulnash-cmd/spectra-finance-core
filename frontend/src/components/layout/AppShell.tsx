@@ -77,6 +77,7 @@ function AppShellBody() {
     ? NAV_ITEMS.filter(
         ({ to }) =>
           to === "/" ||
+          to === "/overview" ||
           to === "/settings" ||
           (to === "/portfolio" && paperConnectorReady),
       )
@@ -84,6 +85,7 @@ function AppShellBody() {
   const isSpectraSafeRoute =
     pathname === "/" ||
     pathname.startsWith("/agents/") ||
+    (paperModeConfirmed && pathname.startsWith("/overview")) ||
     (paperModeConfirmed && pathname.startsWith("/settings")) ||
     (paperConnectorReady && pathname.startsWith("/portfolio"));
   const { theme, toggleTheme } = useTheme();
