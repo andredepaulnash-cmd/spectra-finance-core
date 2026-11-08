@@ -116,16 +116,8 @@ fi
 say "Cloning the pinned Spectra Core alpha branch"
 clone_or_reuse "$CORE_REPO" "$CORE_REF" "$CORE_DIR"
 
-say "Cloning the matching Hummingbot API branch"
-if [[ -d "$API_DIR/.git" ]]; then
-  clone_or_reuse "$API_REPO" "$API_REF" "$API_DIR"
-elif has gh && gh auth status >/dev/null 2>&1; then
-  gh repo clone andredepaulnash-cmd/spectra-hummingbot-api "$API_DIR" -- --depth 1 --single-branch --branch "$API_REF" || die "GitHub authentication succeeded, but this account cannot clone the private Spectra Hummingbot API repository."
-else
-  if ! git clone --depth 1 --single-branch --branch "$API_REF" "$API_REPO" "$API_DIR"; then
-    die "The Hummingbot API repository is private. Authenticate this machine with GitHub (gh auth login) and grant it access to andredepaulnash-cmd/spectra-hummingbot-api, then rerun this same installer. The repository was not made public."
-  fi
-fi
+say "Cloning the matching public Hummingbot API branch"
+clone_or_reuse "$API_REPO" "$API_REF" "$API_DIR"
 
 say "Installing the reviewed Python 3.12 runtime"
 uv python install 3.12
@@ -177,20 +169,9 @@ printf 'user_id,password,is_superuser\n%s,%s,false\n' "$BROKER_USER" "$BROKER_PA
 chmod 700 .emqx
 chmod 644 .emqx/auth-bootstrap.csv
 
-# Hummingbot's official paper-trade config: Kraken market data, simulated orders/balances.
-if [[ ! -f bots/credentials/master_account/conf_client.yml ]]; then
-  cat > bots/credentials/master_account/conf_client.yml <<'EOF'
-paper_trade:
-  paper_trade_exchanges:
-    - kraken
-  paper_trade_account_balance:
-    USD: 10000
-    USDT: 10000
-    BTC: 1
-    ETH: 20
-    XRP: 10000
-EOF
-fi
+# Update the repository's existing master-account config without discarding its other settings.
+"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/configure_alpha_paper_connector.py" \
+  --config "$API_DIR/bots/credentials/master_account/conf_client.yml"
 
 # This alpha must not hand the API container the host Docker/Podman control socket.
 # Generate a private compose copy with only that mount removed; fail if source changes.
