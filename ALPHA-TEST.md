@@ -20,8 +20,10 @@ The installer:
 - Removes the host container-engine socket mount from the alpha Compose file. Paper mode does not need host Docker/Podman control.
 - Generates the Ed25519 dispatch key pair on the machine. The private key stays in the Core `.env`; the API receives only the public key.
 - Configures both processes with `SPECTRA_PAPER_ONLY=true` and `SPECTRA_ALLOW_LIVE_EXECUTION=false`.
-- Updates the existing master-account Hummingbot configuration to enable only the Kraken paper connector, preserves unrelated account settings, assigns simulated balances, and registers the local API in Condor.
-- Starts Condor and opens the local dashboard at `http://127.0.0.1:8088`.
+- Updates the existing master-account Hummingbot configuration to enable only the Kraken paper connector, preserves unrelated account settings, assigns a $1,000 simulated USD balance, and registers the local API in Condor.
+- Creates isolated paper state with a $1,000 total committed-capital ceiling, a $100 reserve floor, 1x leverage, no recovery budget, and a paper-only `NORMAL` breaker; live state is untouched.
+- Creates the keyless `kraken_paper_trade` account config through Hummingbot's API and waits for the connector to initialize before starting Condor.
+- Starts Condor and opens Spectra Overview at `http://127.0.0.1:8088/overview`.
 
 ## Paper trading scope
 
