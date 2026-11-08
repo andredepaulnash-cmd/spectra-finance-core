@@ -86,7 +86,7 @@ def create_cycle(
         proposal_id=proposal,
         executor_id=executor,
         account_name="owner-account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         controller_id="spectra",
     )
     orders = ExecutorOrderSnapshot(
@@ -127,7 +127,7 @@ def create_cycle(
                 f"buy-fill:{pid}",
                 f"buy:{pid}",
                 "owner-account",
-                "kraken",
+                "kraken_paper_trade",
                 pair,
                 "BUY",
                 D("10"),
@@ -140,7 +140,7 @@ def create_cycle(
                 f"sell-fill:{pid}",
                 f"sell:{pid}",
                 "owner-account",
-                "kraken",
+                "kraken_paper_trade",
                 pair,
                 "SELL",
                 D(sold),
@@ -178,7 +178,7 @@ def market(env, mid="market1", *, pair="XRP-USD", price="11", venue_rule=None):
     lifecycle.observe_market(
         market_id=mid,
         account_name="owner-account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         price=D(price),
         rule=venue_rule or rule(pair),
         observed_at=clock[0],
@@ -212,7 +212,7 @@ def test_default_off_cannot_observe_classify_or_open(environment):
         disabled.observe_market(
             market_id="m",
             account_name="a",
-            connector_name="kraken",
+            connector_name="kraken_paper_trade",
             price=D("11"),
             rule=rule(),
             observed_at=clock[0],
@@ -639,7 +639,7 @@ def test_reconciled_but_unfilled_executor_is_still_pending_evidence(environment)
         proposal_id="unfilled",
         executor_id="unfilled-executor",
         account_name="owner-account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         controller_id="spectra",
     )
     market(environment)
@@ -699,7 +699,7 @@ def test_repeated_partial_sells_reconcile_to_same_owner_before_dust(environment)
         role=EconomicFillRole.POSITION_EXIT,
         proposal_id="proposal:p1",
         account_name="owner-account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         created_at=clock[0],
     )
@@ -707,7 +707,7 @@ def test_repeated_partial_sells_reconcile_to_same_owner_before_dust(environment)
         "trade_id": "sell-again-fill",
         "order_id": "sell-again",
         "account_name": "owner-account",
-        "connector_name": "kraken",
+        "connector_name": "kraken_paper_trade",
         "trading_pair": "XRP-USD",
         "trade_type": "SELL",
         "amount": ".01",
@@ -861,7 +861,7 @@ class DustEntryClient:
             self.before_portfolio()
         return {
             account_names[0]: {
-                "kraken": [
+                "kraken_paper_trade": [
                     {
                         "token": "USD",
                         "units": 5000,
@@ -920,11 +920,15 @@ def configure_entry_runtime(env, monkeypatch):
     from mcp_servers.hummingbot_api.tools.execution_book import FreshVenueBook
 
     import base64
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
     monkeypatch.setenv(
         "SPECTRA_DISPATCH_PRIVATE_KEY",
         base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="),
     )
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+    monkeypatch.setattr(executor_create.settings, "paper_only", True)
     monkeypatch.setattr(executor_create, "get_breaker_mode", lambda: BreakerMode.NORMAL)
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: env[1])
     monkeypatch.setattr(executor_create, "get_dust_lifecycle", lambda **kwargs: env[3])
@@ -986,7 +990,7 @@ def dispatch_real_entry(adapter, client, authorization, *, account="owner-accoun
     return asyncio.run(
         adapter.create_grid_executor(
             client,
-            connector_name="kraken",
+            connector_name="kraken_paper_trade",
             trading_pair="XRP-USD",
             side=1,
             start_price=10,
@@ -1129,7 +1133,7 @@ def test_legacy_executor_caller_cannot_skip_dust_admission(environment, monkeypa
     result = asyncio.run(
         adapter.create_grid_executor(
             client,
-            connector_name="kraken",
+            connector_name="kraken_paper_trade",
             trading_pair="XRP-USD",
             side=1,
             start_price=10,
@@ -1268,7 +1272,7 @@ def test_full_flow_confirmed_sell_dust_admission_create_and_successor_fill(
         "new-buy-fill",
         "new-buy-order",
         "owner-account",
-        "kraken",
+        "kraken_paper_trade",
         "XRP-USD",
         "BUY",
         D("2"),
@@ -1336,7 +1340,7 @@ def test_enabled_real_entry_concurrent_dispatch_consumes_admission_once(
     async def create():
         return await adapter.create_grid_executor(
             client,
-            connector_name="kraken",
+            connector_name="kraken_paper_trade",
             trading_pair="XRP-USD",
             side=1,
             start_price=10,
@@ -1652,7 +1656,7 @@ def test_inflight_external_create_keeps_single_use_claim_across_real_await(
         async def create():
             return await adapter.create_grid_executor(
                 client,
-                connector_name="kraken",
+                connector_name="kraken_paper_trade",
                 trading_pair="XRP-USD",
                 side=1,
                 start_price=10,
