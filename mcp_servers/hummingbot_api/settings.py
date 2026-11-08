@@ -7,11 +7,14 @@ from pathlib import Path
 
 import aiohttp
 import yaml
+from dotenv import find_dotenv, load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
 from mcp_servers._profiles import parse_profile_flags
 from mcp_servers.hummingbot_api.exceptions import ConfigurationError
 from spectra_core.runtime import spectra_paper_only_enabled
+
+load_dotenv(find_dotenv())
 
 CONFIG_DIR = Path(os.getenv("HUMMINGBOT_MCP_CONFIG_DIR", str(Path.home() / ".hummingbot_mcp"))).expanduser()
 SERVER_CONFIG_PATH = CONFIG_DIR / "server.yml"
