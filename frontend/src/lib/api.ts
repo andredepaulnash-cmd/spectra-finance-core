@@ -2996,8 +2996,10 @@ export const api = {
     return { owners, deeds };
   },
 
-  getAgent: (slug: string) =>
-    apiFetch<AgentDetail>(`/api/v1/agents/${encodeURIComponent(slug)}`),
+  getAgent: async (slug: string) => {
+    const agent = await apiFetch<AgentDetail>(`/api/v1/agents/${encodeURIComponent(slug)}`);
+    return { ...agent, name: brandedAgentName(agent) };
+  },
 
   /** Identity + the four libraries, for the panel behind a conversation. */
   getAgentBrain: (slug: string) =>
