@@ -194,9 +194,16 @@ chmod 644 .emqx/auth-bootstrap.csv
 if ! grep -Fq '/var/run/docker.sock:/var/run/docker.sock' docker-compose.yml; then
   die "Expected Docker socket mount was not found in the pinned API Compose file; refusing to guess at a safe override."
 fi
-sed '\|/var/run/docker.sock:/var/run/docker.sock|d' docker-compose.yml > docker-compose.alpha.yml
-if grep -Fq 'docker.sock' docker-compose.alpha.yml; then
-  die "The alpha Compose file still contains a host container socket mount."
+sed \
+  -e '\|/var/run/docker.sock:/var/run/docker.sock|d' \
+  -e '/extra_hosts:/d' \
+  -e '/host.docker.internal:host-gateway/d' \
+  -e 's/container_name: hummingbot-api/container_name: spectra-alpha-hummingbot-api/' \
+  -e 's/container_name: hummingbot-broker/container_name: spectra-alpha-hummingbot-broker/' \
+  -e 's/container_name: hummingbot-postgres/container_name: spectra-alpha-hummingbot-postgres/' \
+  docker-compose.yml > docker-compose.alpha.yml
+if grep -Eq 'docker.sock|host.docker.internal|host-gateway' docker-compose.alpha.yml; then
+  die "The alpha Compose file still contains a host socket or host-gateway dependency."
 fi
 
 say "Generating the Core signing key and API verification key locally"
