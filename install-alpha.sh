@@ -28,11 +28,27 @@ clone_or_reuse() {
     local remote
     remote="$(git -C "$dest" remote get-url origin)"
     [[ "$remote" == *"$(basename "$repo" .git)"* ]] || die "Existing directory $dest is a different Git repository."
-    local dirty
-    dirty="$(git -C "$dest" status --porcelain | grep -v "docker-compose.alpha.yml" || true)"
-    [[ -z "$dirty" ]] || die "Existing checkout $dest has local changes; refusing to overwrite them."
+    local dirty account_cfg account_cfg_backup
+    account_cfg="bots/credentials/master_account/conf_client.yml"
+    account_cfg_backup=""
+    if [[ -f "$dest/$account_cfg" ]]; then
+      account_cfg_backup="$(mktemp)"
+      cp "$dest/$account_cfg" "$account_cfg_backup"
+    fi
+    dirty="$(git -C "$dest" status --porcelain | grep -v -E 'docker-compose\\.alpha\\.yml|bots/credentials/master_account/conf_client\\.yml' || true)"
+    if [[ -n "$dirty" ]]; then
+      [[ -z "$account_cfg_backup" ]] || rm -f "$account_cfg_backup"
+      die "Existing checkout $dest has unrelated local changes; refusing to overwrite them."
+    fi
+    if [[ -n "$account_cfg_backup" ]]; then
+      git -C "$dest" restore -- "$account_cfg"
+    fi
     git -C "$dest" fetch --depth 1 origin "$ref"
     git -C "$dest" checkout --detach FETCH_HEAD
+    if [[ -n "$account_cfg_backup" ]]; then
+      cp "$account_cfg_backup" "$dest/$account_cfg"
+      rm -f "$account_cfg_backup"
+    fi
   elif [[ -e "$dest" ]]; then
     die "$dest exists but is not a Git checkout. Move it aside or choose another SPECTRA_ALPHA_HOME."
   else
