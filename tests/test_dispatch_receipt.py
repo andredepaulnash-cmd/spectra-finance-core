@@ -2,6 +2,7 @@ import base64
 import json
 
 import pytest
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from spectra_core.dispatch_receipt import (
@@ -30,7 +31,11 @@ def _body():
 
 def test_executor_receipt_signs_exact_request_and_core_scope(monkeypatch):
     private = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
-    private_raw = private.private_bytes_raw()
+    private_raw = private.private_bytes(
+        serialization.Encoding.Raw,
+        serialization.PrivateFormat.Raw,
+        serialization.NoEncryption(),
+    )
     monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", _encoded(private_raw))
     body = _body()
 
@@ -71,7 +76,11 @@ def test_signing_key_must_be_configured_before_dispatch(monkeypatch):
 
 def test_invalid_ttl_and_unscoped_payloads_are_rejected(monkeypatch):
     private = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
-    monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", _encoded(private.private_bytes_raw()))
+    monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", _encoded(private.private_bytes(
+        serialization.Encoding.Raw,
+        serialization.PrivateFormat.Raw,
+        serialization.NoEncryption(),
+    )))
     with pytest.raises(ValueError, match="TTL"):
         issue_executor_dispatch_receipt(
             request_body=_body(), proposal_id="p1", intent="ENTRY",
