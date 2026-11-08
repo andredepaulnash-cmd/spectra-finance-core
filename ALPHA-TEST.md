@@ -27,9 +27,9 @@ The installer:
 
 ## Paper trading scope
 
-The selected venue is Kraken. The alpha uses Hummingbot's `kraken_paper_trade` connector and public market data with simulated orders and balances. **A Kraken private API key is not required for this paper-trading path and should not be entered into this alpha.** Tradable pairs are determined by the connector's current Kraken market metadata; the alpha must not claim a pair is tradable until the connector confirms it.
+The selected venue is Kraken. The alpha initializes Hummingbot's `kraken_paper_trade` connector, public Kraken market data, and a simulated USD balance. **A Kraken private API key is not required and should not be entered into this alpha.** Tradable pairs are determined by the connector's current Kraken market metadata. The connector is paper-capable, but Core-governed executor submission is still being integrated; this release does not yet claim that paper orders or fills are operational.
 
-The initial simulated balances are configured in `spectra-hummingbot-api/bots/credentials/master_account/conf_client.yml` and are not real funds. Paper fills are simulations, not exchange executions.
+The initial simulated balances are configured in `spectra-hummingbot-api/bots/credentials/master_account/conf_client.yml` and are not real funds. Any future paper fills will be simulated, not exchange executions.
 
 ## Control
 
