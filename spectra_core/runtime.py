@@ -215,6 +215,18 @@ def get_capital_governor() -> CapitalGovernor:
     return CapitalGovernor(db_path, policy)
 
 
+def get_dust_lifecycle(*, governor=None):
+    """Read the rollout gate on each admission; never enable it implicitly."""
+    from .dust_lifecycle import DustLifecycle
+
+    enabled = (os.getenv("SPECTRA_DUST_LIFECYCLE_ENABLED") or "").strip() == "1"
+    return DustLifecycle(
+        ledger=get_economic_position_ledger(),
+        governor=governor or get_capital_governor(),
+        enabled=enabled,
+    )
+
+
 def reset_runtime_cache() -> None:
     get_capital_governor.cache_clear()
     get_economic_position_ledger.cache_clear()
