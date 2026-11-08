@@ -88,7 +88,7 @@ export function AgentPanel({
   onAskAgent,
   onClose,
 }: {
-  /** Whose panel this is: the session's agent, the rail's pick, else Condor. */
+  /** Whose panel this is: the session's agent, the rail's pick, else Spectra Intelligence. */
   slug: string;
   name: string;
   slot: ChatSlot | null;

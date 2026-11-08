@@ -259,8 +259,8 @@ function AppShellBody() {
                 {!paperModeConfirmed
                   ? "This server has not confirmed Spectra paper-only mode. Trading and account controls stay unavailable until the authenticated runtime reports PAPER_ONLY."
                   : pathname.startsWith("/portfolio") && !paperConnectorReady
-                    ? "Paper-only mode is confirmed, but no paper connector is initialized. Configure a dedicated *_paper_trade connector in Settings first."
-                    : "This control is intentionally unavailable until it is routed through Spectra Core authorization. Direct Hummingbot, Gateway, bot deployment, and routine execution controls are not exposed."}
+                    ? "Paper-only mode is confirmed, but no paper connector is initialized. Set up a paper-trading connection in Spectra Settings first."
+                    : "This control remains unavailable until Spectra authorizes it. Direct exchange access, wallet-gateway controls, bot deployment, and routine execution are not exposed."}
               </p>
               <button
                 onClick={() => navigate(paperModeConfirmed ? "/settings" : "/")}

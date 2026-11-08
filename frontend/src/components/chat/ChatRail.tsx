@@ -18,6 +18,7 @@ import { AnchoredMenu } from "@/components/ui/AnchoredMenu";
 import { useWorkspacePane } from "@/hooks/useWorkspacePane";
 import { EXECUTION_PATH } from "@/components/chat/accountPanels";
 import { CHAT_SLUG, type AgentSummary, type ConversationMeta } from "@/lib/api";
+import { brandedAgentName } from "@/lib/brandIdentity";
 import { CHAT_RAIL_OPEN_KEY } from "@/lib/sessionState";
 
 function readOpen(): boolean {
@@ -177,26 +178,26 @@ export const ChatRail = memo(function ChatRail({
           Agents
         </div>
         <RailRow
-          label={condor?.name || "Condor"}
+          label={brandedAgentName(condor)}
           icon={<MessageSquare className="h-3 w-3 shrink-0" />}
           active={hasSession && !activeSlug}
-          title={condor?.description || "General trading assistant"}
+          title={condor?.description || "Spectra intelligence and portfolio assistant"}
           onClick={() => onTalk("", null)}
-          newTitle={`New chat with ${condor?.name || "Condor"}`}
+          newTitle={`New chat with ${brandedAgentName(condor)}`}
           onNew={() => onTalk("", null, true)}
         />
         {specialists.map((agent) => (
           <RailRow
             key={agent.slug}
-            label={agent.name}
+            label={brandedAgentName(agent)}
             icon={
               <Bot className="h-3 w-3 shrink-0 text-[var(--color-accent)]" />
             }
             live={deriveAgentStatus(agent) === "running"}
             active={activeSlug === agent.slug}
-            title={agent.description || agent.name}
+            title={agent.description || brandedAgentName(agent)}
             onClick={() => onTalk(agent.slug, agent)}
-            newTitle={`New chat with ${agent.name}`}
+            newTitle={`New chat with ${brandedAgentName(agent)}`}
             onNew={() => onTalk(agent.slug, agent, true)}
           />
         ))}
@@ -284,7 +285,7 @@ function LiveStrip({
         >
           {icon}
           <span className="min-w-0 flex-1 truncate">
-            {agents[0].name} live{tasks}
+            {brandedAgentName(agents[0])} live{tasks}
           </span>
           <ArrowUpRight className="h-3 w-3 shrink-0" />
         </Link>
@@ -326,7 +327,7 @@ function LiveStrip({
             className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
           >
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-            <span className="min-w-0 flex-1 truncate">{agent.name}</span>
+            <span className="min-w-0 flex-1 truncate">{brandedAgentName(agent)}</span>
             <ArrowUpRight className="h-3 w-3 shrink-0 text-[var(--color-text-muted)]" />
           </Link>
         ))}

@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 CORE_REPO="https://github.com/andredepaulnash-cmd/spectra-finance-core.git"
-CORE_REF="alpha/one-command-paper-demo-20261108"
+CORE_REF="alpha/fix-emqx-postgres-bind-20261108"
 API_REPO="https://github.com/andredepaulnash-cmd/spectra-hummingbot-api.git"
 API_REF="security/core-signed-executor-stop-receipts-20261108"
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -221,7 +221,10 @@ if ! grep -Fq '/var/run/docker.sock:/var/run/docker.sock' docker-compose.yml; th
   die "Expected Docker socket mount was not found in the pinned API Compose file; refusing to guess at a safe override."
 fi
 sed \
-  -e '\|/var/run/docker.sock:/var/run/docker.sock|d' \
+  -e '/\/var\/run\/docker\.sock:\/var\/run\/docker\.sock/d' \
+  -e 's|./bots:/hummingbot-api/bots|./bots:/hummingbot-api/bots:Z|' \
+  -e 's|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro,Z|' \
+  -e 's|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro,Z|' \
   -e '/extra_hosts:/d' \
   -e '/host.docker.internal/d' \
   -e '/host-gateway/d' \
@@ -229,7 +232,9 @@ sed \
   -e 's/container_name: hummingbot-broker/container_name: spectra-alpha-hummingbot-broker/' \
   -e 's/container_name: hummingbot-postgres/container_name: spectra-alpha-hummingbot-postgres/' \
   -e 's|image: emqx/emqx:|image: docker.io/emqx/emqx:|' \
+  -e 's|image: docker.io/emqx/emqx:5$|image: docker.io/emqx/emqx:5.10.5|' \
   -e 's|image: postgres:|image: docker.io/library/postgres:|' \
+  -e '/^  postgres:$/,/^networks:$/ { /^    ports:$/,/^    networks:$/ { /^    networks:$/!d; } }' \
   -e 's|image: continuumio/miniconda3:|image: docker.io/continuumio/miniconda3:|' \
   -e 's|dockerfile: Dockerfile|dockerfile: Dockerfile.alpha|' \
   docker-compose.yml > docker-compose.alpha.yml
