@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 import pytest
 
-from spectra_test_support import FakeSession, configure_spectra_paper_dispatch
+from tests.spectra_test_support import FakeSession, configure_spectra_paper_dispatch
 
 import mcp_servers.hummingbot_api.tools.economic_exit as exit_tool
 import mcp_servers.hummingbot_api.tools.vcap_runtime as runtime_tool
