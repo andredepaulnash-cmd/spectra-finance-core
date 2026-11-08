@@ -20,7 +20,23 @@ has() { command -v "$1" >/dev/null 2>&1; }
 
 [[ "$(uname -s)" == Linux ]] || die "This alpha installer currently supports Linux (including Bazzite)."
 [[ "$(uname -m)" =~ ^(x86_64|aarch64|arm64)$ ]] || die "Unsupported CPU architecture: $(uname -m)"
-[[ ! -e "$INSTALL_ROOT" ]] || die "$INSTALL_ROOT already exists. This installer will not delete or overwrite an existing installation. Choose another SPECTRA_ALPHA_HOME or move the folder yourself."
+mkdir -p "$INSTALL_ROOT"
+
+clone_or_reuse() {
+  local repo="$1" ref="$2" dest="$3"
+  if [[ -d "$dest/.git" ]]; then
+    local remote
+    remote="$(git -C "$dest" remote get-url origin)"
+    [[ "$remote" == *"$(basename "$repo" .git)"* ]] || die "Existing directory $dest is a different Git repository."
+    [[ -z "$(git -C "$dest" status --porcelain)" ]] || die "Existing checkout $dest has local changes; refusing to overwrite them."
+    git -C "$dest" fetch --depth 1 origin "$ref"
+    git -C "$dest" checkout --detach FETCH_HEAD
+  elif [[ -e "$dest" ]]; then
+    die "$dest exists but is not a Git checkout. Move it aside or choose another SPECTRA_ALPHA_HOME."
+  else
+    git clone --depth 1 --single-branch --branch "$ref" "$repo" "$dest"
+  fi
+}
 
 # Bazzite is immutable by design. Do not install host RPMs into an rpm-ostree image.
 if ! has git || ! has curl; then
@@ -106,11 +122,12 @@ has tmux || {
 }
 
 say "Cloning the pinned Spectra Core alpha branch"
-mkdir -p "$INSTALL_ROOT"
-git clone --depth 1 --single-branch --branch "$CORE_REF" "$CORE_REPO" "$CORE_DIR"
+clone_or_reuse "$CORE_REPO" "$CORE_REF" "$CORE_DIR"
 
 say "Cloning the matching Hummingbot API branch"
-if has gh && gh auth status >/dev/null 2>&1; then
+if [[ -d "$API_DIR/.git" ]]; then
+  clone_or_reuse "$API_REPO" "$API_REF" "$API_DIR"
+elif has gh && gh auth status >/dev/null 2>&1; then
   gh repo clone andredepaulnash-cmd/spectra-hummingbot-api "$API_DIR" -- --depth 1 --single-branch --branch "$API_REF"
 else
   if ! git clone --depth 1 --single-branch --branch "$API_REF" "$API_REPO" "$API_DIR"; then
@@ -183,9 +200,6 @@ fi
 
 say "Generating the Core signing key and API verification key locally"
 cd "$CORE_DIR"
-uv run --python 3.12 python scripts/generate_spectra_dispatch_keys.py \
-  --core-env .env --api-env "$API_DIR/.env"
-
 # Complete Core's local-mode configuration and pre-register the local API.
 CORE_API_USER="$API_USER" CORE_API_PASS="$API_PASS" uv run --python 3.12 python - <<'PY'
 import os, secrets, time, yaml
