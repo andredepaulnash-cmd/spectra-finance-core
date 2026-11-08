@@ -229,7 +229,9 @@ sed \
   -e 's/container_name: hummingbot-broker/container_name: spectra-alpha-hummingbot-broker/' \
   -e 's/container_name: hummingbot-postgres/container_name: spectra-alpha-hummingbot-postgres/' \
   -e 's|image: emqx/emqx:|image: docker.io/emqx/emqx:|' \
+  -e 's|image: docker.io/emqx/emqx:5$|image: docker.io/emqx/emqx:5.10.5|' \
   -e 's|image: postgres:|image: docker.io/library/postgres:|' \
+  -e '/^  postgres:$/,/^networks:$/ { /^    ports:$/,/^    networks:$/ { /^    networks:$/!d; } }' \
   -e 's|image: continuumio/miniconda3:|image: docker.io/continuumio/miniconda3:|' \
   -e 's|dockerfile: Dockerfile|dockerfile: Dockerfile.alpha|' \
   docker-compose.yml > docker-compose.alpha.yml
