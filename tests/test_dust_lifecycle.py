@@ -912,6 +912,11 @@ def configure_entry_runtime(env, monkeypatch):
     from spectra_core import kraken_authorization
     from spectra_core.models import BreakerMode
 
+    from time import time
+    from decimal import Decimal
+    from mcp_servers.hummingbot_api.tools import execution_book
+    from mcp_servers.hummingbot_api.tools.execution_book import FreshVenueBook
+
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
     monkeypatch.setattr(executor_create, "get_breaker_mode", lambda: BreakerMode.NORMAL)
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: env[1])
@@ -919,6 +924,29 @@ def configure_entry_runtime(env, monkeypatch):
     monkeypatch.setattr(
         kraken_authorization, "get_dust_lifecycle", lambda **kwargs: env[3]
     )
+
+    async def fake_fresh_book(rule):
+        observed = time()
+        return FreshVenueBook(
+            pair="XRP-USD",
+            exchange_pair="XRPUSD",
+            best_bid=Decimal("10.00"),
+            best_ask=Decimal("10.01"),
+            bids=((Decimal("10.00"), Decimal("100")),),
+            asks=((Decimal("10.01"), Decimal("100")),),
+            requested_at=observed,
+            received_at=observed,
+            source="synthetic-dust-test",
+            response_sha256="b" * 64,
+            venue_min_order_size=rule.min_order_size,
+            venue_min_cost_quote=rule.effective_min_quote,
+            venue_base_asset="XRP",
+            venue_quote_asset="USD",
+            venue_rules_observed_at=observed,
+            venue_rules_sha256="a" * 64,
+        )
+
+    monkeypatch.setattr(execution_book, "fetch_protected_kraken_book", fake_fresh_book)
     executor_create.trading_rules_cache.clear()
     return executor_create, kraken_authorization
 
@@ -961,6 +989,8 @@ def dispatch_real_entry(adapter, client, authorization, *, account="owner-accoun
             account_name=account,
             spectra_proposal_id=authorization.proposal.proposal_id,
             spectra_intent="ENTRY",
+            spectra_max_price_slippage_bps="100",
+            spectra_fee_allowance_bps="40",
         )
     )
 
