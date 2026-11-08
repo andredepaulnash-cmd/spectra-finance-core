@@ -69,6 +69,7 @@ def main() -> int:
         {
             "SPECTRA_DISPATCH_PUBLIC_KEY": _encode(public_raw),
             "SPECTRA_REQUIRE_CORE_RECEIPTS": "true",
+            "SPECTRA_DISPATCH_POLICY_VERSION": "spectra-policy-v1",
         },
         mode=0o600,
     )
