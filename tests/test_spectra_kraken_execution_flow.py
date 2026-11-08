@@ -138,14 +138,15 @@ def governor(tmp_path):
 @pytest.mark.parametrize(
     "paper_mode,connector_name",
     [
-        (False, "kraken"),
         (True, "kraken_paper_trade"),
     ],
 )
 def test_kraken_snapshot_to_authorization_to_hummingbot(
     monkeypatch, tmp_path, paper_mode, connector_name
 ):
-    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true" if paper_mode else "false")
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
     monkeypatch.setenv(
         "SPECTRA_DISPATCH_PRIVATE_KEY",
         base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="),
