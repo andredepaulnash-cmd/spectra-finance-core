@@ -116,6 +116,12 @@ export function SpectraOverview() {
   const krakenPaperActivity = (paperExecutors.data ?? []).filter(
     (executor) => executor.connector === "kraken_paper_trade",
   );
+  const accountingHealth = runtime.data?.accounting_health;
+  const accountingTotals = accountingHealth?.totals;
+  const accountingHealthy =
+    accountingHealth?.allows_new_exposure === true &&
+    (accountingHealth.state === "HEALTHY" ||
+      accountingHealth.state === "NO_ACTIVE_POSITIONS");
 
   if (!server) {
     return (
@@ -213,6 +219,53 @@ export function SpectraOverview() {
             Connected paper adapters: {runtime.data.paper_connectors.join(", ")}
           </p>
         ) : null}
+      </section>
+
+      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 md:p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Core fill reconciliation</h2>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              Durable accounting-health watermark from Spectra Core
+            </p>
+          </div>
+          <span className={"rounded-full border px-2.5 py-1 text-[11px] font-medium " + (accountingHealthy ? statusTone("implemented") : statusTone("integration-in-progress"))}>
+            {accountingHealth?.state?.replaceAll("_", " ") ?? "Not verified"}
+          </span>
+        </div>
+        {!accountingHealth ? (
+          <p className="text-sm text-[var(--color-text-muted)]">
+            Core accounting health is unavailable. The dashboard will not assume reconciliation is healthy.
+          </p>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Active positions</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{accountingHealth.active_positions}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Confirmed fills</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{accountingTotals?.confirmed_fills ?? 0}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Ledgered fills</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{accountingTotals?.ledgered_fills ?? 0}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Unresolved orders / trades</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">
+                  {(accountingTotals?.unresolved_orders ?? 0) + (accountingTotals?.unresolved_trades ?? 0)}
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-[var(--color-text-muted)]">
+              {accountingHealthy
+                ? "The accounting freshness gate is clear. Other capital-policy checks still apply."
+                : accountingHealth.error ?? "Accounting is on hold, stale, conflicted, or not yet verified. New exposure must remain blocked."}
+            </p>
+          </>
+        )}
       </section>
 
       <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 md:p-5">
