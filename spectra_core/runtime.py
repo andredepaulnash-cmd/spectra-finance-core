@@ -16,8 +16,18 @@ from .vcap_state import VCAPStateStore
 
 
 def spectra_paper_only_enabled() -> bool:
-    """Read the explicit paper-only switch; invalid values fail closed."""
-    value = (os.getenv("SPECTRA_PAPER_ONLY") or "false").strip().lower()
+    """Resolve the paper-only boundary, defaulting Spectra agents to paper.
+
+    An explicit operator setting always wins. When the setting is absent,
+    a process bound to the Spectra agent is paper-only by default; unrelated
+    Condor processes retain their legacy behavior. Invalid explicit values
+    fail closed rather than silently selecting either mode.
+    """
+    configured = os.getenv("SPECTRA_PAPER_ONLY")
+    if configured is None:
+        return os.getenv("CONDOR_AGENT_SLUG", "").strip().lower() == "spectra"
+
+    value = configured.strip().lower()
     if value not in {"1", "true", "yes", "0", "false", "no"}:
         raise RuntimeError("SPECTRA_PAPER_ONLY must be an explicit boolean")
     return value in {"1", "true", "yes"}
