@@ -898,6 +898,7 @@ class DustEntryClient:
     async def create_executor(self, *, executor_config, account_name, controller_id):
         from spectra_core.models import DecisionStatus
 
+        assert self._session.headers.get("X-Spectra-Dispatch-Receipt")
         admissions = rows(self.env[0], "economic_dust_entry_admissions")
         assert admissions[-1]["status"] == "CLAIMED"
         proposal_id = admissions[-1]["proposal_id"]
