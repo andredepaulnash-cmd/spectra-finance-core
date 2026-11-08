@@ -371,7 +371,8 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     assert accounting.fully_reconciled
     assert accounting.ledgered_fills == 1
     assert ledger.snapshot("e2e-entry").active_base == D("0.5")
-    assert ledger.snapshot("e2e-entry").cost_basis_quote == D("47.01")
+    assert ledger.snapshot("e2e-entry").active_cost_basis_quote == D("47")
+    assert ledger.snapshot("e2e-entry").active_entry_fees_quote == D("0.01")
 
     # The exact same position becomes stale after its health watermark expires.
     # A second buy-side authorization must fail before any new capital reservation.
