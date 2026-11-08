@@ -5,6 +5,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from spectra_core.runtime import spectra_paper_only_enabled
 from spectra_core.dispatch_receipt import (
     canonical_sha256,
     issue_executor_dispatch_receipt,
@@ -91,3 +92,14 @@ def test_invalid_ttl_and_unscoped_payloads_are_rejected(monkeypatch):
             request_body={"executor_config": _body()["executor_config"]},
             proposal_id="p1", intent="ENTRY", amount_quote="20", now=1000,
         )
+
+
+def test_spectra_agent_cannot_disable_paper_mode_without_separate_gate(monkeypatch):
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    with pytest.raises(RuntimeError, match="live execution is disabled"):
+        spectra_paper_only_enabled()
+
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    assert spectra_paper_only_enabled() is True
