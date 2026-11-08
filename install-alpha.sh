@@ -35,7 +35,7 @@ clone_or_reuse() {
       account_cfg_backup="$(mktemp)"
       cp "$dest/$account_cfg" "$account_cfg_backup"
     fi
-    dirty="$(git -C "$dest" status --porcelain | grep -v -E 'docker-compose\\.alpha\\.yml|bots/credentials/master_account/conf_client\\.yml' || true)"
+    dirty="$(git -C "$dest" status --porcelain | grep -v -E 'docker-compose[.]alpha[.]yml|bots/credentials/master_account/conf_client[.]yml' || true)"
     if [[ -n "$dirty" ]]; then
       [[ -z "$account_cfg_backup" ]] || rm -f "$account_cfg_backup"
       die "Existing checkout $dest has unrelated local changes; refusing to overwrite them."
