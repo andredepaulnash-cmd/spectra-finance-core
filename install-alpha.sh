@@ -303,6 +303,18 @@ if ! grep -q '^SPECTRA_DISPATCH_PRIVATE_KEY=' .env || ! grep -q '^SPECTRA_DISPAT
 fi
 chmod 600 .env config.yml
 
+# Podman on immutable Fedora-family hosts can reject Docker Hub short names
+# when compose invokes builds without a TTY. Normalize the upstream base image
+# reference locally before podman-compose builds; this is idempotent and does not
+# alter the tracked source checkout.
+if [[ "$COMPOSE_KIND" == podman ]]; then
+  if [[ -f "$API_DIR/Dockerfile" ]]; then
+    sed -i -E 's|^FROM[[:space:]]+continuumio/miniconda3([:@[:space:]]|$)|FROM docker.io/continuumio/miniconda3\\1|' "$API_DIR/Dockerfile"
+  fi
+  grep -Eq '^FROM[[:space:]]+docker[.]io/continuumio/miniconda3' "$API_DIR/Dockerfile" \
+    || die "Could not normalize the Hummingbot API base image for Podman."
+fi
+
 say "Building and starting the Hummingbot paper-only API stack ($COMPOSE_KIND)"
 cd "$API_DIR"
 if [[ "$COMPOSE_KIND" == docker ]]; then
@@ -355,55 +367,69 @@ print("Verified: Kraken paper connector initialized; live dispatch is unavailabl
 PY
 
 say "Initializing Kraken BTC-USD public market data for the paper adapter"
-curl -fsS -u "$API_USER:$API_PASS" \
+MARKET_DATA_READY=false
+if curl -fsS -u "$API_USER:$API_PASS" \
   "http://127.0.0.1:8000/connectors/kraken_paper_trade/trading-rules?trading_pairs=BTC-USD" \
-  > "$INSTALL_ROOT/kraken-paper-rules.json" \
-  || die "Kraken public trading rules are unavailable. Check the Hummingbot API logs."
-"$CORE_DIR/.venv/bin/python" - "$INSTALL_ROOT/kraken-paper-rules.json" <<'PY'
+  > "$INSTALL_ROOT/kraken-paper-rules.json" 2>"$INSTALL_ROOT/market-data-bootstrap.log"; then
+  if "$CORE_DIR/.venv/bin/python" - "$INSTALL_ROOT/kraken-paper-rules.json" <<'PY'
 import json
 import sys
 from pathlib import Path
 rules = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert "BTC-USD" in rules and rules["BTC-USD"]["min_order_size"] > 0, rules
 PY
-
-PAIR_STATUS="$(curl -sS -u "$API_USER:$API_PASS" -H "Content-Type: application/json" \
-  -d '{"connector_name":"kraken_paper_trade","trading_pair":"BTC-USD","account_name":"master_account","timeout":30}' \
-  -o "$INSTALL_ROOT/kraken-paper-pair.json" -w '%{http_code}' \
-  http://127.0.0.1:8000/market-data/trading-pair/add || true)"
-if [[ "$PAIR_STATUS" != 200 ]]; then
-  cat "$INSTALL_ROOT/kraken-paper-pair.json" 2>/dev/null || true
-  if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -p spectra-alpha -f "$API_DIR/docker-compose.alpha.yml" logs --tail=160 || true; else podman-compose -p spectra-alpha -f "$API_DIR/docker-compose.alpha.yml" logs --tail=160 || true; fi
-  die "Kraken paper market-data initialization failed (HTTP $PAIR_STATUS)."
-fi
-"$CORE_DIR/.venv/bin/python" - "$INSTALL_ROOT/kraken-paper-pair.json" <<'PY'
+  then
+    PAIR_STATUS="$(curl -sS -u "$API_USER:$API_PASS" -H "Content-Type: application/json" \
+      -d '{"connector_name":"kraken_paper_trade","trading_pair":"BTC-USD","account_name":"master_account","timeout":30}' \
+      -o "$INSTALL_ROOT/kraken-paper-pair.json" -w '%{http_code}' \
+      http://127.0.0.1:8000/market-data/trading-pair/add || true)"
+    if [[ "$PAIR_STATUS" == 200 ]] && "$CORE_DIR/.venv/bin/python" - "$INSTALL_ROOT/kraken-paper-pair.json" <<'PY'
 import json
 import sys
 from pathlib import Path
 result = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert result.get("success") is True, result
 PY
-
-BOOK_STATUS="$(curl -sS -u "$API_USER:$API_PASS" -H "Content-Type: application/json" \
-  -d '{"connector_name":"kraken_paper_trade","trading_pair":"BTC-USD","depth":5}' \
-  -o "$INSTALL_ROOT/kraken-paper-book.json" -w '%{http_code}' \
-  http://127.0.0.1:8000/market-data/order-book || true)"
-if [[ "$BOOK_STATUS" != 200 ]]; then
-  cat "$INSTALL_ROOT/kraken-paper-book.json" 2>/dev/null || true
-  if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -p spectra-alpha -f "$API_DIR/docker-compose.alpha.yml" logs --tail=160 || true; else podman-compose -p spectra-alpha -f "$API_DIR/docker-compose.alpha.yml" logs --tail=160 || true; fi
-  die "Kraken paper order-book verification failed (HTTP $BOOK_STATUS)."
-fi
-"$CORE_DIR/.venv/bin/python" - "$INSTALL_ROOT/kraken-paper-book.json" <<'PY'
+    then
+      BOOK_STATUS="$(curl -sS -u "$API_USER:$API_PASS" -H "Content-Type: application/json" \
+        -d '{"connector_name":"kraken_paper_trade","trading_pair":"BTC-USD","depth":5}' \
+        -o "$INSTALL_ROOT/kraken-paper-book.json" -w '%{http_code}' \
+        http://127.0.0.1:8000/market-data/order-book || true)"
+      if [[ "$BOOK_STATUS" == 200 ]] && "$CORE_DIR/.venv/bin/python" - "$INSTALL_ROOT/kraken-paper-book.json" <<'PY'
 import json
 import sys
 from pathlib import Path
 book = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert book.get("trading_pair") == "BTC-USD", book
 assert book.get("bids") and book.get("asks"), book
-print("Verified: Spectra paper adapter has a live public BTC-USD order book.")
 PY
-rm -f "$INSTALL_ROOT/api-runtime.json" "$INSTALL_ROOT/kraken-paper-rules.json" \
-  "$INSTALL_ROOT/kraken-paper-pair.json" "$INSTALL_ROOT/kraken-paper-book.json"
+      then
+        MARKET_DATA_READY=true
+        say "Verified: public BTC-USD bids and asks are available to the paper adapter."
+      else
+        printf 'Order-book bootstrap failed (HTTP %s).\n' "$BOOK_STATUS" >> "$INSTALL_ROOT/market-data-bootstrap.log"
+        cat "$INSTALL_ROOT/kraken-paper-book.json" >> "$INSTALL_ROOT/market-data-bootstrap.log" 2>/dev/null || true
+      fi
+    else
+      printf 'Paper trading-pair initialization failed (HTTP %s).\n' "$PAIR_STATUS" >> "$INSTALL_ROOT/market-data-bootstrap.log"
+      cat "$INSTALL_ROOT/kraken-paper-pair.json" >> "$INSTALL_ROOT/market-data-bootstrap.log" 2>/dev/null || true
+    fi
+  else
+    printf 'Kraken BTC-USD trading rules did not pass validation.\n' >> "$INSTALL_ROOT/market-data-bootstrap.log"
+  fi
+else
+  printf 'Kraken public trading rules could not be fetched.\n' >> "$INSTALL_ROOT/market-data-bootstrap.log"
+fi
+if [[ "$MARKET_DATA_READY" != true ]]; then
+  say "WARNING: Kraken public market data did not initialize in this attempt."
+  say "The dashboard will still launch in paper-only mode; market data will show as unavailable."
+  if [[ "$COMPOSE_KIND" == docker ]]; then
+    docker compose -p spectra-alpha -f "$API_DIR/docker-compose.alpha.yml" logs --tail=100 >> "$INSTALL_ROOT/market-data-bootstrap.log" 2>&1 || true
+  else
+    podman-compose -p spectra-alpha -f "$API_DIR/docker-compose.alpha.yml" logs --tail=100 >> "$INSTALL_ROOT/market-data-bootstrap.log" 2>&1 || true
+  fi
+fi
+rm -f "$INSTALL_ROOT/kraken-paper-rules.json" "$INSTALL_ROOT/kraken-paper-pair.json" "$INSTALL_ROOT/kraken-paper-book.json"
 
 cat > "$INSTALL_ROOT/.compose-kind" <<EOF
 $COMPOSE_KIND
