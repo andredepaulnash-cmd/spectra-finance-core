@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
-  Brain,
   CircleAlert,
   LockKeyhole,
   Server,
@@ -214,7 +213,7 @@ export function SpectraOverview() {
         </div>
         {runtime.data?.paper_connectors?.length ? (
           <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-            Connected paper venues: {runtime.data.paper_connectors.join(", ")}
+            Connected paper venues: {runtime.data.paper_connectors.map(() => "Kraken paper").join(", ")}
           </p>
         ) : null}
       </section>
@@ -353,7 +352,7 @@ export function SpectraOverview() {
               )}
             </div>
             <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-              These are Hummingbot-reported paper account and executor values. Capital reconciliation health is not represented by this panel.
+              These simulated account and execution values are reported by the connected paper-trading service. Capital reconciliation health is shown separately.
             </p>
           </>
         )}
