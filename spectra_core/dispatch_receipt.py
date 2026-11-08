@@ -178,8 +178,3 @@ def issue_executor_dispatch_receipt(
         expires_at=expires_at,
         body_sha256=body_hash,
     )
-        token=token,
-        receipt_id=receipt_id,
-        expires_at=expires_at,
-        body_sha256=body_hash,
-    )
