@@ -151,9 +151,9 @@ if [[ -f .env ]]; then
   [[ -n "$API_USER" && -n "$API_PASS" && -n "$CONFIG_PASS" && -n "$BROKER_USER" && -n "$BROKER_PASS" && -n "$BROKER_DASH_PASS" ]] || die "Existing API .env is incomplete; refusing to replace credentials."
 else
   API_USER="spectra_alpha"
-  API_PASS="$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
-  CONFIG_PASS="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
-  BROKER_USER="spectra_$(python3 -c 'import secrets; print(secrets.token_hex(5))')"
+  API_PASS="$(openssl rand -hex 24 2>/dev/null || $CORE_DIR/.venv/bin/python -c 'import secrets; print(secrets.token_hex(24))')"
+  CONFIG_PASS="$(openssl rand -hex 32 2>/dev/null || $CORE_DIR/.venv/bin/python -c 'import secrets; print(secrets.token_hex(32))')"
+  BROKER_USER="spectra_$($CORE_DIR/.venv/bin/python -c 'import secrets; print(secrets.token_hex(5))')"
   BROKER_PASS="$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
   BROKER_DASH_PASS="$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
   cat > .env <<EOF
