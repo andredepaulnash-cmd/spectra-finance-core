@@ -24,7 +24,7 @@ python scripts/generate_spectra_dispatch_keys.py \
   --api-env ../spectra-hummingbot-api/.env
 ```
 
-If the two repositories are not siblings, supply their actual local `.env` paths. The script preserves other environment variables, sets both files to mode 0600, and explicitly sets `SPECTRA_PAPER_ONLY=true` and `SPECTRA_ALLOW_LIVE_EXECUTION=false` in both processes (plus `CONDOR_AGENT_SLUG=spectra` for Core). The Spectra runtime rejects a paper-mode disable unless a separate future live-mode authorization is configured. Never commit either `.env`; never copy the private key into the API container, logs, GitHub, or chat.
+If the two repositories are not siblings, supply their actual local `.env` paths. The script preserves other environment variables, sets both files to mode 0600, and explicitly sets `SPECTRA_PAPER_ONLY=true` and `SPECTRA_ALLOW_LIVE_EXECUTION=false` in both processes (plus `CONDOR_AGENT_SLUG=spectra` for Core). The Spectra runtime rejects a paper-mode disable unless a separate future live-mode authorization is configured. For this development release, keep `SPECTRA_ALLOW_LIVE_EXECUTION=false`; no live mode is enabled by this work. Never commit either `.env`; never copy the private key into the API container, logs, GitHub, or chat.
 
 The shared policy version defaults to `spectra-policy-v1`. If it is changed, update both local environment files and deploy the same reviewed version on both processes.
 
