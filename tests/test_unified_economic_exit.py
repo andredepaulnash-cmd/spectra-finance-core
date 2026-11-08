@@ -4,6 +4,8 @@ from decimal import Decimal
 
 import pytest
 
+from spectra_test_support import FakeSession, configure_spectra_paper_dispatch
+
 import mcp_servers.hummingbot_api.tools.economic_exit as exit_tool
 from mcp_servers.hummingbot_api.tools.economic_exit import (
     execute_economic_position_exit,
@@ -42,6 +44,11 @@ from spectra_core.vcap_profit_exit import (
 
 D = Decimal
 
+
+
+@pytest.fixture(autouse=True)
+def _spectra_paper_dispatch(monkeypatch):
+    configure_spectra_paper_dispatch(monkeypatch, exit_tool.settings)
 
 def governor(tmp_path):
     return CapitalGovernor(
@@ -89,7 +96,7 @@ def prepare_execution(
         proposal_id=proposal_id,
         executor_id=executor_id,
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         controller_id="spectra",
     )
     return proposal
@@ -423,6 +430,7 @@ class FakeExecutors:
 
 class FakeClient:
     def __init__(self):
+        self._session = FakeSession()
         self.executors = FakeExecutors()
 
 
@@ -495,7 +503,7 @@ def bind_and_apply_sell(
         role=EconomicFillRole.POSITION_EXIT,
         proposal_id=proposal_id,
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         created_at=occurred_at - 1,
     )
@@ -504,7 +512,7 @@ def bind_and_apply_sell(
             "trade_id": trade_id,
             "order_id": order_id,
             "account_name": "master_account",
-            "connector_name": "kraken",
+            "connector_name": "kraken_paper_trade",
             "trading_pair": "XRP-USD",
             "trade_type": "SELL",
             "amount": amount,
@@ -587,7 +595,7 @@ def test_confirmed_sell_fills_flat_manifest_compute_realized_pnl_and_keep_43(
         role=EconomicFillRole.POSITION_EXIT,
         proposal_id="entry-1",
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         created_at=2_009,
     )
