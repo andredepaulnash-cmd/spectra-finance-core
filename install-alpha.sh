@@ -262,9 +262,9 @@ chmod 600 .env config.yml
 say "Building and starting the Hummingbot paper-only API stack ($COMPOSE_KIND)"
 cd "$API_DIR"
 if [[ "$COMPOSE_KIND" == docker ]]; then
-  docker compose -f docker-compose.alpha.yml up -d --build
+  docker compose -p spectra-alpha -f docker-compose.alpha.yml up -d --build
 else
-  podman-compose -f docker-compose.alpha.yml up -d --build
+  podman-compose -p spectra-alpha -f docker-compose.alpha.yml up -d --build
 fi
 
 say "Waiting for the local Hummingbot API"
@@ -332,7 +332,7 @@ stop_core() {
 }
 compose() {
   cd "$API_DIR"
-  if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml "$@"; else podman-compose -f docker-compose.alpha.yml "$@"; fi
+  if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -p spectra-alpha -f docker-compose.alpha.yml "$@"; else podman-compose -p spectra-alpha -f docker-compose.alpha.yml "$@"; fi
 }
 case "${1:-status}" in
   start)
