@@ -13,6 +13,7 @@ from spectra_core import (
     DecisionStatus,
     EconomicPositionLedger,
 )
+from spectra_core import kraken_authorization
 from spectra_core.kraken_authorization import reserve_kraken_capital
 from spectra_core.accounting_health import AccountingHealthState, AccountingHealthSupervisor
 from mcp_servers.hummingbot_api.tools.accounting_health import synchronize_position_accounting_health
@@ -224,7 +225,10 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     client = Client(connector_name)
     ledger = EconomicPositionLedger(tmp_path / "economic-e2e.sqlite3")
     ledger.open_position(position_id="e2e-entry", pair="BTC-USD", created_at=1000)
+    health = AccountingHealthSupervisor(ledger.path)
     monkeypatch.setattr(executor_create, "get_economic_position_ledger", lambda: ledger)
+    monkeypatch.setattr(kraken_authorization, "get_economic_position_ledger", lambda: ledger)
+    monkeypatch.setattr(kraken_authorization, "get_accounting_health_supervisor", lambda: health)
 
     async def fresh(rule):
         observed = time.time()
@@ -351,7 +355,6 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
 
     # Reconcile the exact executor's authoritative order + confirmed fill
     # evidence back into the Core economic ledger after the API receipt.
-    health = AccountingHealthSupervisor(ledger.path)
     accounting = asyncio.run(
         synchronize_position_accounting_health(
             client,
@@ -369,3 +372,18 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     assert accounting.ledgered_fills == 1
     assert ledger.snapshot("e2e-entry").active_base == D("0.5")
     assert ledger.snapshot("e2e-entry").cost_basis_quote == D("47.01")
+
+    # The exact same position becomes stale after its health watermark expires.
+    # A second buy-side authorization must fail before any new capital reservation.
+    monkeypatch.setattr(kraken_authorization.time, "time", lambda: 2_031)
+    with pytest.raises(ValueError, match="accounting health gate blocks new exposure"):
+        asyncio.run(
+            reserve_kraken_capital(
+                client,
+                account_name="master_account",
+                trading_pair="BTC-USD",
+                intent="ENTRY",
+                amount_quote="10",
+                governor=g,
+            )
+        )
