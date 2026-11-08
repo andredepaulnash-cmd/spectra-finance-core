@@ -87,6 +87,7 @@ jobs:
             tests/test_rotating_fleet.py \
             tests/test_entry_identity_submission.py \
             tests/test_residual_position_lifecycle.py \
+            tests/test_dust_lifecycle.py \
             tests/test_terminal_retirement_runtime.py \
             tests/test_terminal_retirement_scheduler.py \
             tests/test_partial_recycle_dispatch_guards.py \
