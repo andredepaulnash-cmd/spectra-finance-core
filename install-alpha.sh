@@ -327,7 +327,7 @@ if [[ ! -f "$KRAKEN_PAPER_CONFIG" ]]; then
     -H 'Content-Type: application/json' \
     -X POST -d '{}' \
     http://127.0.0.1:8000/accounts/add-credential/master_account/kraken_paper_trade >/dev/null \
-    || die "Could not initialize the Kraken paper connector configuration."
+    || { if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -p spectra-alpha -f docker-compose.alpha.yml logs --tail=160 || true; else podman-compose -p spectra-alpha -f docker-compose.alpha.yml logs --tail=160 || true; fi; die "Could not initialize the Kraken paper connector configuration."; }
 fi
 
 say "Waiting for Kraken paper connector initialization"
