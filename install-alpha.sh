@@ -222,9 +222,9 @@ if ! grep -Fq '/var/run/docker.sock:/var/run/docker.sock' docker-compose.yml; th
 fi
 sed \
   -e '\|/var/run/docker.sock:/var/run/docker.sock|d' \
-  -e 's|./bots:/hummingbot-api/bots|./bots:/hummingbot-api/bots:Z|' \\
-  -e 's|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro,Z|' \\
-  -e 's|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro,Z|' \\
+  -e 's|./bots:/hummingbot-api/bots|./bots:/hummingbot-api/bots:Z|' \
+  -e 's|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro,Z|' \
+  -e 's|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro,Z|' \
   -e '/extra_hosts:/d' \
   -e '/host.docker.internal/d' \
   -e '/host-gateway/d' \
