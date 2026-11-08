@@ -172,22 +172,20 @@ export function SpectraOverview() {
         </div>
       </header>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        {(registry.data?.system_flow ?? [
-          { id: "condor", name: "Condor", role: "Analyze and propose", authority: "No independent capital authority" },
-          { id: "spectra-core", name: "Spectra Core", role: "Validate, authorize and account", authority: "Sole capital and policy authority" },
-          { id: "hummingbot", name: "Hummingbot", role: "Execute approved paper orders", authority: "Execution adapter only" },
-        ]).map((step, index) => (
-          <div key={step.id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Layer {index + 1}</span>
-              {index === 1 ? <ShieldCheck className="h-4 w-4 text-emerald-500" /> : <Brain className="h-4 w-4 text-[var(--color-text-muted)]" />}
-            </div>
-            <h2 className="font-semibold">{step.name}</h2>
-            <p className="mt-1 text-sm">{step.role}</p>
-            <p className="mt-2 text-xs text-[var(--color-text-muted)]">{step.authority}</p>
+      <section className="spectra-hero rounded-xl p-6 md:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div>
+            <div className="spectra-eyebrow text-[10px] font-bold uppercase tracking-widest">One unified platform</div>
+            <h2 className="mt-2 text-2xl font-semibold">The Spectra Intelligence System</h2>
+            <p className="mt-2 max-w-2xl text-sm text-[var(--color-text-muted)]">
+              Research, strategy, capital governance and execution visibility — coordinated through one platform.
+            </p>
           </div>
-        ))}
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm">
+            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+            <span>Capital controls active</span>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 md:p-5">
@@ -202,7 +200,7 @@ export function SpectraOverview() {
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div>
-            <p className="text-xs text-[var(--color-text-muted)]">Paper connectors</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Paper venues</p>
             <p className="mt-1 text-xl font-semibold tabular-nums">{runtime.data?.paper_connector_count ?? "—"}</p>
           </div>
           <div>
@@ -216,7 +214,7 @@ export function SpectraOverview() {
         </div>
         {runtime.data?.paper_connectors?.length ? (
           <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-            Connected paper adapters: {runtime.data.paper_connectors.join(", ")}
+            Connected paper venues: {runtime.data.paper_connectors.join(", ")}
           </p>
         ) : null}
       </section>
@@ -224,9 +222,9 @@ export function SpectraOverview() {
       <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 md:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold">Core fill reconciliation</h2>
+            <h2 className="font-semibold">Capital reconciliation</h2>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              Durable accounting-health watermark from Spectra Core
+              Durable capital-accounting health status
             </p>
           </div>
           <span className={"rounded-full border px-2.5 py-1 text-[11px] font-medium " + (accountingHealthy ? statusTone("implemented") : statusTone("integration-in-progress"))}>
@@ -235,7 +233,7 @@ export function SpectraOverview() {
         </div>
         {!accountingHealth ? (
           <p className="text-sm text-[var(--color-text-muted)]">
-            Core accounting health is unavailable. The dashboard will not assume reconciliation is healthy.
+            Capital accounting health is unavailable. The dashboard will not assume reconciliation is healthy.
           </p>
         ) : (
           <>
@@ -276,7 +274,7 @@ export function SpectraOverview() {
               <h2 className="font-semibold">Kraken paper account</h2>
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              Read-only account and executor data from the selected Hummingbot API
+              Read-only account and executor data from the selected market connectivity service
             </p>
           </div>
           <span className={"rounded-full border px-2.5 py-1 text-[11px] font-medium " + (krakenPaperReady ? statusTone("implemented") : statusTone("unverified"))}>
@@ -355,7 +353,7 @@ export function SpectraOverview() {
               )}
             </div>
             <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-              These are Hummingbot-reported paper account and executor values. Core fill reconciliation health is not represented by this panel.
+              These are Hummingbot-reported paper account and executor values. Capital reconciliation health is not represented by this panel.
             </p>
           </>
         )}
