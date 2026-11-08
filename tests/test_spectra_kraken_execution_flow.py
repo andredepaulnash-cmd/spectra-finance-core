@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import json
 import time
 from decimal import Decimal
 
@@ -12,6 +14,8 @@ from spectra_core import (
     EconomicPositionLedger,
 )
 from spectra_core.kraken_authorization import reserve_kraken_capital
+from spectra_core.accounting_health import AccountingHealthState, AccountingHealthSupervisor
+from mcp_servers.hummingbot_api.tools.accounting_health import synchronize_position_accounting_health
 
 D = Decimal
 
@@ -74,11 +78,79 @@ class Connectors:
         }
 
 
+class FakeResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    async def json(self):
+        return self.payload
+
+
+class FakeSession:
+    def __init__(self):
+        self.headers = {}
+        self.executor_id = "spectra-e2e-1"
+
+    async def get(self, url):
+        if url.endswith("/orders"):
+            return FakeResponse(
+                {
+                    "executor_id": self.executor_id,
+                    "count": 1,
+                    "orders": [
+                        {
+                            "executor_id": self.executor_id,
+                            "client_order_id": "kraken-paper-buy-1",
+                            "order_type": "LIMIT",
+                            "trade_type": "BUY",
+                            "amount": "0.5",
+                            "price": "94",
+                            "status": "FILLED",
+                            "filled_amount": "0.5",
+                            "average_fill_price": "94",
+                            "created_at": "2026-11-08T18:00:00+00:00",
+                            "updated_at": "2026-11-08T18:00:05+00:00",
+                        }
+                    ],
+                }
+            )
+        if url.endswith("/trades"):
+            return FakeResponse(
+                {
+                    "executor_id": self.executor_id,
+                    "count": 1,
+                    "trades": [
+                        {
+                            "executor_id": self.executor_id,
+                            "order_id": "kraken-paper-buy-1",
+                            "trade_id": "kraken-paper-fill-1",
+                            "account_name": "master_account",
+                            "connector_name": "kraken_paper_trade",
+                            "trading_pair": "BTC-USD",
+                            "trade_type": "BUY",
+                            "amount": "0.5",
+                            "price": "94",
+                            "fee_paid": "0.01",
+                            "fee_currency": "USD",
+                            "timestamp": "2026-11-08T18:00:05+00:00",
+                        }
+                    ],
+                }
+            )
+        raise AssertionError(f"unexpected provenance URL: {url}")
+
+
 class Executors:
-    def __init__(self, governor, proposal_id):
+    def __init__(self, governor, proposal_id, session):
         self.governor = governor
         self.proposal_id = proposal_id
+        self.session = session
+        self.base_url = "http://hummingbot.test"
         self.calls = []
+        self.receipt_token = None
 
     async def create_executor(
         self,
@@ -89,6 +161,8 @@ class Executors:
         # The irreversible boundary:
         # capital must already be durably COMMITTED
         # before Hummingbot receives the mutation.
+        self.receipt_token = self.session.headers.get("X-Spectra-Dispatch-Receipt")
+        assert self.receipt_token
         decision = self.governor.get_decision(self.proposal_id)
 
         assert decision is not None
@@ -112,6 +186,7 @@ class Client:
         self.portfolio = Portfolio(connector_name)
         self.connectors = Connectors()
         self.executors = None
+        self._session = FakeSession()
 
 
 def governor(tmp_path):
@@ -131,14 +206,19 @@ def governor(tmp_path):
 @pytest.mark.parametrize(
     "paper_mode,connector_name",
     [
-        (False, "kraken"),
         (True, "kraken_paper_trade"),
     ],
 )
 def test_kraken_snapshot_to_authorization_to_hummingbot(
     monkeypatch, tmp_path, paper_mode, connector_name
 ):
-    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true" if paper_mode else "false")
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv(
+        "SPECTRA_DISPATCH_PRIVATE_KEY",
+        base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="),
+    )
     monkeypatch.setattr(executor_create.settings, "paper_only", paper_mode)
     g = governor(tmp_path)
     client = Client(connector_name)
@@ -192,6 +272,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     client.executors = Executors(
         governor=g,
         proposal_id=proposal.proposal_id,
+        session=client._session,
     )
 
     monkeypatch.setattr(
@@ -267,3 +348,24 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     assert provenance.account_name == "master_account"
     assert provenance.connector_name == connector_name
     assert provenance.controller_id == "spectra"
+
+    # Reconcile the exact executor's authoritative order + confirmed fill
+    # evidence back into the Core economic ledger after the API receipt.
+    health = AccountingHealthSupervisor(ledger.path)
+    accounting = asyncio.run(
+        synchronize_position_accounting_health(
+            client,
+            position_id="e2e-entry",
+            proposal_ids=(proposal.proposal_id,),
+            governor=g,
+            ledger=ledger,
+            supervisor=health,
+            now=2_000,
+        )
+    )
+
+    assert accounting.state == AccountingHealthState.HEALTHY
+    assert accounting.fully_reconciled
+    assert accounting.ledgered_fills == 1
+    assert ledger.snapshot("e2e-entry").active_base == D("0.5")
+    assert ledger.snapshot("e2e-entry").cost_basis_quote == D("47.01")

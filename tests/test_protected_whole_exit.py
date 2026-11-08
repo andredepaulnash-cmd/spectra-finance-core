@@ -15,6 +15,8 @@ from unittest.mock import patch
 
 import pytest
 
+from tests.spectra_test_support import FakeSession, configure_spectra_paper_dispatch
+
 import mcp_servers.hummingbot_api.tools.economic_exit as exit_tool
 import mcp_servers.hummingbot_api.tools.vcap_runtime as runtime_tool
 from spectra_core.accounting_health import AccountingHealthSupervisor
@@ -69,6 +71,11 @@ class LookupStatusError(RuntimeError):
         self.status = status
         self.response = SimpleNamespace(status_code=status)
 
+
+
+@pytest.fixture(autouse=True)
+def _spectra_paper_dispatch(monkeypatch):
+    configure_spectra_paper_dispatch(monkeypatch, exit_tool.settings)
 
 def protected_decision(**changes):
     values = dict(target_net_profit_bps=D("174"), expected_exit_cost_bps=D("45"))
@@ -163,7 +170,7 @@ class EvidenceExecutors:
             config=dict(
                 id=executor_id,
                 type="order_executor",
-                connector_name="kraken",
+                connector_name="kraken_paper_trade",
                 trading_pair="XRP-USD",
                 side=2,
                 amount=str(self.manifest.target_active_base),
@@ -191,6 +198,7 @@ class EvidenceExecutors:
 
 class EvidenceClient:
     def __init__(self, manifest):
+        self._session = FakeSession()
         self.executors = EvidenceExecutors(manifest)
 
 
@@ -278,7 +286,7 @@ def fill(manifest, trade_id, amount, *, price=None, fee=None, **changes):
         trade_id=trade_id,
         order_id="whole-sell-order",
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         side="SELL",
         amount_base=amount,
@@ -572,7 +580,7 @@ def test_synthetic_sell_cannot_reuse_an_order_bound_to_a_source_owner(
         role=EconomicFillRole.POSITION_EXIT,
         proposal_id="entry-1",
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         created_at=2001,
     )

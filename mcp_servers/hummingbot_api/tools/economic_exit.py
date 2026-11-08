@@ -8,6 +8,11 @@ from dataclasses import asdict
 from decimal import Decimal, localcontext
 from typing import Any
 
+from mcp_servers.hummingbot_api.settings import settings
+from mcp_servers.hummingbot_api.tools.dispatch_receipts import (
+    dispatch_with_receipt,
+    validate_dispatch_transport,
+)
 from mcp_servers.hummingbot_api.tools.cash_accounting import (
     bind_sale_cash_authority,
     finalize_sale_cash_fill,
@@ -584,8 +589,9 @@ async def dispatch_protected_economic_exit(
         governor=governor if claimed else None,
     )
     account, connector = _scope(manifest, governor)
-    if account != account_name or connector != "kraken":
-        raise ValueError("economic exit scope must match the configured Kraken account")
+    expected_connector = "kraken_paper_trade" if settings.paper_only else "kraken"
+    if account != account_name or connector != expected_connector:
+        raise ValueError("economic exit scope must match the configured Spectra connector/account")
     if manifest.sell_executor_id is None:
         result = _result(
             manifest,
@@ -630,6 +636,9 @@ async def dispatch_protected_economic_exit(
         return _result(
             manifest, ledger, store, now, reasons=("new_exit_dispatch_disabled",)
         )
+    # Validate the signing key and authenticated transport before any source
+    # executor is stopped or the durable sale-dispatch claim is consumed.
+    validate_dispatch_transport(client)
     if any(
         getattr(governor, "get_protected_buy_conflicts", lambda _: ())(
             owner.proposal_id
@@ -689,6 +698,7 @@ async def dispatch_protected_economic_exit(
     source_evidence = []
     owner_rows = []
     for owner in manifest.owners:
+        stop_receipt_id = None
         raw = await client.executors.get_executor(owner.executor_id)
         obs = executor_accounting_observation_from_raw(
             raw, expected_executor_id=owner.executor_id
@@ -705,9 +715,26 @@ async def dispatch_protected_economic_exit(
                     now,
                     reasons=("exact_position_mutation_pending",),
                 )
-            await client.executors.stop_executor(
-                executor_id=owner.executor_id, keep_position=True
+            _, stop_receipt = await dispatch_with_receipt(
+                client,
+                api_method="stop_executor",
+                request_body={"keep_position": True},
+                request_kwargs={
+                    "executor_id": owner.executor_id,
+                    "keep_position": True,
+                },
+                proposal_id=owner.proposal_id,
+                intent="EXIT",
+                amount_quote=owner.target_base * manifest.reference_price,
+                operation="stop_executor",
+                method="POST",
+                path=f"/executors/{owner.executor_id}/stop",
+                executor_id=owner.executor_id,
+                account_name=owner.account_name,
+                connector_name=owner.connector_name,
+                trading_pair=manifest.pair,
             )
+            stop_receipt_id = stop_receipt.receipt_id
             raw = await client.executors.get_executor(owner.executor_id)
             obs = executor_accounting_observation_from_raw(
                 raw, expected_executor_id=owner.executor_id
@@ -760,6 +787,7 @@ async def dispatch_protected_economic_exit(
                 "executor_id": owner.executor_id,
                 "intent": owner.intent.value,
                 "active_lot_ids": list(owner.lot_ids),
+                "stop_dispatch_receipt_id": stop_receipt_id,
                 "state": "PASSIVE" if passive else "AWAITING_SOURCE_FINALITY",
             }
         )
@@ -801,7 +829,7 @@ async def dispatch_protected_economic_exit(
         governor=governor,
         manifest=manifest,
         account_name=account_name,
-        connector_name="kraken",
+        connector_name=connector,
         sale_purpose="WHOLE_EXIT",
         for_dispatch=True,
     )
@@ -810,21 +838,34 @@ async def dispatch_protected_economic_exit(
         raise RuntimeError(
             "economic exit dispatch already claimed; reconciliation required"
         )
-    ack = await client.executors.create_executor(
-        executor_config={
-            "id": manifest.sell_executor_id,
-            "type": "order_executor",
-            "connector_name": "kraken",
-            "trading_pair": manifest.pair,
-            "side": 2,
-            "amount": str(manifest.target_active_base),
-            "execution_strategy": "LIMIT",
-            "price": str(execution_price),
-            "leverage": 1,
-            "level_id": "whole-exit-" + manifest.manifest_id.rsplit(":", 1)[-1][:12],
-        },
-        account_name=account_name,
-        controller_id=controller_id,
+    sell_config = {
+        "id": manifest.sell_executor_id,
+        "type": "order_executor",
+        "connector_name": connector,
+        "trading_pair": manifest.pair,
+        "side": 2,
+        "amount": str(manifest.target_active_base),
+        "execution_strategy": "LIMIT",
+        "price": str(execution_price),
+        "leverage": 1,
+        "level_id": "whole-exit-" + manifest.manifest_id.rsplit(":", 1)[-1][:12],
+    }
+    request_body = {
+        "account_name": account_name,
+        "controller_id": controller_id,
+        "executor_config": sell_config,
+    }
+    ack, sale_receipt = await dispatch_with_receipt(
+        client,
+        api_method="create_executor",
+        request_body=request_body,
+        request_kwargs=request_body,
+        proposal_id=manifest.manifest_id,
+        intent="EXIT",
+        amount_quote=manifest.target_active_base * execution_price,
+        operation="create_executor",
+        method="POST",
+        path="/executors",
     )
     if (
         not isinstance(ack, dict)
@@ -839,9 +880,11 @@ async def dispatch_protected_economic_exit(
         store=store,
         now=now,
     )
-    return _result(
+    result = _result(
         manifest, ledger, store, now, requested=True, executed=True, owners=owner_rows
     )
+    result["spectra_dispatch_receipt_id"] = sale_receipt.receipt_id
+    return result
 
 
 async def execute_economic_position_exit(

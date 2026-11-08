@@ -22,6 +22,7 @@ a live API server. See ``mcp_servers/TOOL_STYLE.md``.
 """
 
 import logging
+import os
 from dataclasses import replace
 from decimal import Decimal
 from math import isfinite
@@ -33,10 +34,15 @@ from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
 from mcp_servers.hummingbot_api.settings import settings
 from spectra_core import CapitalProposal, IntentKind
 from spectra_core.decimal_math import exact_decimal_sum
+from mcp_servers.hummingbot_api.tools.dispatch_receipts import (
+    dispatch_with_receipt,
+    validate_dispatch_transport,
+)
 from spectra_core.models import BreakerMode
 from spectra_core.runtime import (
     get_breaker_mode,
     get_capital_governor,
+    get_dust_lifecycle,
     get_economic_position_ledger,
 )
 
@@ -402,6 +408,7 @@ def _authorize_spectra_execution(
     controller_id: str = "spectra",
     protected_buy_config: dict[str, Any] | None = None,
     protected_buy_policy: dict[str, Any] | None = None,
+    dust_rules: dict[str, Any] | None = None,
 ) -> str | None:
     """Commit the exact Spectra capital claim before any external mutation."""
     if settings.agent_slug != "spectra":
@@ -506,10 +513,24 @@ def _authorize_spectra_execution(
 
     try:
         governor = get_capital_governor()
+        dust = get_dust_lifecycle(governor=governor)
+        ledger = get_economic_position_ledger()
+        if not ledger.selected_recovery_proposal_allowed(pair, proposal.proposal_id):
+            return "Spectra selected-recovery ownership lock refused this proposal"
+        dust_successor_id = dust.assert_dispatch(
+            proposal=proposal,
+            account_name=account_name,
+            now=time(),
+            venue_rules=dust_rules,
+        )
+        if dust_successor_id is not None:
+            if position_id is not None and position_id != dust_successor_id:
+                return "Spectra dust successor identity differs from the supplied position ID"
+            position_id = dust_successor_id
+
         if intent_kind == IntentKind.ENTRY:
             if not (position_id or "").strip():
                 return "Spectra ENTRY requires its exact spectra_position_id"
-            ledger = get_economic_position_ledger()
             committed = governor.commit_entry_submission_if_matches(
                 proposal,
                 position_id=position_id,
@@ -528,9 +549,7 @@ def _authorize_spectra_execution(
                 connector_name=connector,
                 controller_id=controller_id,
                 ledger_path=(
-                    get_economic_position_ledger().path
-                    if protected_buy_config is not None
-                    else None
+                    ledger.path if protected_buy_config is not None else None
                 ),
                 protected_buy_config=protected_buy_config,
                 protected_buy_policy=protected_buy_policy,
@@ -544,6 +563,21 @@ def _authorize_spectra_execution(
             "or its pair/amount/intent/leverage does not match this execution"
         )
 
+    try:
+        if not ledger.selected_recovery_proposal_allowed(pair, proposal.proposal_id):
+            return "Spectra selected-recovery ownership lock changed before dispatch"
+        claimed_successor_id = dust.assert_dispatch(
+            proposal=proposal,
+            account_name=account_name,
+            now=time(),
+            claim=True,
+            venue_rules=dust_rules,
+        )
+        if claimed_successor_id is not None and claimed_successor_id != position_id:
+            return "Spectra dust successor identity changed after capital commit"
+    except Exception as exc:
+        return f"Spectra entry admission refused before dispatch: {exc}"
+
     return None
 
 
@@ -554,7 +588,7 @@ async def _bounded_protected_buy(
     *,
     max_price_slippage_bps: Any,
     fee_allowance_bps: Any,
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Use a fresh venue book and immutable parcel reference before capital commit."""
     from spectra_core.economic_position import normalized_base_asset
     from spectra_core.execution_policy import build_protected_buy_limit_config
@@ -647,6 +681,7 @@ async def _bounded_protected_buy(
         now=time(),
         max_price_slippage_bps=Decimal(str(max_price_slippage_bps)),
         fee_allowance_bps=Decimal(str(fee_allowance_bps)),
+        connector_name=expected_connector,
     )
     policy = {
         field: str(getattr(order, field))
@@ -682,7 +717,7 @@ async def _bounded_protected_buy(
             "effective_min_quote": str(rule.effective_min_quote),
         },
     )
-    return order.executor_config, policy
+    return order.executor_config, policy, raw_rule
 
 
 async def create_executor(
@@ -718,6 +753,7 @@ async def create_executor(
 
     backend_config = merged_config
     protected_buy_policy = None
+    dust_venue_rules = None
     if settings.agent_slug == "spectra":
         expected_connector = (
             "kraken_paper_trade" if settings.paper_only else "kraken"
@@ -767,7 +803,7 @@ async def create_executor(
                 raise ValueError(
                     f"protected BUY cash authority is blocked: {cash_state.reason}"
                 )
-            backend_config, protected_buy_policy = await _bounded_protected_buy(
+            backend_config, protected_buy_policy, dust_venue_rules = await _bounded_protected_buy(
                 client,
                 executor_type,
                 merged_config,
@@ -809,6 +845,36 @@ async def create_executor(
             "formatted_output": f"Error creating {executor_type}: {violation}",
         }
 
+    if (
+        settings.agent_slug == "spectra"
+        and not settings.paper_only
+        and os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false").strip().lower()
+        not in {"1", "true", "yes"}
+    ):
+        error = (
+            "Spectra live execution is disabled; a separate explicit live-mode "
+            "authorization is required before this path can be enabled"
+        )
+        return {
+            "action": "create",
+            "executor_type": executor_type,
+            "error": error,
+            "formatted_output": f"Error creating {executor_type}: {error}",
+        }
+
+    if settings.agent_slug == "spectra":
+        try:
+            # Validate the private key and transport before the Governor can commit.
+            validate_dispatch_transport(client)
+        except Exception as exc:
+            error = f"Spectra API dispatch signing/transport is unavailable: {exc}"
+            return {
+                "action": "create",
+                "executor_type": executor_type,
+                "error": error,
+                "formatted_output": f"Error creating {executor_type}: {error}",
+            }
+
     spectra_error = _authorize_spectra_execution(
         executor_type,
         merged_config,
@@ -821,6 +887,7 @@ async def create_executor(
             backend_config if protected_buy_policy is not None else None
         ),
         protected_buy_policy=protected_buy_policy,
+        dust_rules=dust_venue_rules,
     )
     if spectra_error:
         logger.warning(
@@ -833,21 +900,46 @@ async def create_executor(
             "formatted_output": f"Error creating {executor_type}: {spectra_error}",
         }
 
+    dispatch_receipt = None
+    request_body = {
+        "account_name": account,
+        "controller_id": tag,
+        "executor_config": backend_config,
+    }
     try:
-        result = await client.executors.create_executor(
-            executor_config=backend_config,
-            account_name=account,
-            controller_id=tag,
-        )
+        if settings.agent_slug == "spectra":
+            committed_decision = get_capital_governor().get_decision(
+                str(spectra_proposal_id or "")
+            )
+            if committed_decision is None:
+                raise RuntimeError("committed Governor proposal is unavailable for receipt signing")
+            result, dispatch_receipt = await dispatch_with_receipt(
+                client,
+                api_method="create_executor",
+                request_body=request_body,
+                request_kwargs=request_body,
+                proposal_id=str(spectra_proposal_id or ""),
+                intent=str(spectra_intent or ""),
+                amount_quote=committed_decision.reserved_quote,
+                operation="create_executor",
+                method="POST",
+                path="/executors",
+            )
+        else:
+            result = await client.executors.create_executor(**request_body)
     except Exception as exc:
         return {
             "action": "create",
             "executor_type": executor_type,
+            "spectra_dispatch_receipt_id": (
+                dispatch_receipt.receipt_id if dispatch_receipt is not None else None
+            ),
             "error": str(exc),
             "formatted_output": f"Error creating {executor_type}: {exc}",
         }
 
     executor_id = result.get("executor_id") or result.get("id")
+    economic_position_id = None
 
     if settings.agent_slug == "spectra":
         if not executor_id:
@@ -860,6 +952,7 @@ async def create_executor(
             return {
                 "action": "create",
                 "executor_type": executor_type,
+                "spectra_dispatch_receipt_id": dispatch_receipt.receipt_id,
                 "error": error,
                 "result": result,
                 "formatted_output": f"Error creating {executor_type}: {error}",
@@ -884,6 +977,7 @@ async def create_executor(
                 "action": "create",
                 "executor_id": executor_id,
                 "executor_type": executor_type,
+                "spectra_dispatch_receipt_id": dispatch_receipt.receipt_id,
                 "error": error,
                 "result": result,
                 "formatted_output": f"Error reconciling {executor_type}: {error}",
@@ -904,6 +998,14 @@ async def create_executor(
                 "result": result,
                 "formatted_output": f"Error reconciling {executor_type}: {error}",
             }
+
+        if reconciled:
+            economic_position_id = get_dust_lifecycle(
+                governor=get_capital_governor()
+            ).record_entry_receipt(
+                proposal_id=str(spectra_proposal_id or ""),
+                executor_id=str(executor_id),
+            )
 
     if save_as_default:
         executor_preferences.update_defaults(executor_type, config)
@@ -927,6 +1029,10 @@ async def create_executor(
         "controller_id": tag,
         "config_used": backend_config,
         "saved_as_default": save_as_default,
+        "spectra_position_id": economic_position_id or spectra_position_id,
+        "spectra_dispatch_receipt_id": (
+            dispatch_receipt.receipt_id if dispatch_receipt is not None else None
+        ),
         "result": result,
         "formatted_output": formatted,
     }

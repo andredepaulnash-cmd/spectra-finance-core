@@ -83,6 +83,39 @@ export interface ServerMember {
   display_name: string;
 }
 
+export interface SpectraRuntimeStatus {
+  product?: string;
+  mode: "PAPER_ONLY" | "LEGACY" | "UNSUPPORTED" | "UNAVAILABLE" | string;
+  paper_only: boolean;
+  live_dispatch_available: boolean;
+  paper_connector_count: number;
+  paper_connectors?: string[];
+  error?: string;
+}
+
+export interface SpectraModuleStatus {
+  id: string;
+  name: string;
+  status: string;
+  readiness: string;
+  description: string;
+}
+
+export interface SpectraModuleRegistry {
+  product: string;
+  release_stage: string;
+  live_trading_enabled: boolean;
+  paper_only_target: boolean;
+  status_note: string;
+  system_flow: Array<{
+    id: string;
+    name: string;
+    role: string;
+    authority: string;
+  }>;
+  modules: SpectraModuleStatus[];
+}
+
 export interface ServerInfo {
   name: string;
   host: string;
@@ -2319,6 +2352,16 @@ export interface PendingConfirmation {
 
 export const api = {
   getServers: () => apiFetch<ServerInfo[]>("/api/v1/servers"),
+
+  getSpectraRuntime: (server: string) =>
+    apiFetch<SpectraRuntimeStatus>(
+      `/api/v1/servers/${encodeURIComponent(server)}/spectra/runtime`,
+    ),
+
+  getSpectraModules: (server: string) =>
+    apiFetch<SpectraModuleRegistry>(
+      `/api/v1/servers/${encodeURIComponent(server)}/spectra/modules`,
+    ),
 
   /** Build identity — shown to the user when they file an issue. */
   getEnv: () => apiFetch<AppEnvResponse>("/api/v1/meta/env"),

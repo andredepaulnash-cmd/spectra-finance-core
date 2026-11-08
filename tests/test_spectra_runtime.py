@@ -1,3 +1,4 @@
+import asyncio
 import json
 from decimal import Decimal
 from pathlib import Path
@@ -11,6 +12,7 @@ from spectra_core.runtime import (
     load_capital_policy,
     reset_runtime_cache,
     spectra_live_state_dir,
+    spectra_paper_only_enabled,
     spectra_state_dir,
 )
 
@@ -326,3 +328,114 @@ def test_invalid_paper_mode_value_fails_closed(monkeypatch):
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "sometimes")
     with pytest.raises(RuntimeError, match="explicit boolean"):
         spectra_state_dir()
+
+
+# Spectra runtime status fetcher tests
+import asyncio
+
+from condor.fetchers.spectra_runtime import fetch_spectra_runtime
+
+
+class FakeResponse:
+    def __init__(self, status, payload=None):
+        self.status = status
+        self.payload = payload or {}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_args):
+        return None
+
+    def raise_for_status(self):
+        if self.status >= 400 and self.status != 404:
+            raise RuntimeError(f"HTTP {self.status}")
+
+    async def json(self):
+        return self.payload
+
+
+class FakeSession:
+    closed = False
+
+    def __init__(self, response):
+        self.response = response
+        self.calls = []
+
+    def get(self, url, timeout=None):
+        self.calls.append((url, timeout))
+        return self.response
+
+
+class FakeClient:
+    base_url = "http://127.0.0.1:8000"
+
+    def __init__(self, response):
+        self._session = FakeSession(response)
+
+
+def test_fetch_spectra_runtime_returns_paper_only_status():
+    payload = {
+        "mode": "PAPER_ONLY",
+        "paper_only": True,
+        "live_dispatch_available": False,
+        "paper_connector_count": 1,
+        "paper_connectors": ["paper-account/kraken_paper_trade"],
+    }
+    client = FakeClient(FakeResponse(200, payload))
+
+    result = asyncio.run(fetch_spectra_runtime(client))
+
+    assert result == payload
+    assert client._session.calls == [
+        ("http://127.0.0.1:8000/spectra/runtime", 5)
+    ]
+
+
+def test_missing_runtime_endpoint_is_explicitly_unsupported():
+    client = FakeClient(FakeResponse(404))
+
+    result = asyncio.run(fetch_spectra_runtime(client))
+
+    assert result["mode"] == "UNSUPPORTED"
+    assert result["paper_only"] is False
+    assert result["live_dispatch_available"] is True
+
+
+def test_uninitialized_client_fails_closed():
+    class Uninitialized:
+        base_url = "http://127.0.0.1:8000"
+        _session = None
+
+    try:
+        asyncio.run(fetch_spectra_runtime(Uninitialized()))
+    except RuntimeError as exc:
+        assert "not initialized" in str(exc)
+    else:
+        raise AssertionError("uninitialized Hummingbot client was accepted")
+
+
+
+def test_spectra_agent_defaults_to_paper_only_unless_explicitly_overridden(
+    monkeypatch,
+):
+    monkeypatch.delenv("SPECTRA_PAPER_ONLY", raising=False)
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    assert spectra_paper_only_enabled() is True
+
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    assert spectra_paper_only_enabled() is False
+
+
+
+def test_condor_spectra_runtime_status_route_is_registered():
+    from condor.fetchers import fetch_spectra_runtime
+    from condor.server_data_service import ServerDataType
+    from condor.web.routes.servers import router
+
+    assert callable(fetch_spectra_runtime)
+    assert ServerDataType.SPECTRA_RUNTIME.value == "spectra_runtime"
+    assert any(
+        route.path == "/servers/{name}/spectra/runtime"
+        for route in router.routes
+    )

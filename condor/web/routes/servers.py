@@ -13,6 +13,7 @@ from condor.server_data_service import (
 from condor.web.auth import get_current_user
 from condor.web.models import ServerInfo, WebUser
 from config_manager import ServerPermission, get_config_manager
+from spectra_core.module_registry import get_spectra_module_registry
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,52 @@ async def server_rows(user: WebUser) -> list[ServerInfo]:
 @router.get("/servers", response_model=list[ServerInfo])
 async def list_servers(user: WebUser = Depends(get_current_user)):
     return await server_rows(user)
+
+
+@router.get("/servers/{name}/spectra/runtime")
+async def spectra_runtime_status(
+    name: str,
+    user: WebUser = Depends(get_current_user),
+):
+    """Return the server's authenticated Spectra paper/live execution boundary."""
+    cm = get_config_manager()
+    if not cm.has_server_access(user.id, name):
+        raise HTTPException(status_code=404, detail="Server not found")
+    sds = get_server_data_service()
+    try:
+        status = await sds.get_or_fetch(name, ServerDataType.SPECTRA_RUNTIME)
+    except Exception as e:
+        logger.warning("Spectra runtime status unavailable for %s: %s", name, e)
+        return {
+            "product": "Spectra Finance",
+            "mode": "UNAVAILABLE",
+            "paper_only": False,
+            "live_dispatch_available": True,
+            "paper_connector_count": 0,
+            "error": "Spectra runtime status could not be verified",
+        }
+    if isinstance(status, dict):
+        return status
+    return {
+        "product": "Spectra Finance",
+        "mode": "UNAVAILABLE",
+        "paper_only": False,
+        "live_dispatch_available": True,
+        "paper_connector_count": 0,
+        "error": "Spectra runtime status is unavailable",
+    }
+
+
+@router.get("/servers/{name}/spectra/modules")
+async def spectra_module_registry(
+    name: str,
+    user: WebUser = Depends(get_current_user),
+):
+    """Return the source-backed Spectra module readiness map for this server."""
+    cm = get_config_manager()
+    if not cm.has_server_access(user.id, name):
+        raise HTTPException(status_code=404, detail="Server not found")
+    return get_spectra_module_registry()
 
 
 @router.get("/servers/{name}/status")

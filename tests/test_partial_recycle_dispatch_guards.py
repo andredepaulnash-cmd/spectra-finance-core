@@ -10,6 +10,8 @@ from decimal import Decimal as D
 import pytest
 from aiohttp import ClientResponseError
 
+from tests.spectra_test_support import configure_spectra_paper_dispatch
+
 import mcp_servers.hummingbot_api.tools.partial_recycle as tool
 import spectra_core.partial_recycle as partial_core
 from spectra_core.economic_exit import create_or_load_position_exit_manifest
@@ -74,6 +76,11 @@ def make_case(root, *, base="10", entry_fees="0", costs="0", target="174"):
     )
     assert decision.action == PartialRecycleAction.RECYCLE
     return g, book, decision
+
+
+@pytest.fixture(autouse=True)
+def _spectra_paper_dispatch(monkeypatch):
+    configure_spectra_paper_dispatch(monkeypatch, tool.settings)
 
 
 @pytest.fixture
@@ -433,7 +440,7 @@ def terminal_client(
         trade_id="terminal-trade",
         order_id="terminal-sell-order",
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         side="SELL",
         amount_base=D(filled),

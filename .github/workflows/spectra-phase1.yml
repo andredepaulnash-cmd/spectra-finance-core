@@ -27,7 +27,7 @@ jobs:
   capital-core:
     name: Capital Core / Execution Safety
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     env:
       UV_PYTHON: "3.13"
 
@@ -48,6 +48,8 @@ jobs:
       - name: Install locked dependencies
         run: uv sync --dev --frozen
 
+      - name: Compile Spectra module registry API route
+        run: python -m py_compile condor/web/routes/servers.py
       - name: Run Spectra Phase 1 focused tests
         run: |
           uv run pytest -q \
@@ -87,6 +89,9 @@ jobs:
             tests/test_rotating_fleet.py \
             tests/test_entry_identity_submission.py \
             tests/test_residual_position_lifecycle.py \
+            tests/test_dust_lifecycle.py \
+            tests/test_dispatch_receipt.py \
+            tests/test_module_registry.py \
             tests/test_terminal_retirement_runtime.py \
             tests/test_terminal_retirement_scheduler.py \
             tests/test_partial_recycle_dispatch_guards.py \

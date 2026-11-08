@@ -5,6 +5,8 @@ from decimal import Decimal
 
 import pytest
 
+from tests.spectra_test_support import FakeSession, configure_spectra_paper_dispatch
+
 from mcp_servers.hummingbot_api.tools import executor_create
 from mcp_servers.hummingbot_api.tools.vcap_execution import (
     execute_vcap_decision,
@@ -32,6 +34,11 @@ from spectra_core.vcap_tranches import VCAPTranche
 
 D = Decimal
 
+
+
+@pytest.fixture(autouse=True)
+def _spectra_paper_dispatch(monkeypatch):
+    configure_spectra_paper_dispatch(monkeypatch, executor_create.settings)
 
 def governor(tmp_path):
     return CapitalGovernor(
@@ -285,7 +292,7 @@ def test_conflicting_child_replay_fails_closed(tmp_path):
 
 class Connectors:
     async def get_trading_rules(self, *, connector_name, trading_pairs):
-        assert connector_name == "kraken"
+        assert connector_name == "kraken_paper_trade"
         assert trading_pairs == ["BTC-USD"]
         return {
             "BTC-USD": {
@@ -311,6 +318,7 @@ class Executors:
 class Client:
     def __init__(self):
         self.connectors = Connectors()
+        self._session = FakeSession()
         self.executors = Executors()
 
 

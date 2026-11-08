@@ -94,6 +94,9 @@ class EconomicLotSource(StrEnum):
 
 class EconomicPositionStatus(StrEnum):
     ACTIVE = "ACTIVE"
+    # Dust still owns inventory and basis; it is neither a sale nor a close.
+    DUST = "DUST"
+    DUST_REVIEW = "DUST_REVIEW"
     RESIDUAL = "RESIDUAL"
     CLOSED = "CLOSED"
 
@@ -153,7 +156,7 @@ class EconomicPositionSnapshot:
     def to_vcap_position(self, *, current_price: Decimal) -> VCAPPositionState:
         price = _decimal(current_price, "current_price", positive=True)
         if self.status != EconomicPositionStatus.ACTIVE:
-            raise ValueError("economic position is closed")
+            raise ValueError("economic position is not ACTIVE")
         if self.active_base <= ZERO or self.active_cost_basis_quote <= ZERO:
             raise ValueError("economic position has no active trade inventory")
         return VCAPPositionState(
@@ -484,11 +487,26 @@ class EconomicPositionLedger:
         position_id: str,
         pair: str,
         created_at: float,
+        dust_lifecycle=None,
+        dust_checkpoint_ids: tuple[str, ...] = (),
     ) -> None:
         pid = _text(position_id, "position_id")
         normalized_pair = _pair(pair)
         base_asset = normalized_base_asset(normalized_pair)
         timestamp = _time(created_at, "created_at")
+
+        if dust_lifecycle is not None:
+            if dust_lifecycle.ledger.path.resolve() != self.path.resolve():
+                raise ValueError("dust admission belongs to another economic ledger")
+            dust_lifecycle.open_successor(
+                position_id=pid,
+                pair=normalized_pair,
+                checkpoint_ids=dust_checkpoint_ids,
+                now=timestamp,
+            )
+            return
+        if dust_checkpoint_ids:
+            raise ValueError("dust checkpoints require the enabled admission gate")
 
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -529,6 +547,19 @@ class EconomicPositionLedger:
                         f"{base_asset} already has ACTIVE economic position "
                         f"{active_same_asset['position_id']} "
                         f"({active_same_asset['pair']})"
+                    )
+
+                residual = conn.execute(
+                    """
+                    SELECT position_id FROM economic_positions
+                    WHERE base_asset = ? AND status IN ('DUST', 'DUST_REVIEW')
+                    LIMIT 1
+                    """,
+                    (base_asset,),
+                ).fetchone()
+                if residual is not None:
+                    raise ValueError(
+                        "dust predecessors require guarded successor opening"
                     )
 
                 conn.execute(

@@ -8,6 +8,11 @@ from dataclasses import replace
 from decimal import Decimal, localcontext
 from typing import Any
 
+from mcp_servers.hummingbot_api.settings import settings
+from mcp_servers.hummingbot_api.tools.dispatch_receipts import (
+    dispatch_with_receipt,
+    validate_dispatch_transport,
+)
 from mcp_servers.hummingbot_api.tools.cash_accounting import (
     bind_sale_cash_authority,
     finalize_sale_cash_fill,
@@ -622,9 +627,10 @@ async def execute_partial_recycle(
         governor=governor,
     )
     owner_account, owner_connector = _owner_scope(manifest, governor)
-    if account_name != owner_account or owner_connector != "kraken":
+    expected_connector = "kraken_paper_trade" if settings.paper_only else "kraken"
+    if account_name != owner_account or owner_connector != expected_connector:
         raise ValueError(
-            "partial recycle execution scope must match Kraken owner scope"
+            "partial recycle execution scope must match Spectra owner scope"
         )
 
     def blocked(reason: str, state: str = "NEW_DISPATCH_BLOCKED") -> dict[str, Any]:
@@ -742,6 +748,8 @@ async def execute_partial_recycle(
         for_dispatch=True,
     )
     require_clear_cash_authority(governor)
+    # Signing/transport must be available before the durable one-shot claim.
+    validate_dispatch_transport(client)
     guard = store.claim_dispatch(
         manifest,
         now=now,
@@ -771,23 +779,36 @@ async def execute_partial_recycle(
     # The final ownership/economic guard and durable claim above run in one
     # ledger write transaction. Do not add any external await before create.
     try:
-        result = await client.executors.create_executor(
-            executor_config={
-                "id": manifest.sell_executor_id,
-                "type": "order_executor",
-                "connector_name": "kraken",
-                "trading_pair": manifest.pair,
-                "side": 2,
-                "amount": str(guard.sell_base),
-                "execution_strategy": "LIMIT",
-                "price": str(manifest.protected_limit_price),
-                "leverage": 1,
-                "level_id": (
-                    "partial-recycle-" + manifest.manifest_id.rsplit(":", 1)[-1][:12]
-                ),
-            },
-            account_name=account_name,
-            controller_id=controller_id,
+        sell_config = {
+            "id": manifest.sell_executor_id,
+            "type": "order_executor",
+            "connector_name": owner_connector,
+            "trading_pair": manifest.pair,
+            "side": 2,
+            "amount": str(guard.sell_base),
+            "execution_strategy": "LIMIT",
+            "price": str(manifest.protected_limit_price),
+            "leverage": 1,
+            "level_id": (
+                "partial-recycle-" + manifest.manifest_id.rsplit(":", 1)[-1][:12]
+            ),
+        }
+        request_body = {
+            "account_name": owner_account,
+            "controller_id": controller_id,
+            "executor_config": sell_config,
+        }
+        result, dispatch_receipt = await dispatch_with_receipt(
+            client,
+            api_method="create_executor",
+            request_body=request_body,
+            request_kwargs=request_body,
+            proposal_id=manifest.manifest_id,
+            intent="RECOVERY",
+            amount_quote=guard.sell_base * manifest.protected_limit_price,
+            operation="create_executor",
+            method="POST",
+            path="/executors",
         )
         executor_id = result.get("executor_id") or result.get("id")
         if executor_id != manifest.sell_executor_id:
@@ -812,6 +833,7 @@ async def execute_partial_recycle(
         "manifest_id": manifest.manifest_id,
         "sell_executor_id": manifest.sell_executor_id,
         "dispatch_state": "NEW_DISPATCH_CONFIRMED",
+        "spectra_dispatch_receipt_id": dispatch_receipt.receipt_id,
         "result": sync,
         "reasons": list(decision.reasons),
     }
