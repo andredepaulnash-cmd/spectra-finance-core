@@ -222,7 +222,8 @@ fi
 sed \
   -e '\|/var/run/docker.sock:/var/run/docker.sock|d' \
   -e '/extra_hosts:/d' \
-  -e '/host.docker.internal:host-gateway/d' \
+  -e '/host.docker.internal/d' \
+  -e '/host-gateway/d' \
   -e 's/container_name: hummingbot-api/container_name: spectra-alpha-hummingbot-api/' \
   -e 's/container_name: hummingbot-broker/container_name: spectra-alpha-hummingbot-broker/' \
   -e 's/container_name: hummingbot-postgres/container_name: spectra-alpha-hummingbot-postgres/' \
