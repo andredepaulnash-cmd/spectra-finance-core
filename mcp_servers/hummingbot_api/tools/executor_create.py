@@ -23,6 +23,7 @@ a live API server. See ``mcp_servers/TOOL_STYLE.md``.
 
 import asyncio
 import logging
+import os
 from dataclasses import replace
 from decimal import Decimal
 from math import isfinite
@@ -885,10 +886,15 @@ async def create_executor(
             "formatted_output": f"Error creating {executor_type}: {violation}",
         }
 
-    if settings.agent_slug == "spectra" and not settings.paper_only:
+    if (
+        settings.agent_slug == "spectra"
+        and not settings.paper_only
+        and os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false").strip().lower()
+        not in {"1", "true", "yes"}
+    ):
         error = (
-            "Spectra live execution is disabled in this build; "
-            "only an explicitly configured paper-trade connector is permitted"
+            "Spectra live execution is disabled; a separate explicit live-mode "
+            "authorization is required before this path can be enabled"
         )
         return {
             "action": "create",
