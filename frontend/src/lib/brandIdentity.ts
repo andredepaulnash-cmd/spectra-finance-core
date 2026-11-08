@@ -1,5 +1,3 @@
-import type { AgentSummary } from "@/lib/api";
-
 /** Public product names. Slugs remain unchanged so existing sessions and routing keep working. */
 const BRAND_NAMES: Record<string, string> = {
   condor: "Spectra Intelligence",
@@ -14,7 +12,7 @@ const BRAND_NAMES: Record<string, string> = {
   spectra_finance: "Spectra Finance",
 };
 
-export function brandedAgentName(agent: Pick<AgentSummary, "slug" | "name"> | null | undefined): string {
+export function brandedAgentName(agent: { slug: string; name: string } | null | undefined): string {
   if (!agent) return "Spectra Intelligence";
   return BRAND_NAMES[agent.slug] ?? (agent.name.startsWith("Spectra ") ? agent.name : `Spectra ${agent.name.replace(/\s+(Trader|Expert|Analyst|LP|Maker)$/i, "")}`);
 }
