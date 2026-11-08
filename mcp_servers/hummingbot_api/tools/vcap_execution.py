@@ -4,6 +4,7 @@ from dataclasses import replace
 from decimal import Decimal
 from typing import Any
 
+from mcp_servers.hummingbot_api.settings import settings
 from mcp_servers.hummingbot_api.tools.executor_create import create_dca_executor
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.vcap_execution import (
@@ -49,7 +50,8 @@ async def execute_vcap_decision(
         raise ValueError(
             "VCAP execution requires explicit account and pair quote scope"
         )
-    scope = (account, "kraken", pair.rsplit("-", 1)[1])
+    connector_name = "kraken_paper_trade" if settings.paper_only else "kraken"
+    scope = (account, connector_name, pair.rsplit("-", 1)[1])
     for field, actual in zip(("account_name", "connector_name", "quote_asset"), scope):
         supplied = getattr(proposal, field)
         if supplied is not None and supplied != actual:
@@ -75,7 +77,7 @@ async def execute_vcap_decision(
             )
             or (
                 provenance.connector_name is not None
-                and provenance.connector_name.lower() != "kraken"
+                and provenance.connector_name.lower() != connector_name
             )
         )
         incomplete = provenance is None or (
@@ -102,7 +104,7 @@ async def execute_vcap_decision(
 
     result = await create_dca_executor(
         client,
-        connector_name="kraken",
+        connector_name=connector_name,
         trading_pair=proposal.pair,
         side=1,
         amounts_quote=[str(proposal.amount_quote)],
