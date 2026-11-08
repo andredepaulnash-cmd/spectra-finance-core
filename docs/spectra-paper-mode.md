@@ -41,7 +41,7 @@ The current API repository still installs the Hummingbot core package without a 
 
 - The tested Core executor-create path currently supports Kraken USD spot grid/DCA in this phase; the broader DTTP, DTSL, PSSM/MIR, VCAP, recovery, rotation, and strategy-lab systems remain part of the full product inventory and must be integrated/tested individually.
 - The Hummingbot paper connector consumes public exchange market data. It simulates orders and balances; it is not an offline market-data simulator.
-- The initial paper balance (the Architect previously discussed a $1,000 starting simulation) must be set explicitly in the paper connector configuration. This branch does not silently invent or modify the starting balance.
+- The Linux alpha installer explicitly sets a $1,000 simulated USD balance, a $1,000 total committed-capital ceiling, a $100 reserve floor, 1x leverage, and a zero recovery budget in the isolated paper environment. These values do not affect live state.
 - The Core tests use synthetic portfolio/rule/book evidence and fake Hummingbot dispatch. They prove the Core authorization ordering and connector selection, not a live local Hummingbot container.
 - No real exchange API keys, wallet seeds, live orders, or production capital are needed.
 
