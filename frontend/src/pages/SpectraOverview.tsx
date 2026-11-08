@@ -93,7 +93,7 @@ export function SpectraOverview() {
   const krakenPaperReady =
     runtime.data?.mode === "PAPER_ONLY" &&
     runtime.data.paper_only === true &&
-    runtime.data.paper_connectors?.includes("kraken_paper_trade") === true;
+    runtime.data.paper_connectors?.some((name) => name === "kraken_paper_trade" || name.endsWith("/kraken_paper_trade")) === true;
   const paperPortfolio = useQuery({
     queryKey: ["spectra-paper-portfolio", server],
     queryFn: () => api.getPortfolio(server!, true),
