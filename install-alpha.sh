@@ -17,6 +17,14 @@ export PATH="$LOCAL_BIN:$HOME/.cargo/bin:$PATH"
 say() { printf '\n\033[1;36m[SPECTRA ALPHA]\033[0m %s\n' "$*"; }
 die() { printf '\n\033[1;31m[STOP]\033[0m %s\n' "$*" >&2; exit 1; }
 has() { command -v "$1" >/dev/null 2>&1; }
+set_env_value() {
+  local file="$1" key="$2" value="$3"
+  if grep -q "^$key=" "$file"; then
+    sed -i "s|^$key=.*|$key=$value|" "$file"
+  else
+    printf '%s=%s\\n' "$key" "$value" >> "$file"
+  fi
+}
 
 [[ "$(uname -s)" == Linux ]] || die "This alpha installer currently supports Linux (including Bazzite)."
 [[ "$(uname -m)" =~ ^(x86_64|aarch64|arm64)$ ]] || die "Unsupported CPU architecture: $(uname -m)"
@@ -180,6 +188,9 @@ SPECTRA_DISPATCH_POLICY_VERSION=spectra-policy-v1
 EOF
   chmod 600 .env
 fi
+set_env_value .env API_BIND 127.0.0.1
+set_env_value .env DB_BIND 127.0.0.1
+chmod 600 .env
 chmod 700 . bots
 printf 'user_id,password,is_superuser\n%s,%s,false\n' "$BROKER_USER" "$BROKER_PASS" > .emqx/auth-bootstrap.csv
 chmod 700 .emqx
@@ -259,6 +270,12 @@ SPECTRA_DISPATCH_POLICY_VERSION=spectra-policy-v1
 CONDOR_AGENT_SLUG=spectra
 EOF
 fi
+set_env_value .env CONDOR_MODE local
+set_env_value .env ADMIN_USER_ID 1
+set_env_value .env WEB_URL http://127.0.0.1:8088
+set_env_value .env WEB_HOST 127.0.0.1
+set_env_value .env CONDOR_TELEMETRY off
+set_env_value .env CONDOR_AGENT_SLUG spectra
 # Keep the existing key pair across installer reruns; generate it only when either side is missing.
 if ! grep -q '^SPECTRA_DISPATCH_PRIVATE_KEY=' .env || ! grep -q '^SPECTRA_DISPATCH_PUBLIC_KEY=' "$API_DIR/.env"; then
   uv run --python 3.12 python scripts/generate_spectra_dispatch_keys.py \
