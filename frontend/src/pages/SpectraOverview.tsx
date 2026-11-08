@@ -331,8 +331,8 @@ export function SpectraOverview() {
                         <th className="pb-2 pr-3 font-medium">Pair</th>
                         <th className="pb-2 pr-3 font-medium">Side</th>
                         <th className="pb-2 pr-3 font-medium">Status</th>
-                        <th className="pb-2 pr-3 text-right font-medium">PnL</th>
-                        <th className="pb-2 text-right font-medium">Fees</th>
+                        <th className="pb-2 pr-3 text-right font-medium">PnL (quote)</th>
+                        <th className="pb-2 text-right font-medium">Fees (quote)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -341,8 +341,8 @@ export function SpectraOverview() {
                           <td className="py-2 pr-3 font-medium">{executor.trading_pair}</td>
                           <td className="py-2 pr-3">{executor.side}</td>
                           <td className="py-2 pr-3">{executor.status}</td>
-                          <td className="py-2 pr-3 text-right tabular-nums">{formatUsd(executor.pnl)}</td>
-                          <td className="py-2 text-right tabular-nums">{formatUsd(executor.cum_fees_quote)}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums">{executor.pnl.toFixed(2)}</td>
+                          <td className="py-2 text-right tabular-nums">{executor.cum_fees_quote.toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
