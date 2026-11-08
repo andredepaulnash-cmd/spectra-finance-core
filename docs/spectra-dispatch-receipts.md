@@ -24,7 +24,7 @@ python scripts/generate_spectra_dispatch_keys.py \
   --api-env ../spectra-hummingbot-api/.env
 ```
 
-If the two repositories are not siblings, supply their actual local `.env` paths. The script preserves other environment variables and sets both files to mode 0600. Never commit either `.env`; never copy the private key into the API container, logs, GitHub, or chat.
+If the two repositories are not siblings, supply their actual local `.env` paths. The script preserves other environment variables, sets both files to mode 0600, and explicitly sets `SPECTRA_PAPER_ONLY=true` in both processes. Never commit either `.env`; never copy the private key into the API container, logs, GitHub, or chat.
 
 The shared policy version defaults to `spectra-policy-v1`. If it is changed, update both local environment files and deploy the same reviewed version on both processes.
 
