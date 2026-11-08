@@ -21,6 +21,7 @@ Signatures were verified field-by-field against ``GET /executors/types/{type}/co
 a live API server. See ``mcp_servers/TOOL_STYLE.md``.
 """
 
+import asyncio
 import logging
 from dataclasses import replace
 from decimal import Decimal
@@ -33,6 +34,10 @@ from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
 from mcp_servers.hummingbot_api.settings import settings
 from spectra_core import CapitalProposal, IntentKind
 from spectra_core.decimal_math import exact_decimal_sum
+from spectra_core.dispatch_receipt import (
+    issue_executor_dispatch_receipt,
+    validate_dispatch_signing_key,
+)
 from spectra_core.models import BreakerMode
 from spectra_core.runtime import (
     get_breaker_mode,
@@ -42,6 +47,46 @@ from spectra_core.runtime import (
 )
 
 logger = logging.getLogger("hummingbot-mcp")
+
+
+def _dispatch_receipt_headers(client: Any):
+    session = getattr(client, "_session", None)
+    headers = getattr(session, "headers", None)
+    if headers is None:
+        raise RuntimeError(
+            "Spectra requires the authenticated Hummingbot API session to carry its dispatch receipt"
+        )
+    return headers
+
+
+async def _create_executor_with_receipt(
+    client: Any,
+    *,
+    receipt_token: str,
+    executor_config: dict[str, Any],
+    account_name: str,
+    controller_id: str | None,
+):
+    lock = getattr(client, "_spectra_dispatch_lock", None)
+    if lock is None:
+        lock = asyncio.Lock()
+        setattr(client, "_spectra_dispatch_lock", lock)
+    async with lock:
+        headers = _dispatch_receipt_headers(client)
+        header_name = "X-Spectra-Dispatch-Receipt"
+        previous = headers.get(header_name)
+        headers[header_name] = receipt_token
+        try:
+            return await client.executors.create_executor(
+                executor_config=executor_config,
+                account_name=account_name,
+                controller_id=controller_id,
+            )
+        finally:
+            if previous is None:
+                headers.pop(header_name, None)
+            else:
+                headers[header_name] = previous
 
 
 def _compact(config: dict[str, Any]) -> dict[str, Any]:
@@ -840,6 +885,20 @@ async def create_executor(
             "formatted_output": f"Error creating {executor_type}: {violation}",
         }
 
+    if settings.agent_slug == "spectra":
+        try:
+            # Validate the private key and transport before the Governor can commit.
+            validate_dispatch_signing_key()
+            _dispatch_receipt_headers(client)
+        except Exception as exc:
+            error = f"Spectra API dispatch signing/transport is unavailable: {exc}"
+            return {
+                "action": "create",
+                "executor_type": executor_type,
+                "error": error,
+                "formatted_output": f"Error creating {executor_type}: {error}",
+            }
+
     spectra_error = _authorize_spectra_execution(
         executor_type,
         merged_config,
@@ -865,16 +924,60 @@ async def create_executor(
             "formatted_output": f"Error creating {executor_type}: {spectra_error}",
         }
 
+    dispatch_receipt = None
+    if settings.agent_slug == "spectra":
+        try:
+            if executor_type == "grid_executor":
+                amount_quote = Decimal(str(backend_config["total_amount_quote"]))
+            else:
+                amount_quote = exact_decimal_sum(
+                    Decimal(str(value))
+                    for value in (backend_config.get("amounts_quote") or [])
+                )
+            request_body = {
+                "account_name": account,
+                "controller_id": tag,
+                "executor_config": backend_config,
+            }
+            dispatch_receipt = issue_executor_dispatch_receipt(
+                request_body=request_body,
+                proposal_id=str(spectra_proposal_id or ""),
+                intent=str(spectra_intent or ""),
+                amount_quote=amount_quote,
+                now=time(),
+            )
+        except Exception as exc:
+            error = f"Spectra dispatch receipt could not be issued: {exc}"
+            logger.error("%s", error)
+            return {
+                "action": "create",
+                "executor_type": executor_type,
+                "error": error,
+                "formatted_output": f"Error creating {executor_type}: {error}",
+            }
+
     try:
-        result = await client.executors.create_executor(
-            executor_config=backend_config,
-            account_name=account,
-            controller_id=tag,
-        )
+        if dispatch_receipt is not None:
+            result = await _create_executor_with_receipt(
+                client,
+                receipt_token=dispatch_receipt.token,
+                executor_config=backend_config,
+                account_name=account,
+                controller_id=tag,
+            )
+        else:
+            result = await client.executors.create_executor(
+                executor_config=backend_config,
+                account_name=account,
+                controller_id=tag,
+            )
     except Exception as exc:
         return {
             "action": "create",
             "executor_type": executor_type,
+            "spectra_dispatch_receipt_id": (
+                dispatch_receipt.receipt_id if dispatch_receipt is not None else None
+            ),
             "error": str(exc),
             "formatted_output": f"Error creating {executor_type}: {exc}",
         }
@@ -969,6 +1072,9 @@ async def create_executor(
         "config_used": backend_config,
         "saved_as_default": save_as_default,
         "spectra_position_id": economic_position_id or spectra_position_id,
+        "spectra_dispatch_receipt_id": (
+            dispatch_receipt.receipt_id if dispatch_receipt is not None else None
+        ),
         "result": result,
         "formatted_output": formatted,
     }
