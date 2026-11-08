@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from spectra_test_support import FakeSession, configure_spectra_paper_dispatch
+from tests.spectra_test_support import FakeSession, configure_spectra_paper_dispatch
 
 from mcp_servers.hummingbot_api.tools import executor_create
 from mcp_servers.hummingbot_api.tools.vcap_execution import (
