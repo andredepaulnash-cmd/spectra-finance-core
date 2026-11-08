@@ -113,16 +113,6 @@ else
   COMPOSE_KIND="podman"
 fi
 
-has tmux || {
-  if [[ -e /run/ostree-booted ]]; then
-    die "tmux is missing. Install tmux through your Bazzite-supported package workflow, then rerun."
-  elif has apt-get; then sudo apt-get install -y tmux
-  elif has dnf; then sudo dnf install -y tmux
-  elif has pacman; then sudo pacman -S --noconfirm tmux
-  elif has zypper; then sudo zypper --non-interactive install tmux
-  else die "tmux is required to manage the Condor process."; fi
-}
-
 say "Cloning the pinned Spectra Core alpha branch"
 clone_or_reuse "$CORE_REPO" "$CORE_REF" "$CORE_DIR"
 
@@ -290,13 +280,24 @@ done
 curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/openapi.json >/dev/null \
   || die "Hummingbot API did not become ready. See: $INSTALL_ROOT/spectra-hummingbot-api logs."
 
-say "Starting Condor and the Spectra dashboard"
-cd "$CORE_DIR"
-make run
-
 cat > "$INSTALL_ROOT/.compose-kind" <<EOF
 $COMPOSE_KIND
 EOF
+
+say "Starting Condor and the Spectra dashboard"
+if [[ -f "$INSTALL_ROOT/condor.pid" ]] && kill -0 "$(cat "$INSTALL_ROOT/condor.pid")" 2>/dev/null; then
+  say "Condor is already running"
+else
+  cd "$CORE_DIR"
+  nohup "$CORE_DIR/.venv/bin/python" "$CORE_DIR/main.py" > "$INSTALL_ROOT/condor.log" 2>&1 &
+  echo $! > "$INSTALL_ROOT/condor.pid"
+fi
+for _ in $(seq 1 60); do
+  if curl -fsS http://127.0.0.1:8088/ >/dev/null 2>&1; then break; fi
+  sleep 2
+done
+curl -fsS http://127.0.0.1:8088/ >/dev/null \
+  || { tail -80 "$INSTALL_ROOT/condor.log" 2>/dev/null || true; die "Condor did not bring up the dashboard. Its startup log is $INSTALL_ROOT/condor.log"; }
 cat > "$LOCAL_BIN/spectra" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -304,29 +305,62 @@ INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
 API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
 COMPOSE_KIND="$(cat "$INSTALL_ROOT/.compose-kind")"
+start_core() {
+  if [[ -f "$INSTALL_ROOT/condor.pid" ]] && kill -0 "$(cat "$INSTALL_ROOT/condor.pid")" 2>/dev/null; then
+    echo "Condor is already running."
+    return 0
+  fi
+  cd "$CORE_DIR"
+  nohup "$CORE_DIR/.venv/bin/python" "$CORE_DIR/main.py" > "$INSTALL_ROOT/condor.log" 2>&1 &
+  echo $! > "$INSTALL_ROOT/condor.pid"
+  for _ in $(seq 1 60); do
+    curl -fsS http://127.0.0.1:8088/ >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+  tail -80 "$INSTALL_ROOT/condor.log" || true
+  return 1
+}
+stop_core() {
+  if [[ -f "$INSTALL_ROOT/condor.pid" ]]; then
+    pid="$(cat "$INSTALL_ROOT/condor.pid")"
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -TERM "$pid"
+      for _ in $(seq 1 20); do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.5
+      done
+    fi
+    rm -f "$INSTALL_ROOT/condor.pid"
+  fi
+}
+compose() {
+  cd "$API_DIR"
+  if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml "$@"; else podman-compose -f docker-compose.alpha.yml "$@"; fi
+}
 case "${1:-status}" in
   start)
-    cd "$API_DIR"
-    if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml up -d; else podman-compose -f docker-compose.alpha.yml up -d; fi
-    cd "$CORE_DIR"
-    make run
+    compose up -d
+    start_core
+    xdg-open http://127.0.0.1:8088 >/dev/null 2>&1 || true
     ;;
   stop)
-    cd "$CORE_DIR"; make stop
-    cd "$API_DIR"
-    if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml down; else podman-compose -f docker-compose.alpha.yml down; fi
+    stop_core
+    compose down
     ;;
   restart)
     "$0" stop
     "$0" start
     ;;
   status)
-    cd "$CORE_DIR"; make status
-    cd "$API_DIR"
-    if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml ps; else podman-compose -f docker-compose.alpha.yml ps; fi
+    if [[ -f "$INSTALL_ROOT/condor.pid" ]] && kill -0 "$(cat "$INSTALL_ROOT/condor.pid")" 2>/dev/null; then
+      echo "Condor process: running"
+    else
+      echo "Condor process: stopped"
+    fi
+    compose ps
     ;;
   logs)
-    cd "$CORE_DIR"; make logs
+    tail -n 100 -f "$INSTALL_ROOT/condor.log"
     ;;
   *)
     echo "Usage: spectra {start|stop|restart|status|logs}"
