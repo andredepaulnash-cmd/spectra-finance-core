@@ -176,3 +176,23 @@ The historical research branch `research/profitability-campaign-20261010` contai
 - API PR #5 remains a separate documentation-only audit. The signed exact-scope Core dispatch receipt is not yet implemented across all API mutation surfaces.
 
 These PRs remain draft and unmerged. Their focused CI results are scoped evidence, not a complete release certification or local Bazzite verification.
+
+
+## 9. Additional historical evidence and current integration work — 2026-11-08
+
+### VCAP source identity
+
+PR #10 defines the native profit-oriented VCAP exit behavior: 174 bps net target after configured costs, exact gross exit calculation, persistent profit floor, protected EXTEND decisions, profit high-water mark, giveback limit, two-hour profitable-capital stagnation exit, and terminal Hummingbot close reconciliation before recovery capital is released. PR #19 adds durable multi-position VCAP scheduling and watchdog supervision with one capital-changing mutation per position runtime cycle. These are real historical implementations, not merely proposed names; however, the complete VCAP/DTTP/DTSL path still needs a current paper-execution integration test and reconciliation against the later protected-exit and position-mutation work.
+
+### The likely additional acronym
+
+PR #19 explicitly lists MIR rotation as strategy/accounting work that was still out of scope. PR #37 and the Spectra agent doctrine also refer to MIR as a fallback/rotation path. This makes MIR the strongest current candidate for the additional remembered module, but it does not establish a complete prior implementation. MIR remains research/strategy scope until a concrete implementation or blueprint is recovered. PSSM, DTSS and DTSSR are explicitly recorded as OFF in the October research closeout.
+
+### Current active integration stack
+
+- Core PR #55: Spectra-branded UI shell, runtime-status polling, and fail-closed navigation gating. Focused Core CI passed 945 tests; frontend production build passed.
+- Core PR #56: stacks the dust lifecycle onto the paper-execution and branded UI candidate. It adds DUST/DUST_REVIEW states, exact-owner checkpoint/valuation/admission, and pre-/post-capital-commit dispatch checks. Expanded CI is still running; do not call it validated until it finishes.
+- API PR #7: retains the paper-only API controls, pins the Hummingbot Python package to PyPI `20260922`, checks that version at startup, builds the local Spectra API image, and makes deploy depend on the local image build. Focused API CI passed 52 tests with one skipped. Docker image build, connector initialization and paper fills are not yet tested.
+- API PR #5 remains the security audit documenting direct mutation paths and the missing Core-issued exact-scope dispatch receipts.
+
+The Hummingbot official release notes identify client v2.17.0 as the September 22, 2026 client release; the Python API dependency uses a separate date-based package version. The pinned package `20260922` is an available PyPI distribution for Python 3.12. The pin is a compatibility baseline, not proof that all Spectra adapters or paper fills are correct.
