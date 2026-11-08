@@ -14,6 +14,7 @@ import {
 
 import { ShareConversation } from "@/components/chat/ShareConversation";
 import { api, type ConversationMeta } from "@/lib/api";
+import { brandedAgentName } from "@/lib/brandIdentity";
 
 const QUERY_KEY = ["conversations"] as const;
 
@@ -245,12 +246,12 @@ export const ConversationList = memo(function ConversationList({
                           {meta.agent_slug ? (
                             <span className="flex items-center gap-1 text-[var(--color-accent)]">
                               <Bot className="h-2.5 w-2.5" />
-                              {meta.agent_slug}
+                              {brandedAgentName({ slug: meta.agent_slug, name: meta.agent_slug })}
                             </span>
                           ) : (
                             <span className="flex items-center gap-1">
                               <MessageSquare className="h-2.5 w-2.5" />
-                              Condor
+                              Spectra Intelligence
                             </span>
                           )}
                           {meta.surface === "tg" && (
