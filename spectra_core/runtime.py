@@ -24,13 +24,22 @@ def spectra_paper_only_enabled() -> bool:
     fail closed rather than silently selecting either mode.
     """
     configured = os.getenv("SPECTRA_PAPER_ONLY")
+    agent_slug = os.getenv("CONDOR_AGENT_SLUG", "").strip().lower()
     if configured is None:
-        return os.getenv("CONDOR_AGENT_SLUG", "").strip().lower() == "spectra"
+        return agent_slug == "spectra"
 
     value = configured.strip().lower()
     if value not in {"1", "true", "yes", "0", "false", "no"}:
         raise RuntimeError("SPECTRA_PAPER_ONLY must be an explicit boolean")
-    return value in {"1", "true", "yes"}
+    enabled = value in {"1", "true", "yes"}
+    if agent_slug == "spectra" and not enabled:
+        allow_live = os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false").strip().lower()
+        if allow_live not in {"1", "true", "yes"}:
+            raise RuntimeError(
+                "Spectra live execution is disabled in this build; "
+                "SPECTRA_ALLOW_LIVE_EXECUTION requires separate explicit authorization"
+            )
+    return enabled
 
 
 def spectra_live_state_dir() -> Path:
