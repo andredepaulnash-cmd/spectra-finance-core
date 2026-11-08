@@ -1132,6 +1132,8 @@ def test_legacy_executor_caller_cannot_skip_dust_admission(environment, monkeypa
             account_name="owner-account",
             spectra_proposal_id=proposal.proposal_id,
             spectra_intent="ENTRY",
+            spectra_max_price_slippage_bps="100",
+            spectra_fee_allowance_bps="40",
         )
     )
     assert "proposal-bound" in result["error"]
@@ -1337,6 +1339,8 @@ def test_enabled_real_entry_concurrent_dispatch_consumes_admission_once(
             account_name="owner-account",
             spectra_proposal_id=authorization.proposal.proposal_id,
             spectra_intent="ENTRY",
+            spectra_max_price_slippage_bps="100",
+            spectra_fee_allowance_bps="40",
         )
 
     async def run():
