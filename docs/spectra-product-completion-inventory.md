@@ -202,12 +202,12 @@ The Hummingbot official release notes identify client v2.17.0 as the September 2
 
 ### Spectra product interface
 
-Core PR #57 now carries a Spectra-branded System Overview page and a source-backed module readiness registry. The page is read-only and displays Condor → Spectra Core → Hummingbot roles, authenticated paper-runtime status, and the status of DTTP, DTSL, PSSM, VCAP, MIR, selected recovery, dust lifecycle and safety controls. The registry deliberately distinguishes partial, unverified, research-only and default-off modules; it does not present every module as active.
+Core PR #58 now carries a Spectra-branded System Overview page and a source-backed module readiness registry. The page is read-only and displays Condor → Spectra Core → Hummingbot roles, authenticated paper-runtime status, and the status of DTTP, DTSL, PSSM, VCAP, MIR, selected recovery, dust lifecycle and safety controls. The registry deliberately distinguishes partial, unverified, research-only and default-off modules; it does not present every module as active.
 
 ### Signed dispatch boundary
 
 - API PR #8 adds an Ed25519 verifier, exact method/path/body/config binding, account/connector/market/amount/policy scope, Basic Auth before receipt consumption, a durable one-time SQLite receipt ledger, replay rejection, and mutation-route protection. API CI previously passed 71 tests with one skipped; the latest paper-mode-default changes are in a new CI run.
-- Core PR #57 adds the matching Ed25519 signer to the governed executor-create path. The receipt amount is sourced from the committed Capital Governor reservation, not inferred from the UI. The request header is attached only around the exact API call and removed afterward. The signing key and authenticated session are validated before the Governor can commit.
+- Core PR #58 adds the matching Ed25519 signer to the governed executor-create path. The receipt amount is sourced from the committed Capital Governor reservation, not inferred from the UI. The request header is attached only around the exact API call and removed afterward. The signing key and authenticated session are validated before the Governor can commit.
 - A local key-pair setup script writes the private key only to Core's local `.env`, the public key to API's local `.env`, and explicitly sets paper-only mode in both processes. Both local files remain untracked and private.
 - The API verifier blocks all execution/deployment writes without a valid one-time Core receipt. Only the current governed executor-create path has a Core signer; direct orders, cancel/close, leverage, Gateway and deployment writes remain unavailable until their operation-specific receipts are implemented.
 
@@ -217,4 +217,4 @@ The API defaults to paper-only. Core and API reject disabling paper mode unless 
 
 ### Validation boundary
 
-The dashboard-only Core candidate previously passed 945 focused tests and its frontend production build. The expanded Core PR #57 adds dust lifecycle, signed dispatch, module registry and overview work; its latest focused CI is running. API PR #8's previous expanded verifier run passed 71 tests and one skipped; its latest default-paper-only regression run is running. Neither PR has been merged, neither Docker image has been run locally, and no Bazzite install or paper fill has yet been verified.
+The dashboard-only Core candidate previously passed 945 focused tests and its frontend production build. The expanded Core PR #58 adds dust lifecycle, signed dispatch, module registry and overview work; its latest focused CI is running. API PR #8's previous expanded verifier run passed 71 tests and one skipped; its latest default-paper-only regression run is running. Neither PR has been merged, neither Docker image has been run locally, and no Bazzite install or paper fill has yet been verified.
