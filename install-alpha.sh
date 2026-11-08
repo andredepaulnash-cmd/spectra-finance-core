@@ -43,7 +43,7 @@ clone_or_reuse() {
       account_cfg_backup="$(mktemp)"
       cp "$dest/$account_cfg" "$account_cfg_backup"
     fi
-    dirty="$(git -C "$dest" status --porcelain | grep -v -E 'docker-compose[.]alpha[.]yml|bots/credentials/master_account/conf_client[.]yml' || true)"
+    dirty="$(git -C "$dest" status --porcelain | grep -v -E 'docker-compose[.]alpha[.]yml|Dockerfile[.]alpha|bots/credentials/master_account/conf_client[.]yml' || true)"
     if [[ -n "$dirty" ]]; then
       [[ -z "$account_cfg_backup" ]] || rm -f "$account_cfg_backup"
       die "Existing checkout $dest has unrelated local changes; refusing to overwrite them."
@@ -228,9 +228,10 @@ sed \
   -e 's/container_name: hummingbot-api/container_name: spectra-alpha-hummingbot-api/' \
   -e 's/container_name: hummingbot-broker/container_name: spectra-alpha-hummingbot-broker/' \
   -e 's/container_name: hummingbot-postgres/container_name: spectra-alpha-hummingbot-postgres/' \
-  -e 's|image: emqx/emqx:|image: docker.io/emqx/emqx:|' \\
-  -e 's|image: postgres:|image: docker.io/library/postgres:|' \\
-  -e 's|image: continuumio/miniconda3:|image: docker.io/continuumio/miniconda3:|' \\
+  -e 's|image: emqx/emqx:|image: docker.io/emqx/emqx:|' \
+  -e 's|image: postgres:|image: docker.io/library/postgres:|' \
+  -e 's|image: continuumio/miniconda3:|image: docker.io/continuumio/miniconda3:|' \
+  -e 's|dockerfile: Dockerfile|dockerfile: Dockerfile.alpha|' \
   docker-compose.yml > docker-compose.alpha.yml
 if grep -Eq 'docker.sock|host.docker.internal|host-gateway' docker-compose.alpha.yml; then
   die "The alpha Compose file still contains a host socket or host-gateway dependency."
@@ -311,10 +312,9 @@ chmod 600 .env config.yml
 # reference locally before podman-compose builds; this is idempotent and does not
 # alter the tracked source checkout.
 if [[ "$COMPOSE_KIND" == podman ]]; then
-  if [[ -f "$API_DIR/Dockerfile" ]]; then
-    sed -i 's|^FROM continuumio/miniconda3|FROM docker.io/continuumio/miniconda3|' "$API_DIR/Dockerfile"
-  fi
-  grep -Eq '^FROM[[:space:]]+docker[.]io/continuumio/miniconda3' "$API_DIR/Dockerfile" \
+  cp "$API_DIR/Dockerfile" "$API_DIR/Dockerfile.alpha"
+  sed -i 's|^FROM continuumio/miniconda3|FROM docker.io/continuumio/miniconda3|' "$API_DIR/Dockerfile.alpha"
+  grep -Eq '^FROM[[:space:]]+docker[.]io/continuumio/miniconda3' "$API_DIR/Dockerfile.alpha" \
     || die "Could not normalize the Hummingbot API base image for Podman."
 fi
 
