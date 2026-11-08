@@ -76,9 +76,10 @@ class Connectors:
 
 
 class Executors:
-    def __init__(self, governor, proposal_id):
+    def __init__(self, governor, proposal_id, session):
         self.governor = governor
         self.proposal_id = proposal_id
+        self.session = session
         self.calls = []
 
     async def create_executor(
@@ -90,6 +91,7 @@ class Executors:
         # The irreversible boundary:
         # capital must already be durably COMMITTED
         # before Hummingbot receives the mutation.
+        assert self.session.headers.get("X-Spectra-Dispatch-Receipt")
         decision = self.governor.get_decision(self.proposal_id)
 
         assert decision is not None
@@ -198,6 +200,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     client.executors = Executors(
         governor=g,
         proposal_id=proposal.proposal_id,
+        session=client._session,
     )
 
     monkeypatch.setattr(
