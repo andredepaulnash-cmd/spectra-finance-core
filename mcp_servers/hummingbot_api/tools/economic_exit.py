@@ -698,6 +698,7 @@ async def dispatch_protected_economic_exit(
     source_evidence = []
     owner_rows = []
     for owner in manifest.owners:
+        stop_receipt_id = None
         raw = await client.executors.get_executor(owner.executor_id)
         obs = executor_accounting_observation_from_raw(
             raw, expected_executor_id=owner.executor_id
@@ -733,6 +734,7 @@ async def dispatch_protected_economic_exit(
                 connector_name=owner.connector_name,
                 trading_pair=manifest.pair,
             )
+            stop_receipt_id = stop_receipt.receipt_id
             raw = await client.executors.get_executor(owner.executor_id)
             obs = executor_accounting_observation_from_raw(
                 raw, expected_executor_id=owner.executor_id
@@ -785,6 +787,7 @@ async def dispatch_protected_economic_exit(
                 "executor_id": owner.executor_id,
                 "intent": owner.intent.value,
                 "active_lot_ids": list(owner.lot_ids),
+                "stop_dispatch_receipt_id": stop_receipt_id,
                 "state": "PASSIVE" if passive else "AWAITING_SOURCE_FINALITY",
             }
         )
