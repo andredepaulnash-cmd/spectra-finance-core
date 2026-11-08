@@ -94,6 +94,8 @@ class FakeSession:
     def __init__(self):
         self.headers = {}
         self.executor_id = "spectra-e2e-1"
+        self.order_amount = "0.5"
+        self.order_price = "94"
 
     async def get(self, url):
         if url.endswith("/orders"):
@@ -107,11 +109,11 @@ class FakeSession:
                             "client_order_id": "kraken-paper-buy-1",
                             "order_type": "LIMIT",
                             "trade_type": "BUY",
-                            "amount": "0.5",
-                            "price": "94",
+                            "amount": self.order_amount,
+                            "price": self.order_price,
                             "status": "FILLED",
-                            "filled_amount": "0.5",
-                            "average_fill_price": "94",
+                            "filled_amount": self.order_amount,
+                            "average_fill_price": self.order_price,
                             "created_at": "2026-11-08T18:00:00+00:00",
                             "updated_at": "2026-11-08T18:00:05+00:00",
                         }
@@ -132,8 +134,8 @@ class FakeSession:
                             "connector_name": "kraken_paper_trade",
                             "trading_pair": "BTC-USD",
                             "trade_type": "BUY",
-                            "amount": "0.5",
-                            "price": "94",
+                            "amount": self.order_amount,
+                            "price": self.order_price,
                             "fee_paid": "0.01",
                             "fee_currency": "USD",
                             "timestamp": "2026-11-08T18:00:05+00:00",
@@ -164,6 +166,8 @@ class Executors:
         # before Hummingbot receives the mutation.
         self.receipt_token = self.session.headers.get("X-Spectra-Dispatch-Receipt")
         assert self.receipt_token
+        self.session.order_amount = str(executor_config["amount"])
+        self.session.order_price = str(executor_config["price"])
         decision = self.governor.get_decision(self.proposal_id)
 
         assert decision is not None
@@ -314,7 +318,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
             max_orders_per_batch=1,
             min_order_amount_quote=50,
             spectra_max_price_slippage_bps=0,
-            spectra_fee_allowance_bps=0,
+            spectra_fee_allowance_bps=10,
         )
     )
 
@@ -370,8 +374,8 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     assert accounting.state == AccountingHealthState.HEALTHY
     assert accounting.fully_reconciled
     assert accounting.ledgered_fills == 1
-    assert ledger.snapshot("e2e-entry").active_base == D("0.5")
-    assert ledger.snapshot("e2e-entry").active_cost_basis_quote == D("47")
+    assert ledger.snapshot("e2e-entry").active_base == D(call["executor_config"]["amount"])
+    assert ledger.snapshot("e2e-entry").active_cost_basis_quote == D(call["executor_config"]["amount"]) * D("94")
     assert ledger.snapshot("e2e-entry").active_entry_fees_quote == D("0.01")
 
     # The exact same position becomes stale after its health watermark expires.
