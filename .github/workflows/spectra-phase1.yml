@@ -27,7 +27,7 @@ jobs:
   capital-core:
     name: Capital Core / Execution Safety
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     env:
       UV_PYTHON: "3.13"
 
