@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 import time
 from decimal import Decimal
 
@@ -81,6 +82,7 @@ class Executors:
         self.proposal_id = proposal_id
         self.session = session
         self.calls = []
+        self.receipt_token = None
 
     async def create_executor(
         self,
@@ -91,7 +93,8 @@ class Executors:
         # The irreversible boundary:
         # capital must already be durably COMMITTED
         # before Hummingbot receives the mutation.
-        assert self.session.headers.get("X-Spectra-Dispatch-Receipt")
+        self.receipt_token = self.session.headers.get("X-Spectra-Dispatch-Receipt")
+        assert self.receipt_token
         decision = self.governor.get_decision(self.proposal_id)
 
         assert decision is not None
