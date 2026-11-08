@@ -307,16 +307,12 @@ if ! grep -q '^SPECTRA_DISPATCH_PRIVATE_KEY=' .env || ! grep -q '^SPECTRA_DISPAT
 fi
 chmod 600 .env config.yml
 
-# Podman on immutable Fedora-family hosts can reject Docker Hub short names
-# when compose invokes builds without a TTY. Normalize the upstream base image
-# reference locally before podman-compose builds; this is idempotent and does not
-# alter the tracked source checkout.
-if [[ "$COMPOSE_KIND" == podman ]]; then
-  cp "$API_DIR/Dockerfile" "$API_DIR/Dockerfile.alpha"
-  sed -i 's|^FROM continuumio/miniconda3|FROM docker.io/continuumio/miniconda3|' "$API_DIR/Dockerfile.alpha"
-  grep -Eq '^FROM[[:space:]]+docker[.]io/continuumio/miniconda3' "$API_DIR/Dockerfile.alpha" \
-    || die "Could not normalize the Hummingbot API base image for Podman."
-fi
+# Compose uses an isolated alpha Dockerfile so Podman never has to resolve
+# Docker Hub short names in a non-interactive build, and tracked source stays clean.
+cp "$API_DIR/Dockerfile" "$API_DIR/Dockerfile.alpha"
+sed -i 's|^FROM continuumio/miniconda3|FROM docker.io/continuumio/miniconda3|' "$API_DIR/Dockerfile.alpha"
+grep -Eq '^FROM[[:space:]]+docker[.]io/continuumio/miniconda3' "$API_DIR/Dockerfile.alpha" \
+  || die "Could not normalize the Hummingbot API base image for the alpha build."
 
 say "Building and starting the Hummingbot paper-only API stack ($COMPOSE_KIND)"
 cd "$API_DIR"
