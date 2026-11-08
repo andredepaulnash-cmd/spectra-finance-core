@@ -16,11 +16,11 @@ def configure(path: Path) -> None:
     balances = paper.setdefault("paper_trade_account_balance", {})
     balances.update(
         {
-            "USD": 10000.0,
-            "USDT": 10000.0,
-            "BTC": 1.0,
-            "ETH": 20.0,
-            "XRP": 10000.0,
+            "USD": 1000.0,
+            "USDT": 0.0,
+            "BTC": 0.0,
+            "ETH": 0.0,
+            "XRP": 0.0,
         }
     )
     limits = config.setdefault("balance_asset_limit", {})
