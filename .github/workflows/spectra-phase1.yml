@@ -48,6 +48,8 @@ jobs:
       - name: Install locked dependencies
         run: uv sync --dev --frozen
 
+      - name: Compile Spectra module registry API route
+        run: python -m py_compile condor/web/routes/servers.py
       - name: Run Spectra Phase 1 focused tests
         run: |
           uv run pytest -q \
