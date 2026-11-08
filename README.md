@@ -1,5 +1,17 @@
 # Condor
 
+
+## Spectra Finance Alpha — Linux paper-trading demo
+
+A separate one-command Linux/Bazzite install track is under review. It installs the pinned Spectra Core and Hummingbot API candidates, configures Kraken paper trading, and keeps live execution disabled.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/one-command-paper-demo-20261108/install-alpha.sh | bash
+```
+
+The Hummingbot API repository is currently private, so the installing GitHub account must have read access. See [ALPHA-TEST.md](ALPHA-TEST.md) for prerequisites, paper-mode behavior, controls, and current validation limitations. This is a developer alpha, not a production multi-user deployment.
+
+
 A Telegram bot for monitoring and trading with Hummingbot via the **Hummingbot API**.
 
 **Help shape Condor** — [take the 2-minute survey](https://forms.gle/7NpG3RtgfLrmpUNY8). Tell us what's working, what's confusing, and what you need next. Your answers go to the Hummingbot Foundation team and directly shape the roadmap.
