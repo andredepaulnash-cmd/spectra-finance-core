@@ -13,7 +13,7 @@ from mcp_servers._profiles import parse_profile_flags
 from mcp_servers.hummingbot_api.exceptions import ConfigurationError
 from spectra_core.runtime import spectra_paper_only_enabled
 
-CONFIG_DIR = Path.home() / ".hummingbot_mcp"
+CONFIG_DIR = Path(os.getenv("HUMMINGBOT_MCP_CONFIG_DIR", str(Path.home() / ".hummingbot_mcp"))).expanduser()
 SERVER_CONFIG_PATH = CONFIG_DIR / "server.yml"
 
 #: Default tool profile (FEAT-066). ``full`` on purpose: this server is also run
