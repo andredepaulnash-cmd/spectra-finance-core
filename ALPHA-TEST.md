@@ -53,8 +53,8 @@ Condor is installed as the intelligence layer. Its model/provider selection rema
 
 - This is a paper-only developer alpha, not a production SaaS release.
 - The two selected GitHub changes are still draft PR candidates. The installer pins their branch names but does not merge those PRs.
-- The complete Core → signed receipt → API → Kraken paper connector order/fill reconciliation still requires a successful local end-to-end test before calling the alpha operational.
+- The Kraken paper connector and market-data path are being verified separately from executor submission. The current dashboard's manual Create/Stop routes still need to be wired through the Spectra Capital Governor and Core-signed receipt path; the API correctly rejects direct unsigned mutations. Do not claim paper order entry, stop, fill, or PnL reconciliation is operational until that integration is completed and tested.
 - Both source repositories are public. Installation does not require GitHub authentication.
-- This script has not yet been exercised end-to-end on a clean Bazzite and a second Linux distribution. The CI check validates shell syntax and safety invariants, not a full container build or paper fill.
+- This script has not yet been exercised end-to-end on a clean Bazzite and a second Linux distribution. CI is now building and starting the exact API image, initializing the Kraken paper connector, and checking the reported paper-only runtime; it does not yet certify a full executor order/fill cycle.
 
 Do not enable live execution or replace the paper connector with `kraken` in this alpha.
