@@ -22,7 +22,7 @@ The installer:
 - Configures both processes with `SPECTRA_PAPER_ONLY=true` and `SPECTRA_ALLOW_LIVE_EXECUTION=false`.
 - Updates the existing master-account Hummingbot configuration to enable only the Kraken paper connector, preserves unrelated account settings, assigns a $1,000 simulated USD balance, and registers the local API in Condor.
 - Creates isolated paper state with a $1,000 total committed-capital ceiling, a $100 reserve floor, 1x leverage, no recovery budget, and a paper-only `NORMAL` breaker; live state is untouched.
-- Creates the keyless `kraken_paper_trade` account config through Hummingbot's API and waits for the connector to initialize before starting Condor.
+- Creates the keyless `kraken_paper_trade` account config through Hummingbot's API, initializes the BTC-USD public market feed, verifies a non-empty bid/ask order book, and only then starts Condor.
 - Starts Condor and opens Spectra Overview at `http://127.0.0.1:8088/overview`.
 
 ## Paper trading scope
@@ -53,8 +53,8 @@ Condor is installed as the intelligence layer. Its model/provider selection rema
 
 - This is a paper-only developer alpha, not a production SaaS release.
 - The two selected GitHub changes are still draft PR candidates. The installer pins their branch names but does not merge those PRs.
-- The Kraken paper connector and market-data path are being verified separately from executor submission. The current dashboard's manual Create/Stop routes still need to be wired through the Spectra Capital Governor and Core-signed receipt path; the API correctly rejects direct unsigned mutations. Do not claim paper order entry, stop, fill, or PnL reconciliation is operational until that integration is completed and tested.
+- The Kraken paper connector and BTC-USD public market-data path are covered by the API container integration check. This confirms public market data and paper adapter initialization, not simulated order submission. The dashboard's manual Create/Stop routes still need to be verified end-to-end through the Spectra Capital Governor and Core-signed receipt path; the API correctly rejects direct unsigned mutations. Do not claim paper order entry, stop, fill, or PnL reconciliation is operational until that integration is completed and tested.
 - Both source repositories are public. Installation does not require GitHub authentication.
-- This script has not yet been exercised end-to-end on a clean Bazzite and a second Linux distribution. CI is now building and starting the exact API image, initializing the Kraken paper connector, and checking the reported paper-only runtime; it does not yet certify a full executor order/fill cycle.
+- This script has not yet been exercised end-to-end on a clean Bazzite and a second Linux distribution. CI builds and starts the exact API image, verifies the paper-only runtime, loads public Kraken trading rules, and confirms a non-empty BTC-USD bid/ask book; it does not yet certify a full executor order/fill cycle or a clean Bazzite installation.
 
 Do not enable live execution or replace the paper connector with `kraken` in this alpha.
