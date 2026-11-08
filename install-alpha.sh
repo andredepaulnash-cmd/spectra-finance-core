@@ -147,7 +147,7 @@ npm run build
 
 say "Creating local-only API credentials and paper-only configuration"
 cd "$API_DIR"
-mkdir -p bots/conf bots/data .emqx
+mkdir -p bots/conf bots/data bots/credentials/master_account .emqx
 env_value() { sed -n "s/^$1=//p" .env | head -n 1; }
 if [[ -f .env ]]; then
   API_USER="$(env_value USERNAME)"
@@ -186,8 +186,8 @@ chmod 700 .emqx
 chmod 644 .emqx/auth-bootstrap.csv
 
 # Hummingbot's official paper-trade config: Kraken market data, simulated orders/balances.
-if [[ ! -f bots/conf/conf_client.yml ]]; then
-  cat > bots/conf/conf_client.yml <<'EOF'
+if [[ ! -f bots/credentials/master_account/conf_client.yml ]]; then
+  cat > bots/credentials/master_account/conf_client.yml <<'EOF'
 paper_trade:
   paper_trade_exchanges:
     - kraken
@@ -259,7 +259,7 @@ SPECTRA_ALLOW_LIVE_EXECUTION=false
 SPECTRA_DISPATCH_POLICY_VERSION=spectra-policy-v1
 CONDOR_AGENT_SLUG=spectra
 EOF
-# Restore generated private signing key values; generator wrote them before this local-mode file.
+# Generate a fresh local signing pair after the local-mode environment is in place.
 uv run --python 3.12 python scripts/generate_spectra_dispatch_keys.py \
   --core-env .env --api-env "$API_DIR/.env"
 chmod 600 .env config.yml
