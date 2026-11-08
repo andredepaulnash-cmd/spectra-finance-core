@@ -996,6 +996,7 @@ async def create_executor(
             return {
                 "action": "create",
                 "executor_type": executor_type,
+                "spectra_dispatch_receipt_id": dispatch_receipt.receipt_id,
                 "error": error,
                 "result": result,
                 "formatted_output": f"Error creating {executor_type}: {error}",
@@ -1020,6 +1021,7 @@ async def create_executor(
                 "action": "create",
                 "executor_id": executor_id,
                 "executor_type": executor_type,
+                "spectra_dispatch_receipt_id": dispatch_receipt.receipt_id,
                 "error": error,
                 "result": result,
                 "formatted_output": f"Error reconciling {executor_type}: {error}",
