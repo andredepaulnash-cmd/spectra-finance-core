@@ -93,6 +93,29 @@ export interface SpectraRuntimeStatus {
   error?: string;
 }
 
+export interface SpectraModuleStatus {
+  id: string;
+  name: string;
+  status: string;
+  readiness: string;
+  description: string;
+}
+
+export interface SpectraModuleRegistry {
+  product: string;
+  release_stage: string;
+  live_trading_enabled: boolean;
+  paper_only_target: boolean;
+  status_note: string;
+  system_flow: Array<{
+    id: string;
+    name: string;
+    role: string;
+    authority: string;
+  }>;
+  modules: SpectraModuleStatus[];
+}
+
 export interface ServerInfo {
   name: string;
   host: string;
@@ -2333,6 +2356,11 @@ export const api = {
   getSpectraRuntime: (server: string) =>
     apiFetch<SpectraRuntimeStatus>(
       `/api/v1/servers/${encodeURIComponent(server)}/spectra/runtime`,
+    ),
+
+  getSpectraModules: (server: string) =>
+    apiFetch<SpectraModuleRegistry>(
+      `/api/v1/servers/${encodeURIComponent(server)}/spectra/modules`,
     ),
 
   /** Build identity — shown to the user when they file an issue. */
