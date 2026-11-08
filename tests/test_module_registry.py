@@ -19,3 +19,12 @@ def test_registry_returns_detached_snapshots():
     first["modules"][0]["name"] = "changed"
     second = get_spectra_module_registry()
     assert second["modules"][0]["name"] == "Condor"
+
+
+def test_condor_api_exposes_spectra_module_registry_route():
+    from condor.web.routes.servers import router
+
+    assert any(
+        route.path == "/servers/{name}/spectra/modules" and "GET" in route.methods
+        for route in router.routes
+    )
