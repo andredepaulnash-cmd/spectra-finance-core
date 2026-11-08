@@ -13,6 +13,7 @@ from condor.server_data_service import (
 from condor.web.auth import get_current_user
 from condor.web.models import ServerInfo, WebUser
 from config_manager import ServerPermission, get_config_manager
+from spectra_core.module_registry import get_spectra_module_registry
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,18 @@ async def spectra_runtime_status(
         "paper_connector_count": 0,
         "error": "Spectra runtime status is unavailable",
     }
+
+
+@router.get("/servers/{name}/spectra/modules")
+async def spectra_module_registry(
+    name: str,
+    user: WebUser = Depends(get_current_user),
+):
+    """Return the source-backed Spectra module readiness map for this server."""
+    cm = get_config_manager()
+    if not cm.has_server_access(user.id, name):
+        raise HTTPException(status_code=404, detail="Server not found")
+    return get_spectra_module_registry()
 
 
 @router.get("/servers/{name}/status")
