@@ -102,14 +102,8 @@ async def spectra_runtime_status(
         status = await sds.get_or_fetch(name, ServerDataType.SPECTRA_RUNTIME)
     except Exception as e:
         logger.warning("Spectra runtime status unavailable for %s: %s", name, e)
-        return {
-            "product": "Spectra Finance",
-            "mode": "UNAVAILABLE",
-            "paper_only": False,
-            "live_dispatch_available": False,
-            "paper_connector_count": 0,
-            "error": "Spectra runtime status could not be verified",
-        }
+        status = None
+
     if isinstance(status, dict):
         result = dict(status)
     else:
@@ -119,7 +113,7 @@ async def spectra_runtime_status(
             "paper_only": False,
             "live_dispatch_available": False,
             "paper_connector_count": 0,
-            "error": "Spectra runtime status is unavailable",
+            "error": "Spectra runtime status could not be verified",
         }
 
     try:
