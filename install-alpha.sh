@@ -147,6 +147,7 @@ say "Installing the reviewed Python 3.12 runtime"
 uv python install 3.12
 cd "$CORE_DIR"
 uv sync --locked --dev --python 3.12
+"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/configure_alpha_paper_state.py" --core-root "$CORE_DIR"
 
 say "Building the Spectra dashboard"
 cd "$CORE_DIR/frontend"
