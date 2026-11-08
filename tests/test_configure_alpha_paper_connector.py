@@ -24,7 +24,7 @@ def test_adds_kraken_paper_connector_and_preserves_existing_config(tmp_path: Pat
     assert result["instance_id"] == "alpha-test"
     assert result["paper_trade"]["paper_trade_exchanges"] == ["kraken"]
     assert result["paper_trade"]["paper_trade_account_balance"]["USDC"] == 1234
-    assert result["paper_trade"]["paper_trade_account_balance"]["USD"] == 10000.0
+    assert result["paper_trade"]["paper_trade_account_balance"]["USD"] == 1000.0
     assert result["balance_asset_limit"]["kraken_paper_trade"] == {}
     assert result["global_token"]["global_token_name"] == "USDT"
 
