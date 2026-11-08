@@ -2,6 +2,7 @@ import {
   Bot,
   Brain,
   Droplets,
+  Gauge,
   Settings,
   Swords,
   Wallet,
@@ -37,6 +38,7 @@ import {
  */
 export const NAV_ITEMS = [
   { to: "/", icon: Brain, label: "Agents" },
+  { to: "/overview", icon: Gauge, label: "Overview" },
   { to: "/portfolio", icon: Wallet, label: "Portfolio" },
   { to: "/trade", icon: Swords, label: "Trade" },
   { to: "/dex", icon: Droplets, label: "DEX" },
