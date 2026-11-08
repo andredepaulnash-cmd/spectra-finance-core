@@ -847,6 +847,7 @@ def test_repeated_dust_cannot_hide_executable_same_owner_accumulation(environmen
 class DustEntryClient:
     def __init__(self, env, before_rules=None, before_portfolio=None, ambiguous=False):
         self.env = env
+        self._session = type("Session", (), {"headers": {}})()
         self.before_rules = before_rules
         self.before_portfolio = before_portfolio
         self.ambiguous = ambiguous
@@ -917,6 +918,11 @@ def configure_entry_runtime(env, monkeypatch):
     from mcp_servers.hummingbot_api.tools import execution_book
     from mcp_servers.hummingbot_api.tools.execution_book import FreshVenueBook
 
+    import base64
+    monkeypatch.setenv(
+        "SPECTRA_DISPATCH_PRIVATE_KEY",
+        base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="),
+    )
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
     monkeypatch.setattr(executor_create, "get_breaker_mode", lambda: BreakerMode.NORMAL)
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: env[1])
