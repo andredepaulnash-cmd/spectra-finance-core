@@ -106,4 +106,4 @@ jobs:
           "$HOME/.local/bin/spectra" status
       - name: Stop alpha services
         if: always()
-        run: "$HOME/.local/bin/spectra" stop || true
+        run: '$HOME/.local/bin/spectra stop || true'
