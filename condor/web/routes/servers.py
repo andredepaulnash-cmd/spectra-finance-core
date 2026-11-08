@@ -105,7 +105,7 @@ async def spectra_runtime_status(
             "product": "Spectra Finance",
             "mode": "UNAVAILABLE",
             "paper_only": False,
-            "live_dispatch_available": True,
+            "live_dispatch_available": False,
             "paper_connector_count": 0,
             "error": "Spectra runtime status could not be verified",
         }
@@ -115,7 +115,7 @@ async def spectra_runtime_status(
         "product": "Spectra Finance",
         "mode": "UNAVAILABLE",
         "paper_only": False,
-        "live_dispatch_available": True,
+        "live_dispatch_available": False,
         "paper_connector_count": 0,
         "error": "Spectra runtime status is unavailable",
     }
