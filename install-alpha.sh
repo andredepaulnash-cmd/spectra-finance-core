@@ -425,7 +425,7 @@ case "${1:-status}" in
     done
     [[ "$ready" == true ]] || { compose logs --tail=120; exit 1; }
     start_core
-    xdg-open http://127.0.0.1:8088 >/dev/null 2>&1 || true
+    xdg-open http://127.0.0.1:8088/overview >/dev/null 2>&1 || true
     ;;
   stop)
     stop_core
@@ -465,4 +465,4 @@ printf 'Paper venue: Kraken (kraken_paper_trade) — simulated balances only\n'
 printf 'Live execution: DISABLED\n'
 printf 'API credentials were generated locally and stored with mode 0600. They were not printed.\n'
 printf 'Control: spectra status | spectra stop | spectra start | spectra logs\n'
-if has xdg-open; then xdg-open http://127.0.0.1:8088 >/dev/null 2>&1 || true; fi
+if has xdg-open; then xdg-open http://127.0.0.1:8088/overview >/dev/null 2>&1 || true; fi
