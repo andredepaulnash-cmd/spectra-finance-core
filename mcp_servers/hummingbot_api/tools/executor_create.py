@@ -647,6 +647,7 @@ async def _bounded_protected_buy(
         now=time(),
         max_price_slippage_bps=Decimal(str(max_price_slippage_bps)),
         fee_allowance_bps=Decimal(str(fee_allowance_bps)),
+        connector_name=expected_connector,
     )
     policy = {
         field: str(getattr(order, field))
