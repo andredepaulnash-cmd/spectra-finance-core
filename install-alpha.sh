@@ -228,6 +228,9 @@ sed \
   -e 's/container_name: hummingbot-api/container_name: spectra-alpha-hummingbot-api/' \
   -e 's/container_name: hummingbot-broker/container_name: spectra-alpha-hummingbot-broker/' \
   -e 's/container_name: hummingbot-postgres/container_name: spectra-alpha-hummingbot-postgres/' \
+  -e 's|image: emqx/emqx:|image: docker.io/emqx/emqx:|' \\
+  -e 's|image: postgres:|image: docker.io/library/postgres:|' \\
+  -e 's|image: continuumio/miniconda3:|image: docker.io/continuumio/miniconda3:|' \\
   docker-compose.yml > docker-compose.alpha.yml
 if grep -Eq 'docker.sock|host.docker.internal|host-gateway' docker-compose.alpha.yml; then
   die "The alpha Compose file still contains a host socket or host-gateway dependency."
@@ -309,7 +312,7 @@ chmod 600 .env config.yml
 # alter the tracked source checkout.
 if [[ "$COMPOSE_KIND" == podman ]]; then
   if [[ -f "$API_DIR/Dockerfile" ]]; then
-    sed -i -E 's|^FROM[[:space:]]+continuumio/miniconda3([:@[:space:]]|$)|FROM docker.io/continuumio/miniconda3\\1|' "$API_DIR/Dockerfile"
+    sed -i 's|^FROM continuumio/miniconda3|FROM docker.io/continuumio/miniconda3|' "$API_DIR/Dockerfile"
   fi
   grep -Eq '^FROM[[:space:]]+docker[.]io/continuumio/miniconda3' "$API_DIR/Dockerfile" \
     || die "Could not normalize the Hummingbot API base image for Podman."
