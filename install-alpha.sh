@@ -192,6 +192,7 @@ fi
 set_env_value .env API_BIND 127.0.0.1
 set_env_value .env DB_BIND 127.0.0.1
 set_env_value .env SPECTRA_PAPER_ONLY true
+set_env_value .env SPECTRA_PAPER_CONNECTORS kraken_paper_trade
 set_env_value .env SPECTRA_ALLOW_LIVE_EXECUTION false
 set_env_value .env SPECTRA_REQUIRE_CORE_RECEIPTS true
 set_env_value .env SPECTRA_DISPATCH_POLICY_VERSION spectra-policy-v1
@@ -319,17 +320,6 @@ for _ in $(seq 1 180); do
 done
 curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/openapi.json >/dev/null \
   || { if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -p spectra-alpha -f docker-compose.alpha.yml logs --tail=120 || true; else podman-compose -p spectra-alpha -f docker-compose.alpha.yml logs --tail=120 || true; fi; die "Hummingbot API did not become ready."; }
-
-# Paper connectors are discovered from account credential files. Create Kraken's
-# empty, keyless paper config through the API's own config adapter exactly once.
-KRAKEN_PAPER_CONFIG="$API_DIR/bots/credentials/master_account/connectors/kraken_paper_trade.yml"
-if [[ ! -f "$KRAKEN_PAPER_CONFIG" ]]; then
-  curl -fsS -u "$API_USER:$API_PASS" \
-    -H 'Content-Type: application/json' \
-    -X POST -d '{}' \
-    http://127.0.0.1:8000/accounts/add-credential/master_account/kraken_paper_trade >/dev/null \
-    || { if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -p spectra-alpha -f docker-compose.alpha.yml logs --tail=160 || true; else podman-compose -p spectra-alpha -f docker-compose.alpha.yml logs --tail=160 || true; fi; die "Could not initialize the Kraken paper connector configuration."; }
-fi
 
 say "Waiting for Kraken paper connector initialization"
 PAPER_RUNTIME_READY=false
