@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import time
 from decimal import Decimal
 
@@ -112,6 +113,7 @@ class Client:
         self.portfolio = Portfolio(connector_name)
         self.connectors = Connectors()
         self.executors = None
+        self._session = type("Session", (), {"headers": {}})()
 
 
 def governor(tmp_path):
@@ -139,6 +141,10 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     monkeypatch, tmp_path, paper_mode, connector_name
 ):
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true" if paper_mode else "false")
+    monkeypatch.setenv(
+        "SPECTRA_DISPATCH_PRIVATE_KEY",
+        base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="),
+    )
     monkeypatch.setattr(executor_create.settings, "paper_only", paper_mode)
     g = governor(tmp_path)
     client = Client(connector_name)
