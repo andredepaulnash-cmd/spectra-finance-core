@@ -130,7 +130,7 @@ say "Cloning the matching Hummingbot API branch"
 if [[ -d "$API_DIR/.git" ]]; then
   clone_or_reuse "$API_REPO" "$API_REF" "$API_DIR"
 elif has gh && gh auth status >/dev/null 2>&1; then
-  gh repo clone andredepaulnash-cmd/spectra-hummingbot-api "$API_DIR" -- --depth 1 --single-branch --branch "$API_REF"
+  gh repo clone andredepaulnash-cmd/spectra-hummingbot-api "$API_DIR" -- --depth 1 --single-branch --branch "$API_REF" || die "GitHub authentication succeeded, but this account cannot clone the private Spectra Hummingbot API repository."
 else
   if ! git clone --depth 1 --single-branch --branch "$API_REF" "$API_REPO" "$API_DIR"; then
     die "The Hummingbot API repository is private. Authenticate this machine with GitHub (gh auth login) and grant it access to andredepaulnash-cmd/spectra-hummingbot-api, then rerun this same installer. The repository was not made public."
@@ -335,6 +335,11 @@ case "${1:-status}" in
 esac
 EOF
 chmod 700 "$LOCAL_BIN/spectra"
+for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+  if [[ -f "$shell_rc" ]] && ! grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "$shell_rc"; then
+    printf '\n# Spectra Finance Alpha tools\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$shell_rc"
+  fi
+done
 
 say "Spectra Finance Alpha installation completed"
 printf '\nDashboard: http://127.0.0.1:8088\n'
