@@ -215,6 +215,7 @@ fi
 say "Generating the Core signing key and API verification key locally"
 cd "$CORE_DIR"
 # Complete Core's local-mode configuration and pre-register the local API.
+if [[ ! -f config.yml ]]; then
 CORE_API_USER="$API_USER" CORE_API_PASS="$API_PASS" uv run --python 3.12 python - <<'PY'
 import os, secrets, time, yaml
 from pathlib import Path
@@ -250,7 +251,9 @@ Path("config.yml").write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="ut
 Path("config.yml").chmod(0o600)
 PY
 
-cat > .env <<'EOF'
+fi
+if [[ ! -f .env ]]; then
+  cat > .env <<'EOF'
 CONDOR_MODE=local
 ADMIN_USER_ID=1
 WEB_URL=http://127.0.0.1:8088
@@ -261,9 +264,12 @@ SPECTRA_ALLOW_LIVE_EXECUTION=false
 SPECTRA_DISPATCH_POLICY_VERSION=spectra-policy-v1
 CONDOR_AGENT_SLUG=spectra
 EOF
-# Generate a fresh local signing pair after the local-mode environment is in place.
-uv run --python 3.12 python scripts/generate_spectra_dispatch_keys.py \
-  --core-env .env --api-env "$API_DIR/.env"
+fi
+# Keep the existing key pair across installer reruns; generate it only when either side is missing.
+if ! grep -q '^SPECTRA_DISPATCH_PRIVATE_KEY=' .env || ! grep -q '^SPECTRA_DISPATCH_PUBLIC_KEY=' "$API_DIR/.env"; then
+  uv run --python 3.12 python scripts/generate_spectra_dispatch_keys.py \
+    --core-env .env --api-env "$API_DIR/.env"
+fi
 chmod 600 .env config.yml
 
 say "Building and starting the Hummingbot paper-only API stack ($COMPOSE_KIND)"
