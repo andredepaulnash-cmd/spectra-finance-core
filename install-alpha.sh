@@ -190,6 +190,10 @@ EOF
 fi
 set_env_value .env API_BIND 127.0.0.1
 set_env_value .env DB_BIND 127.0.0.1
+set_env_value .env SPECTRA_PAPER_ONLY true
+set_env_value .env SPECTRA_ALLOW_LIVE_EXECUTION false
+set_env_value .env SPECTRA_REQUIRE_CORE_RECEIPTS true
+set_env_value .env SPECTRA_DISPATCH_POLICY_VERSION spectra-policy-v1
 chmod 600 .env
 chmod 700 . bots
 printf 'user_id,password,is_superuser\n%s,%s,false\n' "$BROKER_USER" "$BROKER_PASS" > .emqx/auth-bootstrap.csv
@@ -276,6 +280,9 @@ set_env_value .env WEB_URL http://127.0.0.1:8088
 set_env_value .env WEB_HOST 127.0.0.1
 set_env_value .env CONDOR_TELEMETRY off
 set_env_value .env CONDOR_AGENT_SLUG spectra
+set_env_value .env SPECTRA_PAPER_ONLY true
+set_env_value .env SPECTRA_ALLOW_LIVE_EXECUTION false
+set_env_value .env SPECTRA_DISPATCH_POLICY_VERSION spectra-policy-v1
 # Keep the existing key pair across installer reruns; generate it only when either side is missing.
 if ! grep -q '^SPECTRA_DISPATCH_PRIVATE_KEY=' .env || ! grep -q '^SPECTRA_DISPATCH_PUBLIC_KEY=' "$API_DIR/.env"; then
   uv run --python 3.12 python scripts/generate_spectra_dispatch_keys.py \
