@@ -62,6 +62,8 @@ def main() -> int:
             "SPECTRA_DISPATCH_PRIVATE_KEY": _encode(private_raw),
             "SPECTRA_DISPATCH_POLICY_VERSION": "spectra-policy-v1",
             "SPECTRA_PAPER_ONLY": "true",
+            "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
+            "CONDOR_AGENT_SLUG": "spectra",
         },
         mode=0o600,
     )
@@ -72,6 +74,7 @@ def main() -> int:
             "SPECTRA_REQUIRE_CORE_RECEIPTS": "true",
             "SPECTRA_DISPATCH_POLICY_VERSION": "spectra-policy-v1",
             "SPECTRA_PAPER_ONLY": "true",
+            "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
         },
         mode=0o600,
     )
