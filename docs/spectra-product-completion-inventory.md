@@ -202,14 +202,14 @@ The Hummingbot official release notes identify client v2.17.0 as the September 2
 
 ### Spectra product interface
 
-Core PR #59 now carries a Spectra-branded System Overview page and a source-backed module readiness registry. The page is read-only and displays Condor → Spectra Core → Hummingbot roles, authenticated paper-runtime status, and the status of DTTP, DTSL, PSSM, VCAP, MIR, selected recovery, dust lifecycle and safety controls. The registry deliberately distinguishes partial, unverified, research-only and default-off modules; it does not present every module as active.
+Core PR #59 carries the Spectra-branded System Overview page and a source-backed module readiness registry. The page is read-only and displays Condor → Spectra Core → Hummingbot roles, authenticated paper-runtime status, and the status of DTTP, DTSL, PSSM, VCAP, MIR, selected recovery, dust lifecycle and safety controls. The registry deliberately distinguishes partial, unverified, research-only and default-off modules; it does not present every module as active.
 
 ### Signed dispatch boundary
 
-- API PR #9 adds an Ed25519 verifier, exact method/path/body/config binding, account/connector/market/amount/policy scope, Basic Auth before receipt consumption, a durable one-time SQLite receipt ledger, replay rejection, and mutation-route protection. API CI previously passed 71 tests with one skipped; the latest paper-mode-default changes are in a new CI run.
-- Core PR #59 adds the matching Ed25519 signer to the governed executor-create path. The receipt amount is sourced from the committed Capital Governor reservation, not inferred from the UI. The request header is attached only around the exact API call and removed afterward. The signing key and authenticated session are validated before the Governor can commit.
-- A local key-pair setup script writes the private key only to Core's local `.env`, the public key to API's local `.env`, and explicitly sets paper-only mode in both processes. Both local files remain untracked and private.
-- The API verifier blocks all execution/deployment writes without a valid one-time Core receipt. Only the current governed executor-create path has a Core signer; direct orders, cancel/close, leverage, Gateway and deployment writes remain unavailable until their operation-specific receipts are implemented.
+- API PR #9 adds an Ed25519 verifier, exact method/path/body/config binding, account/connector/market/amount/policy scope, Basic Auth before receipt consumption, a durable one-time SQLite receipt ledger, replay rejection, and mutation-route protection. It verifies both executor creation and exact-ID executor stop/position-hold receipts. **Latest API focused CI: 74 passed, 1 skipped.**
+- Core PR #59 adds the matching signer and shared transport. The governed executor-create amount is sourced from the committed Capital Governor reservation, not inferred from the UI. VCAP tranche creation, whole-exit source-owner stops, whole-exit sells and partial-recycle sells now use Core-signed receipts. Receipt headers are attached only around exact authenticated API calls and restored afterward.
+- The local key-pair setup script writes the private key only to Core's local `.env`, the public key to API's local `.env`, and explicitly sets paper-only mode in both processes. Both local files remain untracked and private.
+- The API blocks execution/deployment mutations without a valid one-time Core receipt. Currently signed operations are executor creation and exact-ID stop/position-hold. Direct orders, cancel/close, leverage, Gateway, bot, Docker, controller, script and deployment writes remain blocked until their operation-specific Core receipts are implemented.
 
 ### Live-execution lock
 
@@ -217,4 +217,4 @@ The API defaults to paper-only. Core and API reject disabling paper mode unless 
 
 ### Validation boundary
 
-The dashboard-only Core candidate previously passed 945 focused tests and its frontend production build. The expanded Core PR #59 adds dust lifecycle, signed dispatch, module registry and overview work; its latest focused CI is running. API PR #9's previous expanded verifier run passed 71 tests and one skipped; its latest default-paper-only regression run is running. Neither PR has been merged, neither Docker image has been run locally, and no Bazzite install or paper fill has yet been verified.
+The dashboard-only Core candidate previously passed 945 focused tests and its frontend production build. The expanded Core PR #59 adds VCAP signed tranche/exit/recycle dispatch, dust lifecycle, signed authorization, module registry and overview work; its latest focused CI is running. API PR #9's focused CI passed 74 tests with one skipped. Neither PR has been merged, neither Docker image has been run locally, and no Bazzite install or paper fill has yet been verified.
