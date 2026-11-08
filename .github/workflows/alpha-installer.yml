@@ -10,6 +10,8 @@ on:
       - condor/fetchers/spectra_runtime.py
       - condor/web/routes/servers.py
       - tests/test_spectra_runtime_fail_closed.py
+      - scripts/configure_alpha_paper_connector.py
+      - tests/test_configure_alpha_paper_connector.py
       - .github/workflows/alpha-installer.yml
   pull_request:
     paths:
@@ -40,5 +42,5 @@ jobs:
           python-version: '3.12'
       - name: Install locked Core dependencies
         run: uv sync --locked --dev --python 3.12
-      - name: Test fail-closed runtime status
-        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py
+      - name: Test alpha runtime safety and Kraken paper configuration
+        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_configure_alpha_paper_connector.py
