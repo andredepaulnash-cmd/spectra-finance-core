@@ -392,3 +392,153 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
                 governor=g,
             )
         )
+
+
+@pytest.mark.asyncio
+async def test_live_api_paper_execution_reconciles_confirmed_fill(
+    monkeypatch,
+    tmp_path,
+):
+    """CI-only real API smoke: Core signs, Hummingbot paper-fills, Core reconciles."""
+    import json
+    import os
+    import time
+    from uuid import uuid4
+
+    if os.getenv("SPECTRA_CI_PAPER_EXECUTION") != "1":
+        pytest.skip("requires the isolated CI Kraken paper API container")
+
+    from hummingbot_api_client import HummingbotAPIClient
+    from spectra_core.accounting_health import AccountingHealthState
+    from spectra_core.kraken_authorization import reserve_kraken_capital
+    from spectra_core.runtime import (
+        get_accounting_health_supervisor,
+        get_capital_governor,
+        get_economic_position_ledger,
+        reset_runtime_cache,
+    )
+    from mcp_servers.hummingbot_api.tools.accounting_health import (
+        synchronize_position_accounting_health,
+    )
+    from mcp_servers.hummingbot_api.tools.executor_create import create_grid_executor
+
+    paper_state = tmp_path / "paper-state"
+    live_state = tmp_path / "live-state"
+    paper_state.mkdir()
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(paper_state))
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(live_state))
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    (paper_state / "capital_policy.json").write_text(
+        json.dumps(
+            {
+                "reserve_floor_quote": "100",
+                "max_total_committed_quote": "100",
+                "max_pair_quote": "50",
+                "max_position_quote": "50",
+                "max_recovery_quote": "25",
+                "max_leverage": "1",
+                "reservation_ttl_seconds": 180,
+                "position_hold_snapshot_ttl_seconds": 30,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (paper_state / "breaker_state.json").write_text(
+        json.dumps({"mode": "NORMAL"}),
+        encoding="utf-8",
+    )
+    reset_runtime_cache()
+
+    client = HummingbotAPIClient(
+        base_url=os.environ["HUMMINGBOT_API_URL"],
+        username=os.environ["HUMMINGBOT_USERNAME"],
+        password=os.environ["HUMMINGBOT_PASSWORD"],
+    )
+    try:
+        await client.init()
+        assert await client.accounts.list_accounts()
+
+        governor = get_capital_governor()
+        ledger = get_economic_position_ledger()
+        supervisor = get_accounting_health_supervisor()
+        position_id = "ci-paper-" + uuid4().hex
+        ledger.open_position(
+            position_id=position_id,
+            pair="BTC-USD",
+            created_at=time.time(),
+        )
+
+        authorization = await reserve_kraken_capital(
+            client,
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="25",
+            governor=governor,
+            refresh=True,
+        )
+        assert authorization.decision.status == DecisionStatus.RESERVED
+
+        result = await create_grid_executor(
+            client,
+            connector_name="kraken_paper_trade",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=25,
+            leverage=1,
+            account_name="master_account",
+            controller_id="spectra-ci",
+            spectra_proposal_id=authorization.proposal.proposal_id,
+            spectra_intent="ENTRY",
+            spectra_position_id=position_id,
+            max_open_orders=1,
+            max_orders_per_batch=1,
+            min_order_amount_quote=25,
+            spectra_max_price_slippage_bps=10,
+            spectra_fee_allowance_bps=60,
+        )
+        assert not result.get("error"), result
+        executor_id = result.get("executor_id")
+        assert executor_id, result
+
+        last_health = None
+        for _ in range(30):
+            last_health = await synchronize_position_accounting_health(
+                client,
+                position_id=position_id,
+                proposal_ids=(authorization.proposal.proposal_id,),
+                governor=governor,
+                ledger=ledger,
+                supervisor=supervisor,
+                now=time.time(),
+            )
+            snapshot = ledger.snapshot(position_id)
+            if (
+                last_health.state == AccountingHealthState.HEALTHY
+                and last_health.fully_reconciled
+                and last_health.confirmed_fills >= 1
+                and last_health.ledgered_fills == last_health.confirmed_fills
+                and snapshot.active_base > 0
+            ):
+                print(
+                    "PASS: Core-authorized Kraken paper execution produced and "
+                    "reconciled a confirmed fill "
+                    f"(executor={executor_id}, fills={last_health.ledgered_fills}, "
+                    f"base={snapshot.active_base})."
+                )
+                return
+            await asyncio.sleep(2)
+
+        raise AssertionError(
+            "No fully reconciled confirmed paper fill within 60 seconds: "
+            f"executor={executor_id}, state={getattr(last_health, 'state', None)}, "
+            f"confirmed={getattr(last_health, 'confirmed_fills', 0)}, "
+            f"ledgered={getattr(last_health, 'ledgered_fills', 0)}"
+        )
+    finally:
+        await client.close()
