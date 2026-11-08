@@ -885,6 +885,18 @@ async def create_executor(
             "formatted_output": f"Error creating {executor_type}: {violation}",
         }
 
+    if settings.agent_slug == "spectra" and not settings.paper_only:
+        error = (
+            "Spectra live execution is disabled in this build; "
+            "only an explicitly configured paper-trade connector is permitted"
+        )
+        return {
+            "action": "create",
+            "executor_type": executor_type,
+            "error": error,
+            "formatted_output": f"Error creating {executor_type}: {error}",
+        }
+
     if settings.agent_slug == "spectra":
         try:
             # Validate the private key and transport before the Governor can commit.
