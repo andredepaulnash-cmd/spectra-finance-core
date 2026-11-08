@@ -1,0 +1,28 @@
+name: Alpha installer checks
+
+on:
+  push:
+    branches:
+      - alpha/one-command-paper-demo-20261108
+    paths:
+      - install-alpha.sh
+      - .github/workflows/alpha-installer.yml
+  pull_request:
+    paths:
+      - install-alpha.sh
+      - .github/workflows/alpha-installer.yml
+
+jobs:
+  static-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Bash syntax
+        run: bash -n install-alpha.sh
+      - name: Enforce paper-only and no host socket mount
+        run: |
+          grep -q 'SPECTRA_PAPER_ONLY=true' install-alpha.sh
+          grep -q 'SPECTRA_ALLOW_LIVE_EXECUTION=false' install-alpha.sh
+          grep -q 'docker-compose.alpha.yml' install-alpha.sh
+          grep -q 'docker.sock' install-alpha.sh
+          ! grep -Eq 'docker compose .*docker-compose.yml up|podman-compose .*docker-compose.yml up' install-alpha.sh
