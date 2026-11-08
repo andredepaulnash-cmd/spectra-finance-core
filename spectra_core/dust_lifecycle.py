@@ -1247,7 +1247,7 @@ class DustLifecycle:
                     raise ValueError("dust predecessor lacks a current checkpoint")
                 if self._owner_scope(conn, residual["position_id"]) != (
                     account,
-                    "kraken",
+                    str(proposal.connector_name or "").strip().lower(),
                 ):
                     raise ValueError(
                         "dust entry account differs from original owner scope"
