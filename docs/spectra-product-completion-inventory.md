@@ -144,3 +144,35 @@ No real exchange credentials, wallet keys, live orders, or capital are required 
 - API audit branch: `audit/spectra-integration-readiness-20261107`
 
 Never equate code presence with operational integration, passing focused CI with release readiness, a paper simulation with real market execution, or backtest results with expected future returns. Preserve existing operator-local Compose edits and backups during any future local synchronization.
+
+
+## 8. Historical module recovery update — 2026-11-07
+
+A wider pull-request and historical research-branch review has now found more evidence than the initial default-branch acronym search.
+
+### DTTP and DTSL
+
+- DTTP and DTSL are explicitly described in the VCAP profit-exit history as protected-profit continuation behavior. PR #10 records an EXTEND decision after the net-profit floor is reached, a profit high-water mark, giveback limits, and a profitable-capital stagnation exit. The planner can protect an earned floor while allowing continuation rather than treating break-even as recovery.
+- The preserved native VCAP profit-exit planner is present in `spectra_core/vcap_profit_exit.py`; the lifecycle and runtime modules also exist. However, the October profitability research coverage review explicitly says the legacy campaign disabled genuine DTTP continuation and used a hard-target override. The native DTTP supplement was separately specified and gated, with source integration/branch-call evidence pending in that review.
+- DTSL is mentioned alongside DTTP in the historical descriptions, but its exact standalone definition and code identity are not established by the currently reviewed source. Keep DTSL on the recovery list; do not infer its expansion or equate it with a generic trailing-stop field.
+
+### PSSM and the possible additional module
+
+- `agents/spectra/AGENT.md` names PSSM as a deterministic alternative when recovery economics deteriorate or the market regime is invalidated. The complete PR #37 inventory and pinned-source scan documented in the October research review found no named PSSM implementation; PSSM remains disabled/unverified.
+- The same agent doctrine names MIR alongside PSSM as a possible fallback. Historical PR descriptions refer to MIR rotation as separate strategy/accounting work, but the reviewed source does not confirm that MIR is the additional module the Architect remembers or establish a complete live implementation. Treat MIR as a candidate identity only, pending the governor blueprint or historical source confirmation.
+- Related names DTSS and DTSSR also appear in the historical research documentation as disabled/unimplemented hedge paths. They must not be confused with PSSM or treated as an actual short-execution engine.
+
+### Research capability versus product capability
+
+The historical research branch `research/profitability-campaign-20261010` contains extensive offline research adapters for native DTTP, recurring ladders, opportunity selection, market regime, owned cash, rotation, and profitability accounting. Its own coverage report states that those research adapters do not prove production Governor authorization, durable ownership, exchange execution, or complete lifecycle integration. Several published development campaigns lost money after modeled costs; mechanics passing tests is not a profitability finding. These artifacts are valuable source/specification evidence, but they must remain research-only until separately admitted and connected to production-safe Core paths.
+
+### Current stacked implementation branches
+
+- Core PR #46 ports native selected-recovery ledger/runtime and sealed-basis integration onto PR #44; focused CI passed 924 tests. Selected recovery remains default-off. Dust was deliberately deferred because it conflicts with newer position retirement/cash paths and needs a separate coordinated port.
+- Core PR #49 adds a governed Kraken paper connector path and isolated paper state. Its first CI run had 939 passes and one paper-connector protected-BUY failure.
+- Core PR #55 stacks the Spectra-branded dashboard/runtime-gating work with two targeted fixes: the Spectra-agent implicit paper-only default and connector-scope propagation into the bounded protected-BUY builder. Its CI run is currently pending in this inventory revision; do not call the fixes validated until that run completes.
+- Core PR #55 uses the existing React/Vite frontend and FastAPI/Condor server. It shows PAPER ONLY / PAPER SETUP / EXECUTION LOCKED status and blocks legacy live-capable navigation until the API confirms paper-only mode.
+- API PR #6 adds the paper-only API mode and runtime endpoint; its focused CI passed. It remains draft/unmerged, and the exact Hummingbot core dependency is still unpinned. Local connector compatibility and fill-to-Core-ledger reconciliation are not yet certified.
+- API PR #5 remains a separate documentation-only audit. The signed exact-scope Core dispatch receipt is not yet implemented across all API mutation surfaces.
+
+These PRs remain draft and unmerged. Their focused CI results are scoped evidence, not a complete release certification or local Bazzite verification.
