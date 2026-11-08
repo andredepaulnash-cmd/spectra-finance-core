@@ -298,15 +298,29 @@ else
   podman-compose -p spectra-alpha -f docker-compose.alpha.yml up -d --build
 fi
 
-say "Waiting for the local Hummingbot API"
+say "Waiting for the Kraken paper connector and Spectra runtime"
 for _ in $(seq 1 180); do
-  if curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/openapi.json >/dev/null 2>&1; then
+  if curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/spectra/runtime > "$INSTALL_ROOT/api-runtime.json" 2>/dev/null; then
     break
   fi
   sleep 2
 done
-curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/openapi.json >/dev/null \
-  || die "Hummingbot API did not become ready. See: $INSTALL_ROOT/spectra-hummingbot-api logs."
+curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/spectra/runtime > "$INSTALL_ROOT/api-runtime.json" \
+  || { docker compose -p spectra-alpha -f docker-compose.alpha.yml logs --tail=120 2>/dev/null || podman-compose -p spectra-alpha -f docker-compose.alpha.yml logs --tail=120 || true; die "Hummingbot paper runtime did not become ready. See the API logs above."; }
+"$CORE_DIR/.venv/bin/python" - "$INSTALL_ROOT/api-runtime.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+runtime = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert runtime.get("mode") == "PAPER_ONLY", runtime
+assert runtime.get("paper_only") is True, runtime
+assert runtime.get("paper_connectors_only") is True, runtime
+assert runtime.get("live_dispatch_available") is False, runtime
+assert any(name.endswith("/kraken_paper_trade") for name in runtime.get("paper_connectors", [])), runtime
+print("Verified: Kraken paper connector initialized; live dispatch is unavailable.")
+PY
+rm -f "$INSTALL_ROOT/api-runtime.json"
 
 cat > "$INSTALL_ROOT/.compose-kind" <<EOF
 $COMPOSE_KIND
@@ -368,6 +382,17 @@ compose() {
 case "${1:-status}" in
   start)
     compose up -d
+    api_user="$(sed -n 's/^USERNAME=//p' "$API_DIR/.env" | head -n 1)"
+    api_pass="$(sed -n 's/^PASSWORD=//p' "$API_DIR/.env" | head -n 1)"
+    ready=false
+    for _ in $(seq 1 180); do
+      if curl -fsS -u "$api_user:$api_pass" http://127.0.0.1:8000/spectra/runtime >/dev/null 2>&1; then
+        ready=true
+        break
+      fi
+      sleep 2
+    done
+    [[ "$ready" == true ]] || { compose logs --tail=120; exit 1; }
     start_core
     xdg-open http://127.0.0.1:8088 >/dev/null 2>&1 || true
     ;;
