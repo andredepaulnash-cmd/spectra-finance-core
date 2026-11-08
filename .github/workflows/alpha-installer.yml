@@ -13,7 +13,8 @@ on:
       - scripts/configure_alpha_paper_connector.py
       - scripts/configure_alpha_paper_state.py
       - tests/test_configure_alpha_paper_connector.py
-      - tests/test_configure_alpha_paper_state.py
+      - tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py
+      - tests/test_hummingbot_mcp_config_dir.py
       - .github/workflows/alpha-installer.yml
   pull_request:
     paths:
