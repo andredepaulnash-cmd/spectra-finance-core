@@ -22,7 +22,7 @@ set_env_value() {
   if grep -q "^$key=" "$file"; then
     sed -i "s|^$key=.*|$key=$value|" "$file"
   else
-    printf '%s=%s\\n' "$key" "$value" >> "$file"
+    printf '%s=%s\n' "$key" "$value" >> "$file"
   fi
 }
 
