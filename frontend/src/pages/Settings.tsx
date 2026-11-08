@@ -52,7 +52,7 @@ interface TabGroup {
 /**
  * The first group acts on whichever server the navbar selector points at, so it
  * is titled with that server — there is no second picker in here. Everything
- * after it belongs to this Condor install or to the signed-in person.
+ * after it belongs to this Spectra installation or to the signed-in person.
  */
 function buildGroups(server: string | null, isAdmin: boolean): TabGroup[] {
   const groups: TabGroup[] = [
@@ -64,10 +64,10 @@ function buildGroups(server: string | null, isAdmin: boolean): TabGroup[] {
       ],
     },
     {
-      label: "Condor",
+      label: "Spectra Platform",
       tabs: [
         { key: "servers", label: "Servers", icon: Server },
-        { key: "llm", label: "LLM Endpoints", icon: Sparkles },
+        { key: "llm", label: "AI Providers", icon: Sparkles },
         { key: "voice", label: "Voice & AI", icon: Mic },
       ],
     },

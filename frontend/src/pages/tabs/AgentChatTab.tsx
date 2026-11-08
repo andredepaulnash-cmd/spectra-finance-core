@@ -585,7 +585,7 @@ export function AgentChatTab() {
           {pane?.kind === "agent" && (
             <AgentPanel
               slug={openSlug}
-              name={openAgent?.name || "Condor"}
+              name={openAgent?.name || "Spectra Intelligence"}
               // What the conversation runs on, in the panel's own bar — the
               // first thing waiting on the other side of the click.
               slot={activeSlot}
@@ -746,7 +746,7 @@ export function AgentChatTab() {
                   // What the pane opens is the agent's seven Being sections
                   // again (FEAT-118) — what it *is*. What it did is a click
                   // away, behind the panel's own Workspace door.
-                  hint: `Open ${panelAgent?.name || "Condor"} — what it knows and what it runs`,
+                  hint: `Open ${panelAgent?.name || "Spectra Intelligence"} — what it knows and what it runs`,
                   // A strategy opened from the panel is still the agent's
                   // subject, and the tile that opened it must not read as off
                   // while it is on screen.
@@ -811,7 +811,7 @@ function Hero({
     <div className="flex flex-1 flex-col items-center justify-center px-2">
       <div className="w-full max-w-xl">
         <h2 className="text-center text-xl font-semibold text-[var(--color-text)]">
-          Ask {agent?.name || "Condor"}
+          Ask {agent?.name || "Spectra Intelligence"}
         </h2>
         <p className="mt-1 text-center text-sm text-[var(--color-text-muted)]">
           {agent?.description ||
