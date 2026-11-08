@@ -274,7 +274,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
 
     proposal = authorization.proposal
 
-    assert authorization.decision.status == DecisionStatus.RESERVED
+    assert authorization.decision.status.value == "RESERVED"
     assert proposal.amount_quote == D("50")
 
     client.executors = Executors(
