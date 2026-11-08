@@ -148,14 +148,23 @@ npm run build
 say "Creating local-only API credentials and paper-only configuration"
 cd "$API_DIR"
 mkdir -p bots/conf bots/data .emqx
-API_USER="spectra_alpha"
-API_PASS="$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
-CONFIG_PASS="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
-BROKER_USER="spectra_$(python3 -c 'import secrets; print(secrets.token_hex(5))')"
-BROKER_PASS="$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
-BROKER_DASH_PASS="$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
-
-cat > .env <<EOF
+env_value() { sed -n "s/^$1=//p" .env | head -n 1; }
+if [[ -f .env ]]; then
+  API_USER="$(env_value USERNAME)"
+  API_PASS="$(env_value PASSWORD)"
+  CONFIG_PASS="$(env_value CONFIG_PASSWORD)"
+  BROKER_USER="$(env_value BROKER_USERNAME)"
+  BROKER_PASS="$(env_value BROKER_PASSWORD)"
+  BROKER_DASH_PASS="$(env_value BROKER_DASHBOARD_PASSWORD)"
+  [[ -n "$API_USER" && -n "$API_PASS" && -n "$CONFIG_PASS" && -n "$BROKER_USER" && -n "$BROKER_PASS" && -n "$BROKER_DASH_PASS" ]] || die "Existing API .env is incomplete; refusing to replace credentials."
+else
+  API_USER="spectra_alpha"
+  API_PASS="$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
+  CONFIG_PASS="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
+  BROKER_USER="spectra_$(python3 -c 'import secrets; print(secrets.token_hex(5))')"
+  BROKER_PASS="$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
+  BROKER_DASH_PASS="$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
+  cat > .env <<EOF
 API_BIND=127.0.0.1
 DB_BIND=127.0.0.1
 USERNAME=$API_USER
@@ -169,14 +178,16 @@ SPECTRA_ALLOW_LIVE_EXECUTION=false
 SPECTRA_REQUIRE_CORE_RECEIPTS=true
 SPECTRA_DISPATCH_POLICY_VERSION=spectra-policy-v1
 EOF
-chmod 600 .env
+  chmod 600 .env
+fi
 chmod 700 . bots
 printf 'user_id,password,is_superuser\n%s,%s,false\n' "$BROKER_USER" "$BROKER_PASS" > .emqx/auth-bootstrap.csv
 chmod 700 .emqx
 chmod 644 .emqx/auth-bootstrap.csv
 
 # Hummingbot's official paper-trade config: Kraken market data, simulated orders/balances.
-cat > bots/conf/conf_client.yml <<'EOF'
+if [[ ! -f bots/conf/conf_client.yml ]]; then
+  cat > bots/conf/conf_client.yml <<'EOF'
 paper_trade:
   paper_trade_exchanges:
     - kraken
@@ -187,6 +198,7 @@ paper_trade:
     ETH: 20
     XRP: 10000
 EOF
+fi
 
 # This alpha must not hand the API container the host Docker/Podman control socket.
 # Generate a private compose copy with only that mount removed; fail if source changes.
@@ -274,35 +286,39 @@ say "Starting Condor and the Spectra dashboard"
 cd "$CORE_DIR"
 make run
 
-cat > "$LOCAL_BIN/spectra" <<EOF
+cat > "$INSTALL_ROOT/.compose-kind" <<EOF
+$COMPOSE_KIND
+EOF
+cat > "$LOCAL_BIN/spectra" <<'EOF'
 #!/usr/bin/env bash
-set -e
-CORE_DIR="$CORE_DIR"
-API_DIR="$API_DIR"
-COMPOSE_KIND="$COMPOSE_KIND"
+set -euo pipefail
+INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
+CORE_DIR="$INSTALL_ROOT/spectra-core"
+API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
+COMPOSE_KIND="$(cat "$INSTALL_ROOT/.compose-kind")"
 case "${1:-status}" in
   start)
-    cd "\$API_DIR"
-    if [[ "\$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml up -d; else podman-compose -f docker-compose.alpha.yml up -d; fi
-    cd "\$CORE_DIR"
+    cd "$API_DIR"
+    if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml up -d; else podman-compose -f docker-compose.alpha.yml up -d; fi
+    cd "$CORE_DIR"
     make run
     ;;
   stop)
-    cd "\$CORE_DIR"; make stop
-    cd "\$API_DIR"
-    if [[ "\$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml down; else podman-compose -f docker-compose.alpha.yml down; fi
+    cd "$CORE_DIR"; make stop
+    cd "$API_DIR"
+    if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml down; else podman-compose -f docker-compose.alpha.yml down; fi
     ;;
   restart)
-    "\$0" stop
-    "\$0" start
+    "$0" stop
+    "$0" start
     ;;
   status)
-    cd "\$CORE_DIR"; make status
-    cd "\$API_DIR"
-    if [[ "\$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml ps; else podman-compose -f docker-compose.alpha.yml ps; fi
+    cd "$CORE_DIR"; make status
+    cd "$API_DIR"
+    if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -f docker-compose.alpha.yml ps; else podman-compose -f docker-compose.alpha.yml ps; fi
     ;;
   logs)
-    cd "\$CORE_DIR"; make logs
+    cd "$CORE_DIR"; make logs
     ;;
   *)
     echo "Usage: spectra {start|stop|restart|status|logs}"
