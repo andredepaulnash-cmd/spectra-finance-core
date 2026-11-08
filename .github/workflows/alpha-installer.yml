@@ -1,0 +1,112 @@
+name: Alpha installer and safety checks
+
+on:
+  push:
+    branches:
+      - alpha/one-command-paper-demo-20261108
+    paths:
+      - install-alpha.sh
+      - ALPHA-TEST.md
+      - README.md
+      - pyproject.toml
+      - uv.lock
+      - condor/fetchers/spectra_runtime.py
+      - condor/web/routes/servers.py
+      - spectra_core/runtime.py
+      - mcp_servers/hummingbot_api/settings.py
+      - scripts/configure_alpha_paper_connector.py
+      - scripts/configure_alpha_paper_state.py
+      - tests/test_spectra_runtime_fail_closed.py
+      - tests/test_spectra_runtime.py
+      - tests/test_spectra_kraken_execution_flow.py
+      - tests/test_configure_alpha_paper_connector.py
+      - tests/test_configure_alpha_paper_state.py
+      - tests/test_hummingbot_mcp_config_dir.py
+      - frontend/**
+      - .github/workflows/alpha-installer.yml
+  pull_request:
+    paths:
+      - install-alpha.sh
+      - ALPHA-TEST.md
+      - README.md
+      - pyproject.toml
+      - uv.lock
+      - condor/fetchers/spectra_runtime.py
+      - condor/web/routes/servers.py
+      - mcp_servers/hummingbot_api/settings.py
+      - scripts/configure_alpha_paper_connector.py
+      - scripts/configure_alpha_paper_state.py
+      - tests/test_spectra_runtime_fail_closed.py
+      - tests/test_configure_alpha_paper_connector.py
+      - tests/test_configure_alpha_paper_state.py
+      - tests/test_hummingbot_mcp_config_dir.py
+      - frontend/**
+      - .github/workflows/alpha-installer.yml
+
+jobs:
+  static-and-unit-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Bash syntax
+        run: bash -n install-alpha.sh
+      - name: Enforce paper-only and no host socket mount
+        run: |
+          grep -q 'SPECTRA_PAPER_ONLY=true' install-alpha.sh
+          grep -q 'SPECTRA_ALLOW_LIVE_EXECUTION=false' install-alpha.sh
+          grep -q 'docker-compose.alpha.yml' install-alpha.sh
+          grep -q 'docker.sock' install-alpha.sh
+          ! grep -Eq 'docker compose .*docker-compose.yml up|podman-compose .*docker-compose.yml up' install-alpha.sh
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked Core dependencies
+        run: uv sync --locked --dev --python 3.12
+      - name: Test alpha runtime safety and paper configuration
+        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build the Spectra dashboard
+        working-directory: frontend
+        run: npm ci && npm run build
+
+  linux-install-smoke:
+    name: Clean Linux one-command installation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run the public one-command installer
+        run: bash install-alpha.sh
+      - name: Verify dashboard and Kraken paper runtime
+        shell: bash
+        run: |
+          curl -fsS http://127.0.0.1:8088/overview >/dev/null
+          API_USER="$(sed -n 's/^USERNAME=//p' "$HOME/SpectraFinance-Alpha/spectra-hummingbot-api/.env" | head -n 1)"
+          API_PASS="$(sed -n 's/^PASSWORD=//p' "$HOME/SpectraFinance-Alpha/spectra-hummingbot-api/.env" | head -n 1)"
+          curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/spectra/runtime > "$RUNNER_TEMP/spectra-runtime.json"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          runtime = json.loads(Path(os.environ["RUNNER_TEMP"] + "/spectra-runtime.json").read_text())
+          assert runtime["mode"] == "PAPER_ONLY", runtime
+          assert runtime["paper_only"] is True, runtime
+          assert runtime["paper_connectors_only"] is True, runtime
+          assert any(name.endswith("/kraken_paper_trade") for name in runtime["paper_connectors"]), runtime
+          assert runtime["live_dispatch_available"] is False, runtime
+          print("Clean Linux install verified: Spectra dashboard and Kraken paper connector are running.")
+          PY
+          "$HOME/.local/bin/spectra" status
+      - name: Stop alpha services
+        if: always()
+        run: '$HOME/.local/bin/spectra stop || true'

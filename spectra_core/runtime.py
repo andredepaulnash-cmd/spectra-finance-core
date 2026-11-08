@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
@@ -196,6 +197,79 @@ def get_accounting_health_supervisor() -> AccountingHealthSupervisor:
     return AccountingHealthSupervisor(
         spectra_state_dir() / "economic_positions.sqlite3"
     )
+
+
+def get_spectra_accounting_health_snapshot(*, now: float | None = None) -> dict:
+    """Return a read-only aggregate of durable active-position reconciliation health.
+
+    This is an observability surface only. It never refreshes exchange data or
+    grants capital authority; stale/missing/conflicted watermarks remain blocked.
+    """
+    timestamp = time.time() if now is None else float(now)
+    ledger = get_economic_position_ledger()
+    supervisor = get_accounting_health_supervisor()
+    position_ids = ledger.list_active_position_ids()
+
+    if not position_ids:
+        return {
+            "state": "NO_ACTIVE_POSITIONS",
+            "active_positions": 0,
+            "allows_new_exposure": True,
+            "checked_at": timestamp,
+            "positions": [],
+        }
+
+    decisions = [
+        supervisor.assess(position_id=position_id, now=timestamp)
+        for position_id in position_ids
+    ]
+    states = {decision.state.value for decision in decisions}
+    if "CONFLICT" in states:
+        aggregate_state = "CONFLICT"
+    elif "HOLD" in states:
+        aggregate_state = "HOLD"
+    elif "STALE" in states:
+        aggregate_state = "STALE"
+    else:
+        aggregate_state = "HEALTHY"
+
+    return {
+        "state": aggregate_state,
+        "active_positions": len(decisions),
+        "allows_new_exposure": all(
+            decision.allows_live_mutation(now=timestamp)
+            for decision in decisions
+        ),
+        "checked_at": timestamp,
+        "totals": {
+            "known_orders": sum(item.known_orders for item in decisions),
+            "bound_orders": sum(item.bound_orders for item in decisions),
+            "confirmed_fills": sum(item.confirmed_fills for item in decisions),
+            "ledgered_fills": sum(item.ledgered_fills for item in decisions),
+            "unresolved_orders": sum(
+                len(item.unresolved_order_ids) for item in decisions
+            ),
+            "unresolved_trades": sum(
+                len(item.unresolved_trade_ids) for item in decisions
+            ),
+        },
+        "positions": [
+            {
+                "state": item.state.value,
+                "fully_reconciled": item.fully_reconciled,
+                "age_seconds": item.age_seconds,
+                "last_success_at": item.last_success_at,
+                "proposal_count": item.proposal_count,
+                "known_orders": item.known_orders,
+                "bound_orders": item.bound_orders,
+                "confirmed_fills": item.confirmed_fills,
+                "ledgered_fills": item.ledgered_fills,
+                "unresolved_orders": len(item.unresolved_order_ids),
+                "unresolved_trades": len(item.unresolved_trade_ids),
+            }
+            for item in decisions
+        ],
+    }
 
 
 @lru_cache(maxsize=1)

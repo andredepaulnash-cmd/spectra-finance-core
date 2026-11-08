@@ -9,6 +9,8 @@ from spectra_core.models import BreakerMode
 from spectra_core.runtime import (
     get_breaker_mode,
     get_capital_governor,
+    get_economic_position_ledger,
+    get_spectra_accounting_health_snapshot,
     load_capital_policy,
     reset_runtime_cache,
     spectra_live_state_dir,
@@ -399,7 +401,7 @@ def test_missing_runtime_endpoint_is_explicitly_unsupported():
 
     assert result["mode"] == "UNSUPPORTED"
     assert result["paper_only"] is False
-    assert result["live_dispatch_available"] is True
+    assert result["live_dispatch_available"] is False
 
 
 def test_uninitialized_client_fails_closed():
@@ -424,6 +426,7 @@ def test_spectra_agent_defaults_to_paper_only_unless_explicitly_overridden(
     assert spectra_paper_only_enabled() is True
 
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
     assert spectra_paper_only_enabled() is False
 
 
@@ -439,3 +442,52 @@ def test_condor_spectra_runtime_status_route_is_registered():
         route.path == "/servers/{name}/spectra/runtime"
         for route in router.routes
     )
+
+
+def test_accounting_health_snapshot_reports_no_active_positions(
+    monkeypatch,
+    tmp_path,
+):
+    live_dir = tmp_path / "live-state"
+    paper_dir = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(live_dir))
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(paper_dir))
+    reset_runtime_cache()
+
+    snapshot = get_spectra_accounting_health_snapshot(now=1_000)
+
+    assert snapshot["state"] == "NO_ACTIVE_POSITIONS"
+    assert snapshot["active_positions"] == 0
+    assert snapshot["allows_new_exposure"] is True
+    assert snapshot["positions"] == []
+
+    reset_runtime_cache()
+
+
+def test_accounting_health_snapshot_fails_closed_for_unassessed_position(
+    monkeypatch,
+    tmp_path,
+):
+    live_dir = tmp_path / "live-state"
+    paper_dir = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_STATE_DIR", str(live_dir))
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(paper_dir))
+    reset_runtime_cache()
+
+    ledger = get_economic_position_ledger()
+    ledger.open_position(
+        position_id="unassessed-position",
+        pair="BTC-USD",
+        created_at=900,
+    )
+
+    snapshot = get_spectra_accounting_health_snapshot(now=1_000)
+
+    assert snapshot["state"] == "HOLD"
+    assert snapshot["active_positions"] == 1
+    assert snapshot["allows_new_exposure"] is False
+    assert snapshot["positions"][0]["state"] == "HOLD"
+
+    reset_runtime_cache()

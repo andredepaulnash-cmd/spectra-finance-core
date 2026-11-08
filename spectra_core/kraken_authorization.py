@@ -14,7 +14,13 @@ from .models import (
     DecisionStatus,
     IntentKind,
 )
-from .runtime import get_capital_governor, get_dust_lifecycle, spectra_paper_only_enabled
+from .runtime import (
+    get_accounting_health_supervisor,
+    get_capital_governor,
+    get_dust_lifecycle,
+    get_economic_position_ledger,
+    spectra_paper_only_enabled,
+)
 
 
 @dataclass(frozen=True)
@@ -45,6 +51,29 @@ def _intent(value: IntentKind | str) -> IntentKind:
         return IntentKind(str(value).strip().upper())
     except ValueError as exc:
         raise ValueError(f"unknown Spectra capital intent: {value!r}") from exc
+
+
+def _require_reconciled_existing_exposure(*, now: float) -> None:
+    """Block additional buy-side exposure while any held position is unverified.
+
+    Empty position shells do not represent exposure and do not need a fill
+    watermark yet. Once confirmed inventory exists, however, missing, stale,
+    held, or conflicted accounting health blocks new ENTRY/RECOVERY capital.
+    Exit-side actions remain available through their separate authorization path.
+    """
+    ledger = get_economic_position_ledger()
+    supervisor = get_accounting_health_supervisor()
+
+    for position_id in ledger.list_active_position_ids():
+        snapshot = ledger.snapshot(position_id)
+        if snapshot.active_base <= 0:
+            continue
+        health = supervisor.assess(position_id=position_id, now=now)
+        if not health.allows_live_mutation(now=now):
+            raise ValueError(
+                "accounting health gate blocks new exposure: "
+                f"position {position_id} is {health.state.value}"
+            )
 
 
 async def reserve_kraken_capital(
@@ -102,11 +131,15 @@ async def reserve_kraken_capital(
         quote_asset=pair.rsplit("-", 1)[1],
     )
 
-    # The portfolio fetch above is an await boundary. Recheck durable dust
-    # admission after it, before the Governor reserves capital.
+    # The portfolio fetch above is an await boundary. Recheck durable
+    # accounting health and dust admission before the Governor reserves capital.
+    authorization_now = time.time()
+    if intent_kind in {IntentKind.ENTRY, IntentKind.RECOVERY}:
+        _require_reconciled_existing_exposure(now=authorization_now)
+
     dust_lifecycle = get_dust_lifecycle(governor=capital_governor)
     economic_position_id = dust_lifecycle.prepare_entry(
-        proposal=proposal, account_name=account, now=time.time()
+        proposal=proposal, account_name=account, now=authorization_now
     )
     decision = capital_governor.reserve(proposal, snapshot)
     if decision.status in {

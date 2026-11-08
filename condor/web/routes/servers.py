@@ -14,6 +14,7 @@ from condor.web.auth import get_current_user
 from condor.web.models import ServerInfo, WebUser
 from config_manager import ServerPermission, get_config_manager
 from spectra_core.module_registry import get_spectra_module_registry
+from spectra_core.runtime import get_spectra_accounting_health_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -101,24 +102,31 @@ async def spectra_runtime_status(
         status = await sds.get_or_fetch(name, ServerDataType.SPECTRA_RUNTIME)
     except Exception as e:
         logger.warning("Spectra runtime status unavailable for %s: %s", name, e)
-        return {
+        status = None
+
+    if isinstance(status, dict):
+        result = dict(status)
+    else:
+        result = {
             "product": "Spectra Finance",
             "mode": "UNAVAILABLE",
             "paper_only": False,
-            "live_dispatch_available": True,
+            "live_dispatch_available": False,
             "paper_connector_count": 0,
             "error": "Spectra runtime status could not be verified",
         }
-    if isinstance(status, dict):
-        return status
-    return {
-        "product": "Spectra Finance",
-        "mode": "UNAVAILABLE",
-        "paper_only": False,
-        "live_dispatch_available": True,
-        "paper_connector_count": 0,
-        "error": "Spectra runtime status is unavailable",
-    }
+
+    try:
+        result["accounting_health"] = get_spectra_accounting_health_snapshot()
+    except Exception as e:
+        logger.warning("Spectra accounting health unavailable: %s", e)
+        result["accounting_health"] = {
+            "state": "UNAVAILABLE",
+            "active_positions": 0,
+            "allows_new_exposure": False,
+            "error": "Core accounting health could not be verified",
+        }
+    return result
 
 
 @router.get("/servers/{name}/spectra/modules")
