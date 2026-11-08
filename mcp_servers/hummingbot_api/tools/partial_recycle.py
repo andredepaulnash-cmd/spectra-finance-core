@@ -748,6 +748,8 @@ async def execute_partial_recycle(
         for_dispatch=True,
     )
     require_clear_cash_authority(governor)
+    # Signing/transport must be available before the durable one-shot claim.
+    validate_dispatch_transport(client)
     guard = store.claim_dispatch(
         manifest,
         now=now,
@@ -774,8 +776,6 @@ async def execute_partial_recycle(
             "target_net_profit_bps": str(guard.target_net_profit_bps),
             "reasons": list(guard.reasons),
         }
-    # Signing/transport must be available before the durable one-shot claim.
-    validate_dispatch_transport(client)
     # The final ownership/economic guard and durable claim above run in one
     # ledger write transaction. Do not add any external await before create.
     try:
