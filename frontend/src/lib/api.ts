@@ -83,6 +83,42 @@ export interface ServerMember {
   display_name: string;
 }
 
+export interface SpectraAccountingHealth {
+  state:
+    | "HEALTHY"
+    | "STALE"
+    | "HOLD"
+    | "CONFLICT"
+    | "NO_ACTIVE_POSITIONS"
+    | "UNAVAILABLE"
+    | string;
+  active_positions: number;
+  allows_new_exposure: boolean;
+  checked_at?: number;
+  totals?: {
+    known_orders: number;
+    bound_orders: number;
+    confirmed_fills: number;
+    ledgered_fills: number;
+    unresolved_orders: number;
+    unresolved_trades: number;
+  };
+  positions?: Array<{
+    state: string;
+    fully_reconciled: boolean;
+    age_seconds: number | null;
+    last_success_at: number | null;
+    proposal_count: number;
+    known_orders: number;
+    bound_orders: number;
+    confirmed_fills: number;
+    ledgered_fills: number;
+    unresolved_orders: number;
+    unresolved_trades: number;
+  }>;
+  error?: string;
+}
+
 export interface SpectraRuntimeStatus {
   product?: string;
   mode: "PAPER_ONLY" | "LEGACY" | "UNSUPPORTED" | "UNAVAILABLE" | string;
@@ -90,6 +126,7 @@ export interface SpectraRuntimeStatus {
   live_dispatch_available: boolean;
   paper_connector_count: number;
   paper_connectors?: string[];
+  accounting_health?: SpectraAccountingHealth;
   error?: string;
 }
 
