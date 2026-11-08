@@ -75,8 +75,8 @@ export function SpectraOverview() {
     queryKey: ["spectra-runtime", server],
     queryFn: () => api.getSpectraRuntime(server!),
     enabled: Boolean(server),
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
     retry: 1,
   });
   const registry = useQuery({
