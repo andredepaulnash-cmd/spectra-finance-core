@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 
@@ -5,6 +6,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from mcp_servers.hummingbot_api.tools.dispatch_receipts import dispatch_with_receipt
 from spectra_core.runtime import spectra_paper_only_enabled
 from spectra_core.dispatch_receipt import (
     canonical_sha256,
@@ -103,3 +105,68 @@ def test_spectra_agent_cannot_disable_paper_mode_without_separate_gate(monkeypat
 
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
     assert spectra_paper_only_enabled() is True
+
+
+def test_executor_stop_receipt_signs_exact_id_and_shared_transport(monkeypatch):
+    private = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
+    private_raw = private.private_bytes(
+        serialization.Encoding.Raw,
+        serialization.PrivateFormat.Raw,
+        serialization.NoEncryption(),
+    )
+    monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", _encoded(private_raw))
+
+    class Session:
+        def __init__(self):
+            self.headers = {}
+
+    class Executors:
+        def __init__(self, headers):
+            self.headers = headers
+            self.receipt_token = None
+
+        async def stop_executor(self, *, executor_id, keep_position):
+            self.receipt_token = self.headers.get("X-Spectra-Dispatch-Receipt")
+            assert self.receipt_token
+            assert executor_id == "executor-123"
+            assert keep_position is True
+            return {"executor_id": executor_id}
+
+    class Client:
+        def __init__(self):
+            self._session = Session()
+            self.executors = Executors(self._session.headers)
+
+    client = Client()
+    result, receipt = asyncio.run(
+        dispatch_with_receipt(
+            client,
+            api_method="stop_executor",
+            request_body={"keep_position": True},
+            request_kwargs={"executor_id": "executor-123", "keep_position": True},
+            proposal_id="exit-manifest-123",
+            intent="EXIT",
+            amount_quote="15",
+            operation="stop_executor",
+            method="POST",
+            path="/executors/executor-123/stop",
+            executor_id="executor-123",
+            account_name="paper-account",
+            connector_name="kraken_paper_trade",
+            trading_pair="XRP-USD",
+        )
+    )
+
+    payload_part, signature_part = client.executors.receipt_token.split(".")
+    payload_bytes = base64.urlsafe_b64decode(payload_part + "=" * (-len(payload_part) % 4))
+    signature = base64.urlsafe_b64decode(signature_part + "=" * (-len(signature_part) % 4))
+    private.public_key().verify(signature, payload_bytes)
+    payload = json.loads(payload_bytes)
+
+    assert result["executor_id"] == "executor-123"
+    assert receipt.receipt_id == payload["receipt_id"]
+    assert payload["operation"] == "stop_executor"
+    assert payload["executor_id"] == "executor-123"
+    assert payload["path"] == "/executors/executor-123/stop"
+    assert payload["intent"] == "EXIT"
+    assert client._session.headers == {}
