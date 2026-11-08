@@ -1,4 +1,4 @@
-name: Alpha installer checks
+name: Alpha installer and safety checks
 
 on:
   push:
@@ -6,14 +6,22 @@ on:
       - alpha/one-command-paper-demo-20261108
     paths:
       - install-alpha.sh
+      - ALPHA-TEST.md
+      - condor/fetchers/spectra_runtime.py
+      - condor/web/routes/servers.py
+      - tests/test_spectra_runtime_fail_closed.py
       - .github/workflows/alpha-installer.yml
   pull_request:
     paths:
       - install-alpha.sh
+      - ALPHA-TEST.md
+      - condor/fetchers/spectra_runtime.py
+      - condor/web/routes/servers.py
+      - tests/test_spectra_runtime_fail_closed.py
       - .github/workflows/alpha-installer.yml
 
 jobs:
-  static-check:
+  static-and-unit-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,3 +34,11 @@ jobs:
           grep -q 'docker-compose.alpha.yml' install-alpha.sh
           grep -q 'docker.sock' install-alpha.sh
           ! grep -Eq 'docker compose .*docker-compose.yml up|podman-compose .*docker-compose.yml up' install-alpha.sh
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked Core dependencies
+        run: uv sync --locked --dev --python 3.12
+      - name: Test fail-closed runtime status
+        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py
