@@ -221,7 +221,7 @@ if ! grep -Fq '/var/run/docker.sock:/var/run/docker.sock' docker-compose.yml; th
   die "Expected Docker socket mount was not found in the pinned API Compose file; refusing to guess at a safe override."
 fi
 sed \
-  -e '\|/var/run/docker.sock:/var/run/docker.sock|d' \
+  -e '/\/var\/run\/docker\.sock:\/var\/run\/docker\.sock/d' \
   -e 's|./bots:/hummingbot-api/bots|./bots:/hummingbot-api/bots:Z|' \
   -e 's|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro,Z|' \
   -e 's|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro,Z|' \
