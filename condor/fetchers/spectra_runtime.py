@@ -27,7 +27,7 @@ async def fetch_spectra_runtime(client, **_kw) -> dict:
                 "product": "Spectra Finance",
                 "mode": "UNSUPPORTED",
                 "paper_only": False,
-                "live_dispatch_available": True,
+                "live_dispatch_available": False,
                 "paper_connector_count": 0,
                 "error": "Hummingbot API does not expose the Spectra runtime boundary",
             }
@@ -38,7 +38,7 @@ async def fetch_spectra_runtime(client, **_kw) -> dict:
             return {
                 "mode": "UNAVAILABLE",
                 "paper_only": False,
-                "live_dispatch_available": True,
+                "live_dispatch_available": False,
                 "paper_connector_count": 0,
                 "error": "Invalid Spectra runtime response",
             }
