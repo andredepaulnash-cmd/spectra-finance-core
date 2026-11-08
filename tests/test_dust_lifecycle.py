@@ -1662,6 +1662,8 @@ def test_inflight_external_create_keeps_single_use_claim_across_real_await(
                 account_name="owner-account",
                 spectra_proposal_id=authorization.proposal.proposal_id,
                 spectra_intent="ENTRY",
+                spectra_max_price_slippage_bps="100",
+                spectra_fee_allowance_bps="40",
             )
 
         first = asyncio.create_task(create())
