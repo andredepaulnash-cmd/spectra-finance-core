@@ -196,6 +196,15 @@ set_env_value .env SPECTRA_ALLOW_LIVE_EXECUTION false
 set_env_value .env SPECTRA_REQUIRE_CORE_RECEIPTS true
 set_env_value .env SPECTRA_DISPATCH_POLICY_VERSION spectra-policy-v1
 chmod 600 .env
+HUMMINGBOT_MCP_DIR="$INSTALL_ROOT/hummingbot-mcp"
+mkdir -p "$HUMMINGBOT_MCP_DIR"
+cat > "$HUMMINGBOT_MCP_DIR/server.yml" <<EOF
+name: local
+url: http://127.0.0.1:8000
+username: "$API_USER"
+password: "$API_PASS"
+EOF
+chmod 600 "$HUMMINGBOT_MCP_DIR/server.yml"
 chmod 700 . bots
 printf 'user_id,password,is_superuser\n%s,%s,false\n' "$BROKER_USER" "$BROKER_PASS" > .emqx/auth-bootstrap.csv
 chmod 700 .emqx
@@ -281,6 +290,7 @@ set_env_value .env WEB_URL http://127.0.0.1:8088
 set_env_value .env WEB_HOST 127.0.0.1
 set_env_value .env CONDOR_TELEMETRY off
 set_env_value .env CONDOR_AGENT_SLUG spectra
+set_env_value .env HUMMINGBOT_MCP_CONFIG_DIR "$INSTALL_ROOT/hummingbot-mcp"
 set_env_value .env SPECTRA_PAPER_ONLY true
 set_env_value .env SPECTRA_ALLOW_LIVE_EXECUTION false
 set_env_value .env SPECTRA_DISPATCH_POLICY_VERSION spectra-policy-v1
