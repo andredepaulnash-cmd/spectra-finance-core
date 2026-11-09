@@ -476,8 +476,25 @@ assert book.get("trading_pair") == "BTC-USD", book
 assert book.get("bids") and book.get("asks"), book
 PY
       then
-        MARKET_DATA_READY=true
-        say "Verified: public BTC-USD bids and asks are available to the paper adapter."
+        PRICE_STATUS="$(curl -sS -u "$API_USER:$API_PASS" -H "Content-Type: application/json" \
+          -d '{"connector_name":"kraken_paper_trade","trading_pairs":["BTC-USD"]}' \
+          -o "$INSTALL_ROOT/kraken-paper-prices.json" -w '%{http_code}' \
+          http://127.0.0.1:8000/market-data/prices || true)"
+        if [[ "$PRICE_STATUS" == 200 ]] && "$CORE_DIR/.venv/bin/python" - "$INSTALL_ROOT/kraken-paper-prices.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+result = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert result.get("connector") == "kraken_paper_trade", result
+assert result.get("prices", {}).get("BTC-USD", 0) > 0, result
+PY
+        then
+          MARKET_DATA_READY=true
+          say "Verified: public BTC-USD order book and live public ticker are available to the paper adapter."
+        else
+          printf 'Public-price bootstrap failed (HTTP %s).\n' "$PRICE_STATUS" >> "$INSTALL_ROOT/market-data-bootstrap.log"
+          cat "$INSTALL_ROOT/kraken-paper-prices.json" >> "$INSTALL_ROOT/market-data-bootstrap.log" 2>/dev/null || true
+        fi
       else
         printf 'Order-book bootstrap failed (HTTP %s).\n' "$BOOK_STATUS" >> "$INSTALL_ROOT/market-data-bootstrap.log"
         cat "$INSTALL_ROOT/kraken-paper-book.json" >> "$INSTALL_ROOT/market-data-bootstrap.log" 2>/dev/null || true
@@ -501,7 +518,7 @@ if [[ "$MARKET_DATA_READY" != true ]]; then
     podman-compose -p spectra-alpha -f "$API_DIR/docker-compose.alpha.yml" logs --tail=100 >> "$INSTALL_ROOT/market-data-bootstrap.log" 2>&1 || true
   fi
 fi
-rm -f "$INSTALL_ROOT/kraken-paper-rules.json" "$INSTALL_ROOT/kraken-paper-pair.json" "$INSTALL_ROOT/kraken-paper-book.json"
+rm -f "$INSTALL_ROOT/kraken-paper-rules.json" "$INSTALL_ROOT/kraken-paper-pair.json" "$INSTALL_ROOT/kraken-paper-book.json" "$INSTALL_ROOT/kraken-paper-prices.json"
 
 cat > "$INSTALL_ROOT/.compose-kind" <<EOF
 $COMPOSE_KIND
