@@ -238,7 +238,7 @@ function NewChatTab({
           New chat with
         </div>
         <NewChatOption
-          label={condor?.name || "Condor"}
+          label={brandedAgentName(condor)}
           hint={condor?.description || "General trading assistant"}
           icon={<MessageSquare className="h-3 w-3 shrink-0" />}
           onClick={() => pick("", null)}
@@ -246,7 +246,7 @@ function NewChatTab({
         {specialists.map((agent) => (
           <NewChatOption
             key={agent.slug}
-            label={agent.name}
+            label={brandedAgentName(agent)}
             hint={agent.description || agent.name}
             icon={
               <Bot className="h-3 w-3 shrink-0 text-[var(--color-accent)]" />
