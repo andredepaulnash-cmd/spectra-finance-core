@@ -16,10 +16,6 @@ on:
       - spectra_core/runtime.py
       - tests/test_module_lifecycle.py
       - tests/test_module_registry.py
-      - spectra_core/runtime.py
-      - spectra_core/module_lifecycle.py
-      - tests/test_module_lifecycle.py
-      - tests/test_module_registry.py
       - mcp_servers/hummingbot_api/settings.py
       - scripts/configure_alpha_paper_connector.py
       - scripts/configure_alpha_paper_state.py
@@ -35,8 +31,6 @@ on:
       - tests/test_market_discovery.py
       - .github/workflows/alpha-installer.yml
   pull_request:
-    paths:
-
 jobs:
   static-and-unit-checks:
     runs-on: ubuntu-latest
