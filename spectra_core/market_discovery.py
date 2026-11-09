@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Iterable, Mapping
 from typing import Any
 
-import aiohttp
+from .kraken_market_fabric import collect_kraken_universe
 
 FUTURES_TICKER_URL = "https://fapi.binance.com/fapi/v1/ticker/24hr"
 FUTURES_INFO_URL = "https://fapi.binance.com/fapi/v1/exchangeInfo"
@@ -38,16 +39,23 @@ def analyze_daily_history(
     current_price: float,
     volume_24h_usd: float,
     change_24h_pct: float,
-    candles: list[list[Any]],
+    candles: list[Any],
+    quote_asset: str = "USDT",
 ) -> dict[str, Any]:
     """Calculate transparent, bounded mean-reversion selection metrics."""
     rows = []
     for row in candles:
         try:
-            close = _number(row[4], "close")
-            high = _number(row[2], "high")
-            low = _number(row[3], "low")
-            volume = _number(row[5], "volume")
+            if isinstance(row, Mapping):
+                close = _number(row.get("close"), "close")
+                high = _number(row.get("high"), "high")
+                low = _number(row.get("low"), "low")
+                volume = _number(row.get("volume"), "volume")
+            else:
+                close = _number(row[4], "close")
+                high = _number(row[2], "high")
+                low = _number(row[3], "low")
+                volume = _number(row[5], "volume")
             if close > 0 and high >= low > 0 and volume >= 0:
                 rows.append((high, low, close, volume))
         except (IndexError, TypeError, ValueError):
@@ -128,7 +136,7 @@ def analyze_daily_history(
     return {
         "symbol": symbol,
         "base_asset": base_asset,
-        "trading_pair": f"{base_asset}-USDT",
+        "trading_pair": f"{base_asset}-{quote_asset.strip().upper()}",
         "current_price": round(price, 10),
         "volume_24h_usd": round(volume_24h_usd, 2),
         "change_24h_pct": round(change_24h_pct, 2),
@@ -151,88 +159,113 @@ def analyze_daily_history(
     }
 
 
-async def _get_json(session: aiohttp.ClientSession, url: str, params: dict | None = None):
-    async with session.get(url, params=params) as response:
-        response.raise_for_status()
-        return await response.json()
+def _candle_timestamp(row: Any) -> float:
+    raw = row.get("timestamp") if isinstance(row, Mapping) else (row[0] if row else None)
+    if raw is None:
+        raise ValueError("candle_timestamp_missing")
+    stamp = _number(raw, "timestamp")
+    return stamp / 1000.0 if stamp > 1_000_000_000_000 else stamp
 
 
-async def scan_public_universe(
+async def scan_kraken_universe(
+    client: Any,
     *,
     top_n: int = 80,
     show_n: int = 25,
     min_volume_usd: float = 10_000_000,
     min_history_days: int = 90,
+    quote_assets: Iterable[str] = ("USD",),
+    approved_pairs: Iterable[str] | None = None,
+    now: float | None = None,
 ) -> dict[str, Any]:
-    """Scan the top liquid USDT perpetuals using public data only."""
+    """Rank Kraken USD spot markets using the configured Hummingbot API.
+
+    This is discovery only. It never creates an order or reserves capital.
+    If a Governor-approved pair list is supplied, candidates are annotated
+    against it; without that list no candidate is marked approved for capital.
+    """
     if not 1 <= top_n <= 150 or not 1 <= show_n <= 100:
         raise ValueError("top_n/show_n outside supported bounds")
-    if min_volume_usd <= 0 or min_history_days < 90:
-        raise ValueError("minimum volume must be positive and history at least 90 days")
+    if min_volume_usd < 0 or min_history_days < 90:
+        raise ValueError("minimum volume cannot be negative and history must be at least 90 days")
+    timestamp = time.time() if now is None else _number(now, "now")
+    day_start = int(timestamp // 86_400) * 86_400
+    approved = (
+        None
+        if approved_pairs is None
+        else {str(pair).strip().upper() for pair in approved_pairs if str(pair).strip()}
+    )
 
-    timeout = aiohttp.ClientTimeout(total=25, connect=8)
-    headers = {"User-Agent": "SpectraFinance-MarketDiscovery/1.0"}
-    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
-        info, tickers = await asyncio.gather(
-            _get_json(session, FUTURES_INFO_URL),
-            _get_json(session, FUTURES_TICKER_URL),
-        )
+    snapshot = await collect_kraken_universe(client, quote_assets=quote_assets)
+    candidates = []
+    for pair in snapshot.eligible_pairs:
+        ticker = snapshot.tickers[pair]
+        volume = float(ticker.quote_volume_24h)
+        if volume < min_volume_usd:
+            continue
+        candidates.append({
+            "trading_pair": pair,
+            "symbol": pair,
+            "base_asset": pair.rsplit("-", 1)[0],
+            "quote_asset": pair.rsplit("-", 1)[1],
+            "price": float(ticker.price),
+            "volume": volume,
+        })
+    candidates.sort(key=lambda item: item["volume"], reverse=True)
+    selected = candidates[:top_n]
 
-        active = {
-            row.get("symbol"): row.get("baseAsset")
-            for row in info.get("symbols", [])
-            if row.get("contractType") == "PERPETUAL"
-            and row.get("quoteAsset") == "USDT"
-            and row.get("status") == "TRADING"
-            and row.get("baseAsset") not in EXCLUDED_BASES
-        }
-        candidates = []
-        for row in tickers:
-            symbol = row.get("symbol")
-            base = active.get(symbol)
-            if not base:
-                continue
+    semaphore = asyncio.Semaphore(6)
+
+    async def fetch_history(item: dict[str, Any]):
+        async with semaphore:
             try:
-                volume = _number(row.get("quoteVolume", 0), "quoteVolume")
-                price = _number(row.get("lastPrice", 0), "lastPrice")
-                change = _number(row.get("priceChangePercent", 0), "priceChangePercent")
-            except (TypeError, ValueError):
-                continue
-            if volume >= min_volume_usd and price > 0:
-                candidates.append({
-                    "symbol": symbol, "base_asset": base, "price": price,
-                    "volume": volume, "change": change,
-                })
-        candidates.sort(key=lambda item: item["volume"], reverse=True)
-        selected = candidates[:top_n]
+                raw = await client.market_data.get_candles(
+                    "kraken",
+                    item["trading_pair"],
+                    "1d",
+                    max_records=min(1000, min_history_days + 2),
+                )
+                records = (
+                    raw if isinstance(raw, list)
+                    else raw.get("data", raw.get("candles", []))
+                    if isinstance(raw, Mapping)
+                    else []
+                )
+                completed = []
+                for row in records:
+                    try:
+                        if _candle_timestamp(row) < day_start:
+                            completed.append(row)
+                    except (TypeError, ValueError, IndexError):
+                        continue
+                if len(completed) < min_history_days:
+                    return item["trading_pair"], None, "insufficient_completed_history"
+                analysis = analyze_daily_history(
+                    symbol=item["symbol"],
+                    base_asset=item["base_asset"],
+                    quote_asset=item["quote_asset"],
+                    current_price=item["price"],
+                    volume_24h_usd=item["volume"],
+                    change_24h_pct=0.0,
+                    candles=completed,
+                )
+                analysis["governor_approved"] = (
+                    approved is not None and item["trading_pair"] in approved
+                )
+                analysis["capital_authorized"] = False
+                return item["trading_pair"], analysis, None
+            except Exception as exc:
+                return (
+                    item["trading_pair"],
+                    None,
+                    f"market_data_error: {type(exc).__name__}",
+                )
 
-        semaphore = asyncio.Semaphore(8)
-        async def fetch_history(item):
-            async with semaphore:
-                try:
-                    rows = await _get_json(
-                        session, FUTURES_KLINES_URL,
-                        {"symbol": item["symbol"], "interval": "1d", "limit": min(1000, min_history_days + 1)},
-                    )
-                    # Drop today's incomplete daily candle. Its live price is
-                    # supplied separately by the 24h ticker.
-                    now_ms = int(time.time() * 1000)
-                    closed = [row for row in rows if len(row) > 6 and int(row[6]) < now_ms]
-                    if len(closed) < min_history_days:
-                        return (item["symbol"], None, "insufficient_history")
-                    return (item["symbol"], analyze_daily_history(
-                        symbol=item["symbol"], base_asset=item["base_asset"],
-                        current_price=item["price"], volume_24h_usd=item["volume"],
-                        change_24h_pct=item["change"], candles=closed,
-                    ), None)
-                except Exception as exc:
-                    return (item["symbol"], None, f"market_data_error: {type(exc).__name__}")
-
-        fetched = await asyncio.gather(*(fetch_history(item) for item in selected))
+    fetched = await asyncio.gather(*(fetch_history(item) for item in selected))
     analyzed = [row for _, row, reason in fetched if row is not None]
     rejected = [
-        {"symbol": symbol, "reason": reason}
-        for symbol, row, reason in fetched if row is None
+        {"trading_pair": pair, "reason": reason}
+        for pair, row, reason in fetched if row is None
     ]
     ranked_all = sorted(
         (row for row in analyzed if row["eligible"]),
@@ -240,28 +273,30 @@ async def scan_public_universe(
         reverse=True,
     )
     ranked = ranked_all[:show_n]
-    guardrail_rejects = sum(not row["eligible"] for row in analyzed)
     return {
-        "source": "Binance USD-M public perpetual market data",
-        "as_of": time.time(),
-        "universe": "USDT-margined perpetual contracts",
+        "source": "Kraken spot market data via Hummingbot API",
+        "as_of": timestamp,
+        "universe": "Kraken spot markets in configured quote assets",
         "criteria": {
             "top_by_24h_quote_volume": top_n,
-            "minimum_24h_volume_usd": min_volume_usd,
-            "minimum_history_days": min_history_days,
-            "excluded_bases": sorted(EXCLUDED_BASES),
+            "minimum_24h_volume_quote": min_volume_usd,
+            "minimum_completed_history_days": min_history_days,
+            "quote_assets": sorted({str(q).strip().upper() for q in quote_assets}),
             "ranking": "discount-to-90d-VWAP + recovery/trend/RSI context",
         },
         "counts": {
-            "liquid_contracts_found": len(candidates),
-            "contracts_selected_for_history": len(selected),
+            "eligible_kraken_markets": len(snapshot.eligible_pairs),
+            "liquid_markets_found": len(candidates),
+            "markets_selected_for_history": len(selected),
             "analyzed": len(analyzed),
             "eligible": len(ranked_all),
-            "rejected_by_guardrails": guardrail_rejects,
+            "rejected_by_guardrails": sum(not row["eligible"] for row in analyzed),
             "history_or_data_rejected": len(rejected),
+            "governor_approved": sum(bool(row["governor_approved"]) for row in ranked_all),
         },
         "candidates": ranked,
         "rejected_data": rejected,
+        "governor_approved_list_loaded": approved is not None,
         "paper_only": True,
         "orders_created": 0,
     }
