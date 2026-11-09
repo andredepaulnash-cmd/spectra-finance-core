@@ -54,7 +54,7 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
     ]
     for index, item in enumerate(result["candidates"], 1):
         lines.append(
-            f"{index}. {item['trading_pair']} — $\{item['current_price']:,.8g} | "
+            f"{index}. {item['trading_pair']} — $" + f"{item['current_price']:,.8g} | "
             f"Score {item['selection_score']:.1f}/100 | "
             f"{item['discount_to_vwap_pct']:+.1f}% vs 90d VWAP | "
             f"RSI {item['rsi_14d']:.1f}"
