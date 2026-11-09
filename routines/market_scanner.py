@@ -16,7 +16,6 @@ from spectra_core.kraken_market_fabric import collect_kraken_universe
 
 logger = logging.getLogger(__name__)
 
-BINANCE_FUTURES_TICKER = "https://fapi.binance.com/fapi/v1/ticker/24hr"
 MAX_CONCURRENT = 30  # concurrent candle fetches
 
 
@@ -56,7 +55,6 @@ async def fetch_top_pairs(client, top_n: int, min_volume: float) -> list[dict]:
             "price": float(ticker.price),
             # The Kraken bulk ticker adapter does not expose a normalized
             # 24h percentage-change field; do not fabricate one.
-            "price_change_pct": 0.0,
         })
     pairs.sort(key=lambda item: item["volume_24h_usd"], reverse=True)
     return pairs[:top_n]
@@ -191,7 +189,7 @@ def analyze_pair(candles: list[dict], pair_info: dict) -> dict[str, Any] | None:
     return {
         "trading_pair": pair_info["trading_pair"],
         "price": pair_info["price"],
-        "price_change_24h": pair_info["price_change_pct"],
+        "price_change_24h": pair_info.get("price_change_pct"),
         "volume_24h_usd": pair_info["volume_24h_usd"],
         "candle_count": len(candles),
         # Volume metrics
@@ -290,7 +288,7 @@ def format_results(result: dict, lookback_hours: int) -> str:
     lines.append("─" * 40)
     for i, m in enumerate(result["mature"], 1):
         chg = m["price_change_24h"]
-        chg_str = f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%"
+        chg_str = (f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%") if chg is not None else "n/a"
         lines.append(
             f"{i}. {m['trading_pair']}"
             f"  vol: {format_volume(m['volume_24h_usd'])}"
@@ -391,7 +389,7 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
             {
                 "Pair": m["trading_pair"],
                 "Volume 24h": format_volume(m["volume_24h_usd"]),
-                "24h Chg": f"{m['price_change_24h']:+.1f}%",
+                "24h Chg": (f"{m['price_change_24h']:+.1f}%" if m["price_change_24h"] is not None else "n/a"),
                 "NATR": f"{m['natr_mean']:.3f}%",
                 "NATR-CV": f"{m['natr_cv']:.2f}",
                 "Vol-CV": f"{m['bucket_cv']:.2f}",
@@ -424,7 +422,7 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
                     size=max(6, 20 - a["bucket_cv"] * 10),
                     line=dict(width=1, color="#0d1117"),
                 ),
-                text=[pair.replace("-USDT", "")],
+                text=[pair.replace("-USD", "")],
                 textposition="top center",
                 textfont=dict(size=8, color="#8b949e"),
                 name=name,
