@@ -19,7 +19,7 @@ die() { printf '\n\033[1;31m[STOP]\033[0m %s\n' "$*" >&2; exit 1; }
 has() { command -v "$1" >/dev/null 2>&1; }
 set_env_value() {
   local file="$1" key="$2" value="$3"
-  python - "$file" "$key" "$value" <<'PYENV'
+  "$CORE_DIR/.venv/bin/python" - "$file" "$key" "$value" <<'PYENV'
 from pathlib import Path
 import sys
 path, key, value = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
@@ -172,7 +172,7 @@ say "Creating local-only API credentials and paper-only configuration"
 cd "$API_DIR"
 mkdir -p bots/conf bots/data bots/credentials/master_account/connectors .emqx
 env_value() {
-  python - "$1" .env <<'PYVALUE'
+  "$CORE_DIR/.venv/bin/python" - "$1" .env <<'PYVALUE'
 from pathlib import Path
 import sys
 key, path = sys.argv[1], Path(sys.argv[2])
@@ -242,7 +242,7 @@ chmod 644 .emqx/auth-bootstrap.csv
 # This alpha must not hand the API container the host Docker/Podman control socket.
 # Build a private Compose file with a deterministic Python transform; no sed program
 # is used here, avoiding the broken multi-expression sed invocation in prior installs.
-python - "$API_DIR/docker-compose.yml" "$API_DIR/docker-compose.alpha.yml" <<'PYCOMPOSE'
+"$CORE_DIR/.venv/bin/python" - "$API_DIR/docker-compose.yml" "$API_DIR/docker-compose.alpha.yml" <<'PYCOMPOSE'
 from pathlib import Path
 import sys
 
@@ -563,8 +563,8 @@ compose() {
 case "${1:-status}" in
   start)
     compose up -d
-    api_user="$(python -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("USERNAME=")), ""))')"
-    api_pass="$(python -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("PASSWORD=")), ""))')"
+    api_user="$("$CORE_DIR/.venv/bin/python" -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("USERNAME=")), ""))')"
+    api_pass="$("$CORE_DIR/.venv/bin/python" -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("PASSWORD=")), ""))')"
     ready=false
     for _ in $(seq 1 180); do
       if curl -fsS -u "$api_user:$api_pass" http://127.0.0.1:8000/spectra/runtime >/dev/null 2>&1; then
