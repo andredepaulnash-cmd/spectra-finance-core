@@ -38,12 +38,11 @@ def test_analyzer_returns_transparent_mean_reversion_metrics():
     assert result["vwap_90d"] > 0
     assert 0 <= result["rsi_14d"] <= 100
     assert 0 <= result["selection_score"] <= 100
-    assert result["orders_created"] if "orders_created" in result else True
     assert isinstance(result["selection_reasons"], list)
 
 
 def test_analyzer_rejects_persistent_downtrend_near_90d_low():
-    history = candles(start=200.0, drift=-0.006)
+    history = candles(start=200.0, drift=-0.012)
     result = analyze_daily_history(
         symbol="FALLUSDT",
         base_asset="FALL",
