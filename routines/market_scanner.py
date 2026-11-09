@@ -1,10 +1,9 @@
-"""Scan top perpetual markets by volume, analyze volatility and volume patterns."""
+"""Scan Kraken USD spot markets by volume, volatility and volume patterns."""
 
 CATEGORY = "Market Data"
 
 import asyncio
 import logging
-import time
 from typing import Any
 
 import numpy as np
@@ -35,7 +34,7 @@ class Config(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Step 1: Get top pairs by 24h volume from Binance directly
+# Step 1: Get top Kraken USD spot pairs by 24h quote volume
 # ---------------------------------------------------------------------------
 
 
@@ -306,7 +305,7 @@ def format_results(result: dict, lookback_hours: int) -> str:
     lines.append("─" * 40)
     for i, d in enumerate(result["degen"], 1):
         chg = d["price_change_24h"]
-        chg_str = f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%"
+        chg_str = (f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%") if chg is not None else "n/a"
         lines.append(
             f"{i}. {d['trading_pair']}"
             f"  vol: {format_volume(d['volume_24h_usd'])}"
