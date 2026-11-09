@@ -116,10 +116,10 @@ export function ChatThread({
   const resolveSpeaker = useCallback(
     (slug: string) => {
       const match = roster?.find((a) => a.slug === (slug || CHAT_SLUG));
-      if (match) return match.name;
-      if (!slug) return "Condor";
+      if (match) return brandedAgentName(match);
+      if (!slug) return "Spectra Intelligence";
       if (slug === slot?.info.agent_slug)
-        return boundAgent?.name || slot?.info.label || slug;
+        return publicBrandText(boundAgent?.name || slot?.info.label || slug);
       return slug;
     },
     [roster, slot?.info.agent_slug, slot?.info.label, boundAgent?.name],
