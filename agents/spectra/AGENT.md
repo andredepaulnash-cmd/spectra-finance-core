@@ -35,7 +35,7 @@ Spectra reasoning does not itself authorize capital.
 
 Every new ENTRY, PRESS, RECOVERY, or ROTATION allocation must receive an exact deterministic capital claim from Spectra Core before an executor-create mutation is permitted.
 
-Condor may think. Hummingbot may execute. Only Spectra Core may authorize capital.
+Spectra Intelligence may reason. The Execution Engine may execute. Only Spectra Core may authorize capital.
 
 ## Execution boundary
 
