@@ -171,7 +171,17 @@ npm run build
 say "Creating local-only API credentials and paper-only configuration"
 cd "$API_DIR"
 mkdir -p bots/conf bots/data bots/credentials/master_account/connectors .emqx
-env_value() { sed -n "s/^$1=//p" .env | head -n 1; }
+env_value() {
+  python - "$1" .env <<'PYVALUE'
+from pathlib import Path
+import sys
+key, path = sys.argv[1], Path(sys.argv[2])
+for line in path.read_text(encoding="utf-8").splitlines():
+    if line.startswith(key + "="):
+        print(line.split("=", 1)[1])
+        break
+PYVALUE
+}
 if [[ -f .env ]]; then
   API_USER="$(env_value USERNAME)"
   API_PASS="$(env_value PASSWORD)"
@@ -553,8 +563,8 @@ compose() {
 case "${1:-status}" in
   start)
     compose up -d
-    api_user="$(sed -n 's/^USERNAME=//p' "$API_DIR/.env" | head -n 1)"
-    api_pass="$(sed -n 's/^PASSWORD=//p' "$API_DIR/.env" | head -n 1)"
+    api_user="$(python -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("USERNAME=")), ""))')"
+    api_pass="$(python -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("PASSWORD=")), ""))')"
     ready=false
     for _ in $(seq 1 180); do
       if curl -fsS -u "$api_user:$api_pass" http://127.0.0.1:8000/spectra/runtime >/dev/null 2>&1; then
