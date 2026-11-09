@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 180" role="img" aria-labelledby="title desc">
+<title id="title">Spectra Finance</title><desc id="desc">A luminous spectral S mark with Spectra Finance wordmark.</desc>
+<defs>
+ <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset=".48" stop-color="#22d3ee"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
+ <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g transform="translate(18 10)" filter="url(#glow)">
+ <path d="M118 28C91 4 40 12 25 43 7 80 45 91 82 97c39 6 54 21 40 43-16 27-65 28-94 6" fill="none" stroke="url(#g)" stroke-width="17" stroke-linecap="round"/>
+ <path d="M24 122c26 24 77 20 96-9 23-35-11-48-48-54-35-6-49-17-35-39" fill="none" stroke="#22d3ee" stroke-opacity=".78" stroke-width="5" stroke-linecap="round"/>
+</g>
+<text x="175" y="83" fill="#f8fafc" font-family="Inter,Arial,sans-serif" font-size="58" font-weight="800" letter-spacing="4">SPECTRA</text>
+<text x="180" y="132" fill="#22d3ee" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" letter-spacing="14">FINANCE</text>
+</svg>
