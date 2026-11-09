@@ -154,6 +154,57 @@ export interface SpectraModuleRegistry {
   modules: SpectraModuleStatus[];
 }
 
+
+export interface MarketDiscoveryCandidate {
+  symbol: string;
+  base_asset: string;
+  trading_pair: string;
+  current_price: number;
+  volume_24h_usd: number;
+  change_24h_pct: number;
+  history_days: number;
+  high_90d: number;
+  low_90d: number;
+  vwap_90d: number;
+  discount_to_vwap_pct: number;
+  drawdown_from_high_pct: number;
+  distance_from_low_pct: number;
+  range_position_pct: number;
+  sma_20d: number;
+  return_7d_pct: number;
+  return_30d_pct: number;
+  rsi_14d: number;
+  selection_score: number;
+  eligible: boolean;
+  rejection_reasons: string[];
+  selection_reasons: string[];
+}
+
+export interface MarketDiscoveryResponse {
+  source: string;
+  as_of: number;
+  universe: string;
+  criteria: {
+    top_by_24h_quote_volume: number;
+    minimum_24h_volume_usd: number;
+    minimum_history_days: number;
+    excluded_bases: string[];
+    ranking: string;
+  };
+  counts: {
+    liquid_contracts_found: number;
+    contracts_selected_for_history: number;
+    analyzed: number;
+    eligible: number;
+    rejected_by_guardrails: number;
+    history_or_data_rejected: number;
+  };
+  candidates: MarketDiscoveryCandidate[];
+  rejected_data: Array<{ symbol: string; reason: string }>;
+  paper_only: true;
+  orders_created: 0;
+}
+
 export interface ServerInfo {
   name: string;
   host: string;
@@ -2919,6 +2970,9 @@ export const api = {
     apiFetch<TickersResponse>(
       `/api/v1/servers/${encodeURIComponent(server)}/market/tickers?connector=${encodeURIComponent(connector)}`,
     ),
+
+  getMarketDiscovery: () =>
+    apiFetch<MarketDiscoveryResponse>("/api/v1/market/discovery?top_n=80&show_n=25&min_volume_usd=10000000&min_history_days=90"),
 
   getOrderBook: (server: string, connector: string, pair: string, depth = 20) =>
     apiFetch<OrderBookResponse>(
