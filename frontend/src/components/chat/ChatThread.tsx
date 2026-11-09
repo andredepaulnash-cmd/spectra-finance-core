@@ -3,6 +3,7 @@ import { AlertTriangle, Bot, Brain, Loader2, MessageSquare, X } from "lucide-rea
 
 import type { ChatSlot, PermissionRequest } from "@/hooks/useChatSocket";
 import { CHAT_SLUG, type AgentSummary, type ChatAgentOption } from "@/lib/api";
+import { brandedAgentName, publicBrandText } from "@/lib/brandIdentity";
 import { speakerNames } from "@/lib/agentColor";
 import { ApprovalPrompt } from "./ApprovalPrompt";
 import { ChatInput } from "./ChatInput";
