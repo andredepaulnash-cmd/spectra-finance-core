@@ -13,10 +13,17 @@ on:
       - condor/fetchers/spectra_runtime.py
       - condor/web/routes/servers.py
       - spectra_core/runtime.py
+      - spectra_core/module_lifecycle.py
+      - tests/test_module_lifecycle.py
+      - tests/test_module_registry.py
       - mcp_servers/hummingbot_api/settings.py
       - scripts/configure_alpha_paper_connector.py
       - scripts/configure_alpha_paper_state.py
       - tests/test_spectra_runtime_fail_closed.py
+      - spectra_core/module_lifecycle.py
+      - spectra_core/runtime.py
+      - tests/test_module_lifecycle.py
+      - tests/test_module_registry.py
       - tests/test_spectra_runtime.py
       - tests/test_spectra_kraken_execution_flow.py
       - tests/test_configure_alpha_paper_connector.py
