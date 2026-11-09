@@ -29,6 +29,10 @@ def analyze_daily_history(
     change_24h_pct: float | None,
     candles: list[Any],
     quote_asset: str = "USDT",
+    min_median_daily_quote_volume_usd: float = 1_000_000,
+    min_active_day_ratio: float = 0.65,
+    min_median_daily_range_pct: float = 0.8,
+    max_current_move_pct: float = 15.0,
 ) -> dict[str, Any]:
     """Calculate transparent, bounded mean-reversion selection metrics."""
     rows = []
@@ -36,16 +40,18 @@ def analyze_daily_history(
         try:
             if isinstance(row, Mapping):
                 close = _number(row.get("close"), "close")
+                open_price = _number(row.get("open", close), "open")
                 high = _number(row.get("high"), "high")
                 low = _number(row.get("low"), "low")
                 volume = _number(row.get("volume"), "volume")
             else:
+                open_price = _number(row[1], "open")
                 close = _number(row[4], "close")
                 high = _number(row[2], "high")
                 low = _number(row[3], "low")
                 volume = _number(row[5], "volume")
-            if close > 0 and high >= low > 0 and volume >= 0:
-                rows.append((high, low, close, volume))
+            if open_price > 0 and close > 0 and high >= low > 0 and volume >= 0:
+                rows.append((open_price, high, low, close, volume))
         except (IndexError, TypeError, ValueError):
             continue
     if len(rows) < 90:
@@ -54,15 +60,15 @@ def analyze_daily_history(
     # consistent rolling 90-day window even when more history is available.
     rows = rows[-90:]
 
-    highs = [r[0] for r in rows]
-    lows = [r[1] for r in rows]
-    closes = [r[2] for r in rows]
-    volumes = [r[3] for r in rows]
+    highs = [r[1] for r in rows]
+    lows = [r[2] for r in rows]
+    closes = [r[3] for r in rows]
+    volumes = [r[4] for r in rows]
     price = _number(current_price, "current_price")
     if price <= 0:
         raise ValueError("invalid_current_price")
 
-    typical = [(h + low + close) / 3 for h, low, close, _ in rows]
+    typical = [(h + low + close) / 3 for _, h, low, close, _ in rows]
     total_volume = sum(volumes)
     vwap_90d = (
         sum(v * p for v, p in zip(volumes, typical)) / total_volume
@@ -85,13 +91,37 @@ def analyze_daily_history(
         50.0 if losses == 0 else 100 - (100 / (1 + gains / losses))
     )
 
-    # Hard rejects target the "falling knife" cases Architect asked us to avoid.
-    # These are explicit v1 guardrails, not claims of a profitable signal.
+    # Medians and active-day frequency reward persistent movement, not one pump.
+    daily_ranges_90d = [(high - low) / op * 100 for op, high, low, _, _ in rows if op > 0]
+    daily_quote_volumes_90d = [volume * close for _, _, _, close, volume in rows]
+    ranges_30d = daily_ranges_90d[-30:]
+    quote_volumes_30d = daily_quote_volumes_90d[-30:]
+    sorted_ranges = sorted(ranges_30d)
+    sorted_volumes = sorted(quote_volumes_30d)
+    median_daily_range_30d = (sorted_ranges[14] + sorted_ranges[15]) / 2 if len(sorted_ranges) == 30 else 0.0
+    median_daily_quote_volume_30d = (sorted_volumes[14] + sorted_volumes[15]) / 2 if len(sorted_volumes) == 30 else 0.0
+    active_days_30d = sum(value >= 0.8 for value in ranges_30d)
+    active_day_ratio_30d = active_days_30d / max(len(ranges_30d), 1)
+    max_daily_range_30d = max(ranges_30d, default=0.0)
+    max_daily_return_30d = max((abs((closes[i] / closes[i - 1] - 1) * 100) for i in range(max(1, len(closes) - 30), len(closes))), default=0.0)
+    current_move_from_last_close_pct = (price / closes[-1] - 1) * 100
+
+    # Discovery guardrails: avoid thin, sporadic or pump-dominated markets.
     rejection_reasons = []
     if return_30d <= -25 and price < sma_20d:
         rejection_reasons.append("persistent_downtrend: 30d loss <= -25% and below 20d average")
     if distance_from_low <= 5 and return_30d < 0:
         rejection_reasons.append("near_90d_low: within 5% of 90d low while 30d trend is negative")
+    if median_daily_quote_volume_30d < min_median_daily_quote_volume_usd:
+        rejection_reasons.append("weak_30d_turnover: median daily quote volume below configured floor")
+    if active_day_ratio_30d < min_active_day_ratio:
+        rejection_reasons.append("sporadic_volatility: too few of the last 30 sessions had meaningful range")
+    if median_daily_range_30d < min_median_daily_range_pct:
+        rejection_reasons.append("low_daily_volatility: median daily range below configured floor")
+    if abs(current_move_from_last_close_pct) > max_current_move_pct:
+        rejection_reasons.append("single_session_spike: current price is too far from last completed daily close")
+    if median_daily_range_30d > 0 and max_daily_range_30d > median_daily_range_30d * 5 and max_daily_return_30d > 12:
+        rejection_reasons.append("pump_dominated_history: one extreme session dominates the recent range")
 
     # Score rewards a meaningful discount without treating a large ATH gap alone
     # as value. Recovery, trend and RSI context contribute independently.
@@ -107,7 +137,12 @@ def analyze_daily_history(
     stability_score = 10.0 if return_30d > -10.0 else (
         5.0 if return_30d > -20.0 else 0.0
     )
-    score = round(discount_score + drawdown_score + rsi_score + recovery_score + trend_score + stability_score, 2)
+    mean_reversion_score = discount_score + drawdown_score + rsi_score + recovery_score + trend_score + stability_score
+    activity_score = min(active_day_ratio_30d / 0.85, 1.0) * 60.0
+    range_score = min(median_daily_range_30d / 2.0, 1.0) * 25.0
+    volume_score = min(median_daily_quote_volume_30d / min_median_daily_quote_volume_usd, 1.0) * 15.0 if min_median_daily_quote_volume_usd > 0 else 15.0
+    volatility_consistency_score = activity_score + range_score + volume_score
+    score = round(mean_reversion_score * 0.75 + volatility_consistency_score * 0.25, 2)
 
     reasons = []
     if discount_to_vwap > 0:
@@ -118,6 +153,7 @@ def analyze_daily_history(
         reasons.append("price above 20d average")
     if 30 <= rsi_14d <= 55:
         reasons.append(f"RSI {rsi_14d:.0f} in recovery range")
+    reasons.append(f"{active_days_30d}/30 active-range days; median daily range {median_daily_range_30d:.2f}%")
     if not reasons:
         reasons.append("no strong mean-reversion confirmation yet")
 
@@ -140,6 +176,14 @@ def analyze_daily_history(
         "return_7d_pct": round(return_7d, 2),
         "return_30d_pct": round(return_30d, 2),
         "rsi_14d": round(rsi_14d, 2),
+        "median_daily_range_30d_pct": round(median_daily_range_30d, 3),
+        "active_range_days_30d": active_days_30d,
+        "active_day_ratio_30d": round(active_day_ratio_30d, 3),
+        "median_daily_quote_volume_30d_usd": round(median_daily_quote_volume_30d, 2),
+        "max_daily_range_30d_pct": round(max_daily_range_30d, 3),
+        "current_move_from_last_close_pct": round(current_move_from_last_close_pct, 2),
+        "volatility_consistency_score": round(volatility_consistency_score, 2),
+        "mean_reversion_score": round(mean_reversion_score, 2),
         "selection_score": score,
         "eligible": not rejection_reasons,
         "rejection_reasons": rejection_reasons,
@@ -158,10 +202,14 @@ def _candle_timestamp(row: Any) -> float:
 async def scan_kraken_universe(
     client: Any,
     *,
-    top_n: int = 80,
+    top_n: int = 100,
     show_n: int = 25,
     min_volume_usd: float = 10_000_000,
     min_history_days: int = 90,
+    min_median_daily_quote_volume_usd: float = 1_000_000,
+    min_active_day_ratio: float = 0.65,
+    min_median_daily_range_pct: float = 0.8,
+    max_current_move_pct: float = 15.0,
     quote_assets: Iterable[str] = ("USD",),
     approved_pairs: Iterable[str] | None = None,
     now: float | None = None,
@@ -237,6 +285,10 @@ async def scan_kraken_universe(
                     volume_24h_usd=item["volume"],
                     change_24h_pct=None,
                     candles=completed,
+                    min_median_daily_quote_volume_usd=min_median_daily_quote_volume_usd,
+                    min_active_day_ratio=min_active_day_ratio,
+                    min_median_daily_range_pct=min_median_daily_range_pct,
+                    max_current_move_pct=max_current_move_pct,
                 )
                 analysis["governor_approved"] = (
                     approved is not None and item["trading_pair"] in approved
@@ -270,6 +322,10 @@ async def scan_kraken_universe(
             "top_by_24h_quote_volume": top_n,
             "minimum_24h_volume_quote": min_volume_usd,
             "minimum_completed_history_days": min_history_days,
+            "minimum_median_daily_quote_volume_usd": min_median_daily_quote_volume_usd,
+            "minimum_active_day_ratio_30d": min_active_day_ratio,
+            "minimum_median_daily_range_30d_pct": min_median_daily_range_pct,
+            "maximum_current_move_from_last_close_pct": max_current_move_pct,
             "quote_assets": sorted({str(q).strip().upper() for q in quote_assets}),
             "ranking": "discount-to-90d-VWAP + recovery/trend/RSI context",
         },
