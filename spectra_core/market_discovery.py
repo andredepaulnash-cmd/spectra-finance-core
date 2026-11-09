@@ -1,8 +1,8 @@
-"""Public market discovery and mean-reversion candidate ranking.
+"""Kraken spot market discovery and mean-reversion candidate ranking.
 
-This module is research-only: it reads public Binance USD-M perpetual market
-data and returns ranked candidates. It does not create orders, size positions,
-or authorize capital.
+This module reads the configured Kraken public market-data connector and
+returns research candidates. It does not create orders, size positions, or
+authorize capital.
 """
 from __future__ import annotations
 
@@ -12,18 +12,6 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from .kraken_market_fabric import collect_kraken_universe
-
-FUTURES_TICKER_URL = "https://fapi.binance.com/fapi/v1/ticker/24hr"
-FUTURES_INFO_URL = "https://fapi.binance.com/fapi/v1/exchangeInfo"
-FUTURES_KLINES_URL = "https://fapi.binance.com/fapi/v1/klines"
-
-EXCLUDED_BASES = {
-    "USDC", "BUSD", "DAI", "TUSD", "FDUSD", "USDE", "USDS", "USDP",
-    "PYUSD", "USDD", "FRAX", "LUSD", "UST", "USTC", "USD1", "RLUSD",
-    "USDF", "GUSD", "EURC", "WBTC", "WETH", "STETH", "WSTETH", "RETH",
-    "CBETH", "BTCB", "BTTC", "WBNB", "WSOL", "WMATIC", "WFTM", "WAVAX",
-}
-
 
 def _number(value: Any, field: str) -> float:
     result = float(value)
@@ -38,7 +26,7 @@ def analyze_daily_history(
     base_asset: str,
     current_price: float,
     volume_24h_usd: float,
-    change_24h_pct: float,
+    change_24h_pct: float | None,
     candles: list[Any],
     quote_asset: str = "USDT",
 ) -> dict[str, Any]:
@@ -139,7 +127,7 @@ def analyze_daily_history(
         "trading_pair": f"{base_asset}-{quote_asset.strip().upper()}",
         "current_price": round(price, 10),
         "volume_24h_usd": round(volume_24h_usd, 2),
-        "change_24h_pct": round(change_24h_pct, 2),
+        "change_24h_pct": None if change_24h_pct is None else round(change_24h_pct, 2),
         "history_days": len(rows),
         "high_90d": round(high_90d, 10),
         "low_90d": round(low_90d, 10),
@@ -190,6 +178,7 @@ async def scan_kraken_universe(
         raise ValueError("minimum volume cannot be negative and history must be at least 90 days")
     timestamp = time.time() if now is None else _number(now, "now")
     day_start = int(timestamp // 86_400) * 86_400
+    quote_assets = tuple(str(q).strip().upper() for q in quote_assets if str(q).strip())
     approved = (
         None
         if approved_pairs is None
@@ -246,7 +235,7 @@ async def scan_kraken_universe(
                     quote_asset=item["quote_asset"],
                     current_price=item["price"],
                     volume_24h_usd=item["volume"],
-                    change_24h_pct=0.0,
+                    change_24h_pct=None,
                     candles=completed,
                 )
                 analysis["governor_approved"] = (
