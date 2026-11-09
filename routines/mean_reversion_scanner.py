@@ -23,7 +23,7 @@ class Config(BaseModel):
     min_volume_usd: float = Field(default=10_000_000, description="Minimum 24h USD quote volume")
     min_history_days: int = Field(default=90, description="Completed daily candles required")
     min_median_daily_quote_volume_usd: float = Field(default=1_000_000, description="Minimum median daily USD turnover over 30 completed sessions")
-    min_active_day_ratio: float = Field(default=0.65, description="Minimum fraction of the last 30 sessions with at least 0.8% high-low range")
+    min_active_day_ratio: float = Field(default=0.8, description="Minimum fraction of the last 30 sessions with at least 0.8% high-low range")
     min_median_daily_range_pct: float = Field(default=0.8, description="Minimum median daily high-low range over 30 sessions")
     max_current_move_pct: float = Field(default=15.0, description="Reject extreme current moves from the last completed daily close")
 
