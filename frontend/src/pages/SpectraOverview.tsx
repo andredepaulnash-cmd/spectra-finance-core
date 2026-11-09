@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
   Activity,
   CircleAlert,
@@ -9,7 +10,12 @@ import {
 } from "lucide-react";
 
 import { useServer } from "@/hooks/useServer";
-import { api, type SpectraModuleStatus } from "@/lib/api";
+import { api, type MarketDiscoveryCandidate, type SpectraModuleStatus } from "@/lib/api";
+
+type DailyCandidateSnapshot = Pick<MarketDiscoveryCandidate, "symbol" | "base_asset" | "selection_score" | "current_price"> & { rank: number };
+type DailyMarketSnapshot = { date: string; as_of: number; candidates: DailyCandidateSnapshot[] };
+type DailyMarketHistory = { current: DailyMarketSnapshot | null; previous: DailyMarketSnapshot | null };
+const DAILY_MARKET_HISTORY_KEY = "spectra.daily-market-shortlist.v1";
 
 function formatUsd(value: number) {
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(value);
@@ -78,6 +84,14 @@ function ModuleCard({ module }: { module: SpectraModuleStatus }) {
 
 export function SpectraOverview() {
   const { server } = useServer();
+  const [dailyMarketHistory, setDailyMarketHistory] = useState<DailyMarketHistory>(() => {
+    try {
+      const saved = window.localStorage.getItem(DAILY_MARKET_HISTORY_KEY);
+      return saved ? JSON.parse(saved) as DailyMarketHistory : { current: null, previous: null };
+    } catch {
+      return { current: null, previous: null };
+    }
+  });
   const runtime = useQuery({
     queryKey: ["spectra-runtime", server],
     queryFn: () => api.getSpectraRuntime(server!),
@@ -105,6 +119,47 @@ export function SpectraOverview() {
     refetchInterval: 300_000,
     retry: 1,
   });
+
+  // Keep a browser-local daily baseline so the shortlist can explain what
+  // entered, exited, or changed score since the previous daily snapshot.
+  // This is reporting state only: it cannot authorize or submit orders.
+  useEffect(() => {
+    const data = marketDiscovery.data;
+    if (!data) return;
+    const snapshot: DailyMarketSnapshot = {
+      date: new Date(data.as_of * 1000).toISOString().slice(0, 10),
+      as_of: data.as_of,
+      candidates: data.candidates.map((candidate, index) => ({
+        symbol: candidate.symbol,
+        base_asset: candidate.base_asset,
+        selection_score: candidate.selection_score,
+        current_price: candidate.current_price,
+        rank: index + 1,
+      })),
+    };
+    setDailyMarketHistory((existing) => {
+      const next = existing.current?.date === snapshot.date
+        ? { ...existing, current: snapshot }
+        : { current: snapshot, previous: existing.current };
+      try {
+        window.localStorage.setItem(DAILY_MARKET_HISTORY_KEY, JSON.stringify(next));
+      } catch {
+        // The live shortlist remains available even if browser storage is disabled.
+      }
+      return next;
+    });
+  }, [marketDiscovery.data]);
+
+  const previousDailyCandidates = new Map(
+    (dailyMarketHistory.previous?.candidates ?? []).map((candidate) => [candidate.symbol, candidate]),
+  );
+  const currentSymbols = new Set((marketDiscovery.data?.candidates ?? []).map((candidate) => candidate.symbol));
+  const newDailyCandidates = (marketDiscovery.data?.candidates ?? []).filter(
+    (candidate) => !previousDailyCandidates.has(candidate.symbol),
+  );
+  const exitedDailyCandidates = (dailyMarketHistory.previous?.candidates ?? []).filter(
+    (candidate) => !currentSymbols.has(candidate.symbol),
+  );
 
   // Only query account/executor data after the selected server proves it is
   // paper-only and has initialized the exact Kraken paper connector.
@@ -420,8 +475,35 @@ export function SpectraOverview() {
                 <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.rejected_by_guardrails}</p>
               </div>
             </div>
+            <div className="mb-4 rounded-lg border border-[var(--color-border)] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium">Daily shortlist movement</p>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  {dailyMarketHistory.previous
+                    ? `Compared with ${dailyMarketHistory.previous.date}`
+                    : "Building first daily baseline"}
+                </span>
+              </div>
+              {dailyMarketHistory.previous ? (
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+                  <span className="text-emerald-500">New: {newDailyCandidates.length}</span>
+                  <span className="text-rose-500">Exited: {exitedDailyCandidates.length}</span>
+                  <span className="text-[var(--color-text-muted)]">Still listed: {marketDiscovery.data.candidates.length - newDailyCandidates.length}</span>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                  Spectra will compare tomorrow's shortlist with today's first scan. The baseline stays in this browser.
+                </p>
+              )}
+              {dailyMarketHistory.previous && (newDailyCandidates.length > 0 || exitedDailyCandidates.length > 0) ? (
+                <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-muted)]">
+                  {newDailyCandidates.length ? `New: ${newDailyCandidates.slice(0, 8).map((item) => item.base_asset).join(", ")}. ` : ""}
+                  {exitedDailyCandidates.length ? `Exited: ${exitedDailyCandidates.slice(0, 8).map((item) => item.base_asset).join(", ")}.` : ""}
+                </p>
+              ) : null}
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-left text-sm">
+              <table className="w-full min-w-[900px] text-left text-sm">
                 <thead className="text-xs text-[var(--color-text-muted)]">
                   <tr>
                     <th className="pb-2 pr-3 font-medium">Rank / Asset</th>
@@ -431,6 +513,7 @@ export function SpectraOverview() {
                     <th className="pb-2 pr-3 text-right font-medium">7d Change</th>
                     <th className="pb-2 pr-3 text-right font-medium">RSI</th>
                     <th className="pb-2 text-right font-medium">Score</th>
+                    <th className="pb-2 pl-3 text-right font-medium">1d Δ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -448,6 +531,16 @@ export function SpectraOverview() {
                       <td className={"py-3 pr-3 text-right tabular-nums " + (candidate.return_7d_pct >= 0 ? "text-emerald-500" : "text-rose-500")}>{candidate.return_7d_pct >= 0 ? "+" : ""}{candidate.return_7d_pct.toFixed(1)}%</td>
                       <td className="py-3 pr-3 text-right tabular-nums">{candidate.rsi_14d.toFixed(0)}</td>
                       <td className="py-3 text-right font-semibold tabular-nums">{candidate.selection_score.toFixed(0)}/100</td>
+                      <td className="py-3 pl-3 text-right tabular-nums">
+                        {(() => {
+                          const previous = previousDailyCandidates.get(candidate.symbol);
+                          if (!previous) return <span className="text-[var(--color-text-muted)]">NEW</span>;
+                          const delta = candidate.selection_score - previous.selection_score;
+                          return <span className={delta > 0 ? "text-emerald-500" : delta < 0 ? "text-rose-500" : "text-[var(--color-text-muted)]"}>
+                            {delta > 0 ? "+" : ""}{delta.toFixed(0)}
+                          </span>;
+                        })()}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
