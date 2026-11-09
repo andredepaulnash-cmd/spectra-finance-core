@@ -63,4 +63,4 @@ async def test_module_trigger_endpoint_rejects_shared_trader(monkeypatch, tmp_pa
             user=SimpleNamespace(id=7),
         )
     assert exc.value.status_code == 403
-    assert store.snapshot()[1]["trigger_enabled"] is False
+    assert next(row for row in store.snapshot() if row["module_id"] == "dttp")["trigger_enabled"] is False
