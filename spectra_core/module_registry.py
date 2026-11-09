@@ -1,127 +1,41 @@
 """Source-backed Spectra Finance module readiness registry.
 
-This is a product visibility contract, not an activation switch. Statuses are
-intentionally conservative and must be updated only after source and test review.
+Names and statuses are customer-facing. Runtime state is supplied separately by
+ModuleLifecycleStore; this registry never claims that unverified code is active.
 """
-
 from __future__ import annotations
 
 from copy import deepcopy
 
-
 _MODULES = (
-    {
-        "id": "condor",
-        "name": "Condor",
-        "status": "implemented",
-        "readiness": "analysis-only",
-        "description": "Research, analysis and proposals. Condor does not directly authorize or control capital.",
-    },
-    {
-        "id": "capital-governor",
-        "name": "Spectra Core / Capital Governor",
-        "status": "implemented",
-        "readiness": "protected-core",
-        "description": "The sole capital and policy authority; validates proposals, reservations, ownership and dispatch eligibility.",
-    },
-    {
-        "id": "vcap",
-        "name": "VCAP",
-        "status": "partial",
-        "readiness": "historical-runtime-present",
-        "description": "Profit-floor exits, protected continuation, high-water marks and multi-position supervision exist; complete current paper-execution integration remains in progress.",
-    },
-    {
-        "id": "dttp",
-        "name": "DTTP",
-        "status": "partial",
-        "readiness": "source-recovered",
-        "description": "Protected-profit continuation behavior is linked to VCAP; its complete current runtime and paper-execution integration still need verification.",
-    },
-    {
-        "id": "dtsl",
-        "name": "DTSL",
-        "status": "unverified",
-        "readiness": "definition-recovery",
-        "description": "Referenced alongside DTTP in historical work; its independent definition and complete source implementation are still being reconstructed.",
-    },
-    {
-        "id": "pssm",
-        "name": "PSSM",
-        "status": "not-implemented",
-        "readiness": "doctrine-only",
-        "description": "Named in Condor's operating doctrine, but no complete production implementation has been verified.",
-    },
-    {
-        "id": "mir",
-        "name": "MIR",
-        "status": "research-only",
-        "readiness": "candidate",
-        "description": "Historical material mentions MIR rotation as later strategy/accounting work. It is a candidate for the additional remembered module, not a verified production implementation.",
-    },
-    {
-        "id": "selected-recovery",
-        "name": "Selected Recovery",
-        "status": "default-off",
-        "readiness": "integration-candidate",
-        "description": "Native recovery shadow accounting and sealed-basis integration are present in a draft candidate; activation remains disabled.",
-    },
-    {
-        "id": "dust-lifecycle",
-        "name": "Dust Lifecycle",
-        "status": "default-off",
-        "readiness": "integration-candidate",
-        "description": "Evidence-bound residual classification, ownership checkpoints and guarded successor admission are being integrated; activation remains disabled.",
-    },
-    {
-        "id": "paper-execution",
-        "name": "Hummingbot Paper Execution",
-        "status": "integration-in-progress",
-        "readiness": "paper-only",
-        "description": "Governed paper execution and Core-signed API dispatch are under integration; local connector, fill reconciliation and Bazzite verification remain outstanding.",
-    },
-    {
-        "id": "safety-controls",
-        "name": "Safety and Ownership Controls",
-        "status": "implemented",
-        "readiness": "protected-core",
-        "description": "Capital Governor, position mutation ownership, bounded protected buys, emergency halt and fail-closed execution boundaries.",
-    },
+    {"id":"spectra-intelligence","name":"Spectra Intelligence","status":"implemented","readiness":"analysis-only","description":"Research, analysis, task coordination and proposals; no independent capital authority."},
+    {"id":"capital-governor","name":"Capital Governor","status":"implemented","readiness":"protected-core","description":"Sole capital and policy authority; validates proposals, reservations, ownership and dispatch eligibility."},
+    {"id":"vcap","name":"VCAP","status":"partial","readiness":"historical-runtime-present","description":"Profit-floor exits, protected continuation, high-water marks and multi-position supervision exist; complete current paper-execution integration remains in progress."},
+    {"id":"dttp","name":"DTTP","status":"partial","readiness":"source-recovered","description":"Protected-profit continuation behavior is linked to VCAP; full independent runtime and paper-execution integration remain unverified. Activation trigger defaults off."},
+    {"id":"dtsl","name":"DTSL","status":"unverified","readiness":"definition-recovery","description":"Independent definition and complete source implementation have not yet been verified. Activation is blocked."},
+    {"id":"pssm","name":"PSSM","status":"not-implemented","readiness":"doctrine-only","description":"Named in operating doctrine; no complete production implementation verified."},
+    {"id":"mir","name":"MIR","status":"research-only","readiness":"candidate","description":"Research candidate; no complete production runtime verified."},
+    {"id":"selected-recovery","name":"Selected Recovery","status":"default-off","readiness":"integration-candidate","description":"Native recovery shadow accounting and sealed-basis integration; activation remains disabled."},
+    {"id":"dust-lifecycle","name":"Dust Lifecycle","status":"default-off","readiness":"integration-candidate","description":"Evidence-bound residual classification, ownership checkpoints and guarded successor admission; activation remains disabled."},
+    {"id":"paper-execution","name":"Paper Execution","status":"integration-in-progress","readiness":"paper-only","description":"Governed paper execution; local connector, fill reconciliation and workstation verification remain outstanding."},
+    {"id":"safety-controls","name":"Safety and Ownership Controls","status":"implemented","readiness":"protected-core","description":"Capital Governor, position mutation ownership, bounded protected buys, emergency halt and fail-closed execution boundaries."},
 )
-
-_SYSTEM_FLOW = (
-    {
-        "id": "condor",
-        "name": "Condor",
-        "role": "Analyze and propose",
-        "authority": "No independent capital authority",
-    },
-    {
-        "id": "spectra-core",
-        "name": "Spectra Core",
-        "role": "Validate, authorize and account",
-        "authority": "Sole capital and policy authority",
-    },
-    {
-        "id": "hummingbot",
-        "name": "Hummingbot",
-        "role": "Execute approved paper orders",
-        "authority": "Execution adapter only",
-    },
-)
-
 
 def get_spectra_module_registry() -> dict:
-    """Return a detached, read-only-by-convention product readiness snapshot."""
+    """Return a detached source-backed readiness snapshot."""
     return {
         "product": "Spectra Finance",
         "release_stage": "IN_DEVELOPMENT",
         "live_trading_enabled": False,
         "paper_only_target": True,
         "status_note": (
-            "Source-backed readiness, not a claim that every module is active. "
-            "Draft branches and local runtime validation remain separate checks."
+            "Readiness is source-backed; runtime lifecycle state is persisted "
+            "separately. Unverified modules cannot be activated."
         ),
-        "system_flow": deepcopy(_SYSTEM_FLOW),
+        "system_flow": (
+            {"id":"spectra-intelligence","name":"Spectra Intelligence","role":"Research, coordinate and propose","authority":"No independent capital authority"},
+            {"id":"capital-governor","name":"Capital Governor","role":"Validate, authorize and account","authority":"Sole capital and policy authority"},
+            {"id":"paper-execution","name":"Paper Execution","role":"Simulate authorized orders","authority":"Paper-only execution adapter"},
+        ),
         "modules": deepcopy(_MODULES),
     }
