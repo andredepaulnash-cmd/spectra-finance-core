@@ -30,7 +30,7 @@ def analyze_daily_history(
     candles: list[Any],
     quote_asset: str = "USDT",
     min_median_daily_quote_volume_usd: float = 1_000_000,
-    min_active_day_ratio: float = 0.65,
+    min_active_day_ratio: float = 0.8,
     min_median_daily_range_pct: float = 0.8,
     max_current_move_pct: float = 15.0,
 ) -> dict[str, Any]:
