@@ -12,6 +12,13 @@ const BRAND_NAMES: Record<string, string> = {
   spectra_finance: "Spectra Finance",
 };
 
+/** Replace legacy implementation names in user-facing notifications and copy. */
+export function publicBrandText(value: string): string {
+  return value
+    .replace(/\\bCondor\\b/gi, "Spectra Intelligence")
+    .replace(/\\bHummingbot(?:s)?\\b/gi, "Execution Engine");
+}
+
 export function brandedAgentName(agent: { slug: string; name: string } | null | undefined): string {
   if (!agent) return "Spectra Intelligence";
   return BRAND_NAMES[agent.slug] ?? (agent.name.startsWith("Spectra ") ? agent.name : `Spectra ${agent.name.replace(/\s+(Trader|Expert|Analyst|LP|Maker)$/i, "")}`);
