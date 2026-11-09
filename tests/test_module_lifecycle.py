@@ -7,7 +7,7 @@ def test_triggered_modules_start_safe_and_persist(tmp_path):
     path = tmp_path / "modules.sqlite"
     store = ModuleLifecycleStore(path)
     rows = {x["module_id"]: x for x in store.snapshot()}
-    assert rows["vcap"]["state"] == "RUNNING"
+    assert rows["vcap"]["state"] == "MONITORING"
     assert rows["dttp"]["state"] == "MONITORING"
     assert rows["dtsl"]["state"] == "BLOCKED"
     assert not rows["dttp"]["trigger_enabled"]

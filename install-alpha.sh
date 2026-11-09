@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 CORE_REPO="https://github.com/andredepaulnash-cmd/spectra-finance-core.git"
-CORE_REF="alpha/one-command-paper-demo-20261108"
+CORE_REF="feature/spectra-command-center-ui-20261109"
 API_REPO="https://github.com/andredepaulnash-cmd/spectra-hummingbot-api.git"
 API_REF="security/core-signed-executor-stop-receipts-20261108"
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -19,11 +19,25 @@ die() { printf '\n\033[1;31m[STOP]\033[0m %s\n' "$*" >&2; exit 1; }
 has() { command -v "$1" >/dev/null 2>&1; }
 set_env_value() {
   local file="$1" key="$2" value="$3"
-  if grep -q "^$key=" "$file"; then
-    sed -i "s|^$key=.*|$key=$value|" "$file"
-  else
-    printf '%s=%s\n' "$key" "$value" >> "$file"
-  fi
+  python - "$file" "$key" "$value" <<'PYENV'
+from pathlib import Path
+import sys
+path, key, value = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+replacement = f"{key}={value}"
+found = False
+updated = []
+for line in lines:
+    if line.startswith(key + "="):
+        if not found:
+            updated.append(replacement)
+            found = True
+    else:
+        updated.append(line)
+if not found:
+    updated.append(replacement)
+path.write_text("\n".join(updated) + "\n", encoding="utf-8")
+PYENV
 }
 
 [[ "$(uname -s)" == Linux ]] || die "This alpha installer currently supports Linux (including Bazzite)."
@@ -157,7 +171,17 @@ npm run build
 say "Creating local-only API credentials and paper-only configuration"
 cd "$API_DIR"
 mkdir -p bots/conf bots/data bots/credentials/master_account/connectors .emqx
-env_value() { sed -n "s/^$1=//p" .env | head -n 1; }
+env_value() {
+  python - "$1" .env <<'PYVALUE'
+from pathlib import Path
+import sys
+key, path = sys.argv[1], Path(sys.argv[2])
+for line in path.read_text(encoding="utf-8").splitlines():
+    if line.startswith(key + "="):
+        print(line.split("=", 1)[1])
+        break
+PYVALUE
+}
 if [[ -f .env ]]; then
   API_USER="$(env_value USERNAME)"
   API_PASS="$(env_value PASSWORD)"
@@ -216,32 +240,69 @@ chmod 644 .emqx/auth-bootstrap.csv
   --config "$API_DIR/bots/credentials/master_account/conf_client.yml"
 
 # This alpha must not hand the API container the host Docker/Podman control socket.
-# Generate a private compose copy with only that mount removed; fail if source changes.
-if ! grep -Fq '/var/run/docker.sock:/var/run/docker.sock' docker-compose.yml; then
-  die "Expected Docker socket mount was not found in the pinned API Compose file; refusing to guess at a safe override."
-fi
-sed \
-  -e '/\/var\/run\/docker\.sock:\/var\/run\/docker\.sock/d' \
-  -e 's|./bots:/hummingbot-api/bots|./bots:/hummingbot-api/bots:Z|' \
-  -e 's|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro|./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro,Z|' \
-  -e 's|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro|./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro,Z|' \
-  -e '/extra_hosts:/d' \
-  -e '/host.docker.internal/d' \
-  -e '/host-gateway/d' \
-  -e 's/container_name: hummingbot-api/container_name: spectra-alpha-hummingbot-api/' \
-  -e 's/container_name: hummingbot-broker/container_name: spectra-alpha-hummingbot-broker/' \
-  -e 's/container_name: hummingbot-postgres/container_name: spectra-alpha-hummingbot-postgres/' \
-  -e 's|image: emqx/emqx:|image: docker.io/emqx/emqx:|' \
-  -e 's|image: docker.io/emqx/emqx:5$|image: docker.io/emqx/emqx:5.10.5|' \
-  -e 's|image: postgres:|image: docker.io/library/postgres:|' \
-  -e '/^  postgres:$/,/^networks:$/ { /^    ports:$/,/^    networks:$/ { /^    networks:$/!d; } }' \
-  -e 's|image: continuumio/miniconda3:|image: docker.io/continuumio/miniconda3:|' \
-  -e 's|dockerfile: Dockerfile|dockerfile: Dockerfile.alpha|' \
-  docker-compose.yml > docker-compose.alpha.yml
-if grep -Eq 'docker.sock|host.docker.internal|host-gateway' docker-compose.alpha.yml; then
-  die "The alpha Compose file still contains a host socket or host-gateway dependency."
-fi
+# Build a private Compose file with a deterministic Python transform; no sed program
+# is used here, avoiding the broken multi-expression sed invocation in prior installs.
+python - "$API_DIR/docker-compose.yml" "$API_DIR/docker-compose.alpha.yml" <<'PYCOMPOSE'
+from pathlib import Path
+import sys
 
+source, target = map(Path, sys.argv[1:3])
+text = source.read_text(encoding="utf-8")
+if "/var/run/docker.sock:/var/run/docker.sock" not in text:
+    raise SystemExit("Expected Docker socket mount was not found; refusing unsafe Compose generation.")
+
+lines = text.splitlines()
+out = []
+in_postgres = False
+skip_extra_hosts = False
+skip_postgres_ports = False
+for line in lines:
+    if line == "  postgres:":
+        in_postgres = True
+    if skip_extra_hosts:
+        if line.startswith("    ") and not line.startswith("      "):
+            skip_extra_hosts = False
+        else:
+            continue
+    if skip_postgres_ports:
+        if line.startswith("    ") and not line.startswith("      "):
+            skip_postgres_ports = False
+        else:
+            continue
+    if line == "    extra_hosts:":
+        skip_extra_hosts = True
+        continue
+    if in_postgres and line == "    ports:":
+        skip_postgres_ports = True
+        continue
+    if "/var/run/docker.sock:/var/run/docker.sock" in line:
+        continue
+    if "host.docker.internal" in line or "host-gateway" in line:
+        continue
+    out.append(line)
+
+text = "\n".join(out) + "\n"
+replacements = {
+    "./bots:/hummingbot-api/bots": "./bots:/hummingbot-api/bots:Z",
+    "./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro": "./.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro,Z",
+    "./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro": "./emqx/acl.conf:/opt/emqx/etc/acl.conf:ro,Z",
+    "container_name: hummingbot-api": "container_name: spectra-alpha-hummingbot-api",
+    "container_name: hummingbot-broker": "container_name: spectra-alpha-hummingbot-broker",
+    "container_name: hummingbot-postgres": "container_name: spectra-alpha-hummingbot-postgres",
+    "image: emqx/emqx:5": "image: docker.io/emqx/emqx:5.10.5",
+    "image: docker.io/emqx/emqx:5": "image: docker.io/emqx/emqx:5.10.5",
+    "image: postgres:": "image: docker.io/library/postgres:",
+    "image: continuumio/miniconda3:": "image: docker.io/continuumio/miniconda3:",
+    "dockerfile: Dockerfile": "dockerfile: Dockerfile.alpha",
+}
+for old, new in replacements.items():
+    text = text.replace(old, new)
+if any(token in text for token in ("docker.sock", "host.docker.internal", "host-gateway")):
+    raise SystemExit("Generated Compose file still contains a host socket/gateway dependency.")
+if "  postgres:\n" not in text or "    ports:\n" in text[text.index("  postgres:\n"):text.index("\nnetworks:\n")]:
+    raise SystemExit("Postgres host port was not removed from the alpha Compose file.")
+target.write_text(text, encoding="utf-8")
+PYCOMPOSE
 say "Generating the Core signing key and API verification key locally"
 cd "$CORE_DIR"
 # Complete Core's local-mode configuration and pre-register the local API.
@@ -315,7 +376,14 @@ chmod 600 .env config.yml
 # Compose uses an isolated alpha Dockerfile so Podman never has to resolve
 # Docker Hub short names in a non-interactive build, and tracked source stays clean.
 cp "$API_DIR/Dockerfile" "$API_DIR/Dockerfile.alpha"
-sed -i 's|^FROM continuumio/miniconda3|FROM docker.io/continuumio/miniconda3|' "$API_DIR/Dockerfile.alpha"
+"$CORE_DIR/.venv/bin/python" - "$API_DIR/Dockerfile.alpha" <<'PYDOCKER'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+text = text.replace("FROM continuumio/miniconda3", "FROM docker.io/continuumio/miniconda3")
+path.write_text(text, encoding="utf-8")
+PYDOCKER
 grep -Eq '^FROM[[:space:]]+docker[.]io/continuumio/miniconda3' "$API_DIR/Dockerfile.alpha" \
   || die "Could not normalize the Hummingbot API base image for the alpha build."
 
@@ -495,8 +563,8 @@ compose() {
 case "${1:-status}" in
   start)
     compose up -d
-    api_user="$(sed -n 's/^USERNAME=//p' "$API_DIR/.env" | head -n 1)"
-    api_pass="$(sed -n 's/^PASSWORD=//p' "$API_DIR/.env" | head -n 1)"
+    api_user="$(python -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("USERNAME=")), ""))')"
+    api_pass="$(python -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("PASSWORD=")), ""))')"
     ready=false
     for _ in $(seq 1 180); do
       if curl -fsS -u "$api_user:$api_pass" http://127.0.0.1:8000/spectra/runtime >/dev/null 2>&1; then

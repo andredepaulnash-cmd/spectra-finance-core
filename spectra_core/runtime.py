@@ -11,6 +11,7 @@ from .accounting_health import AccountingHealthSupervisor
 from .capital_governor import CapitalGovernor, validate_capital_policy
 from .economic_position import EconomicPositionLedger
 from .models import BreakerMode, CapitalPolicy
+from .module_lifecycle import ModuleLifecycleStore
 from .runtime_scheduler import RuntimeSchedulerStore
 from .vcap_runtime import VCAPRuntimeStore
 from .vcap_state import VCAPStateStore
@@ -273,6 +274,11 @@ def get_spectra_accounting_health_snapshot(*, now: float | None = None) -> dict:
 
 
 @lru_cache(maxsize=1)
+def get_spectra_module_lifecycle_store() -> ModuleLifecycleStore:
+    return ModuleLifecycleStore(spectra_state_dir() / "module_lifecycle.sqlite3")
+
+
+@lru_cache(maxsize=1)
 def get_vcap_state_store() -> VCAPStateStore:
     return VCAPStateStore(spectra_state_dir() / "vcap_state.sqlite3")
 
@@ -314,6 +320,7 @@ def reset_runtime_cache() -> None:
     get_capital_governor.cache_clear()
     get_economic_position_ledger.cache_clear()
     get_accounting_health_supervisor.cache_clear()
+    get_spectra_module_lifecycle_store.cache_clear()
     get_vcap_state_store.cache_clear()
     get_vcap_runtime_store.cache_clear()
     get_runtime_scheduler_store.cache_clear()
