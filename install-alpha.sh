@@ -507,9 +507,9 @@ cat > "$INSTALL_ROOT/.compose-kind" <<EOF
 $COMPOSE_KIND
 EOF
 
-say "Starting Condor and the Spectra dashboard"
+say "Starting Spectra Intelligence and the dashboard"
 if [[ -f "$INSTALL_ROOT/condor.pid" ]] && kill -0 "$(cat "$INSTALL_ROOT/condor.pid")" 2>/dev/null; then
-  say "Condor is already running"
+  say "Spectra Intelligence is already running"
 else
   cd "$CORE_DIR"
   nohup "$CORE_DIR/.venv/bin/python" "$CORE_DIR/main.py" > "$INSTALL_ROOT/condor.log" 2>&1 &
@@ -520,7 +520,7 @@ for _ in $(seq 1 60); do
   sleep 2
 done
 curl -fsS http://127.0.0.1:8088/ >/dev/null \
-  || { tail -80 "$INSTALL_ROOT/condor.log" 2>/dev/null || true; die "Condor did not bring up the dashboard. Its startup log is $INSTALL_ROOT/condor.log"; }
+  || { tail -80 "$INSTALL_ROOT/condor.log" 2>/dev/null || true; die "Spectra Intelligence did not bring up the dashboard. Its startup log is $INSTALL_ROOT/condor.log"; }
 cat > "$LOCAL_BIN/spectra" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -530,7 +530,7 @@ API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
 COMPOSE_KIND="$(cat "$INSTALL_ROOT/.compose-kind")"
 start_core() {
   if [[ -f "$INSTALL_ROOT/condor.pid" ]] && kill -0 "$(cat "$INSTALL_ROOT/condor.pid")" 2>/dev/null; then
-    echo "Condor is already running."
+    echo "Spectra Intelligence is already running."
     return 0
   fi
   cd "$CORE_DIR"
@@ -587,17 +587,20 @@ case "${1:-status}" in
     ;;
   status)
     if [[ -f "$INSTALL_ROOT/condor.pid" ]] && kill -0 "$(cat "$INSTALL_ROOT/condor.pid")" 2>/dev/null; then
-      echo "Condor process: running"
+      echo "Spectra Intelligence process: running"
     else
-      echo "Condor process: stopped"
+      echo "Spectra Intelligence process: stopped"
     fi
     compose ps
     ;;
   logs)
     tail -n 100 -f "$INSTALL_ROOT/condor.log"
     ;;
+  update)
+    curl -fsSL "https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/spectra-command-center-verified-20261109/install-alpha.sh" | bash
+    ;;
   *)
-    echo "Usage: spectra {start|stop|restart|status|logs}"
+    echo "Usage: spectra {start|stop|restart|status|logs|update}"
     exit 2
     ;;
 esac
