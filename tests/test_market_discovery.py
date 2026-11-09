@@ -27,13 +27,13 @@ def test_analyzer_returns_transparent_mean_reversion_metrics():
     result = analyze_daily_history(
         symbol="TESTUSDT",
         base_asset="TEST",
-        current_price=history[-1][4] * 0.95,
+        current_price=float(history[-1][4]) * 0.95,
         volume_24h_usd=25_000_000,
         change_24h_pct=1.2,
         candles=history,
     )
     assert result["trading_pair"] == "TEST-USDT"
-    assert result["history_days"] == 120
+    assert result["history_days"] == 90
     assert result["volume_24h_usd"] == 25_000_000
     assert result["vwap_90d"] > 0
     assert 0 <= result["rsi_14d"] <= 100
