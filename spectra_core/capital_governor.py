@@ -5,6 +5,7 @@ import json
 import math
 import sqlite3
 import time
+from typing import Callable
 from decimal import Decimal, localcontext
 from pathlib import Path
 
@@ -75,12 +76,32 @@ class CapitalGovernor:
     may be reserved for a proposal and records that decision atomically.
     """
 
-    def __init__(self, db_path: str | Path, policy: CapitalPolicy):
+    def __init__(
+        self,
+        db_path: str | Path,
+        policy: CapitalPolicy,
+        *,
+        clock: Callable[[], float] = time.time,
+    ):
+        self._clock = clock
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.policy = policy
         self._validate_policy()
         self._initialize()
+
+    def _now(self) -> float:
+        """Read the injected persistent lease clock and reject invalid values."""
+        raw = self._clock()
+        if isinstance(raw, bool):
+            raise ValueError("CapitalGovernor clock must return a finite timestamp")
+        try:
+            current = float(raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("CapitalGovernor clock must return a finite timestamp") from exc
+        if not math.isfinite(current) or current < 0:
+            raise ValueError("CapitalGovernor clock must return a finite timestamp")
+        return current
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(
@@ -1005,7 +1026,7 @@ class CapitalGovernor:
         *,
         now: float | None = None,
     ) -> int:
-        current_time = time.time() if now is None else now
+        current_time = self._now() if now is None else float(now)
         cutoff = current_time - self.policy.reservation_ttl_seconds
 
         cursor = conn.execute(
@@ -1243,7 +1264,7 @@ class CapitalGovernor:
                     status = DecisionStatus.RESERVED
                     reason = "authorized within deterministic " "capital envelope"
 
-                now = time.time()
+                now = self._now()
 
                 conn.execute(
                     """
@@ -1617,7 +1638,7 @@ class CapitalGovernor:
                             protected_buy_policy,
                         )
                     if owner is not None:
-                        now = time.time()
+                        now = self._now()
                         conn.execute(
                             """INSERT INTO position_submission_bindings (
                                 proposal_id,base_asset,position_id,ledger_path,pair,
@@ -1645,7 +1666,7 @@ class CapitalGovernor:
                     (
                         DecisionStatus.COMMITTED.value,
                         reason,
-                        time.time(),
+                        self._now(),
                         proposal_id,
                         DecisionStatus.RESERVED.value,
                     ),
@@ -1780,7 +1801,7 @@ class CapitalGovernor:
                     )
                 conn.execute(
                     "INSERT OR IGNORE INTO protected_buy_conflicts VALUES (?,?,?)",
-                    (pid, detail, time.time()),
+                    (pid, detail, self._now()),
                 )
                 if cash.binding(conn) is not None:
                     cash.record_conflict(
@@ -1909,7 +1930,7 @@ class CapitalGovernor:
             requested = cash.timestamp(
                 book.get("requested_at"), "venue_book.requested_at"
             )
-            now = time.time()
+            now = self._now()
             if requested > observed or observed > now or now - observed > 30:
                 raise ValueError(
                     "protected BUY venue book became stale before atomic capital commit"
@@ -1940,7 +1961,7 @@ class CapitalGovernor:
                 *scope,
                 payload,
                 hashlib.sha256(payload.encode()).hexdigest(),
-                time.time(),
+                self._now(),
             ),
         )
         if policy is not None:
@@ -2244,7 +2265,7 @@ class CapitalGovernor:
                     conn.execute(
                         "UPDATE entry_submission_claims SET state = 'RETIRED', updated_at = ? "
                         "WHERE proposal_id = ?",
-                        (time.time(), claim["proposal_id"]),
+                        (self._now(), claim["proposal_id"]),
                     )
                 owners = conn.execute(
                     """SELECT c.*, r.executor_id FROM capital_reservations c
@@ -2283,7 +2304,7 @@ class CapitalGovernor:
                         protected_buy_config,
                         protected_buy_policy,
                     )
-                now = time.time()
+                now = self._now()
                 conn.execute(
                     """INSERT INTO entry_submission_claims (
                         proposal_id,base_asset,position_id,ledger_path,pair,
@@ -2592,7 +2613,7 @@ class CapitalGovernor:
                 remaining = exact_decimal_difference(
                     parent_amount, tranche_proposal.amount_quote
                 )
-                now = time.time()
+                now = self._now()
 
                 conn.execute(
                     """
@@ -2793,7 +2814,7 @@ class CapitalGovernor:
                     (
                         target.value,
                         reason,
-                        time.time(),
+                        self._now(),
                         proposal_id,
                         DecisionStatus.RESERVED.value,
                     ),
@@ -2839,7 +2860,7 @@ class CapitalGovernor:
                     (
                         DecisionStatus.RECONCILED.value,
                         reason,
-                        time.time(),
+                        self._now(),
                         proposal_id,
                         DecisionStatus.COMMITTED.value,
                     ),
@@ -3097,7 +3118,7 @@ class CapitalGovernor:
                     conn.rollback()
                     return False
 
-                now = time.time()
+                now = self._now()
 
                 conn.execute(
                     """
@@ -3440,7 +3461,7 @@ class CapitalGovernor:
                         conn.execute(
                             "UPDATE executor_accounting_observations SET observed_at = ? "
                             "WHERE observation_id = ?",
-                            (time.time(), previous["observation_id"]),
+                            (self._now(), previous["observation_id"]),
                         )
                         conn.commit()
                         return ExecutorAccountingDelta(
@@ -3506,7 +3527,7 @@ class CapitalGovernor:
                             if observation.realized_pnl_quote is None
                             else str(observation.realized_pnl_quote)
                         ),
-                        time.time(),
+                        self._now(),
                     ),
                 )
 
@@ -3614,7 +3635,7 @@ class CapitalGovernor:
                 "exact PositionHold scope cannot contain multiple ACTIVE rows"
             )
 
-        timestamp = time.time() if observed_at is None else observed_at
+        timestamp = self._now() if observed_at is None else observed_at
 
         if (
             isinstance(timestamp, bool)
@@ -3738,7 +3759,7 @@ class CapitalGovernor:
             controller_id=controller_id,
         )
 
-        current_time = time.time() if now is None else now
+        current_time = self._now() if now is None else now
 
         if (
             isinstance(current_time, bool)
@@ -3941,7 +3962,7 @@ class CapitalGovernor:
                         release_id, proposal_id, amount_quote, created_at
                     ) VALUES (?, ?, ?, ?)
                     """,
-                    (rid, pid, str(amount_quote), time.time()),
+                    (rid, pid, str(amount_quote), self._now()),
                 )
                 conn.commit()
                 return exact_decimal_sum((released, amount_quote))
