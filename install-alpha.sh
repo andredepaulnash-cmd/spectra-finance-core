@@ -598,6 +598,7 @@ case "${1:-status}" in
     ;;
   update)
     curl -fsSL "https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/spectra-command-center-verified-20261109/install-alpha.sh" | bash
+    "$0" restart
     ;;
   *)
     echo "Usage: spectra {start|stop|restart|status|logs|update}"
