@@ -10,6 +10,7 @@ import { setAppBadge } from "@/lib/appBadge";
 import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/formatters";
 import { onPushNavigate } from "@/lib/push";
+import { publicBrandText } from "@/lib/brandIdentity";
 
 const KIND_ICON: Record<string, typeof Bell> = {
   delegation: Workflow,
@@ -172,7 +173,7 @@ export function NotificationBell() {
                   <span className="block truncate text-xs font-medium">{n.title}</span>
                 )}
                 <span className="block whitespace-pre-wrap break-words text-xs text-[var(--color-text)]">
-                  {preview(n.text)}
+                  {publicBrandText(preview(n.text))}
                 </span>
                 <span className="mt-0.5 block text-[10px] text-[var(--color-text-muted)]">
                   {formatRelativeTime(n.ts)}
