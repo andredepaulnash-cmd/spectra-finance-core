@@ -18,10 +18,14 @@ class Config(BaseModel):
     """Scan Kraken USD spot markets using the Governor-compatible MR ranker."""
 
     connector: str = Field(default="kraken", description="Market-data connector; Kraken only")
-    top_n: int = Field(default=80, description="Top N Kraken markets by 24h USD volume")
+    top_n: int = Field(default=100, description="Top N Kraken markets by 24h USD volume")
     show_n: int = Field(default=25, description="Number of ranked candidates to show")
     min_volume_usd: float = Field(default=10_000_000, description="Minimum 24h USD quote volume")
     min_history_days: int = Field(default=90, description="Completed daily candles required")
+    min_median_daily_quote_volume_usd: float = Field(default=1_000_000, description="Minimum median daily USD turnover over 30 completed sessions")
+    min_active_day_ratio: float = Field(default=0.65, description="Minimum fraction of the last 30 sessions with at least 0.8% high-low range")
+    min_median_daily_range_pct: float = Field(default=0.8, description="Minimum median daily high-low range over 30 sessions")
+    max_current_move_pct: float = Field(default=15.0, description="Reject extreme current moves from the last completed daily close")
 
 
 async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -39,6 +43,10 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
             show_n=config.show_n,
             min_volume_usd=config.min_volume_usd,
             min_history_days=config.min_history_days,
+            min_median_daily_quote_volume_usd=config.min_median_daily_quote_volume_usd,
+            min_active_day_ratio=config.min_active_day_ratio,
+            min_median_daily_range_pct=config.min_median_daily_range_pct,
+            max_current_move_pct=config.max_current_move_pct,
             quote_assets=("USD",),
         )
     except Exception as exc:
@@ -62,7 +70,9 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
         lines.append(
             f"   7d {item['return_7d_pct']:+.1f}% | "
             f"30d {item['return_30d_pct']:+.1f}% | "
-            f"Governor approved: {item['governor_approved']}"
+            f"active days {item['active_range_days_30d']}/30 | "
+            f"median range {item['median_daily_range_30d_pct']:.2f}% | "
+            f"median daily USD volume " + f"{item['median_daily_quote_volume_30d_usd']:,.0f} USD"
         )
 
     if not result["candidates"]:
