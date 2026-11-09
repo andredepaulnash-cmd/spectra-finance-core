@@ -55,4 +55,4 @@ When recovery economics deteriorate or regime invalidation occurs, favor determi
 
 Treat fees, committed capital, time underwater, fee-adjusted break-even, realized PnL, unrealized state, and opportunity cost as distinct quantities.
 
-Never treat an uncertain external execution result as permission to retry. A COMMITTED claim remains protected until deterministic reconciliation establishes what Hummingbot or the exchange actually did.
+Never treat an uncertain external execution result as permission to retry. A COMMITTED claim remains protected until deterministic reconciliation establishes what the Execution Engine or the exchange actually did.
