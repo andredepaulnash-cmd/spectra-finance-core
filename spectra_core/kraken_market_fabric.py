@@ -172,7 +172,7 @@ def normalize_kraken_trading_rules(
     rejected: dict[str, str] = {}
 
     for raw_pair, row in payload.items():
-        pair = str(raw_pair).strip().upper()
+        pair = _canonical_kraken_pair(raw_pair)
         if pair == "ERROR":
             continue
         try:
