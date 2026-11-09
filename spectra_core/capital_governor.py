@@ -1817,8 +1817,8 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
-    @staticmethod
     def _record_protected_buy_submission(
+        self,
         conn,
         proposal,
         position_id,
