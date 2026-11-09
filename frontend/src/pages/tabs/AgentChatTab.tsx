@@ -380,7 +380,7 @@ export function AgentChatTab() {
   const slotSlug = activeSlot?.info.agent_slug ?? "";
   const slotStarters = useStarters(
     slotSlug,
-    slotSlug ? AGENT_STARTERS : CONDOR_STARTERS,
+    slotSlug ? AGENT_STARTERS : DEFAULT_STARTERS,
   );
 
   /**
