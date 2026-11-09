@@ -7,6 +7,8 @@ import {
   PanelLeftOpen,
   ShieldAlert,
   Wallet,
+  Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
