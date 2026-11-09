@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - alpha/one-command-paper-demo-20261108
+      - alpha/spectra-command-center-release-20261109
     paths:
       - install-alpha.sh
       - ALPHA-TEST.md
