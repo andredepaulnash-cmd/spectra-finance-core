@@ -126,7 +126,7 @@ export const ChatRail = memo(function ChatRail({
         <button
           onClick={() => toggle(true)}
           className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-          title="Show agents and conversations"
+          title="Show intelligence and conversations"
         >
           <PanelLeftOpen className="h-4 w-4" />
         </button>
@@ -175,7 +175,7 @@ export const ChatRail = memo(function ChatRail({
       {/* Who you can talk to */}
       <div className="border-b border-[var(--color-border)] py-1">
         <div className="px-3 pb-1 pt-1.5 text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-          Agents
+          Intelligence
         </div>
         <RailRow
           label={brandedAgentName(condor)}
