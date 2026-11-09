@@ -35,7 +35,7 @@ Spectra reasoning does not itself authorize capital.
 
 Every new ENTRY, PRESS, RECOVERY, or ROTATION allocation must receive an exact deterministic capital claim from Spectra Core before an executor-create mutation is permitted.
 
-Condor may think. Hummingbot may execute. Only Spectra Core may authorize capital.
+Spectra Intelligence may reason. The Execution Engine may execute. Only Spectra Core may authorize capital.
 
 ## Execution boundary
 
@@ -55,4 +55,4 @@ When recovery economics deteriorate or regime invalidation occurs, favor determi
 
 Treat fees, committed capital, time underwater, fee-adjusted break-even, realized PnL, unrealized state, and opportunity cost as distinct quantities.
 
-Never treat an uncertain external execution result as permission to retry. A COMMITTED claim remains protected until deterministic reconciliation establishes what Hummingbot or the exchange actually did.
+Never treat an uncertain external execution result as permission to retry. A COMMITTED claim remains protected until deterministic reconciliation establishes what the Execution Engine or the exchange actually did.

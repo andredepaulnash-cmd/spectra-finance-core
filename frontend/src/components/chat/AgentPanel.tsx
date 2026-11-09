@@ -9,6 +9,7 @@ import { AgentWiring } from "@/components/chat/AgentWiring";
 import type { BrainSelection } from "@/components/chat/BrainPicker";
 import { WorkspaceSheet } from "@/components/chat/WorkspaceSheet";
 import type { ChatSlot } from "@/hooks/useChatSocket";
+import { brandedAgentName } from "@/lib/brandIdentity";
 import type {
   AgentBindingOption,
   ChatAgentOption,
@@ -124,13 +125,14 @@ export function AgentPanel({
   onAskAgent: (text: string) => void;
   onClose: () => void;
 }) {
+  const publicName = brandedAgentName({ slug, name });
   const [dirty, setDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
 
   return (
     <>
       <WorkspaceSheet
-        title={name}
+        title={publicName}
         // The wiring rides in the bar rather than in the body: it is about the
         // conversation, not about the agent, and it has to stay reachable
         // whichever of the panel's sections is scrolled to.
@@ -144,7 +146,7 @@ export function AgentPanel({
                 name of the place a click takes them out to. */}
             <Link
               to={`/agents/${encodeURIComponent(slug)}`}
-              title={`Open ${name}'s workspace — its runs, what it deployed and what it made`}
+              title={`Open ${publicName}'s workspace — its runs, what it deployed and what it made`}
               className="flex shrink-0 items-center gap-1 rounded border border-[var(--color-border)] px-2 py-1 text-[11px] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)]"
             >
               <ExternalLink className="h-3.5 w-3.5" /> Workspace
