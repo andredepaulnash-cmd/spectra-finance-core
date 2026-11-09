@@ -15,6 +15,14 @@ function formatUsd(value: number) {
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(value);
 }
 
+function formatMarketPrice(value: number) {
+  return new Intl.NumberFormat(undefined, { maximumSignificantDigits: 6 }).format(value);
+}
+
+function formatCompactUsd(value: number) {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
 function statusLabel(status: string) {
   switch (status) {
     case "implemented":
@@ -84,6 +92,17 @@ export function SpectraOverview() {
     enabled: Boolean(server),
     staleTime: 60_000,
     refetchInterval: 60_000,
+    retry: 1,
+  });
+
+  // Public exchange data is independent of paper-account balances and never
+  // enables order placement. Refresh the discovery snapshot every five minutes.
+  const marketDiscovery = useQuery({
+    queryKey: ["spectra-market-discovery"],
+    queryFn: () => api.getMarketDiscovery(),
+    enabled: Boolean(server),
+    staleTime: 240_000,
+    refetchInterval: 300_000,
     retry: 1,
   });
 
@@ -356,6 +375,94 @@ export function SpectraOverview() {
             </p>
           </>
         )}
+      </section>
+
+
+      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 md:p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-[var(--color-text-muted)]" />
+              <h2 className="font-semibold">Market discovery</h2>
+            </div>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              Public USDT perpetual markets ranked for mean-reversion research — no orders are created.
+            </p>
+          </div>
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 py-1 text-[11px] font-medium text-emerald-500">
+            READ ONLY · PAPER SAFE
+          </span>
+        </div>
+        {marketDiscovery.isLoading ? (
+          <p className="text-sm text-[var(--color-text-muted)]">Scanning liquid markets and loading daily history…</p>
+        ) : marketDiscovery.isError ? (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+            <CircleAlert className="mb-2 h-4 w-4 text-amber-500" />
+            Public market discovery is unavailable. The system will not substitute simulated prices or stale results.
+          </div>
+        ) : marketDiscovery.data ? (
+          <>
+            <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Liquid contracts found</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.liquid_contracts_found}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Historical samples analyzed</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.analyzed}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Eligible candidates</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.eligible}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Rejected for downside risk</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.rejected_by_guardrails}</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[820px] text-left text-sm">
+                <thead className="text-xs text-[var(--color-text-muted)]">
+                  <tr>
+                    <th className="pb-2 pr-3 font-medium">Rank / Asset</th>
+                    <th className="pb-2 pr-3 text-right font-medium">Price</th>
+                    <th className="pb-2 pr-3 text-right font-medium">24h Volume</th>
+                    <th className="pb-2 pr-3 text-right font-medium">vs 90d VWAP</th>
+                    <th className="pb-2 pr-3 text-right font-medium">7d Change</th>
+                    <th className="pb-2 pr-3 text-right font-medium">RSI</th>
+                    <th className="pb-2 text-right font-medium">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {marketDiscovery.data.candidates.map((candidate, index) => (
+                    <tr key={candidate.symbol} className="border-t border-[var(--color-border)] align-top">
+                      <td className="py-3 pr-3">
+                        <div className="font-semibold">{index + 1}. {candidate.base_asset}</div>
+                        <div className="mt-1 max-w-[260px] text-xs text-[var(--color-text-muted)]">
+                          {candidate.selection_reasons.join(" · ")}
+                        </div>
+                      </td>
+                      <td className="py-3 pr-3 text-right tabular-nums">{formatMarketPrice(candidate.current_price)}</td>
+                      <td className="py-3 pr-3 text-right tabular-nums">{formatCompactUsd(candidate.volume_24h_usd)}</td>
+                      <td className="py-3 pr-3 text-right tabular-nums">{candidate.discount_to_vwap_pct > 0 ? "+" : ""}{candidate.discount_to_vwap_pct.toFixed(1)}%</td>
+                      <td className={"py-3 pr-3 text-right tabular-nums " + (candidate.return_7d_pct >= 0 ? "text-emerald-500" : "text-rose-500")}>{candidate.return_7d_pct >= 0 ? "+" : ""}{candidate.return_7d_pct.toFixed(1)}%</td>
+                      <td className="py-3 pr-3 text-right tabular-nums">{candidate.rsi_14d.toFixed(0)}</td>
+                      <td className="py-3 text-right font-semibold tabular-nums">{candidate.selection_score.toFixed(0)}/100</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!marketDiscovery.data.candidates.length ? (
+                <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">
+                  No contracts passed the current selection and downside-risk filters.
+                </p>
+              ) : null}
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-[var(--color-text-muted)]">
+              {marketDiscovery.data.source}. Scans the top {marketDiscovery.data.criteria.top_by_24h_quote_volume} contracts by 24h volume, requires at least {marketDiscovery.data.criteria.minimum_history_days} days of history and $10M volume, and excludes stablecoins and wrapped assets. Rankings are research candidates, not trade signals. Last refreshed {new Date(marketDiscovery.data.as_of * 1000).toLocaleString()}.
+            </p>
+          </>
+        ) : null}
       </section>
 
       <section>
