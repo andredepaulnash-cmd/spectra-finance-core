@@ -1,6 +1,6 @@
 import pytest
 
-from spectra_core.module_lifecycle import ModuleControlError, ModuleLifecycleStore
+from spectra_core.module_lifecycle import MODULES, ModuleControlError, ModuleLifecycleStore
 
 
 def test_triggered_modules_start_safe_and_persist(tmp_path):
@@ -27,7 +27,8 @@ def test_unverified_module_cannot_activate_even_if_trigger_requested(tmp_path):
         store.activate("dtsl", reason="operator request")
 
 
-def test_trigger_disable_prevents_activation_and_logs_transition(tmp_path):
+def test_trigger_disable_prevents_activation_and_logs_transition(tmp_path, monkeypatch):
+    monkeypatch.setitem(MODULES["dttp"], "implemented", True)
     store = ModuleLifecycleStore(tmp_path / "modules.sqlite")
     store.set_trigger("dttp", True)
     store.set_trigger("dttp", False)
