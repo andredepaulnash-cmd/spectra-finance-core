@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   Activity,
@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import { useServer } from "@/hooks/useServer";
-import { api, type MarketDiscoveryCandidate, type SpectraModuleStatus } from "@/lib/api";
+import { api, type MarketDiscoveryCandidate, type SpectraModuleControl, type SpectraModuleStatus } from "@/lib/api";
 
 type DailyCandidateSnapshot = Pick<MarketDiscoveryCandidate, "symbol" | "base_asset" | "selection_score" | "current_price"> & { rank: number };
 type DailyMarketSnapshot = { date: string; as_of: number; candidates: DailyCandidateSnapshot[] };
@@ -63,7 +63,7 @@ function statusTone(status: string) {
   return "border-sky-500/30 bg-sky-500/10 text-sky-500";
 }
 
-function ModuleCard({ module }: { module: SpectraModuleStatus }) {
+function ModuleCard({ module, control, canOperate, busy, onToggle }: { module: SpectraModuleStatus; control?: SpectraModuleControl; canOperate: boolean; busy: boolean; onToggle: (enabled: boolean) => void }) {
   return (
     <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -78,12 +78,35 @@ function ModuleCard({ module }: { module: SpectraModuleStatus }) {
       <p className="mt-3 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
         {module.readiness.replaceAll("-", " ")}
       </p>
+      {control ? (
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--color-border)] pt-3">
+          <div>
+            <p className="text-xs font-semibold">Runtime: {control.state}</p>
+            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">{control.reason}</p>
+          </div>
+          <button
+            type="button"
+            disabled={!canOperate || busy}
+            aria-pressed={control.trigger_enabled}
+            onClick={() => onToggle(!control.trigger_enabled)}
+            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${control.trigger_enabled ? "border-amber-500/40 bg-amber-500/10 text-amber-500" : "border-[var(--color-border)] hover:bg-[var(--color-surface-hover)]"}`}
+          >
+            {busy ? "Saving…" : control.trigger_enabled ? "Trigger enabled" : "Trigger off"}
+          </button>
+        </div>
+      ) : null}
     </article>
   );
 }
 
 export function SpectraOverview() {
   const { server } = useServer();
+  const queryClient = useQueryClient();
+  const triggerMutation = useMutation({
+    mutationFn: ({ moduleId, enabled }: { moduleId: string; enabled: boolean }) =>
+      api.setSpectraModuleTrigger(server!, moduleId, enabled),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["spectra-modules", server] }),
+  });
   const [dailyMarketHistory, setDailyMarketHistory] = useState<DailyMarketHistory>(() => {
     try {
       const saved = window.localStorage.getItem(DAILY_MARKET_HISTORY_KEY);
@@ -575,11 +598,29 @@ export function SpectraOverview() {
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {(registry.data?.modules ?? []).map((module) => (
-              <ModuleCard key={module.id} module={module} />
-            ))}
+            {(registry.data?.modules ?? []).map((module) => {
+              const control = registry.data?.runtime_controls?.find((item) => item.module_id === module.id);
+              const triggerable = module.id === "dttp" || module.id === "dtsl";
+              return (
+                <ModuleCard
+                  key={module.id}
+                  module={module}
+                  control={triggerable ? control : undefined}
+                  canOperate={registry.data?.operator_controls_available === true}
+                  busy={triggerMutation.isPending && triggerMutation.variables?.moduleId === module.id}
+                  onToggle={(enabled) => triggerMutation.mutate({ moduleId: module.id, enabled })}
+                />
+              );
+            })}
           </div>
         )}
+        {triggerMutation.isError ? (
+          <p role="alert" className="mt-3 text-xs text-rose-500">{triggerMutation.error.message}</p>
+        ) : null}
+        {registry.data?.operator_controls_available === false ? (
+          <p className="mt-3 text-xs text-[var(--color-text-muted)]">Trigger controls are read-only for this account. The server owner must change them.</p>
+        ) : null}
+        <p className="mt-3 text-xs text-[var(--color-text-muted)]">Enabling a trigger does not activate an unverified module or authorize capital. DTTP and DTSL remain blocked until their runtime implementations are verified.</p>
       </section>
 
       <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">
