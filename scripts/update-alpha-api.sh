@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Resumable, terminal-independent updater for the Spectra Alpha paper API on Bazzite.
-# It updates one API source file, starts existing dependencies, rebuilds only the API,
+# It updates only the two reviewed API source files, starts existing dependencies, rebuilds only the API,
 # and never removes containers, networks, or named volumes.
 set -Eeuo pipefail
 
@@ -10,7 +10,7 @@ LOG_DIR="$INSTALL_ROOT/logs"
 LOG_FILE="$LOG_DIR/api-update.log"
 LOCK_FILE="$LOG_DIR/api-update.lock"
 COMPOSE_FILE="$API_DIR/docker-compose.alpha.yml"
-API_SOURCE="services/unified_connector_service.py"
+API_SOURCES=("services/unified_connector_service.py" "deps.py")
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
@@ -63,14 +63,24 @@ cd "$API_DIR"
 say "Fetching the merged API main branch."
 git fetch --depth 1 origin main
 
-# Confirm the upstream file contains the fail-closed symbol-map behavior before applying it.
-git show "FETCH_HEAD:$API_SOURCE" | grep -q "refusing registration" \
-  || die "Fetched API source does not contain the expected fail-closed Kraken fix."
-git restore --source=FETCH_HEAD --worktree -- "$API_SOURCE"
+# Never overwrite local edits in either file this updater needs to change.
+if ! git diff --quiet -- "${API_SOURCES[@]}" || ! git diff --cached --quiet -- "${API_SOURCES[@]}"; then
+  die "Local edits exist in an API source file this update needs. Preserve/review them first; nothing was overwritten."
+fi
 
-grep -q "refusing registration" "$API_SOURCE" \
+# Confirm both reviewed fixes exist upstream before changing either local file.
+git show "FETCH_HEAD:${API_SOURCES[0]}" | grep -q "refusing registration" \
+  || die "Fetched API source does not contain the expected fail-closed Kraken fix."
+git show "FETCH_HEAD:${API_SOURCES[1]}" | grep -q "Bot orchestration is disabled in Spectra paper-only mode" \
+  || die "Fetched API dependency does not contain the paper-only bot-status guard."
+
+git restore --source=FETCH_HEAD --worktree -- "${API_SOURCES[@]}"
+
+grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
-say "Updated only $API_SOURCE; local credentials and bot configuration were left untouched."
+grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[1]}" \
+  || die "The paper-only bot-status guard was not applied locally."
+say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
 say "Starting the existing Postgres and EMQX services (named volumes are preserved)."
 podman-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d postgres emqx
