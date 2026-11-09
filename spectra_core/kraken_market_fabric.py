@@ -24,8 +24,15 @@ def _decimal(value: Any, field: str, *, positive: bool = False) -> Decimal:
     return result
 
 
-def _pair_parts(trading_pair: str) -> tuple[str, str]:
+def _canonical_kraken_pair(trading_pair: str) -> str:
     pair = str(trading_pair).strip().upper()
+    if pair.startswith("XBT-"):
+        return "BTC-" + pair.split("-", 1)[1]
+    return pair
+
+
+def _pair_parts(trading_pair: str) -> tuple[str, str]:
+    pair = _canonical_kraken_pair(trading_pair)
     if "-" not in pair:
         raise ValueError(f"invalid Kraken pair: {trading_pair!r}")
     base, quote = pair.rsplit("-", 1)
@@ -110,7 +117,7 @@ def normalize_kraken_tickers(
     rejected: dict[str, str] = {}
 
     for raw_pair, row in raw.items():
-        pair = str(raw_pair).strip().upper()
+        pair = _canonical_kraken_pair(raw_pair)
         try:
             _, quote = _pair_parts(pair)
             if quote_allowlist and quote not in quote_allowlist:
