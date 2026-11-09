@@ -338,7 +338,7 @@ export function ChatThread({
               placeholder={
                 permissionRequest
                   ? "Allow or deny the call above first — a message here cancels it"
-                  : `Ask ${(slot.info.agent_slug && slot.info.label) || "Condor"}...`
+                  : `Ask ${slot.info.agent_slug ? brandedAgentName({ slug: slot.info.agent_slug, name: slot.info.label || slot.info.agent_slug }) : "Spectra Intelligence"}...`
               }
               leading={composerLeading}
               // Half-written words survive leaving the page, per conversation.
