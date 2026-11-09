@@ -90,7 +90,7 @@ class FakeKrakenMarketData:
             "tickers": {
                 "kraken": {
                     "BTC-USD": {
-                        "price": 100,
+                        "price": 110,
                         "base_volume": 200_000,
                         "quote_volume": 20_000_000,
                         "timestamp": 1_800_000_000,
@@ -157,7 +157,7 @@ async def test_kraken_scan_uses_configured_connector_and_never_creates_orders():
 
     assert result["source"].startswith("Kraken spot")
     assert result["governor_approved_list_loaded"] is True
-    assert result["counts"]["governor_approved"] == 1
+    assert result["counts"]["governor_approved"] == 1, result
     assert result["candidates"][0]["trading_pair"] == "BTC-USD"
     assert result["candidates"][0]["governor_approved"] is True
     assert result["candidates"][0]["capital_authorized"] is False
