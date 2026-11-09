@@ -15,8 +15,8 @@ const BRAND_NAMES: Record<string, string> = {
 /** Replace legacy implementation names in user-facing notifications and copy. */
 export function publicBrandText(value: string): string {
   return value
-    .replace(/\\bCondor\\b/gi, "Spectra Intelligence")
-    .replace(/\\bHummingbot(?:s)?\\b/gi, "Execution Engine");
+    .replace(/\bCondor\b/gi, "Spectra Intelligence")
+    .replace(/\bHummingbot(?:s)?\b/gi, "Execution Engine");
 }
 
 export function brandedAgentName(agent: { slug: string; name: string } | null | undefined): string {
