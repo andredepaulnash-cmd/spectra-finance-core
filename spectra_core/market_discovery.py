@@ -18,8 +18,9 @@ FUTURES_KLINES_URL = "https://fapi.binance.com/fapi/v1/klines"
 
 EXCLUDED_BASES = {
     "USDC", "BUSD", "DAI", "TUSD", "FDUSD", "USDE", "USDS", "USDP",
-    "PYUSD", "USDD", "FRAX", "LUSD", "UST", "USTC", "WBTC", "WETH",
-    "STETH", "WSTETH", "RETH", "CBETH", "BTCB", "BTTC",
+    "PYUSD", "USDD", "FRAX", "LUSD", "UST", "USTC", "USD1", "RLUSD",
+    "USDF", "GUSD", "EURC", "WBTC", "WETH", "STETH", "WSTETH", "RETH",
+    "CBETH", "BTCB", "BTTC", "WBNB", "WSOL", "WMATIC", "WFTM", "WAVAX",
 }
 
 
@@ -211,7 +212,7 @@ async def scan_public_universe(
                 try:
                     rows = await _get_json(
                         session, FUTURES_KLINES_URL,
-                        {"symbol": item["symbol"], "interval": "1d", "limit": max(365, min_history_days + 1)},
+                        {"symbol": item["symbol"], "interval": "1d", "limit": min(1000, min_history_days + 1)},
                     )
                     # Drop today's incomplete daily candle. Its live price is
                     # supplied separately by the 24h ticker.
