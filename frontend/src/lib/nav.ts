@@ -37,13 +37,13 @@ import {
  * redirects to `/bots`.
  */
 export const NAV_ITEMS = [
-  { to: "/", icon: Brain, label: "Agents" },
+  { to: "/", icon: Brain, label: "Intelligence" },
   { to: "/overview", icon: Gauge, label: "Overview" },
   { to: "/portfolio", icon: Wallet, label: "Portfolio" },
   { to: "/trade", icon: Swords, label: "Trade" },
   { to: "/dex", icon: Droplets, label: "DEX" },
-  { to: "/bots", icon: Bot, label: "Bots" },
-  { to: "/routines", icon: Zap, label: "Routines" },
+  { to: "/bots", icon: Bot, label: "Strategies" },
+  { to: "/routines", icon: Zap, label: "Workflows" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 
