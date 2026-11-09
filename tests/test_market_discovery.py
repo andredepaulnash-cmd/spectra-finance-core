@@ -150,6 +150,7 @@ async def test_kraken_scan_uses_configured_connector_and_never_creates_orders():
         show_n=10,
         min_volume_usd=1_000,
         min_history_days=90,
+        min_median_daily_quote_volume_usd=0,
         approved_pairs=("BTC-USD",),
         now=now,
     )
@@ -189,8 +190,51 @@ async def test_kraken_scan_does_not_mark_candidates_approved_without_list():
         client,
         min_volume_usd=1_000,
         min_history_days=90,
+        min_median_daily_quote_volume_usd=0,
         now=now,
     )
 
     assert result["governor_approved_list_loaded"] is False
     assert all(not row["governor_approved"] for row in result["candidates"])
+
+
+def test_analyzer_rewards_repeatable_daily_volatility_not_one_pump():
+    history = candles(drift=0.001)
+    result = analyze_daily_history(
+        symbol="STEADY",
+        base_asset="STEADY",
+        current_price=float(history[-1][4]),
+        volume_24h_usd=20_000_000,
+        change_24h_pct=None,
+        candles=history,
+        min_median_daily_quote_volume_usd=0,
+    )
+    assert result["active_range_days_30d"] == 30
+    assert result["active_day_ratio_30d"] == 1
+    assert result["median_daily_range_30d_pct"] >= 0.8
+    assert result["volatility_consistency_score"] > 80
+
+
+def test_analyzer_rejects_low_activity_asset_with_one_isolated_pump():
+    history = candles(drift=0.0)
+    for index in range(len(history)):
+        price = float(history[index][4])
+        if index == 89:
+            history[index][2] = str(price * 1.25)
+            history[index][3] = str(price * 0.75)
+            history[index][4] = str(price * 1.20)
+        else:
+            history[index][2] = str(price * 1.001)
+            history[index][3] = str(price * 0.999)
+    result = analyze_daily_history(
+        symbol="PUMPER",
+        base_asset="PUMPER",
+        current_price=float(history[-1][4]),
+        volume_24h_usd=30_000_000,
+        change_24h_pct=None,
+        candles=history,
+        min_median_daily_quote_volume_usd=0,
+    )
+    assert result["eligible"] is False
+    assert any("sporadic_volatility" in reason for reason in result["rejection_reasons"])
+    assert any("pump_dominated_history" in reason for reason in result["rejection_reasons"])
