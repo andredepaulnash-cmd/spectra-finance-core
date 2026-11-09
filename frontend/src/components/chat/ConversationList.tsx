@@ -285,8 +285,8 @@ export const ConversationList = memo(function ConversationList({
                           }`}
                           title={
                             meta.share_id
-                              ? "Shared with Condor — review or unshare"
-                              : "Share with Condor"
+                              ? "Shared with Spectra Intelligence — review or unshare"
+                              : "Share with Spectra Intelligence"
                           }
                         >
                           <Share2 className="h-3 w-3" />
