@@ -139,6 +139,14 @@ export interface SpectraModuleStatus {
   description: string;
 }
 
+export interface SpectraModuleControl {
+  module_id: string;
+  state: "RUNNING" | "MONITORING" | "ARMED" | "ACTIVE" | "BLOCKED" | string;
+  trigger_enabled: boolean;
+  reason: string;
+  updated_at: number;
+}
+
 export interface SpectraModuleRegistry {
   product: string;
   release_stage: string;
@@ -152,6 +160,8 @@ export interface SpectraModuleRegistry {
     authority: string;
   }>;
   modules: SpectraModuleStatus[];
+  runtime_controls?: SpectraModuleControl[];
+  operator_controls_available?: boolean;
 }
 
 
@@ -2450,6 +2460,12 @@ export const api = {
   getSpectraModules: (server: string) =>
     apiFetch<SpectraModuleRegistry>(
       `/api/v1/servers/${encodeURIComponent(server)}/spectra/modules`,
+    ),
+
+  setSpectraModuleTrigger: (server: string, moduleId: string, enabled: boolean) =>
+    apiFetch<{ control: SpectraModuleControl; live_trading_enabled: false; orders_created: 0; activation_performed: false }>(
+      `/api/v1/servers/${encodeURIComponent(server)}/spectra/modules/${encodeURIComponent(moduleId)}/trigger`,
+      { method: "PUT", body: JSON.stringify({ enabled, reason: "dashboard operator" }) },
     ),
 
   /** Build identity — shown to the user when they file an issue. */
