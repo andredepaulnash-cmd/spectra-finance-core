@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 CORE_REPO="https://github.com/andredepaulnash-cmd/spectra-finance-core.git"
-CORE_REF="alpha/spectra-command-center-verified-20261109"
+CORE_REF="alpha/one-command-paper-demo-20261108"
 API_REPO="https://github.com/andredepaulnash-cmd/spectra-hummingbot-api.git"
 API_REF="security/core-signed-executor-stop-receipts-20261108"
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -597,7 +597,7 @@ case "${1:-status}" in
     tail -n 100 -f "$INSTALL_ROOT/condor.log"
     ;;
   update)
-    curl -fsSL "https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/spectra-command-center-verified-20261109/install-alpha.sh" | bash
+    curl -fsSL "https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/one-command-paper-demo-20261108/install-alpha.sh" | bash
     "$0" restart
     ;;
   *)
