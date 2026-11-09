@@ -4,21 +4,31 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from condor.server_data_service import (
     ServerDataService,
     ServerDataType,
     get_server_data_service,
 )
-from condor.web.auth import get_current_user
+from condor.web.auth import get_current_user, require_owner
 from condor.web.models import ServerInfo, WebUser
 from config_manager import ServerPermission, get_config_manager
+from spectra_core.module_lifecycle import ModuleControlError
 from spectra_core.module_registry import get_spectra_module_registry
-from spectra_core.runtime import get_spectra_accounting_health_snapshot
+from spectra_core.runtime import (
+    get_spectra_accounting_health_snapshot,
+    get_spectra_module_lifecycle_store,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["servers"])
+
+
+class ModuleTriggerRequest(BaseModel):
+    enabled: bool
+    reason: str = Field(default="operator", min_length=1, max_length=200)
 
 
 async def _resolve_online(sds: ServerDataService, name: str) -> bool:
@@ -138,7 +148,39 @@ async def spectra_module_registry(
     cm = get_config_manager()
     if not cm.has_server_access(user.id, name):
         raise HTTPException(status_code=404, detail="Server not found")
-    return get_spectra_module_registry()
+    registry = get_spectra_module_registry()
+    registry["runtime_controls"] = get_spectra_module_lifecycle_store().snapshot()
+    registry["operator_controls_available"] = (
+        cm.get_server_permission(user.id, name) == ServerPermission.OWNER
+        or cm.is_admin(user.id)
+    )
+    return registry
+
+
+@router.put("/servers/{name}/spectra/modules/{module_id}/trigger")
+async def set_spectra_module_trigger(
+    name: str,
+    module_id: str,
+    request: ModuleTriggerRequest,
+    user: WebUser = Depends(get_current_user),
+):
+    """Persist an independent module trigger; never activates or dispatches orders."""
+    cm = get_config_manager()
+    if not cm.has_server_access(user.id, name):
+        raise HTTPException(status_code=404, detail="Server not found")
+    require_owner(cm, user.id, name)
+    try:
+        control = get_spectra_module_lifecycle_store().set_trigger(
+            module_id, request.enabled, reason=request.reason
+        )
+    except ModuleControlError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {
+        "control": control,
+        "live_trading_enabled": False,
+        "orders_created": 0,
+        "activation_performed": False,
+    }
 
 
 @router.get("/servers/{name}/status")
