@@ -159,6 +159,8 @@ async def test_kraken_scan_uses_configured_connector_and_never_creates_orders():
     assert result["governor_approved_list_loaded"] is True
     assert result["counts"]["governor_approved"] == 1, result
     assert result["candidates"][0]["trading_pair"] == "BTC-USD"
+    assert result["candidates"][0]["volume_rank_24h"] == 1
+    assert result["kraken_ticker_snapshot_at"] == 1_800_000_000
     assert result["candidates"][0]["governor_approved"] is True
     assert result["candidates"][0]["capital_authorized"] is False
     assert result["orders_created"] == 0
