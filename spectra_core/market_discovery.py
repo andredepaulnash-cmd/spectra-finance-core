@@ -249,6 +249,8 @@ async def scan_kraken_universe(
             "volume": volume,
         })
     candidates.sort(key=lambda item: item["volume"], reverse=True)
+    for volume_rank, item in enumerate(candidates, start=1):
+        item["volume_rank_24h"] = volume_rank
     selected = candidates[:top_n]
 
     semaphore = asyncio.Semaphore(6)
@@ -290,6 +292,7 @@ async def scan_kraken_universe(
                     min_median_daily_range_pct=min_median_daily_range_pct,
                     max_current_move_pct=max_current_move_pct,
                 )
+                analysis["volume_rank_24h"] = item["volume_rank_24h"]
                 analysis["governor_approved"] = (
                     approved is not None and item["trading_pair"] in approved
                 )
@@ -317,6 +320,7 @@ async def scan_kraken_universe(
     return {
         "source": "Kraken spot market data via Hummingbot API",
         "as_of": timestamp,
+        "kraken_ticker_snapshot_at": snapshot.updated_at,
         "universe": "Kraken spot markets in configured quote assets",
         "criteria": {
             "top_by_24h_quote_volume": top_n,
