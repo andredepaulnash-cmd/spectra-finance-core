@@ -53,6 +53,9 @@ def analyze_daily_history(
             continue
     if len(rows) < 90:
         raise ValueError("insufficient_history")
+    # The scan requires at least 90 completed daily candles, then evaluates a
+    # consistent rolling 90-day window even when more history is available.
+    rows = rows[-90:]
 
     highs = [r[0] for r in rows]
     lows = [r[1] for r in rows]
@@ -230,11 +233,12 @@ async def scan_public_universe(
         {"symbol": symbol, "reason": reason}
         for symbol, row, reason in fetched if row is None
     ]
-    ranked = sorted(
+    ranked_all = sorted(
         (row for row in analyzed if row["eligible"]),
         key=lambda row: (row["selection_score"], row["volume_24h_usd"]),
         reverse=True,
-    )[:show_n]
+    )
+    ranked = ranked_all[:show_n]
     guardrail_rejects = sum(not row["eligible"] for row in analyzed)
     return {
         "source": "Binance USD-M public perpetual market data",
@@ -251,7 +255,7 @@ async def scan_public_universe(
             "liquid_contracts_found": len(candidates),
             "contracts_selected_for_history": len(selected),
             "analyzed": len(analyzed),
-            "eligible": len(ranked),
+            "eligible": len(ranked_all),
             "rejected_by_guardrails": guardrail_rejects,
             "history_or_data_rejected": len(rejected),
         },
