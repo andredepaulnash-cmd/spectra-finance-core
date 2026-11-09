@@ -864,7 +864,8 @@ function Hero({
           />
         </div>
 
-        <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-[var(--color-text-muted)]"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Your Governor rules remain authoritative. Intelligence can research and propose; capital controls stay with Spectra Core.</div>\n        <Starters starters={starters} onAsk={onAsk} className="mt-4" />
+        <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-[var(--color-text-muted)]"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Your Governor rules remain authoritative. Intelligence can research and propose; capital controls stay with Spectra Core.</div>
+        <Starters starters={starters} onAsk={onAsk} className="mt-4" />
       </div>
     </div>
   );
