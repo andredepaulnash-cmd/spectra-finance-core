@@ -64,7 +64,7 @@ import {
 } from "@/lib/api";
 
 /** Openers offered when nothing is bound, and when something is. */
-const CONDOR_STARTERS: Starter[] = [
+const DEFAULT_STARTERS: Starter[] = [
   {
     icon: Wallet,
     title: "How is my portfolio doing?",
@@ -77,8 +77,8 @@ const CONDOR_STARTERS: Starter[] = [
   },
   {
     icon: ShieldAlert,
-    title: "Any positions at risk?",
-    hint: "Exposure, drawdown and anything near a limit",
+    title: "What needs my attention?",
+    hint: "Exposure, drawdown and policy limits",
   },
 ];
 const AGENT_STARTERS: Starter[] = [
@@ -805,21 +805,42 @@ function Hero({
 }) {
   const starters = useStarters(
     agent?.slug || "",
-    agent ? AGENT_STARTERS : CONDOR_STARTERS,
+    agent ? AGENT_STARTERS : DEFAULT_STARTERS,
   );
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-2">
-      <div className="w-full max-w-xl">
-        <h2 className="text-center text-xl font-semibold text-[var(--color-text)]">
-          Ask {brandedAgentName(agent)}
-        </h2>
-        <p className="mt-1 text-center text-sm text-[var(--color-text-muted)]">
-          {agent?.description ||
-            "Your portfolio, your bots, your positions — just ask."}
-        </p>
+    <div className="flex flex-1 flex-col items-center justify-center px-3 py-6">
+      <div className="w-full max-w-3xl">
+        <section className="spectra-hero mb-5 text-center">
+          <div className="mb-3 flex justify-center">
+            <span className="spectra-mark"><Sparkles className="h-5 w-5" /></span>
+          </div>
+          <div className="spectra-eyebrow text-[10px] font-bold uppercase tracking-[0.24em]">
+            Spectra Finance / Intelligence Network
+          </div>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-text)] md:text-3xl">
+            Ask {brandedAgentName(agent)}
+          </h2>
+          <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-[var(--color-text-muted)]">
+            {agent?.description ||
+              "Market research, asset selection, quantitative analysis and governed portfolio intelligence — coordinated in one place."}
+          </p>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              ["Research", "Discover and verify opportunities"],
+              ["Quant", "Test signals and mean reversion"],
+              ["Development", "Build and validate modules"],
+              ["Independent review", "Challenge assumptions"],
+            ].map(([name, detail]) => (
+              <div key={name} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]/70 px-3 py-2 text-left">
+                <div className="text-xs font-semibold text-[var(--color-text)]">{name}</div>
+                <div className="mt-1 text-[10px] leading-snug text-[var(--color-text-muted)]">{detail}</div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <div className="mt-4 flex justify-center">
+        <div className="mb-3 flex items-center justify-center gap-2">
           <BrainPicker
             agents={modelOptions}
             customProviders={customProviders}
@@ -843,7 +864,7 @@ function Hero({
           />
         </div>
 
-        <Starters starters={starters} onAsk={onAsk} className="mt-4" />
+        <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-[var(--color-text-muted)]"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Your Governor rules remain authoritative. Intelligence can research and propose; capital controls stay with Spectra Core.</div>\n        <Starters starters={starters} onAsk={onAsk} className="mt-4" />
       </div>
     </div>
   );
