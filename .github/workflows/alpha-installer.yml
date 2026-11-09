@@ -23,6 +23,9 @@ on:
       - tests/test_configure_alpha_paper_state.py
       - tests/test_hummingbot_mcp_config_dir.py
       - frontend/**
+      - spectra_core/market_discovery.py
+      - condor/web/routes/market.py
+      - tests/test_market_discovery.py
       - .github/workflows/alpha-installer.yml
   pull_request:
     paths:
@@ -64,7 +67,7 @@ jobs:
       - name: Install locked Core dependencies
         run: uv sync --locked --dev --python 3.12
       - name: Test alpha runtime safety and paper configuration
-        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py
+        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py tests/test_market_discovery.py
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
