@@ -21,7 +21,7 @@ import { CurrencySelector } from "./CurrencySelector";
 import { ServerSelector } from "./ServerSelector";
 import { NotificationBell } from "./NotificationBell";
 
-const FULL_BLEED_PATTERNS = [/^\\/agents\\/[^/]+$/];
+const FULL_BLEED_PATTERNS = [/^\/agents\/[^/]+$/];
 
 export function AppShell() {
   return (
