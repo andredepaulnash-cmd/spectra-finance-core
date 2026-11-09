@@ -7,6 +7,8 @@ orders.
 
 CATEGORY = "Market Data"
 
+from datetime import datetime, timezone
+
 from pydantic import BaseModel, Field
 from telegram.ext import ContextTypes
 
@@ -54,6 +56,7 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     lines = [
         "Spectra Mean-Reversion Scanner — Kraken USD spot",
+        f"Refreshed: {datetime.fromtimestamp(result['as_of'], timezone.utc).isoformat()}",
         f"Analyzed: {result['counts']['analyzed']} | "
         f"Candidates passing research guardrails: {result['counts']['eligible']}",
         f"Governor approved list loaded: {result['governor_approved_list_loaded']}",
