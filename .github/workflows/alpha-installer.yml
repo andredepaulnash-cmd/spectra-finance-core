@@ -35,6 +35,12 @@ on:
       - tests/test_module_lifecycle.py
       - tests/test_module_lifecycle_api.py
       - tests/test_module_registry.py
+      - spectra_core/market_discovery.py
+      - spectra_core/capital_governor.py
+      - routines/mean_reversion_scanner.py
+      - routines/market_scanner.py
+      - tests/test_market_discovery.py
+      - tests/test_spectra_core.py
       - .github/workflows/alpha-installer.yml
   pull_request:
     paths:
@@ -50,6 +56,12 @@ on:
       - tests/test_module_lifecycle.py
       - tests/test_module_lifecycle_api.py
       - tests/test_module_registry.py
+      - spectra_core/market_discovery.py
+      - spectra_core/capital_governor.py
+      - routines/mean_reversion_scanner.py
+      - routines/market_scanner.py
+      - tests/test_market_discovery.py
+      - tests/test_spectra_core.py
       - mcp_servers/hummingbot_api/settings.py
       - scripts/configure_alpha_paper_connector.py
       - scripts/configure_alpha_paper_state.py
