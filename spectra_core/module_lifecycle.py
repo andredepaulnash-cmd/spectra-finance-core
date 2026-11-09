@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 
 MODULES = {
-    "vcap": {"implemented": True, "default": "RUNNING", "triggered": False},
+    "vcap": {"implemented": False, "default": "MONITORING", "triggered": False},
     "dttp": {"implemented": False, "default": "MONITORING", "triggered": True},
     "dtsl": {"implemented": False, "default": "BLOCKED", "triggered": True},
     "pssm": {"implemented": False, "default": "BLOCKED", "triggered": False},
