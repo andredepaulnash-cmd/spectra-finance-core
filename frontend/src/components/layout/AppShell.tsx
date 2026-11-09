@@ -18,6 +18,7 @@ import { NAV_ITEMS, FULL_BLEED_ROUTES } from "@/lib/nav";
 import { routeFacts } from "@/lib/pageFacts";
 import { useViewFacts } from "@/lib/viewFacts";
 import { CurrencySelector } from "./CurrencySelector";
+import { ServerSelector } from "./ServerSelector";
 import { NotificationBell } from "./NotificationBell";
 
 const FULL_BLEED_PATTERNS = [/^\\/agents\\/[^/]+$/];
