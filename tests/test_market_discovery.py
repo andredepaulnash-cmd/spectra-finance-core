@@ -219,7 +219,7 @@ def test_analyzer_rejects_low_activity_asset_with_one_isolated_pump():
     history = candles(drift=0.0)
     for index in range(len(history)):
         price = float(history[index][4])
-        if index == 89:
+        if index == len(history) - 1:
             history[index][2] = str(price * 1.25)
             history[index][3] = str(price * 0.75)
             history[index][4] = str(price * 1.20)
