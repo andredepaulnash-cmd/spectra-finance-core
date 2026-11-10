@@ -82,25 +82,32 @@ cd "$API_DIR"
 say "Fetching the merged API main branch."
 git fetch --depth 1 origin main
 
-# Reconcile only source states that are known and reviewed.
-# The working tree is what the API image builds from. Do not compare the Git index:
-# a stale staged blob must not block an already-correct worktree, and this updater
-# deliberately never changes the index.
-#
-# These two blob IDs are the exact older paper-alpha files found on the existing
-# Bazzite installation. They differ from API main only by the two fixes below:
-#   market_data_service.py: missing lazy order-book initialization
-#   deps.py: missing paper-only 503 guard for disabled bot orchestration
-# Any other local source version is preserved and causes a safe stop.
+# Reconcile known Alpha sources. Preserve local work using a three-way merge
+# against the last shared Alpha baseline; a conflict stops before any source is
+# changed. The Git index is never modified.
 declare -A APPROVED_LEGACY_BLOBS=(
-  ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
   ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
   ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
 )
+declare -A EXPECTED_UPSTREAM_BLOBS=(
+  ["services/unified_connector_service.py"]="185f03c85f00d7ccb95817551f0990ccda4a2fb4"
+  ["services/market_data_service.py"]="9236689f87dc32aae2478100419b9a2e6e645f73"
+  ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
+)
+
+MERGE_TMP="$(mktemp -d "$LOG_DIR/api-source-merge.XXXXXX")"
+trap 'rm -rf "$MERGE_TMP"' EXIT
+UNIFIED_SOURCE="services/unified_connector_service.py"
+UNIFIED_BASE_COMMIT="7dda696631cf4174cabff2cfd060358c249a88e0"
+UNIFIED_BASE_BLOB="27b79133556466d6d27ec130034f28444d33f860"
 
 for source in "${API_SOURCES[@]}"; do
   upstream_blob="$(git rev-parse "FETCH_HEAD:${source}")"
-  worktree_blob="$(git hash-object "${source}")"
+  expected_blob="${EXPECTED_UPSTREAM_BLOBS[$source]}"
+  [[ "$upstream_blob" == "$expected_blob" ]] \
+    || die "Fetched $source is not the reviewed API version (expected $expected_blob, got $upstream_blob)."
+
+  worktree_blob="$(git hash-object "$source")"
   if [[ "$worktree_blob" == "$upstream_blob" ]]; then
     say "$source already matches reviewed upstream."
     continue
@@ -108,29 +115,40 @@ for source in "${API_SOURCES[@]}"; do
 
   approved_blob="${APPROVED_LEGACY_BLOBS[$source]:-}"
   if [[ -n "$approved_blob" && "$worktree_blob" == "$approved_blob" ]]; then
-    say "Recognized the exact pre-fix Alpha version of $source; applying its reviewed upstream fix."
+    say "Recognized the exact pre-fix Alpha version of $source."
     continue
   fi
 
-  die "Unrecognized local source version in $source. It was not overwritten; preserve/review it before updating."
+  if [[ "$source" == "$UNIFIED_SOURCE" ]]; then
+    say "Preserving local $source changes while applying the reviewed upstream fix."
+    git fetch --depth 1 origin "$UNIFIED_BASE_COMMIT"
+    base_blob="$(git rev-parse "$UNIFIED_BASE_COMMIT:$UNIFIED_SOURCE")"
+    [[ "$base_blob" == "$UNIFIED_BASE_BLOB" ]] \
+      || die "The known Alpha merge base for $UNIFIED_SOURCE did not match."
+    git show "$UNIFIED_BASE_COMMIT:$UNIFIED_SOURCE" > "$MERGE_TMP/unified.base"
+    git show "FETCH_HEAD:$UNIFIED_SOURCE" > "$MERGE_TMP/unified.upstream"
+    if ! git merge-file -p "$source" "$MERGE_TMP/unified.base" "$MERGE_TMP/unified.upstream" > "$MERGE_TMP/unified.merged"; then
+      die "Local $source has conflicting edits. It was preserved; no API source files were changed."
+    fi
+    grep -q "refusing registration" "$MERGE_TMP/unified.merged" \
+      || die "Merged $source is missing the fail-closed Kraken validation."
+    cp "$MERGE_TMP/unified.merged" "$MERGE_TMP/unified.install"
+    continue
+  fi
+
+  die "Unrecognized local source version in $source. It was not overwritten."
 done
 
-# Verify the exact reviewed API source blobs. This is deterministic and avoids
-# shell text-search, pager, locale, and pipefail behavior entirely.
-declare -A EXPECTED_UPSTREAM_BLOBS=(
-  ["services/unified_connector_service.py"]="185f03c85f00d7ccb95817551f0990ccda4a2fb4"
-  ["services/market_data_service.py"]="9236689f87dc32aae2478100419b9a2e6e645f73"
-  ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
-)
-
+# Apply only after every source passed preflight. Local non-conflicting edits to
+# unified_connector_service.py survive; the other two files use exact approved
+# legacy versions or exact upstream versions.
 for source in "${API_SOURCES[@]}"; do
-  actual_blob="$(git rev-parse "FETCH_HEAD:${source}")"
-  expected_blob="${EXPECTED_UPSTREAM_BLOBS[$source]}"
-  [[ "$actual_blob" == "$expected_blob" ]] \
-    || die "Fetched $source is not the reviewed API version (expected $expected_blob, got $actual_blob)."
+  if [[ "$source" == "$UNIFIED_SOURCE" && -f "$MERGE_TMP/unified.install" ]]; then
+    cat "$MERGE_TMP/unified.install" > "$source"
+  else
+    git restore --source=FETCH_HEAD --worktree -- "$source"
+  fi
 done
-
-git restore --source=FETCH_HEAD --worktree -- "${API_SOURCES[@]}"
 
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
