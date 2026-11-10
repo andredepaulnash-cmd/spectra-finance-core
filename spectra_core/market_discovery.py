@@ -304,6 +304,8 @@ async def scan_kraken_universe(
                     min_median_daily_range_pct=min_median_daily_range_pct,
                     max_current_move_pct=max_current_move_pct,
                 )
+                analysis["trading_pair"] = item["trading_pair"]
+                analysis["quote_asset"] = item["quote_asset"]
                 analysis["volume_rank_24h"] = item["volume_rank_24h"]
                 analysis["governor_approved"] = (
                     approved is not None and item["trading_pair"] in approved
