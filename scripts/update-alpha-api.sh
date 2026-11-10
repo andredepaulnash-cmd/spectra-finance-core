@@ -327,8 +327,11 @@ for name in (
 ):
     text = (source / name).read_text(encoding="utf-8")
     text = text.replace("@INSTALL_ROOT@", install_root).replace("@LOCAL_BIN@", local_bin)
-    (target / name).write_text(text, encoding="utf-8")
-    (target / name).chmod(0o600)
+    unit_path = target / name
+    if unit_path.exists() and unit_path.read_text(encoding="utf-8") != text:
+        raise SystemExit(f"Refusing to overwrite customized user unit {unit_path}; it was preserved.")
+    unit_path.write_text(text, encoding="utf-8")
+    unit_path.chmod(0o600)
 PYSYSTEMD
 if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
   systemctl --user daemon-reload
