@@ -5,6 +5,8 @@
 set -Eeuo pipefail
 
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
+CORE_DIR="$INSTALL_ROOT/spectra-core"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
 API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
 LOG_DIR="$INSTALL_ROOT/logs"
 LOG_FILE="$LOG_DIR/api-update.log"
@@ -154,9 +156,9 @@ say "Postgres and EMQX were started in place; no volumes or local credentials we
 # Update only the reviewed OrderBook component in the existing Core checkout,
 # then rebuild the static frontend. The running web process serves dist files
 # from disk, so no Core restart or user-data migration is required.
-CORE_DIR="$INSTALL_ROOT/spectra-core"
 CORE_FRONTEND_SOURCE="frontend/src/components/market/OrderBook.tsx"
 [[ -d "$CORE_DIR/.git" ]] || die "Core Git checkout not found at $CORE_DIR."
+git -C "$CORE_DIR" fetch --depth 1 origin "$CORE_REF"
 [[ -f "$CORE_DIR/frontend/package.json" ]] || die "Core frontend package.json is missing."
 say "Fetching the reviewed Spectra trade-screen market-feed status component."
 git -C "$CORE_DIR" fetch --depth 1 origin alpha/one-command-paper-demo-20261108
