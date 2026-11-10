@@ -212,8 +212,8 @@ declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/spectra-alpha-doctor.sh"]="be0d38bc075b31a291f2779ce917eba8c59689f9"
   ["scripts/spectra-alpha-start-api.sh"]="2c6a536395209ccc21d48f94f0907ffaffc4ffa5"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e063affc6b22527f5a727bbc47f5afba4c361dff"
-  ["scripts/systemd/spectra-alpha-core.service"]="f7d8fb90d3fb198ac02cfe7b6c5c79bc882d406a"
-  ["scripts/systemd/spectra-alpha-doctor.service"]="eb56913b0cf65117aa3f66b6dd26cd9f72e21110"
+  ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
+  ["scripts/systemd/spectra-alpha-doctor.service"]="054b22ea89cb8888419ec8000b5ffa0975f1b73d"
   ["scripts/systemd/spectra-alpha-doctor.timer"]="30af1b179bda4aec03105018e09b07dba1ee4b85"
 )
 for source in "${CORE_OPS_SOURCES[@]}"; do
