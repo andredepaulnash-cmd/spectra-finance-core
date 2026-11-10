@@ -218,7 +218,7 @@ declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
   ["scripts/systemd/spectra-alpha-doctor.service"]="054b22ea89cb8888419ec8000b5ffa0975f1b73d"
   ["scripts/systemd/spectra-alpha-doctor.timer"]="30af1b179bda4aec03105018e09b07dba1ee4b85"
-  ["scripts/spectra-alpha-backup.sh"]="0ca7fb7fb58e89c9dd0621bab6b8ed2b12a3d885"
+  ["scripts/spectra-alpha-backup.sh"]="18600bd403d460f2c2d422d56f6a4cb3aa3daf71"
   ["scripts/systemd/spectra-alpha-backup.service"]="e49bc3d235744a92d7c463e6a98d9b8b282ae08b"
   ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
 )
