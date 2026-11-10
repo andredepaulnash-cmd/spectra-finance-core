@@ -573,6 +573,32 @@ export function SpectraOverview() {
             <p className="mb-3 text-xs text-[var(--color-text-muted)]">
               {marketDiscovery.data.list_scope}. The 24h leaderboards only include assets with a valid hourly reference; stale or missing data is not guessed.
             </p>
+            <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Dynamic market lists">
+              {([
+                ["top_24h_volume", "24h Volume"],
+                ["top_24h_gainers", "24h Gainers"],
+                ["top_24h_losers", "24h Losers"],
+                ["volatility_leaders", "Volatility"],
+                ["mean_reversion_candidates", "Mean Reversion"],
+              ] as [MarketDiscoveryListKey, string][]).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeMarketList === key}
+                  onClick={() => setActiveMarketList(key)}
+                  className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${activeMarketList === key ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]" : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"}`}
+                >
+                  {label}
+                  <span className="ml-2 tabular-nums opacity-70">
+                    {marketDiscovery.data.lists[ key ]?.length ?? 0}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="mb-3 text-xs text-[var(--color-text-muted)]">
+              {marketDiscovery.data.list_scope}. Gainer/loser lists require a valid hourly reference; missing or stale data is omitted, never guessed.
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1040px] text-left text-sm">
                 <thead className="text-xs text-[var(--color-text-muted)]">
@@ -613,6 +639,7 @@ export function SpectraOverview() {
                       <td className="py-3 text-right font-semibold tabular-nums">{candidate.selection_score == null ? "—" : `${candidate.selection_score.toFixed(0)}/100`}</td>
                       <td className="py-3 pl-3 text-right tabular-nums">
                         {(() => {
+                          if (candidate.selection_score == null) return <span className="text-[var(--color-text-muted)]">—</span>;
                           if (candidate.selection_score == null) return <span className="text-[var(--color-text-muted)]">—</span>;
                           const previous = previousDailyCandidates.get(candidate.symbol);
                           if (!previous) return <span className="text-[var(--color-text-muted)]">NEW</span>;
