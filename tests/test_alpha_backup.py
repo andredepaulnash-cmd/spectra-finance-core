@@ -141,9 +141,9 @@ def test_backup_includes_only_valid_external_governor_allowlist(tmp_path):
     archive = next((root / "backups").glob("spectra-paper-*.tar.gz"))
     with tarfile.open(archive, "r:gz") as bundle:
         names = set(bundle.getnames())
-        assert "governor/approved_assets.json" in names
+        assert "state/governor/approved_assets.json" in names
         assert not any("live-only-sentinel" in name for name in names)
-        saved = bundle.extractfile("governor/approved_assets.json")
+        saved = bundle.extractfile("state/governor/approved_assets.json")
         assert saved is not None
         assert b"Architect Governor list v1" in saved.read()
 
