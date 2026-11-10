@@ -50,24 +50,52 @@ clone_or_reuse() {
     local remote
     remote="$(git -C "$dest" remote get-url origin)"
     [[ "$remote" == *"$(basename "$repo" .git)"* ]] || die "Existing directory $dest is a different Git repository."
-    local dirty account_cfg account_cfg_backup
+    local dirty account_cfg account_cfg_backup backup_dir patch_file
     account_cfg="bots/credentials/master_account/conf_client.yml"
     account_cfg_backup=""
+    backup_dir="$INSTALL_ROOT/backups/installer-overwrite-$(date -u +%Y%m%dT%H%M%SZ)-$(basename "$dest")"
     if [[ -f "$dest/$account_cfg" ]]; then
       account_cfg_backup="$(mktemp)"
       cp "$dest/$account_cfg" "$account_cfg_backup"
     fi
-    dirty="$(git -C "$dest" status --porcelain | grep -v -E 'docker-compose[.]alpha[.]yml|Dockerfile[.]alpha|bots/credentials/master_account/conf_client[.]yml' || true)"
-    if [[ -n "$dirty" ]]; then
-      [[ -z "$account_cfg_backup" ]] || rm -f "$account_cfg_backup"
-      die "Existing checkout $dest has unrelated local changes; refusing to overwrite them."
-    fi
-    if [[ -n "$account_cfg_backup" ]]; then
-      git -C "$dest" restore -- "$account_cfg"
-    fi
+    dirty="$(git -C "$dest" status --porcelain --untracked-files=all | grep -v -E 'docker-compose[.]alpha[.]yml|Dockerfile[.]alpha|bots/credentials/master_account/conf_client[.]yml' || true)"
     git -C "$dest" fetch --depth 1 origin "$ref"
-    git -C "$dest" checkout --detach FETCH_HEAD
+    # Replace tracked application code, but never run git clean or delete local data.
+    # Keep a recoverable patch of tracked local edits outside the checkout.
+    if [[ -n "$dirty" ]]; then
+      mkdir -p "$backup_dir"
+      chmod 700 "$backup_dir"
+      patch_file="$backup_dir/tracked-local-changes.patch"
+      git -C "$dest" diff --binary HEAD > "$patch_file"
+      chmod 600 "$patch_file"
+      printf '%s\\n' "$dirty" > "$backup_dir/local-change-manifest.txt"
+      chmod 600 "$backup_dir/local-change-manifest.txt"
+      say "Preserved tracked local edits for $dest at $patch_file"
+    fi
+    # Refuse only if an untracked, non-ignored user file would be displaced by
+    # a path newly tracked in the incoming release. All other untracked files,
+    # ignored config, credentials, and data remain in place.
+    python3 - "$dest" <<'PYSAFE'
+import subprocess, sys
+root = sys.argv[1]
+def git(*args):
+    return subprocess.check_output(["git", "-C", root, *args], text=True).splitlines()
+untracked = git("ls-files", "--others", "--exclude-standard")
+incoming = git("ls-tree", "-r", "--name-only", "FETCH_HEAD")
+conflicts = []
+for local in untracked:
+    for remote in incoming:
+        if remote == local or remote.startswith(local.rstrip("/") + "/") or local.startswith(remote.rstrip("/") + "/"):
+            conflicts.append(local)
+            break
+if conflicts:
+    print("Untracked local paths would be displaced by the incoming release:", file=sys.stderr)
+    print("\\n".join(conflicts), file=sys.stderr)
+    raise SystemExit(2)
+PYSAFE
+    git -C "$dest" reset --hard FETCH_HEAD
     if [[ -n "$account_cfg_backup" ]]; then
+      mkdir -p "$dest/$(dirname "$account_cfg")"
       cp "$account_cfg_backup" "$dest/$account_cfg"
       rm -f "$account_cfg_backup"
     fi
