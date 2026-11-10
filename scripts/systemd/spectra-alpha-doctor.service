@@ -1,0 +1,8 @@
+[Unit]
+Description=Spectra Finance Alpha read-only health check
+After=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=%h/.local/bin/spectra-alpha-doctor
