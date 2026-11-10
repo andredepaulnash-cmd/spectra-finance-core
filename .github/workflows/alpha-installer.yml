@@ -31,6 +31,7 @@ on:
       - tests/test_spectra_runtime_fail_closed.py
       - tests/test_spectra_runtime.py
       - tests/test_spectra_kraken_execution_flow.py
+      - tests/test_alpha_backup.py
       - tests/test_configure_alpha_paper_connector.py
       - tests/test_configure_alpha_paper_state.py
       - tests/test_hummingbot_mcp_config_dir.py
@@ -88,12 +89,14 @@ jobs:
         run: |
           bash -n install-alpha.sh
           bash -n scripts/update-alpha-api.sh
-          for script in scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra; do
+          for script in scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra-alpha-backup.sh scripts/spectra; do
             bash -n "$script"
           done
           ! grep -q 'compose down' scripts/spectra
           grep -q 'Restart=on-failure' scripts/systemd/spectra-alpha-core.service
           grep -q 'OnUnitActiveSec=120s' scripts/systemd/spectra-alpha-doctor.timer
+          grep -q 'OnCalendar=\*-\*-\* 03:30:00' scripts/systemd/spectra-alpha-backup.timer
+          grep -q 'spectra-alpha-backup' scripts/spectra
           ! grep -Eq 'podman (volume|system) prune|docker (volume|system) prune|compose down -v' scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra
       - name: Enforce paper-only and no host socket mount
         run: |
@@ -117,6 +120,7 @@ jobs:
       - name: Test strategy, accounting, restart, and recovery invariants
         run: |
           uv run --python 3.12 pytest -q \
+            tests/test_alpha_backup.py \
             tests/test_spectra_executor_accounting_flow.py \
             tests/test_accounting_health_gate.py \
             tests/test_vcap_runtime_supervisor.py \
