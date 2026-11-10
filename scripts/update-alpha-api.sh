@@ -57,12 +57,37 @@ cd "$API_DIR"
 say "Fetching the merged API main branch."
 git fetch --depth 1 origin main
 
-# Protect genuine local-only edits, but accept files already identical to fetched upstream.
-# Compare both the worktree and index against FETCH_HEAD: comparing only against local HEAD
-# incorrectly blocks a prior/manual update that already matches the reviewed upstream fix.
-if ! git diff --quiet FETCH_HEAD -- "${API_SOURCES[@]}" || ! git diff --cached --quiet FETCH_HEAD -- "${API_SOURCES[@]}"; then
-  die "Local API source changes differ from fetched upstream. Preserve/reconcile them first; nothing was overwritten."
-fi
+# Reconcile only source states that are known and reviewed.
+# The working tree is what the API image builds from. Do not compare the Git index:
+# a stale staged blob must not block an already-correct worktree, and this updater
+# deliberately never changes the index.
+#
+# These two blob IDs are the exact older paper-alpha files found on the existing
+# Bazzite installation. They differ from API main only by the two fixes below:
+#   market_data_service.py: missing lazy order-book initialization
+#   deps.py: missing paper-only 503 guard for disabled bot orchestration
+# Any other local source version is preserved and causes a safe stop.
+declare -A APPROVED_LEGACY_BLOBS=(
+  ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
+  ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
+)
+
+for source in "${API_SOURCES[@]}"; do
+  upstream_blob="$(git rev-parse "FETCH_HEAD:${source}")"
+  worktree_blob="$(git hash-object "${source}")"
+  if [[ "$worktree_blob" == "$upstream_blob" ]]; then
+    say "$source already matches reviewed upstream."
+    continue
+  fi
+
+  approved_blob="${APPROVED_LEGACY_BLOBS[$source]:-}"
+  if [[ -n "$approved_blob" && "$worktree_blob" == "$approved_blob" ]]; then
+    say "Recognized the exact pre-fix Alpha version of $source; applying its reviewed upstream fix."
+    continue
+  fi
+
+  die "Unrecognized local source version in $source. It was not overwritten; preserve/review it before updating."
+done
 
 # Confirm both reviewed fixes exist upstream before changing either local file.
 git show "FETCH_HEAD:${API_SOURCES[0]}" | grep -q "refusing registration" \
