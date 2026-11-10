@@ -284,8 +284,11 @@ done
 # existing checkout's index yet. Read each from the verified fetched tree without
 # staging or changing the local Git index.
 for source in "${CORE_OPS_SOURCES[@]}"; do
-  mkdir -p "$(dirname "$CORE_DIR/$source")"
-  git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
+  say "Installing reviewed operator file: $source"
+  target="$CORE_DIR/$source"
+  parent="$(dirname "$target")"
+  mkdir -p "$parent"
+  git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$target" || die "Could not write reviewed operator file $target."
 done
 
 # Update only the reviewed Python files that implement the paper asset authority
