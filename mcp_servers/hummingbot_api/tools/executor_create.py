@@ -776,6 +776,19 @@ async def create_executor(
                 ),
                 "formatted_output": "Spectra execution refused before market-data lookup.",
             }
+        if settings.paper_only:
+            try:
+                require_approved_kraken_pair(
+                    str(merged_config.get("trading_pair") or ""),
+                    connector_name=expected_connector,
+                )
+            except ValueError as exc:
+                return {
+                    "action": "create",
+                    "executor_type": executor_type,
+                    "error": f"Governor asset authority refused before market-data lookup: {exc}",
+                    "formatted_output": "Spectra paper entry refused; no market data or capital was requested.",
+                }
         try:
             try:
                 mode = get_breaker_mode()
