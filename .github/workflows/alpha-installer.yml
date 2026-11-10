@@ -87,8 +87,10 @@ jobs:
         run: |
           bash -n install-alpha.sh
           bash -n scripts/update-alpha-api.sh
-          bash -n scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra
+          bash -n scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra
           ! grep -q 'compose down' scripts/spectra
+          grep -q 'Restart=on-failure' scripts/systemd/spectra-alpha-core.service
+          grep -q 'OnUnitActiveSec=120s' scripts/systemd/spectra-alpha-doctor.timer
           ! grep -Eq 'podman (volume|system) prune|docker (volume|system) prune|compose down -v' scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra
       - name: Enforce paper-only and no host socket mount
         run: |
