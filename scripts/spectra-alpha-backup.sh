@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Consistent local backups of Spectra paper state only; never copies secrets/live state.
 set -Eeuo pipefail
+umask 077
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
 CORE_ENV="$CORE_DIR/.env"
