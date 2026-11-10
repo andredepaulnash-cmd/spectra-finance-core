@@ -4,5 +4,6 @@ After=network-online.target
 
 [Service]
 Type=oneshot
+Environment=PATH=@LOCAL_BIN@:/usr/bin:/bin
 UMask=0077
 ExecStart=@LOCAL_BIN@/spectra-alpha-doctor
