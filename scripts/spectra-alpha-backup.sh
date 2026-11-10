@@ -54,6 +54,17 @@ paper = resolve(values.get("SPECTRA_PAPER_STATE_DIR"), core / "data" / "spectra-
 live = resolve(values.get("SPECTRA_STATE_DIR"), core / "data" / "spectra")
 if paper == live or paper == core / "data" / "spectra":
     raise SystemExit("Backup refused: paper state resolves to the live state directory.")
+try:
+    paper.relative_to(live)
+except ValueError:
+    try:
+        live.relative_to(paper)
+    except ValueError:
+        pass
+    else:
+        raise SystemExit("Backup refused: paper and live state directories overlap.")
+else:
+    raise SystemExit("Backup refused: paper and live state directories overlap.")
 if not paper.is_dir():
     raise SystemExit(f"Paper state directory does not exist: {paper}")
 
