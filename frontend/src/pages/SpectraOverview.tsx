@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   CircleAlert,
@@ -107,7 +107,7 @@ export function SpectraOverview() {
       api.setSpectraModuleTrigger(server!, moduleId, enabled),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["spectra-modules", server] }),
   });
-  const [dailyMarketHistory, setDailyMarketHistory] = useState<DailyMarketHistory>(() => {
+  const [storedDailyMarketHistory, setStoredDailyMarketHistory] = useState<DailyMarketHistory>(() => {
     try {
       const saved = window.localStorage.getItem(DAILY_MARKET_HISTORY_KEY);
       return saved ? JSON.parse(saved) as DailyMarketHistory : { current: null, previous: null };
@@ -146,9 +146,9 @@ export function SpectraOverview() {
   // Keep a browser-local daily baseline so the shortlist can explain what
   // entered, exited, or changed score since the previous daily snapshot.
   // This is reporting state only: it cannot authorize or submit orders.
-  useEffect(() => {
+  const dailyMarketHistory = useMemo<DailyMarketHistory>(() => {
     const data = marketDiscovery.data;
-    if (!data) return;
+    if (!data) return storedDailyMarketHistory;
     const snapshot: DailyMarketSnapshot = {
       date: new Date(data.as_of * 1000).toISOString().slice(0, 10),
       as_of: data.as_of,
@@ -160,18 +160,19 @@ export function SpectraOverview() {
         rank: index + 1,
       })),
     };
-    setDailyMarketHistory((existing) => {
-      const next = existing.current?.date === snapshot.date
-        ? { ...existing, current: snapshot }
-        : { current: snapshot, previous: existing.current };
-      try {
-        window.localStorage.setItem(DAILY_MARKET_HISTORY_KEY, JSON.stringify(next));
-      } catch {
-        // The live shortlist remains available even if browser storage is disabled.
-      }
-      return next;
-    });
-  }, [marketDiscovery.data]);
+    return storedDailyMarketHistory.current?.date === snapshot.date
+      ? { ...storedDailyMarketHistory, current: snapshot }
+      : { current: snapshot, previous: storedDailyMarketHistory.current };
+  }, [marketDiscovery.data, storedDailyMarketHistory]);
+
+  useEffect(() => {
+    if (!marketDiscovery.data) return;
+    try {
+      window.localStorage.setItem(DAILY_MARKET_HISTORY_KEY, JSON.stringify(dailyMarketHistory));
+    } catch {
+      // The live shortlist remains available even if browser storage is disabled.
+    }
+  }, [dailyMarketHistory, marketDiscovery.data]);
 
   const previousDailyCandidates = new Map(
     (dailyMarketHistory.previous?.candidates ?? []).map((candidate) => [candidate.symbol, candidate]),
