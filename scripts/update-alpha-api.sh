@@ -81,6 +81,7 @@ PY
 cd "$API_DIR"
 say "Fetching the merged API main branch."
 git fetch --depth 1 origin main
+API_UPSTREAM_COMMIT="$(git rev-parse FETCH_HEAD)"
 
 # Reconcile known Alpha sources. Preserve local work using a three-way merge
 # against the last shared Alpha baseline; a conflict stops before any source is
@@ -102,7 +103,7 @@ UNIFIED_BASE_COMMIT="7dda696631cf4174cabff2cfd060358c249a88e0"
 UNIFIED_BASE_BLOB="27b79133556466d6d27ec130034f28444d33f860"
 
 for source in "${API_SOURCES[@]}"; do
-  upstream_blob="$(git rev-parse "FETCH_HEAD:${source}")"
+  upstream_blob="$(git rev-parse "$API_UPSTREAM_COMMIT:${source}")"
   expected_blob="${EXPECTED_UPSTREAM_BLOBS[$source]}"
   [[ "$upstream_blob" == "$expected_blob" ]] \
     || die "Fetched $source is not the reviewed API version (expected $expected_blob, got $upstream_blob)."
@@ -126,7 +127,7 @@ for source in "${API_SOURCES[@]}"; do
     [[ "$base_blob" == "$UNIFIED_BASE_BLOB" ]] \
       || die "The known Alpha merge base for $UNIFIED_SOURCE did not match."
     git show "$UNIFIED_BASE_COMMIT:$UNIFIED_SOURCE" > "$MERGE_TMP/unified.base"
-    git show "FETCH_HEAD:$UNIFIED_SOURCE" > "$MERGE_TMP/unified.upstream"
+    git show "$API_UPSTREAM_COMMIT:$UNIFIED_SOURCE" > "$MERGE_TMP/unified.upstream"
     if ! git merge-file -p "$source" "$MERGE_TMP/unified.base" "$MERGE_TMP/unified.upstream" > "$MERGE_TMP/unified.merged"; then
       die "Local $source has conflicting edits. It was preserved; no API source files were changed."
     fi
@@ -146,7 +147,7 @@ for source in "${API_SOURCES[@]}"; do
   if [[ "$source" == "$UNIFIED_SOURCE" && -f "$MERGE_TMP/unified.install" ]]; then
     cat "$MERGE_TMP/unified.install" > "$source"
   else
-    git restore --source=FETCH_HEAD --worktree -- "$source"
+    git restore --source="$API_UPSTREAM_COMMIT" --worktree -- "$source"
   fi
 done
 
@@ -226,7 +227,7 @@ CORE_NEW_BLOB="6ae7ba93d253f2127b47a301b3e33121a9f54895"
 if [[ "$CORE_WORKTREE_BLOB" != "$CORE_NEW_BLOB" && "$CORE_WORKTREE_BLOB" != "$CORE_OLD_BLOB" ]]; then
   die "Unrecognized local changes in $CORE_FRONTEND_SOURCE. They were preserved; review them before updating."
 fi
-git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "$CORE_FRONTEND_SOURCE"
+git -C "$CORE_DIR" restore --source="$API_UPSTREAM_COMMIT" --worktree -- "$CORE_FRONTEND_SOURCE"
 
 # Apply the reviewed Command Center shell polish only when the local files are
 # either the exact previous Alpha versions or already match this release.
@@ -255,7 +256,7 @@ for source in "${CORE_SHELL_SOURCES[@]}"; do
     die "Unrecognized local changes in $source. They were preserved; review them before updating."
   fi
 done
-git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "${CORE_SHELL_SOURCES[@]}"
+git -C "$CORE_DIR" restore --source="$API_UPSTREAM_COMMIT" --worktree -- "${CORE_SHELL_SOURCES[@]}"
 say "Updated the reviewed Command Center shell and Kraken discovery UI."
 
 # Install the reviewed paper lifecycle operator, health monitor and user services.
@@ -507,7 +508,7 @@ CORE_NEW_BLOB="6ae7ba93d253f2127b47a301b3e33121a9f54895"
 if [[ "$CORE_WORKTREE_BLOB" != "$CORE_NEW_BLOB" && "$CORE_WORKTREE_BLOB" != "$CORE_OLD_BLOB" ]]; then
   die "Unrecognized local changes in $CORE_FRONTEND_SOURCE. They were preserved; review them before updating."
 fi
-git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "$CORE_FRONTEND_SOURCE"
+git -C "$CORE_DIR" restore --source="$API_UPSTREAM_COMMIT" --worktree -- "$CORE_FRONTEND_SOURCE"
 
 # Apply the reviewed Command Center shell polish only when the local files are
 # either the exact previous Alpha versions or already match this release.
@@ -536,7 +537,7 @@ for source in "${CORE_SHELL_SOURCES[@]}"; do
     die "Unrecognized local changes in $source. They were preserved; review them before updating."
   fi
 done
-git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "${CORE_SHELL_SOURCES[@]}"
+git -C "$CORE_DIR" restore --source="$API_UPSTREAM_COMMIT" --worktree -- "${CORE_SHELL_SOURCES[@]}"
 say "Updated the reviewed Command Center shell and Kraken discovery UI."
 
 # Install the reviewed paper lifecycle operator, health monitor and user services.
