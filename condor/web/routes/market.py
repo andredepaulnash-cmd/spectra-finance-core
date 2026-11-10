@@ -590,6 +590,49 @@ _discovery_cache: dict[str, tuple[float, dict]] = {}
 _DISCOVERY_CACHE_TTL = 300.0
 
 
+@router.get("/servers/{name}/market/discovery")
+async def get_server_market_discovery(
+    name: str,
+    top_n: int = Query(default=80, ge=1, le=150),
+    show_n: int = Query(default=25, ge=1, le=100),
+    min_volume_usd: float = Query(default=10_000_000, gt=0, le=1_000_000_000_000),
+    min_history_days: int = Query(default=90, ge=90, le=365),
+    user: WebUser = Depends(require_server_access),
+):
+    """Rank Kraken USD spot markets using this user's configured Hummingbot API.
+
+    Discovery is research-only. The paper asset allowlist annotates candidates,
+    while the independent capital and dispatch gates remain authoritative.
+    """
+    from spectra_core.market_discovery import scan_kraken_universe
+
+    key = f"kraken:{name}:{top_n}:{show_n}:{min_volume_usd}:{min_history_days}"
+    cached = _discovery_cache.get(key)
+    now = time.monotonic()
+    if cached and now - cached[0] < _DISCOVERY_CACHE_TTL:
+        return cached[1]
+
+    try:
+        client = await get_config_manager().get_client(name)
+        result = await scan_kraken_universe(
+            client,
+            top_n=top_n,
+            show_n=show_n,
+            min_volume_usd=min_volume_usd,
+            min_history_days=min_history_days,
+            quote_assets=("USD",),
+        )
+    except Exception as exc:
+        logger.exception("Kraken market discovery failed for server %s", name)
+        raise upstream_error("Kraken spot market discovery unavailable", exc)
+
+    _discovery_cache[key] = (time.monotonic(), result)
+    if len(_discovery_cache) > 8:
+        oldest = min(_discovery_cache, key=lambda item: _discovery_cache[item][0])
+        _discovery_cache.pop(oldest, None)
+    return result
+
+
 @router.get("/market/discovery")
 async def get_market_discovery(
     top_n: int = Query(default=80, ge=1, le=150),
