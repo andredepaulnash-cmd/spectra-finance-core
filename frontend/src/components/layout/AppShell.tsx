@@ -94,21 +94,21 @@ function AppShellBody() {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex h-14 shrink-0 items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-5">
+      <header className="spectra-topbar flex h-14 shrink-0 items-center border-b border-[var(--color-border)] px-5">
         <div className="flex items-center gap-7">
-          <NavLink to="/" aria-label="Spectra Finance home" className="flex items-center">
+          <NavLink to="/" aria-label="Spectra Finance home" className="spectra-brand flex items-center">
             <img src={spectraLogo} alt="Spectra Finance" className="h-9 w-auto max-w-[210px]" />
           </NavLink>
-          <nav className="flex items-center">
+          <nav className="spectra-nav flex items-center">
             {visibleNavItems.map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={to === "/"}
                 className={({ isActive }) =>
-                  `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                  `spectra-nav-link flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
                     isActive
-                      ? "bg-[var(--color-primary)]/15 text-[var(--color-primary)]"
+                      ? "is-active bg-[var(--color-primary)]/15 text-[var(--color-primary)]"
                       : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
                   }`
                 }
@@ -129,8 +129,9 @@ function AppShellBody() {
                   ? "Paper-only mode is confirmed, but no paper connector is initialized yet."
                   : "Execution locked: this server has not confirmed Spectra paper-only mode."
             }
-            className="rounded-full border border-[var(--color-border)] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
+            className="spectra-runtime-pill rounded-full border border-[var(--color-border)] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
           >
+            <span aria-hidden="true" className={`spectra-runtime-dot ${paperConnectorReady ? "is-ready" : paperModeConfirmed ? "is-pending" : "is-locked"}`} />
             {paperConnectorReady
               ? "Paper only"
               : paperModeConfirmed
@@ -167,7 +168,7 @@ function AppShellBody() {
         </div>
       </header>
       {server && (
-        <div className="shrink-0 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-2 text-xs text-[var(--color-text-muted)]">
+        <div className="spectra-safety-banner shrink-0 border-b border-[var(--color-border)] px-5 py-2 text-xs text-[var(--color-text-muted)]">
           {paperConnectorReady
             ? "Spectra paper-only runtime verified. Orders must use the isolated simulated connector; live trading controls remain hidden."
             : paperModeConfirmed
@@ -178,7 +179,7 @@ function AppShellBody() {
       <RelaunchBanner />
       <TelemetryConsentBanner />
       <main
-        className={`relative flex-1 ${
+        className={`spectra-main relative flex-1 ${
           isFullBleed && isSpectraSafeRoute ? "overflow-hidden" : "overflow-auto p-6"
         }`}
       >
