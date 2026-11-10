@@ -211,7 +211,7 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-backup.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="715390c4ab253083331076c9051deb5dc02ba730"
+  ["scripts/spectra"]="1058afe1bd56203a65a510969296d1bea933e75a"
   ["scripts/spectra-alpha-doctor.sh"]="d6a2ca2f47e031f972e656d34dabbb10ffa015e7"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
@@ -294,6 +294,9 @@ fi
 say "Building the updated Spectra trade screen."
 npm run build
 cd "$INSTALL_ROOT"
+
+say "Restarting Spectra Core only so reviewed Python changes are loaded; Hummingbot API containers remain running."
+"$HOME/.local/bin/spectra" core-restart
 
 # Install and run the authenticated read-only verifier as the final deployment
 # step. It reports tracker and underlying public-connector symbol-map state.
