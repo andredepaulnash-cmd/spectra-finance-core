@@ -132,11 +132,11 @@ export function SpectraOverview() {
     retry: 1,
   });
 
-  // Public exchange data is independent of paper-account balances and never
-  // enables order placement. Refresh the discovery snapshot every five minutes.
+  // Kraken USD spot discovery is scoped to the selected Hummingbot API server.
+  // Rankings are research-only and never authorize order placement.
   const marketDiscovery = useQuery({
-    queryKey: ["spectra-market-discovery"],
-    queryFn: () => api.getMarketDiscovery(),
+    queryKey: ["spectra-market-discovery", server],
+    queryFn: () => api.getMarketDiscovery(server!),
     enabled: Boolean(server),
     staleTime: 240_000,
     refetchInterval: 300_000,
@@ -464,11 +464,11 @@ export function SpectraOverview() {
               <h2 className="font-semibold">Market discovery</h2>
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              Public USDT perpetual markets ranked for mean-reversion research — no orders are created.
+              Kraken USD spot markets ranked for mean-reversion research — no orders are created.
             </p>
           </div>
           <span className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 py-1 text-[11px] font-medium text-emerald-500">
-            READ ONLY · PAPER SAFE
+            RESEARCH ONLY · NO ORDERS
           </span>
         </div>
         {marketDiscovery.isLoading ? (
@@ -476,14 +476,14 @@ export function SpectraOverview() {
         ) : marketDiscovery.isError ? (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
             <CircleAlert className="mb-2 h-4 w-4 text-amber-500" />
-            Public market discovery is unavailable. The system will not substitute simulated prices or stale results.
+            Kraken spot discovery is unavailable. The system will not substitute simulated prices or stale results.
           </div>
         ) : marketDiscovery.data ? (
           <>
             <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-lg border border-[var(--color-border)] p-3">
-                <p className="text-xs text-[var(--color-text-muted)]">Liquid contracts found</p>
-                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.liquid_contracts_found}</p>
+                <p className="text-xs text-[var(--color-text-muted)]">Liquid Kraken USD spot pairs</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.liquid_markets_found}</p>
               </div>
               <div className="rounded-lg border border-[var(--color-border)] p-3">
                 <p className="text-xs text-[var(--color-text-muted)]">Historical samples analyzed</p>
@@ -497,6 +497,21 @@ export function SpectraOverview() {
                 <p className="text-xs text-[var(--color-text-muted)]">Rejected for downside risk</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.rejected_by_guardrails}</p>
               </div>
+            </div>
+            <div className={`mb-4 rounded-lg border p-3 text-sm ${marketDiscovery.data.governor_approved_list_loaded ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-medium">Governor asset authority</p>
+                <span className={marketDiscovery.data.governor_approved_list_loaded ? "text-emerald-500" : "text-amber-500"}>
+                  {marketDiscovery.data.governor_approved_list_loaded
+                    ? `Allowlist loaded · ${marketDiscovery.data.counts.governor_approved} matching candidates`
+                    : "Not configured · paper BUY-side intents blocked"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-muted)]">
+                {marketDiscovery.data.governor_approved_list_loaded
+                  ? `Source: ${marketDiscovery.data.approved_asset_list_source ?? "unreported"}. Asset approval is not capital authorization; risk, accounting, and signed Core dispatch checks still apply.`
+                  : "No approved assets are inferred from market rankings. Add the Architect-approved list to the isolated paper-state configuration before any new paper BUY exposure can be authorized."}
+              </p>
             </div>
             <div className="mb-4 rounded-lg border border-[var(--color-border)] p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -526,7 +541,7 @@ export function SpectraOverview() {
               ) : null}
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
+              <table className="w-full min-w-[1040px] text-left text-sm">
                 <thead className="text-xs text-[var(--color-text-muted)]">
                   <tr>
                     <th className="pb-2 pr-3 font-medium">Rank / Asset</th>
@@ -535,6 +550,7 @@ export function SpectraOverview() {
                     <th className="pb-2 pr-3 text-right font-medium">vs 90d VWAP</th>
                     <th className="pb-2 pr-3 text-right font-medium">7d Change</th>
                     <th className="pb-2 pr-3 text-right font-medium">RSI</th>
+                    <th className="pb-2 pr-3 font-medium">Governor authority</th>
                     <th className="pb-2 text-right font-medium">Score</th>
                     <th className="pb-2 pl-3 text-right font-medium">1d Δ</th>
                   </tr>
@@ -553,6 +569,14 @@ export function SpectraOverview() {
                       <td className="py-3 pr-3 text-right tabular-nums">{candidate.discount_to_vwap_pct > 0 ? "+" : ""}{candidate.discount_to_vwap_pct.toFixed(1)}%</td>
                       <td className={"py-3 pr-3 text-right tabular-nums " + (candidate.return_7d_pct >= 0 ? "text-emerald-500" : "text-rose-500")}>{candidate.return_7d_pct >= 0 ? "+" : ""}{candidate.return_7d_pct.toFixed(1)}%</td>
                       <td className="py-3 pr-3 text-right tabular-nums">{candidate.rsi_14d.toFixed(0)}</td>
+                      <td className="py-3 pr-3">
+                        <div className={candidate.governor_approved ? "text-xs font-medium text-emerald-500" : "text-xs font-medium text-amber-500"}>
+                          {candidate.governor_approved ? "Approved asset" : "Not approved"}
+                        </div>
+                        <div className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                          {candidate.capital_authorized ? "Capital authorized" : "No capital authorization"}
+                        </div>
+                      </td>
                       <td className="py-3 text-right font-semibold tabular-nums">{candidate.selection_score.toFixed(0)}/100</td>
                       <td className="py-3 pl-3 text-right tabular-nums">
                         {(() => {
@@ -575,7 +599,7 @@ export function SpectraOverview() {
               ) : null}
             </div>
             <p className="mt-3 text-xs leading-relaxed text-[var(--color-text-muted)]">
-              {marketDiscovery.data.source}. Scans the top {marketDiscovery.data.criteria.top_by_24h_quote_volume} contracts by 24h volume, requires at least {marketDiscovery.data.criteria.minimum_history_days} days of history and $10M volume, and excludes stablecoins and wrapped assets. Rankings are research candidates, not trade signals. Last refreshed {new Date(marketDiscovery.data.as_of * 1000).toLocaleString()}.
+              {marketDiscovery.data.source}. Scans the top {marketDiscovery.data.criteria.top_by_24h_quote_volume} contracts by 24h volume, requires at least {marketDiscovery.data.criteria.minimum_completed_history_days} days of history and $10M volume, and excludes stablecoins and wrapped assets. Rankings are research candidates, not trade signals. Last refreshed {new Date(marketDiscovery.data.as_of * 1000).toLocaleString()}.
             </p>
           </>
         ) : null}
