@@ -163,7 +163,7 @@ git -C "$CORE_DIR" fetch --depth 1 origin alpha/one-command-paper-demo-20261108
 CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$CORE_FRONTEND_SOURCE")"
 CORE_WORKTREE_BLOB="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$CORE_FRONTEND_SOURCE")"
 CORE_OLD_BLOB="47e36a785b4e02a50ca8f34093727403cb692750"
-CORE_NEW_BLOB="7e089fad16334dee3ca0f991c1f2b6bef783ff7a"
+CORE_NEW_BLOB="6ae7ba93d253f2127b47a301b3e33121a9f54895"
 [[ "$CORE_UPSTREAM_BLOB" == "$CORE_NEW_BLOB" ]] \
   || die "Fetched trade-screen component is not the reviewed version."
 if [[ "$CORE_WORKTREE_BLOB" != "$CORE_NEW_BLOB" && "$CORE_WORKTREE_BLOB" != "$CORE_OLD_BLOB" ]]; then
