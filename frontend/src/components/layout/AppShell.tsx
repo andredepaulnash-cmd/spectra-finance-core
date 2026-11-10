@@ -93,31 +93,12 @@ function AppShellBody() {
   useViewFacts(() => routeFacts(pathname, search, queryClient));
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="spectra-app-shell flex h-screen flex-col">
       <header className="spectra-topbar flex h-14 shrink-0 items-center border-b border-[var(--color-border)] px-5">
         <div className="flex items-center gap-7">
           <NavLink to="/" aria-label="Spectra Finance home" className="spectra-brand flex items-center">
             <img src={spectraLogo} alt="Spectra Finance" className="h-9 w-auto max-w-[210px]" />
           </NavLink>
-          <nav className="spectra-nav flex items-center">
-            {visibleNavItems.map(({ to, icon: Icon, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === "/"}
-                className={({ isActive }) =>
-                  `spectra-nav-link flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
-                    isActive
-                      ? "is-active bg-[var(--color-primary)]/15 text-[var(--color-primary)]"
-                      : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-                  }`
-                }
-              >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
         </div>
         <div className="ml-auto flex items-center gap-3">
           <span
@@ -167,6 +148,34 @@ function AppShellBody() {
           </div>
         </div>
       </header>
+      <div className="spectra-workspace flex min-h-0 flex-1">
+        <aside className="spectra-sidebar flex w-64 shrink-0 flex-col border-r border-[var(--color-border)] px-3 py-5">
+          <div className="spectra-sidebar-label px-3 pb-3 text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-text-muted)]">Workspace</div>
+              <nav className="spectra-nav flex flex-col gap-1">
+                {visibleNavItems.map(({ to, icon: Icon, label }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={to === "/"}
+                    className={({ isActive }) =>
+                      `spectra-nav-link flex items-center gap-1.5 rounded-xl px-3 py-3 text-sm transition-colors ${
+                            isActive
+                              ? "is-active bg-[var(--color-primary)]/15 text-[var(--color-primary)]"
+                              : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                      }`
+                    }
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    {label}
+                  </NavLink>
+                ))}
+              </nav>
+          <div className="spectra-sidebar-footer mt-auto rounded-xl border border-[var(--color-border)] p-3 text-xs text-[var(--color-text-muted)]">
+            <div className="flex items-center gap-2 font-semibold text-[var(--color-text)]"><span className="spectra-runtime-dot is-ready" /> Spectra Core</div>
+            <p className="mt-2 leading-relaxed">Intelligence coordinated. Capital protected.</p>
+          </div>
+        </aside>
+        <div className="spectra-content flex min-w-0 flex-1 flex-col">
       {server && (
         <div className="spectra-safety-banner shrink-0 border-b border-[var(--color-border)] px-5 py-2 text-xs text-[var(--color-text-muted)]">
           {paperConnectorReady
@@ -212,6 +221,8 @@ function AppShellBody() {
           )}
         </ErrorBoundary>
       </main>
+        </div>
+      </div>
       <ReportIssueDialog open={reportOpen} onClose={() => setReportOpen(false)} />
       <ChatBubble />
     </div>
