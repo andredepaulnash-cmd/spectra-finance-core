@@ -27,7 +27,13 @@ exec 9>"$LOCK_FILE"
 flock -n 9 || die "Another Spectra API update is already running. Check $LOG_FILE."
 
 command -v podman >/dev/null 2>&1 || die "Podman is not installed."
-command -v podman-compose >/dev/null 2>&1 || die "podman-compose is not installed."
+if command -v podman-compose >/dev/null 2>&1; then
+  compose() { podman-compose "$@"; }
+elif podman compose version >/dev/null 2>&1; then
+  compose() { podman compose "$@"; }
+else
+  die "Neither podman-compose nor the Podman Compose plugin is available."
+fi
 command -v git >/dev/null 2>&1 || die "Git is not installed."
 command -v curl >/dev/null 2>&1 || die "curl is not installed."
 [[ -d "$API_DIR/.git" ]] || die "API Git checkout not found at $API_DIR."
@@ -118,7 +124,7 @@ grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCE
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
 say "Starting the existing Postgres and EMQX services (named volumes are preserved)."
-podman-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d postgres emqx 9>&-
+compose -p spectra-alpha -f "$COMPOSE_FILE" up -d postgres emqx 9>&-
 
 for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-broker; do
   say "Waiting for $container health."
@@ -142,7 +148,7 @@ for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-brok
 done
 
 say "Building and updating only the Hummingbot API container."
-podman-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --build hummingbot-api 9>&-
+compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --build hummingbot-api 9>&-
 
 status="$(podman inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null || true)"
 [[ "$status" == "running" ]] || {
