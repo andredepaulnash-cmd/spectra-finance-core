@@ -176,6 +176,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Install the Podman-native Compose provider
+        run: |
+          python3 -m venv "$RUNNER_TEMP/podman-compose-venv"
+          "$RUNNER_TEMP/podman-compose-venv/bin/pip" install --disable-pip-version-check podman-compose
+          echo "$RUNNER_TEMP/podman-compose-venv/bin" >> "$GITHUB_PATH"
       - name: Run the public one-command installer
         run: bash install-alpha.sh
         env:
