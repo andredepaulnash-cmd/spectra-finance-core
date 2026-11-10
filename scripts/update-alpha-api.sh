@@ -89,12 +89,21 @@ for source in "${API_SOURCES[@]}"; do
   die "Unrecognized local source version in $source. It was not overwritten; preserve/review it before updating."
 done
 
-# Confirm both reviewed fixes exist upstream before changing either local file.
-git show "FETCH_HEAD:${API_SOURCES[0]}" | grep -q "refusing registration" \
+# Confirm all reviewed fixes exist upstream before changing any local file.
+# Do not use grep -q in a pipe under set -o pipefail: grep may close the pipe
+# early, making git show exit with SIGPIPE and producing a false missing-marker
+# failure even when the marker is present.
+has_upstream_marker() {
+  local source="$1"
+  local marker="$2"
+  git show "FETCH_HEAD:${source}" | grep -F -- "${marker}" >/dev/null
+}
+
+has_upstream_marker "${API_SOURCES[0]}" "refusing registration" \
   || die "Fetched API source does not contain the expected fail-closed Kraken fix."
-git show "FETCH_HEAD:${API_SOURCES[1]}" | grep -q "A read request must be able to initialize its own feed" \
+has_upstream_marker "${API_SOURCES[1]}" "A read request must be able to initialize its own feed" \
   || die "Fetched market-data service does not contain the lazy order-book initialization fix."
-git show "FETCH_HEAD:${API_SOURCES[2]}" | grep -q "Bot orchestration is disabled in Spectra paper-only mode" \
+has_upstream_marker "${API_SOURCES[2]}" "Bot orchestration is disabled in Spectra paper-only mode" \
   || die "Fetched API dependency does not contain the paper-only bot-status guard."
 
 git restore --source=FETCH_HEAD --worktree -- "${API_SOURCES[@]}"
