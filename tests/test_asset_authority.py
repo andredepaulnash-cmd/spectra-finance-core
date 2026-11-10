@@ -1,7 +1,9 @@
+import asyncio
 import json
 
 import pytest
 
+from mcp_servers.hummingbot_api.tools import executor_create
 from spectra_core.asset_authority import (
     AssetAuthorityError,
     canonical_kraken_usd_pair,
@@ -93,3 +95,59 @@ def test_pair_normalization_is_strict():
     assert canonical_kraken_usd_pair("xbt-usd") == "BTC-USD"
     with pytest.raises(AssetAuthorityError):
         canonical_kraken_usd_pair("BTC-USDT")
+
+
+def test_unapproved_paper_pair_is_refused_before_portfolio_read(monkeypatch, tmp_path):
+    from spectra_core.kraken_authorization import reserve_kraken_capital
+
+    state = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+
+    class NoReadClient:
+        @property
+        def portfolio(self):
+            raise AssertionError("portfolio must not be read before asset approval")
+
+    with pytest.raises(AssetAuthorityError, match="list is not configured"):
+        asyncio.run(
+            reserve_kraken_capital(
+                NoReadClient(),
+                account_name="master_account",
+                trading_pair="SOL-USD",
+                intent="ENTRY",
+                amount_quote="25",
+            )
+        )
+
+
+def test_final_executor_boundary_refuses_unapproved_pair_before_market_data(monkeypatch, tmp_path):
+    state = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+    monkeypatch.setattr(executor_create.settings, "paper_only", True)
+    monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+
+    result = asyncio.run(
+        executor_create.create_executor(
+            object(),
+            "grid_executor",
+            {
+                "connector_name": "kraken_paper_trade",
+                "trading_pair": "SOL-USD",
+                "side": 1,
+                "total_amount_quote": 25,
+            },
+            account_name="master_account",
+            controller_id="spectra",
+            spectra_proposal_id="unapproved-entry",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert "not configured" in result["error"]
+    assert "before market-data lookup" in result["formatted_output"]
