@@ -68,7 +68,7 @@ clone_or_reuse() {
       patch_file="$backup_dir/tracked-local-changes.patch"
       git -C "$dest" diff --binary HEAD > "$patch_file"
       chmod 600 "$patch_file"
-      printf '%s\\n' "$dirty" > "$backup_dir/local-change-manifest.txt"
+      printf '%s\n' "$dirty" > "$backup_dir/local-change-manifest.txt"
       chmod 600 "$backup_dir/local-change-manifest.txt"
       say "Preserved tracked local edits for $dest at $patch_file"
     fi
