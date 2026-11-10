@@ -150,4 +150,4 @@ def test_final_executor_boundary_refuses_unapproved_pair_before_market_data(monk
     )
 
     assert "not configured" in result["error"]
-    assert "before market-data lookup" in result["formatted_output"]
+    assert "no market data or capital was requested" in result["formatted_output"]
