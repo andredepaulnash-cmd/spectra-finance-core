@@ -645,7 +645,7 @@ body {
 
 
 /* ── Spectra Command Center: animated obsidian / electric glass ── */
-.spectra-command-page {
+.spectra-command-page {\n  height: 100%;\n  overflow-y: auto;
   --command-cyan: #25d9ff;
   --command-violet: #9270ff;
   min-height: 100%;
