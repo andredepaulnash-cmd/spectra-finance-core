@@ -262,7 +262,7 @@ def build_dynamic_market_lists(
 
     known_change = [row for row in enriched if row.get("change_24h_pct") is not None]
     eligible_analysis = [row for row in enriched if row.get("eligible") is True]
-    volatility = [row for row in eligible_analysis if row.get("median_daily_range_30d_pct") is not None]
+    volatility = [row for row in enriched if row.get("median_daily_range_30d_pct") is not None]
     return {
         "top_24h_volume": sorted(
             enriched, key=lambda row: row.get("volume_24h_usd", 0), reverse=True
@@ -378,6 +378,9 @@ async def scan_kraken_universe(
                         current_price=item["price"],
                         now=timestamp,
                     )
+                    item["change_24h_pct"] = hourly_change
+                    item["change_24h_window_seconds"] = hourly_window
+                    item["change_24h_source"] = "hourly_candles" if hourly_change is not None else None
                 except Exception:
                     # Daily mean-reversion analysis can still complete; 24h
                     # leaderboards omit this pair until a valid hourly reference exists.
@@ -458,9 +461,9 @@ async def scan_kraken_universe(
             "current_price": item["price"],
             "volume_24h_usd": round(item["volume"], 2),
             "volume_rank_24h": item["volume_rank_24h"],
-            "change_24h_pct": analysis.get("change_24h_pct"),
-            "change_24h_window_seconds": analysis.get("change_24h_window_seconds"),
-            "change_24h_source": analysis.get("change_24h_source"),
+            "change_24h_pct": item.get("change_24h_pct", analysis.get("change_24h_pct")),
+            "change_24h_window_seconds": item.get("change_24h_window_seconds", analysis.get("change_24h_window_seconds")),
+            "change_24h_source": item.get("change_24h_source", analysis.get("change_24h_source")),
             "eligible": analysis.get("eligible", False),
             "selection_score": analysis.get("selection_score"),
             "median_daily_range_30d_pct": analysis.get("median_daily_range_30d_pct"),
