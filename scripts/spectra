@@ -23,7 +23,7 @@ systemd_user_available() {
 }
 
 start_core_fallback() {
-  compose up -d
+  "$LOCAL_BIN/spectra-alpha-start-api"
   if [[ -f "$INSTALL_ROOT/condor.pid" ]] && kill -0 "$(cat "$INSTALL_ROOT/condor.pid")" 2>/dev/null; then
     echo "Spectra Intelligence is already running."
     return 0
