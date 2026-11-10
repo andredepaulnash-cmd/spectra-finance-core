@@ -208,7 +208,7 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-doctor.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="9a42a41bc45f269a03341a19efce191733798406"
+  ["scripts/spectra"]="594d26cc87716409053303e6d441b7e1ad1c2ed2"
   ["scripts/spectra-alpha-doctor.sh"]="be0d38bc075b31a291f2779ce917eba8c59689f9"
   ["scripts/spectra-alpha-start-api.sh"]="2c6a536395209ccc21d48f94f0907ffaffc4ffa5"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e063affc6b22527f5a727bbc47f5afba4c361dff"
@@ -288,4 +288,8 @@ say "Running authenticated, read-only Kraken paper market-data verification."
 if ! "$VERIFY_BIN"; then
   say "API deployment succeeded, but Kraken paper market data is not yet verified. Review the diagnostics above."
 fi
-say "Deployment and verification sequence complete."
+say "Running read-only operational health checks."
+if ! "$HOME/.local/bin/spectra-alpha-doctor"; then
+  say "The deployment completed, but one or more operational health checks need attention. See $INSTALL_ROOT/logs/doctor.log."
+fi
+say "Deployment, supervised-startup setup, and verification sequence complete."
