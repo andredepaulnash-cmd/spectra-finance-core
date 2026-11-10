@@ -105,11 +105,14 @@ case "${1:-status}" in
   doctor)
     "$LOCAL_BIN/spectra-alpha-doctor"
     ;;
+  backup)
+    "$LOCAL_BIN/spectra-alpha-backup"
+    ;;
   update)
     "$LOCAL_BIN/spectra-update-alpha-api"
     ;;
   *)
-    echo "Usage: spectra {start|stop|restart|status|logs|doctor|update}"
+    echo "Usage: spectra {start|stop|restart|status|logs|doctor|backup|update}"
     exit 2
     ;;
 esac
