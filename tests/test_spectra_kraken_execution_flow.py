@@ -3,6 +3,7 @@ import base64
 import json
 import time
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -220,6 +221,10 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
     monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv(
+        "SPECTRA_APPROVED_ASSETS_FILE",
+        str(Path(__file__).parent / "fixtures" / "approved_assets.json"),
+    )
     monkeypatch.setenv(
         "SPECTRA_DISPATCH_PRIVATE_KEY",
         base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="),
@@ -447,6 +452,17 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
     )
     (paper_state / "breaker_state.json").write_text(
         json.dumps({"mode": "NORMAL"}),
+        encoding="utf-8",
+    )
+    (paper_state / "approved_assets.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source": "isolated CI paper execution fixture",
+                "connector": "kraken_paper_trade",
+                "approved_pairs": ["BTC-USD"],
+            }
+        ),
         encoding="utf-8",
     )
     reset_runtime_cache()
