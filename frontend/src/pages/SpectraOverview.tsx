@@ -107,7 +107,7 @@ export function SpectraOverview() {
       api.setSpectraModuleTrigger(server!, moduleId, enabled),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["spectra-modules", server] }),
   });
-  const [storedDailyMarketHistory, setStoredDailyMarketHistory] = useState<DailyMarketHistory>(() => {
+  const [storedDailyMarketHistory] = useState<DailyMarketHistory>(() => {
     try {
       const saved = window.localStorage.getItem(DAILY_MARKET_HISTORY_KEY);
       return saved ? JSON.parse(saved) as DailyMarketHistory : { current: null, previous: null };
