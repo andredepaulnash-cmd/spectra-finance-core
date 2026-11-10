@@ -405,3 +405,47 @@ async def test_scan_populates_dynamic_24h_gainer_list_from_hourly_candles():
     assert result["lists"]["top_24h_gainers"][0]["change_24h_pct"] == pytest.approx(10.0)
     assert result["counts"]["with_measured_24h_change"] == 1
     assert result["orders_created"] == 0
+
+
+
+@pytest.mark.asyncio
+async def test_24h_movers_remain_available_when_long_history_is_missing():
+    now = 1_800_000_000.0
+
+    class HourlyOnlyMarketData(FakeKrakenMarketData):
+        async def get_candles(self, connector, pair, interval, max_records):
+            self.calls.append((connector, pair, interval, max_records))
+            if interval == "1h":
+                return [
+                    {"timestamp": now - 86_400, "close": 100},
+                ]
+            return self.candles[:89]
+
+    history = [
+        {
+            "timestamp": now - (120 - index) * 86_400,
+            "open": 100,
+            "high": 102,
+            "low": 98,
+            "close": 100,
+            "volume": 1_000,
+        }
+        for index in range(120)
+    ]
+    market_data = HourlyOnlyMarketData(history)
+    client = type("Client", (), {
+        "market_data": market_data,
+        "connectors": FakeKrakenConnectors(),
+    })()
+    result = await scan_kraken_universe(
+        client,
+        top_n=10,
+        show_n=10,
+        min_volume_usd=1_000,
+        min_history_days=90,
+        now=now,
+    )
+    assert result["lists"]["top_24h_gainers"][0]["change_24h_pct"] == pytest.approx(10.0)
+    assert result["lists"]["mean_reversion_candidates"] == []
+    assert result["counts"]["history_or_data_rejected"] == 1
+    assert result["orders_created"] == 0
