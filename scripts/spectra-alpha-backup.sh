@@ -22,7 +22,7 @@ STAGING="$(mktemp -d "$BACKUP_DIR/.paper-backup.XXXXXX")"
 ARCHIVE="$BACKUP_DIR/spectra-paper-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
 trap 'rm -rf "$STAGING"' EXIT
 
-python3 - "$CORE_DIR" "$CORE_ENV" "$STAGING/state" <<'PY'
+python3 - "$CORE_DIR" "$CORE_ENV" "$STAGING/state" "$BACKUP_DIR" <<'PY'
 from pathlib import Path
 import shutil
 import sqlite3
@@ -31,6 +31,7 @@ import sys
 core = Path(sys.argv[1]).resolve()
 env_path = Path(sys.argv[2])
 target = Path(sys.argv[3])
+backup_root = Path(sys.argv[4]).resolve()
 values = {}
 for raw in env_path.read_text(encoding="utf-8").splitlines():
     line = raw.strip()
@@ -54,6 +55,8 @@ paper = resolve(values.get("SPECTRA_PAPER_STATE_DIR"), core / "data" / "spectra-
 live = resolve(values.get("SPECTRA_STATE_DIR"), core / "data" / "spectra")
 if paper == live or paper == core / "data" / "spectra":
     raise SystemExit("Backup refused: paper state resolves to the live state directory.")
+if paper == backup_root or paper in backup_root.parents or backup_root in paper.parents:
+    raise SystemExit("Backup refused: paper state and backup destination overlap.")
 try:
     paper.relative_to(live)
 except ValueError:
