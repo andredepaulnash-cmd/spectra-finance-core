@@ -38,6 +38,7 @@ on:
       - tests/test_alpha_backup.py
       - tests/test_asset_authority.py
       - tests/test_market_discovery_route.py
+      - tests/test_market_discovery.py
       - tests/spectra_test_support.py
       - tests/fixtures/**
       - tests/test_configure_alpha_paper_connector.py
@@ -140,6 +141,7 @@ jobs:
             tests/test_alpha_backup.py \
             tests/test_asset_authority.py \
             tests/test_market_discovery_route.py \
+            tests/test_market_discovery.py \
             tests/test_spectra_executor_accounting_flow.py \
             tests/test_accounting_health_gate.py \
             tests/test_vcap_runtime_supervisor.py \
