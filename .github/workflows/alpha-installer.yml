@@ -107,6 +107,9 @@ jobs:
       - name: Build the Spectra dashboard
         working-directory: frontend
         run: npm ci && npm run build
+      - name: Test visible market-feed failure and retry
+        working-directory: frontend
+        run: npm test -- src/components/market/OrderBook.test.tsx
 
   linux-install-smoke:
     name: Clean Linux one-command installation
