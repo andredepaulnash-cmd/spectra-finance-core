@@ -57,9 +57,11 @@ cd "$API_DIR"
 say "Fetching the merged API main branch."
 git fetch --depth 1 origin main
 
-# Never overwrite local edits in either file this updater needs to change.
-if ! git diff --quiet -- "${API_SOURCES[@]}" || ! git diff --cached --quiet -- "${API_SOURCES[@]}"; then
-  die "Local edits exist in an API source file this update needs. Preserve/review them first; nothing was overwritten."
+# Protect genuine local-only edits, but accept files already identical to fetched upstream.
+# Compare both the worktree and index against FETCH_HEAD: comparing only against local HEAD
+# incorrectly blocks a prior/manual update that already matches the reviewed upstream fix.
+if ! git diff --quiet FETCH_HEAD -- "${API_SOURCES[@]}" || ! git diff --cached --quiet FETCH_HEAD -- "${API_SOURCES[@]}"; then
+  die "Local API source changes differ from fetched upstream. Preserve/reconcile them first; nothing was overwritten."
 fi
 
 # Confirm both reviewed fixes exist upstream before changing either local file.
