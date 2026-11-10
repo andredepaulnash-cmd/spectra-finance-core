@@ -417,7 +417,7 @@ async def test_24h_movers_remain_available_when_long_history_is_missing():
             self.calls.append((connector, pair, interval, max_records))
             if interval == "1h":
                 return [
-                    {"timestamp": now - 86_400, "close": 100},
+                    {"timestamp": now - 90_000, "close": 100},
                 ]
             return self.candles[:89]
 
