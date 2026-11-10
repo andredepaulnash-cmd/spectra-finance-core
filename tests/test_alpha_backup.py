@@ -116,3 +116,53 @@ def test_backup_refuses_paper_state_that_overlaps_backup_destination(tmp_path):
     assert result.returncode != 0
     assert "paper state and backup destination overlap" in result.stdout + result.stderr
     assert not list((root / "backups").glob("spectra-paper-*.tar.gz"))
+
+
+def test_backup_includes_only_valid_external_governor_allowlist(tmp_path):
+    root = tmp_path / "external-list"
+    core, paper, live = prepare_install(root)
+    approved = root / "governor" / "approved_assets.json"
+    approved.parent.mkdir(parents=True)
+    approved.write_text(
+        '{"schema_version":1,"source":"Architect Governor list v1",'
+        '"connector":"kraken_paper_trade","approved_pairs":["BTC-USD"]}',
+        encoding="utf-8",
+    )
+    env_file = core / ".env"
+    env_file.write_text(
+        env_file.read_text(encoding="utf-8")
+        + f"SPECTRA_APPROVED_ASSETS_FILE={approved}\\n",
+        encoding="utf-8",
+    )
+
+    result = run_backup(root)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    archive = next((root / "backups").glob("spectra-paper-*.tar.gz"))
+    with tarfile.open(archive, "r:gz") as bundle:
+        names = set(bundle.getnames())
+        assert "governor/approved_assets.json" in names
+        assert not any("live-only-sentinel" in name for name in names)
+        saved = bundle.extractfile("governor/approved_assets.json")
+        assert saved is not None
+        assert b"Architect Governor list v1" in saved.read()
+
+
+def test_backup_refuses_invalid_external_governor_allowlist(tmp_path):
+    root = tmp_path / "invalid-external-list"
+    core, _, _ = prepare_install(root)
+    approved = root / "governor" / "approved_assets.json"
+    approved.parent.mkdir(parents=True)
+    approved.write_text('{"connector":"kraken"}', encoding="utf-8")
+    env_file = core / ".env"
+    env_file.write_text(
+        env_file.read_text(encoding="utf-8")
+        + f"SPECTRA_APPROVED_ASSETS_FILE={approved}\\n",
+        encoding="utf-8",
+    )
+
+    result = run_backup(root)
+
+    assert result.returncode != 0
+    assert "external Governor asset list is invalid" in result.stdout + result.stderr
+    assert not list((root / "backups").glob("spectra-paper-*.tar.gz"))
