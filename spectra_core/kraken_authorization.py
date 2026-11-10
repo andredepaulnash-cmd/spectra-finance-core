@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import uuid4
 
+from .asset_authority import require_approved_kraken_pair
 from .kraken_snapshot import build_kraken_capital_snapshot
 from .models import (
     CapitalDecision,
@@ -134,7 +135,9 @@ async def reserve_kraken_capital(
     # The portfolio fetch above is an await boundary. Recheck durable
     # accounting health and dust admission before the Governor reserves capital.
     authorization_now = time.time()
-    if intent_kind in {IntentKind.ENTRY, IntentKind.RECOVERY}:
+    if spectra_paper_only_enabled():
+        require_approved_kraken_pair(pair, connector_name=connector_name)
+    if intent_kind in {IntentKind.ENTRY, IntentKind.PRESS, IntentKind.RECOVERY, IntentKind.ROTATION}:
         _require_reconciled_existing_exposure(now=authorization_now)
 
     dust_lifecycle = get_dust_lifecycle(governor=capital_governor)
