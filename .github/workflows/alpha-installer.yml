@@ -35,6 +35,8 @@ on:
       - tests/test_spectra_kraken_execution_flow.py
       - tests/test_alpha_backup.py
       - tests/test_asset_authority.py
+      - tests/spectra_test_support.py
+      - tests/fixtures/**
       - tests/test_configure_alpha_paper_connector.py
       - tests/test_configure_alpha_paper_state.py
       - tests/test_hummingbot_mcp_config_dir.py
