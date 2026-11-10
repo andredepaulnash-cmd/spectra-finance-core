@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Resumable, terminal-independent updater for the Spectra Alpha paper API on Bazzite.
-# It updates only the two reviewed API source files, starts existing dependencies, rebuilds only the API,
+# Foreground updater for the Spectra Alpha paper API on Bazzite.
+# It updates only the reviewed API source files, starts existing dependencies, rebuilds only the API,
 # and never removes containers, networks, or named volumes.
 set -Eeuo pipefail
 
@@ -17,14 +17,8 @@ die() { say "STOP: $*" >&2; exit 1; }
 
 mkdir -p "$LOG_DIR"
 
-if [[ "${1:-}" != "--run" ]]; then
-  if [[ "${1:-}" != "" ]]; then
-    die "Usage: $0 [--run]"
-  fi
-  nohup "$0" --run >>"$LOG_FILE" 2>&1 </dev/null &
-  printf 'Update started in the background.\nLog: %s\nPID: %s\n' "$LOG_FILE" "$!"
-  printf 'Check progress with: tail -n 40 "%s"\n' "$LOG_FILE"
-  exit 0
+if [[ "$#" -ne 0 ]]; then
+  die "This updater runs in the foreground and accepts no arguments."
 fi
 
 exec 9>"$LOCK_FILE"
