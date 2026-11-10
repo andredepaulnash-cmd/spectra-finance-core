@@ -13,6 +13,9 @@ CORE_ENV="$CORE_DIR/.env"
 VERIFY_BIN="$HOME/.local/bin/spectra-verify-alpha-paper-market-data"
 
 mkdir -p "$LOG_DIR"
+if [[ -f "$LOG_FILE" && "$(stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)" -gt 5242880 ]]; then
+  mv -f "$LOG_FILE" "$LOG_FILE.1"
+fi
 exec 9>"$LOCK_FILE"
 flock -n 9 || exit 0
 exec >>"$LOG_FILE" 2>&1
