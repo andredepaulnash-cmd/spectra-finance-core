@@ -81,6 +81,40 @@ if api.get("SPECTRA_PAPER_CONNECTORS") != "kraken_paper_trade":
 PY
 ok "paper-only and live-disabled configuration"
 
+ASSET_STATUS="$("$CORE_DIR/.venv/bin/python" - "$CORE_ENV" "$CORE_DIR" <<'PYASSETS'
+import os
+import sys
+from pathlib import Path
+core = Path(sys.argv[2]).resolve()
+values = {}
+for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    line = raw.strip()
+    if line and not line.startswith("#") and "=" in line:
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+os.environ.update(values)
+os.environ["SPECTRA_PAPER_ONLY"] = "true"
+os.environ["SPECTRA_ALLOW_LIVE_EXECUTION"] = "false"
+os.environ["CONDOR_AGENT_SLUG"] = "spectra"
+os.chdir(core)
+sys.path.insert(0, str(core))
+from spectra_core.asset_authority import load_approved_kraken_assets
+policy = load_approved_kraken_assets()
+if not policy.configured:
+    print("MISSING")
+elif not policy.pairs:
+    print("EMPTY")
+else:
+    print(f"LOADED:{len(policy.pairs)}")
+PYASSETS
+)" || fail "Governor asset allowlist is malformed or unreadable."
+case "$ASSET_STATUS" in
+  MISSING) say "WARN: no Governor-approved asset list is configured; all paper BUY-side intents remain blocked." ;;
+  EMPTY) say "WARN: Governor asset list is present but empty; all paper BUY-side intents remain blocked." ;;
+  LOADED:*) ok "Governor-approved Kraken asset list loaded (${ASSET_STATUS#LOADED:} pairs)" ;;
+  *) fail "Unexpected Governor asset-authority status: $ASSET_STATUS" ;;
+esac
+
 API_BASE="${SPECTRA_API_URL:-http://127.0.0.1:8000}"
 curl -fsS --config "$CURL_AUTH_CONFIG" "$API_BASE/spectra/runtime" -o "$RUNTIME_JSON" \
   || fail "authenticated Spectra runtime endpoint is unavailable."
