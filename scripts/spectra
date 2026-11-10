@@ -85,6 +85,26 @@ case "${1:-status}" in
     "$0" stop
     "$0" start
     ;;
+  core-restart)
+    # Reload Core Python code without stopping the Hummingbot API containers.
+    if systemd_user_available && [[ -f "$HOME/.config/systemd/user/$CORE_UNIT" ]]; then
+      systemctl --user stop "$CORE_UNIT" || true
+      stop_core_fallback
+      systemctl --user start "$CORE_UNIT"
+    else
+      stop_core_fallback
+      start_core_fallback
+    fi
+    for _ in $(seq 1 60); do
+      if curl -fsS http://127.0.0.1:8088/overview >/dev/null 2>&1; then
+        echo "Spectra Core restarted; Hummingbot API containers were left running."
+        exit 0
+      fi
+      sleep 2
+    done
+    echo "Spectra Core did not return after restart." >&2
+    exit 1
+    ;;
   status)
     if systemd_user_available && [[ -f "$HOME/.config/systemd/user/$CORE_UNIT" ]]; then
       systemctl --user --no-pager --full status "$CORE_UNIT" || true
@@ -112,7 +132,7 @@ case "${1:-status}" in
     "$LOCAL_BIN/spectra-update-alpha-api"
     ;;
   *)
-    echo "Usage: spectra {start|stop|restart|status|logs|doctor|backup|update}"
+    echo "Usage: spectra {start|stop|restart|core-restart|status|logs|doctor|backup|update}"
     exit 2
     ;;
 esac
