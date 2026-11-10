@@ -203,18 +203,24 @@ CORE_OPS_SOURCES=(
   "scripts/spectra-alpha-doctor.sh"
   "scripts/spectra-alpha-start-api.sh"
   "scripts/spectra-alpha-core-supervisor.sh"
+  "scripts/spectra-alpha-backup.sh"
   "scripts/systemd/spectra-alpha-core.service"
   "scripts/systemd/spectra-alpha-doctor.service"
   "scripts/systemd/spectra-alpha-doctor.timer"
+  "scripts/systemd/spectra-alpha-backup.service"
+  "scripts/systemd/spectra-alpha-backup.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="ef2eb1d147174b26ef5ed328fdb02c0bd0a09753"
+  ["scripts/spectra"]="715390c4ab253083331076c9051deb5dc02ba730"
   ["scripts/spectra-alpha-doctor.sh"]="a18f147802a72ee14c0fd298877fbfbdf5f2079c"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
   ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
   ["scripts/systemd/spectra-alpha-doctor.service"]="054b22ea89cb8888419ec8000b5ffa0975f1b73d"
   ["scripts/systemd/spectra-alpha-doctor.timer"]="30af1b179bda4aec03105018e09b07dba1ee4b85"
+  ["scripts/spectra-alpha-backup.sh"]="0ca7fb7fb58e89c9dd0621bab6b8ed2b12a3d885"
+  ["scripts/systemd/spectra-alpha-backup.service"]="e49bc3d235744a92d7c463e6a98d9b8b282ae08b"
+  ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
 )
 for source in "${CORE_OPS_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
@@ -242,6 +248,7 @@ install -m 700 "$CORE_DIR/scripts/spectra" "$HOME/.local/bin/spectra"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$HOME/.local/bin/spectra-alpha-doctor"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-start-api.sh" "$HOME/.local/bin/spectra-alpha-start-api"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-core-supervisor.sh" "$HOME/.local/bin/spectra-alpha-core-supervisor"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-backup.sh" "$HOME/.local/bin/spectra-alpha-backup"
 
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 mkdir -p "$SYSTEMD_USER_DIR"
@@ -253,6 +260,8 @@ for name in (
     "spectra-alpha-core.service",
     "spectra-alpha-doctor.service",
     "spectra-alpha-doctor.timer",
+    "spectra-alpha-backup.service",
+    "spectra-alpha-backup.timer",
 ):
     text = (source / name).read_text(encoding="utf-8")
     text = text.replace("@INSTALL_ROOT@", install_root).replace("@LOCAL_BIN@", local_bin)
@@ -263,10 +272,13 @@ if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/d
   systemctl --user daemon-reload
   systemctl --user enable spectra-alpha-core.service >/dev/null
   systemctl --user enable --now spectra-alpha-doctor.timer >/dev/null
+  systemctl --user enable --now spectra-alpha-backup.timer >/dev/null
   say "Enabled Core restart-on-failure at user login and the two-minute read-only health monitor."
 else
   say "No active user systemd manager; operator CLI remains available without changing OS services."
 fi
+say "Creating the initial consistent paper-state backup."
+"$HOME/.local/bin/spectra-alpha-backup"
 
 if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   # shellcheck disable=SC1091
