@@ -68,6 +68,7 @@ git fetch --depth 1 origin main
 #   deps.py: missing paper-only 503 guard for disabled bot orchestration
 # Any other local source version is preserved and causes a safe stop.
 declare -A APPROVED_LEGACY_BLOBS=(
+  ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
   ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
   ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
 )
@@ -92,7 +93,7 @@ done
 # Verify the exact reviewed API source blobs. This is deterministic and avoids
 # shell text-search, pager, locale, and pipefail behavior entirely.
 declare -A EXPECTED_UPSTREAM_BLOBS=(
-  ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
+  ["services/unified_connector_service.py"]="185f03c85f00d7ccb95817551f0990ccda4a2fb4"
   ["services/market_data_service.py"]="9236689f87dc32aae2478100419b9a2e6e645f73"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
 )
@@ -149,4 +150,53 @@ status="$(podman inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-a
 
 say "SUCCESS: API image rebuilt and container is running."
 say "Postgres and EMQX were started in place; no volumes or local credentials were deleted."
-say "Next: verify the API and Kraken paper order book from the local dashboard."
+
+# Update only the reviewed OrderBook component in the existing Core checkout,
+# then rebuild the static frontend. The running web process serves dist files
+# from disk, so no Core restart or user-data migration is required.
+CORE_DIR="$INSTALL_ROOT/spectra-core"
+CORE_FRONTEND_SOURCE="frontend/src/components/market/OrderBook.tsx"
+[[ -d "$CORE_DIR/.git" ]] || die "Core Git checkout not found at $CORE_DIR."
+[[ -f "$CORE_DIR/frontend/package.json" ]] || die "Core frontend package.json is missing."
+say "Fetching the reviewed Spectra trade-screen market-feed status component."
+git -C "$CORE_DIR" fetch --depth 1 origin alpha/one-command-paper-demo-20261108
+CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$CORE_FRONTEND_SOURCE")"
+CORE_WORKTREE_BLOB="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$CORE_FRONTEND_SOURCE")"
+CORE_OLD_BLOB="47e36a785b4e02a50ca8f34093727403cb692750"
+CORE_NEW_BLOB="6ae7ba93d253f2127b47a301b3e33121a9f54895"
+[[ "$CORE_UPSTREAM_BLOB" == "$CORE_NEW_BLOB" ]] \
+  || die "Fetched trade-screen component is not the reviewed version."
+if [[ "$CORE_WORKTREE_BLOB" != "$CORE_NEW_BLOB" && "$CORE_WORKTREE_BLOB" != "$CORE_OLD_BLOB" ]]; then
+  die "Unrecognized local changes in $CORE_FRONTEND_SOURCE. They were preserved; review them before updating."
+fi
+git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "$CORE_FRONTEND_SOURCE"
+
+if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
+  # shellcheck disable=SC1091
+  . "$HOME/.nvm/nvm.sh"
+  nvm use 22 >/dev/null
+fi
+command -v npm >/dev/null 2>&1 || die "npm is required to rebuild the Spectra dashboard."
+cd "$CORE_DIR/frontend"
+if [[ ! -f node_modules/.package-lock.json || package-lock.json -nt node_modules/.package-lock.json ]]; then
+  say "Synchronizing the existing frontend dependencies."
+  npm ci
+fi
+say "Building the updated Spectra trade screen."
+npm run build
+cd "$INSTALL_ROOT"
+
+# Install and run the authenticated read-only verifier as the final deployment
+# step. It reports tracker and underlying public-connector symbol-map state.
+VERIFY_BIN="$HOME/.local/bin/spectra-verify-alpha-paper-market-data"
+VERIFY_URL="https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/one-command-paper-demo-20261108/scripts/verify-alpha-paper-market-data.sh"
+mkdir -p "$(dirname "$VERIFY_BIN")"
+say "Installing the read-only Kraken paper market-data verifier."
+curl -fsSL "$VERIFY_URL" -o "$VERIFY_BIN"
+chmod 700 "$VERIFY_BIN"
+bash -n "$VERIFY_BIN" || die "The downloaded paper market-data verifier failed shell syntax validation."
+say "Running authenticated, read-only Kraken paper market-data verification."
+if ! "$VERIFY_BIN"; then
+  say "API deployment succeeded, but Kraken paper market data is not yet verified. Review the diagnostics above."
+fi
+say "Deployment and verification sequence complete."
