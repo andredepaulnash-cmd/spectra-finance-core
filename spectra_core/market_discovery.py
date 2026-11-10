@@ -199,6 +199,94 @@ def _candle_timestamp(row: Any) -> float:
     return stamp / 1000.0 if stamp > 1_000_000_000_000 else stamp
 
 
+def _candle_close(row: Any) -> float:
+    """Read a positive close from a Hummingbot candle row."""
+    raw = row.get("close") if isinstance(row, Mapping) else (row[4] if len(row) > 4 else None)
+    close = _number(raw, "candle.close")
+    if close <= 0:
+        raise ValueError("candle.close must be positive")
+    return close
+
+
+def calculate_24h_change(
+    candles: list[Any],
+    *,
+    current_price: float,
+    now: float,
+    max_reference_age_seconds: float = 7_200,
+) -> tuple[float | None, float | None]:
+    """Calculate a measured ~24h return from the hourly candle at/before t-24h.
+
+    A missing or stale reference returns (None, None); it never substitutes a
+    daily close or invents a percentage. Timestamps may be seconds or millis.
+    """
+    target = _number(now, "now") - 86_400
+    price = _number(current_price, "current_price")
+    if price <= 0:
+        return None, None
+    references: list[tuple[float, float]] = []
+    for row in candles:
+        try:
+            stamp = _candle_timestamp(row)
+            close = _candle_close(row)
+            if stamp <= target:
+                references.append((stamp, close))
+        except (TypeError, ValueError, IndexError, KeyError):
+            continue
+    if not references:
+        return None, None
+    stamp, reference_price = max(references, key=lambda item: item[0])
+    age = target - stamp
+    if age < 0 or age > max_reference_age_seconds:
+        return None, None
+    return (price / reference_price - 1.0) * 100.0, 86_400.0 + age
+
+
+def build_dynamic_market_lists(
+    markets: list[dict[str, Any]],
+    analyses: list[dict[str, Any]],
+    *,
+    show_n: int = 25,
+) -> dict[str, list[dict[str, Any]]]:
+    """Build refreshed discovery lists; these are candidates, never permissions."""
+    by_pair = {row["trading_pair"]: row for row in analyses}
+    enriched = []
+    for market in markets:
+        row = dict(market)
+        analysis = by_pair.get(row["trading_pair"])
+        if analysis:
+            row.update(analysis)
+        row["governor_approved"] = bool(row.get("governor_approved", False))
+        row["capital_authorized"] = False
+        enriched.append(row)
+
+    known_change = [row for row in enriched if row.get("change_24h_pct") is not None]
+    eligible_analysis = [row for row in enriched if row.get("eligible") is True]
+    volatility = [row for row in eligible_analysis if row.get("median_daily_range_30d_pct") is not None]
+    return {
+        "top_24h_volume": sorted(
+            enriched, key=lambda row: row.get("volume_24h_usd", 0), reverse=True
+        )[:show_n],
+        "top_24h_gainers": sorted(
+            (row for row in known_change if row["change_24h_pct"] > 0),
+            key=lambda row: row["change_24h_pct"], reverse=True,
+        )[:show_n],
+        "top_24h_losers": sorted(
+            (row for row in known_change if row["change_24h_pct"] < 0),
+            key=lambda row: row["change_24h_pct"],
+        )[:show_n],
+        "volatility_leaders": sorted(
+            volatility,
+            key=lambda row: row["median_daily_range_30d_pct"], reverse=True,
+        )[:show_n],
+        "mean_reversion_candidates": sorted(
+            eligible_analysis,
+            key=lambda row: (row.get("selection_score", 0), row.get("volume_24h_usd", 0)),
+            reverse=True,
+        )[:show_n],
+    }
+
+
 async def scan_kraken_universe(
     client: Any,
     *,
@@ -270,6 +358,31 @@ async def scan_kraken_universe(
     async def fetch_history(item: dict[str, Any]):
         async with semaphore:
             try:
+                hourly_change = None
+                hourly_window = None
+                try:
+                    hourly_raw = await client.market_data.get_candles(
+                        "kraken",
+                        item["trading_pair"],
+                        "1h",
+                        max_records=27,
+                    )
+                    hourly_rows = (
+                        hourly_raw if isinstance(hourly_raw, list)
+                        else hourly_raw.get("data", hourly_raw.get("candles", []))
+                        if isinstance(hourly_raw, Mapping)
+                        else []
+                    )
+                    hourly_change, hourly_window = calculate_24h_change(
+                        hourly_rows,
+                        current_price=item["price"],
+                        now=timestamp,
+                    )
+                except Exception:
+                    # Daily mean-reversion analysis can still complete; 24h
+                    # leaderboards omit this pair until a valid hourly reference exists.
+                    pass
+
                 raw = await client.market_data.get_candles(
                     "kraken",
                     item["trading_pair"],
@@ -297,7 +410,7 @@ async def scan_kraken_universe(
                     quote_asset=item["quote_asset"],
                     current_price=item["price"],
                     volume_24h_usd=item["volume"],
-                    change_24h_pct=None,
+                    change_24h_pct=hourly_change,
                     candles=completed,
                     min_median_daily_quote_volume_usd=min_median_daily_quote_volume_usd,
                     min_active_day_ratio=min_active_day_ratio,
@@ -305,6 +418,8 @@ async def scan_kraken_universe(
                     max_current_move_pct=max_current_move_pct,
                 )
                 analysis["trading_pair"] = item["trading_pair"]
+                analysis["change_24h_window_seconds"] = hourly_window
+                analysis["change_24h_source"] = "hourly_candles" if hourly_change is not None else None
                 analysis["quote_asset"] = item["quote_asset"]
                 analysis["volume_rank_24h"] = item["volume_rank_24h"]
                 analysis["governor_approved"] = (
@@ -331,6 +446,28 @@ async def scan_kraken_universe(
         reverse=True,
     )
     ranked = ranked_all[:show_n]
+    market_rows = []
+    analysis_by_pair = {row["trading_pair"]: row for row in analyzed}
+    for item in candidates:
+        analysis = analysis_by_pair.get(item["trading_pair"], {})
+        market_rows.append({
+            "trading_pair": item["trading_pair"],
+            "symbol": item["symbol"],
+            "base_asset": item["base_asset"],
+            "quote_asset": item["quote_asset"],
+            "current_price": item["price"],
+            "volume_24h_usd": round(item["volume"], 2),
+            "volume_rank_24h": item["volume_rank_24h"],
+            "change_24h_pct": analysis.get("change_24h_pct"),
+            "change_24h_window_seconds": analysis.get("change_24h_window_seconds"),
+            "change_24h_source": analysis.get("change_24h_source"),
+            "eligible": analysis.get("eligible", False),
+            "selection_score": analysis.get("selection_score"),
+            "median_daily_range_30d_pct": analysis.get("median_daily_range_30d_pct"),
+            "governor_approved": analysis.get("governor_approved", False),
+            "capital_authorized": False,
+        })
+    dynamic_lists = build_dynamic_market_lists(market_rows, analyzed, show_n=show_n)
     return {
         "source": "Kraken spot market data via Hummingbot API",
         "as_of": timestamp,
@@ -346,6 +483,8 @@ async def scan_kraken_universe(
             "maximum_current_move_from_last_close_pct": max_current_move_pct,
             "quote_assets": sorted({str(q).strip().upper() for q in quote_assets}),
             "ranking": "discount-to-90d-VWAP + recovery/trend/RSI context",
+            "24h_change": "hourly candle close nearest at/before the 24h reference; stale/missing values omitted",
+            "dynamic_lists_scope": "top liquid markets by 24h quote volume, then ranked into the requested lists",
         },
         "counts": {
             "eligible_kraken_markets": len(snapshot.eligible_pairs),
@@ -356,8 +495,12 @@ async def scan_kraken_universe(
             "rejected_by_guardrails": sum(not row["eligible"] for row in analyzed),
             "history_or_data_rejected": len(rejected),
             "governor_approved": sum(bool(row["governor_approved"]) for row in ranked_all),
+            "with_measured_24h_change": sum(row.get("change_24h_pct") is not None for row in market_rows),
+            "without_measured_24h_change": sum(row.get("change_24h_pct") is None for row in market_rows),
         },
         "candidates": ranked,
+        "lists": dynamic_lists,
+        "list_scope": f"top {top_n} liquid Kraken spot markets by 24h quote volume",
         "rejected_data": rejected,
         "governor_approved_list_loaded": approved is not None,
         "approved_asset_list_source": approved_asset_source,
