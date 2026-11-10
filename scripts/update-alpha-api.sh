@@ -90,13 +90,14 @@ for source in "${API_SOURCES[@]}"; do
 done
 
 # Confirm all reviewed fixes exist upstream before changing any local file.
-# Do not use grep -q in a pipe under set -o pipefail: grep may close the pipe
-# early, making git show exit with SIGPIPE and producing a false missing-marker
-# failure even when the marker is present.
+# Read git-show output into a shell variable instead of piping through grep.
+# This avoids pager, SIGPIPE, and pipefail interactions in constrained shells.
 has_upstream_marker() {
   local source="$1"
   local marker="$2"
-  git show "FETCH_HEAD:${source}" | grep -F -- "${marker}" >/dev/null
+  local upstream_content
+  upstream_content="$(git --no-pager show "FETCH_HEAD:${source}")" || return 2
+  [[ "${upstream_content}" == *"${marker}"* ]]
 }
 
 has_upstream_marker "${API_SOURCES[0]}" "refusing registration" \
