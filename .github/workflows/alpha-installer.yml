@@ -51,6 +51,7 @@ on:
   pull_request:
     paths:
       - install-alpha.sh
+      - scripts/**
       - ALPHA-TEST.md
       - README.md
       - pyproject.toml
