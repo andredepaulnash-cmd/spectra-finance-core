@@ -89,23 +89,20 @@ for source in "${API_SOURCES[@]}"; do
   die "Unrecognized local source version in $source. It was not overwritten; preserve/review it before updating."
 done
 
-# Confirm all reviewed fixes exist upstream before changing any local file.
-# Read git-show output into a shell variable instead of piping through grep.
-# This avoids pager, SIGPIPE, and pipefail interactions in constrained shells.
-has_upstream_marker() {
-  local source="$1"
-  local marker="$2"
-  local upstream_content
-  upstream_content="$(git --no-pager show "FETCH_HEAD:${source}")" || return 2
-  [[ "${upstream_content}" == *"${marker}"* ]]
-}
+# Verify the exact reviewed API source blobs. This is deterministic and avoids
+# shell text-search, pager, locale, and pipefail behavior entirely.
+declare -A EXPECTED_UPSTREAM_BLOBS=(
+  ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
+  ["services/market_data_service.py"]="9236689f87dc32aae2478100419b9a2e6e645f73"
+  ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
+)
 
-has_upstream_marker "${API_SOURCES[0]}" "refusing registration" \
-  || die "Fetched API source does not contain the expected fail-closed Kraken fix."
-has_upstream_marker "${API_SOURCES[1]}" "A read request must be able to initialize its own feed" \
-  || die "Fetched market-data service does not contain the lazy order-book initialization fix."
-has_upstream_marker "${API_SOURCES[2]}" "Bot orchestration is disabled in Spectra paper-only mode" \
-  || die "Fetched API dependency does not contain the paper-only bot-status guard."
+for source in "${API_SOURCES[@]}"; do
+  actual_blob="$(git rev-parse "FETCH_HEAD:${source}")"
+  expected_blob="${EXPECTED_UPSTREAM_BLOBS[$source]}"
+  [[ "$actual_blob" == "$expected_blob" ]] \
+    || die "Fetched $source is not the reviewed API version (expected $expected_blob, got $actual_blob)."
+done
 
 git restore --source=FETCH_HEAD --worktree -- "${API_SOURCES[@]}"
 
