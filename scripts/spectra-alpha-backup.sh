@@ -12,7 +12,7 @@ LOCK_FILE="$LOG_DIR/backup.lock"
 mkdir -p "$BACKUP_DIR" "$LOG_DIR"
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "[SPECTRA BACKUP] Another backup is already running."; exit 0; }
-exec >>"$LOG_FILE" 2>&1
+exec > >(tee -a "$LOG_FILE") 2>&1
 say() { printf '[%s] [SPECTRA BACKUP] %s\n' "$(date -Is)" "$*"; }
 fail() { say "FAIL: $*"; exit 1; }
 
