@@ -222,14 +222,22 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
   if [[ "$upstream_blob" != "$expected_blob" ]]; then
     die "Fetched $source is not the reviewed Alpha operations version."
   fi
-  if [[ -f "$CORE_DIR/$source" ]]; then
+  if [[ -L "$CORE_DIR/$source" ]]; then
+    die "Refusing to replace symlinked local path $source."
+  elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
     if [[ "$worktree_blob" != "$expected_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
   fi
 done
-git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "${CORE_OPS_SOURCES[@]}"
+# These are new reviewed files in this Alpha release and may not exist in the
+# existing checkout's index yet. Read each from the verified fetched tree without
+# staging or changing the local Git index.
+for source in "${CORE_OPS_SOURCES[@]}"; do
+  mkdir -p "$(dirname "$CORE_DIR/$source")"
+  git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
+done
 install -m 700 "$CORE_DIR/scripts/spectra" "$HOME/.local/bin/spectra"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$HOME/.local/bin/spectra-alpha-doctor"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-start-api.sh" "$HOME/.local/bin/spectra-alpha-start-api"
