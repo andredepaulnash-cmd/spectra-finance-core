@@ -215,7 +215,14 @@ say "Postgres and EMQX were started in place; no volumes or local credentials we
 # Rebuild the dashboard and restart Core only; paper execution containers stay up.
 CORE_FRONTEND_SOURCE="frontend/src/components/market/OrderBook.tsx"
 [[ -d "$CORE_DIR/.git" ]] || die "Core Git checkout not found at $CORE_DIR."
-git -C "$CORE_DIR" fetch --depth 1 origin "$CORE_REF"
+# The installer creates a depth-1 checkout. Path-level blob verification below
+# traverses nested trees, so hydrate the full branch object graph before resolving
+# reviewed files; otherwise Git can have the commit but miss a nested tree object.
+if [[ "$(git -C "$CORE_DIR" rev-parse --is-shallow-repository)" == "true" ]]; then
+  git -C "$CORE_DIR" fetch --unshallow origin "$CORE_REF"
+else
+  git -C "$CORE_DIR" fetch origin "$CORE_REF"
+fi
 CORE_UPSTREAM_COMMIT="$(git -C "$CORE_DIR" rev-parse FETCH_HEAD^{commit})"
 say "Verified Core source ref $CORE_REF at commit $CORE_UPSTREAM_COMMIT."
 [[ -f "$CORE_DIR/frontend/package.json" ]] || die "Core frontend package.json is missing."

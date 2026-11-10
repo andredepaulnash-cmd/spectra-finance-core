@@ -599,10 +599,11 @@ async def get_server_market_discovery(
     min_history_days: int = Query(default=90, ge=90, le=365),
     user: WebUser = Depends(require_server_access),
 ):
-    """Rank Kraken USD spot markets using this user's configured Hummingbot API.
+    """Refresh dynamic Kraken USD spot market lists from this user's Hummingbot API.
 
-    Discovery is research-only. The paper asset allowlist annotates candidates,
-    while the independent capital and dispatch gates remain authoritative.
+    Results include 24h quote-volume leaders, measured 24h gainers/losers,
+    volatility leaders, and mean-reversion candidates. Discovery remains
+    research-only; the independent capital and dispatch gates stay authoritative.
     """
     from spectra_core.market_discovery import scan_kraken_universe
 

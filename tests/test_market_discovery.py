@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from spectra_core.market_discovery import analyze_daily_history, scan_kraken_universe
+from spectra_core.market_discovery import (
+    analyze_daily_history,
+    build_dynamic_market_lists,
+    calculate_24h_change,
+    scan_kraken_universe,
+)
 
 
 def candles(*, start=100.0, drift=0.0, count=120):
@@ -164,7 +169,10 @@ async def test_kraken_scan_uses_configured_connector_and_never_creates_orders():
     assert result["candidates"][0]["governor_approved"] is True
     assert result["candidates"][0]["capital_authorized"] is False
     assert result["orders_created"] == 0
-    assert market_data.calls == [("kraken", "BTC-USD", "1d", 92)]
+    assert market_data.calls == [
+        ("kraken", "BTC-USD", "1h", 27),
+        ("kraken", "BTC-USD", "1d", 92),
+    ]
 
 
 @pytest.mark.asyncio
@@ -296,4 +304,148 @@ async def test_paper_scan_loads_the_same_explicit_governor_allowlist_as_executio
     assert result["counts"]["governor_approved"] == 1
     assert result["candidates"][0]["governor_approved"] is True
     assert result["candidates"][0]["capital_authorized"] is False
+    assert result["orders_created"] == 0
+
+
+
+def test_calculate_24h_change_uses_nearest_valid_hourly_reference():
+    now = 1_800_000_000.0
+    candles = [
+        {"timestamp": now - 90_000, "close": 100},
+        {"timestamp": now - 86_400, "close": 105},
+        {"timestamp": now - 82_800, "close": 108},
+    ]
+    change, window = calculate_24h_change(
+        candles, current_price=110, now=now
+    )
+    assert change == pytest.approx(10.0)
+    assert window == pytest.approx(86_400.0)
+
+
+def test_calculate_24h_change_omits_missing_or_stale_reference():
+    now = 1_800_000_000.0
+    change, window = calculate_24h_change(
+        [{"timestamp": now - 200_000, "close": 100}],
+        current_price=110,
+        now=now,
+    )
+    assert change is None
+    assert window is None
+
+
+def test_dynamic_lists_rank_volume_gainers_losers_and_mean_reversion():
+    markets = [
+        {"trading_pair": "AAA-USD", "volume_24h_usd": 90, "change_24h_pct": 5.0},
+        {"trading_pair": "BBB-USD", "volume_24h_usd": 100, "change_24h_pct": -4.0},
+        {"trading_pair": "CCC-USD", "volume_24h_usd": 80, "change_24h_pct": 2.0},
+        {"trading_pair": "DDD-USD", "volume_24h_usd": 70, "change_24h_pct": None},
+    ]
+    analyses = [
+        {"trading_pair": "AAA-USD", "eligible": True, "selection_score": 75, "median_daily_range_30d_pct": 2.0},
+        {"trading_pair": "BBB-USD", "eligible": False, "selection_score": 20, "median_daily_range_30d_pct": 1.0},
+        {"trading_pair": "CCC-USD", "eligible": True, "selection_score": 85, "median_daily_range_30d_pct": 3.0},
+    ]
+    lists = build_dynamic_market_lists(markets, analyses, show_n=10)
+    assert [row["trading_pair"] for row in lists["top_24h_volume"]] == [
+        "BBB-USD", "AAA-USD", "CCC-USD", "DDD-USD"
+    ]
+    assert [row["trading_pair"] for row in lists["top_24h_gainers"]] == [
+        "AAA-USD", "CCC-USD"
+    ]
+    assert [row["trading_pair"] for row in lists["top_24h_losers"]] == ["BBB-USD"]
+    assert [row["trading_pair"] for row in lists["mean_reversion_candidates"]] == [
+        "CCC-USD", "AAA-USD"
+    ]
+    assert all(row["capital_authorized"] is False for group in lists.values() for row in group)
+
+
+@pytest.mark.asyncio
+async def test_scan_populates_dynamic_24h_gainer_list_from_hourly_candles():
+    now = 1_800_000_000.0
+    day_start = int(now // 86_400) * 86_400
+    history = [
+        {
+            "timestamp": day_start - (90 - index) * 86_400,
+            "open": 100,
+            "high": 102,
+            "low": 98,
+            "close": 100 + index * 0.1,
+            "volume": 1_000,
+        }
+        for index in range(90)
+    ]
+
+    class HourlyMarketData(FakeKrakenMarketData):
+        async def get_candles(self, connector, pair, interval, max_records):
+            self.calls.append((connector, pair, interval, max_records))
+            if interval == "1h":
+                return [
+                    {"timestamp": now - 90_000, "close": 100},
+                    {"timestamp": now - 86_400, "close": 105},
+                    {"timestamp": now - 82_800, "close": 108},
+                ]
+            return self.candles
+
+    market_data = HourlyMarketData(history)
+    client = type("Client", (), {
+        "market_data": market_data,
+        "connectors": FakeKrakenConnectors(),
+    })()
+    result = await scan_kraken_universe(
+        client,
+        top_n=10,
+        show_n=10,
+        min_volume_usd=1_000,
+        min_history_days=90,
+        min_median_daily_quote_volume_usd=0,
+        approved_pairs=(),
+        now=now,
+    )
+    assert result["lists"]["top_24h_gainers"][0]["trading_pair"] == "BTC-USD"
+    assert result["lists"]["top_24h_gainers"][0]["change_24h_pct"] == pytest.approx(10.0)
+    assert result["counts"]["with_measured_24h_change"] == 1
+    assert result["orders_created"] == 0
+
+
+
+@pytest.mark.asyncio
+async def test_24h_movers_remain_available_when_long_history_is_missing():
+    now = 1_800_000_000.0
+
+    class HourlyOnlyMarketData(FakeKrakenMarketData):
+        async def get_candles(self, connector, pair, interval, max_records):
+            self.calls.append((connector, pair, interval, max_records))
+            if interval == "1h":
+                return [
+                    {"timestamp": now - 90_000, "close": 100},
+                ]
+            return self.candles[:89]
+
+    history = [
+        {
+            "timestamp": now - (120 - index) * 86_400,
+            "open": 100,
+            "high": 102,
+            "low": 98,
+            "close": 100,
+            "volume": 1_000,
+        }
+        for index in range(120)
+    ]
+    market_data = HourlyOnlyMarketData(history)
+    client = type("Client", (), {
+        "market_data": market_data,
+        "connectors": FakeKrakenConnectors(),
+    })()
+    result = await scan_kraken_universe(
+        client,
+        top_n=10,
+        show_n=10,
+        min_volume_usd=1_000,
+        min_history_days=90,
+        now=now,
+    )
+    assert result["lists"]["top_24h_gainers"][0]["change_24h_pct"] == pytest.approx(10.0)
+    assert result["lists"]["mean_reversion_candidates"] == []
+    assert result["counts"]["history_or_data_rejected"] == 1
     assert result["orders_created"] == 0

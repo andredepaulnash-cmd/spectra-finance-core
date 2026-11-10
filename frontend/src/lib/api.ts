@@ -202,6 +202,36 @@ export interface MarketDiscoveryCandidate {
   capital_authorized: false;
 }
 
+export type MarketDiscoveryListKey =
+  | "top_24h_volume"
+  | "top_24h_gainers"
+  | "top_24h_losers"
+  | "volatility_leaders"
+  | "mean_reversion_candidates";
+
+export interface MarketDiscoveryListRow {
+  trading_pair: string;
+  symbol: string;
+  base_asset: string;
+  quote_asset: string;
+  current_price: number;
+  volume_24h_usd: number;
+  volume_rank_24h: number;
+  change_24h_pct: number | null;
+  change_24h_window_seconds?: number | null;
+  change_24h_source?: string | null;
+  eligible?: boolean;
+  selection_score?: number | null;
+  median_daily_range_30d_pct?: number | null;
+  discount_to_vwap_pct?: number | null;
+  return_7d_pct?: number | null;
+  rsi_14d?: number | null;
+  governor_approved: boolean;
+  capital_authorized: false;
+  selection_reasons?: string[];
+  rejection_reasons?: string[];
+}
+
 export interface MarketDiscoveryResponse {
   source: string;
   as_of: number;
@@ -217,6 +247,8 @@ export interface MarketDiscoveryResponse {
     maximum_current_move_from_last_close_pct: number;
     quote_assets: string[];
     ranking: string;
+    "24h_change"?: string;
+    dynamic_lists_scope?: string;
   };
   counts: {
     eligible_kraken_markets: number;
@@ -227,8 +259,12 @@ export interface MarketDiscoveryResponse {
     rejected_by_guardrails: number;
     history_or_data_rejected: number;
     governor_approved: number;
+    with_measured_24h_change?: number;
+    without_measured_24h_change?: number;
   };
   candidates: MarketDiscoveryCandidate[];
+  lists: Record<MarketDiscoveryListKey, MarketDiscoveryListRow[]>;
+  list_scope: string;
   rejected_data: Array<{ trading_pair: string; reason: string }>;
   governor_approved_list_loaded: boolean;
   approved_asset_list_source: string | null;
