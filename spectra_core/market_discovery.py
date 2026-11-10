@@ -348,6 +348,7 @@ async def scan_kraken_universe(
             "quote_asset": pair.rsplit("-", 1)[1],
             "price": float(ticker.price),
             "volume": volume,
+            "governor_approved": approved is not None and pair in approved,
         })
     candidates.sort(key=lambda item: item["volume"], reverse=True)
     for volume_rank, item in enumerate(candidates, start=1):
@@ -468,7 +469,7 @@ async def scan_kraken_universe(
             "eligible": analysis.get("eligible", False),
             "selection_score": analysis.get("selection_score"),
             "median_daily_range_30d_pct": analysis.get("median_daily_range_30d_pct"),
-            "governor_approved": analysis.get("governor_approved", False),
+            "governor_approved": item.get("governor_approved", analysis.get("governor_approved", False)),
             "capital_authorized": False,
         })
     dynamic_lists = build_dynamic_market_lists(market_rows, analyzed, show_n=show_n)
