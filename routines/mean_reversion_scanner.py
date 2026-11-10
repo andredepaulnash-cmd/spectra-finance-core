@@ -60,6 +60,7 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
         f"Analyzed: {result['counts']['analyzed']} | "
         f"Candidates passing research guardrails: {result['counts']['eligible']}",
         f"Governor approved list loaded: {result['governor_approved_list_loaded']}",
+        f"Governor approved list source: {result.get('approved_asset_list_source') or 'not configured'}",
         "Research only — no capital authorization or orders were created.",
         "",
     ]
