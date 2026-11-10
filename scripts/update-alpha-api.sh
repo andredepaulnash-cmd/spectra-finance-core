@@ -123,8 +123,28 @@ grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCE
   || die "The paper-only bot-status guard was not applied locally."
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
-say "Starting the existing Postgres and EMQX services (named volumes are preserved)."
-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d postgres emqx 9>&-
+say "Checking the existing Postgres and EMQX containers (named volumes are preserved)."
+# Reconcile existing containers directly instead of asking Compose to recreate them.
+# Some Podman Compose providers mis-detect already-running containers after an
+# in-place update and attempt to bind the broker's occupied loopback ports again.
+for service_container in \
+  "postgres:spectra-alpha-hummingbot-postgres" \
+  "emqx:spectra-alpha-hummingbot-broker"; do
+  service="${service_container%%:*}"
+  container="${service_container#*:}"
+  if podman container exists "$container"; then
+    status="$(podman inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
+    if [[ "$status" != "running" ]]; then
+      say "Starting existing $container without recreating it."
+      podman start "$container" >/dev/null || die "Could not start existing $container."
+    else
+      say "$container is already running; leaving it in place."
+    fi
+  else
+    say "$container is missing; creating only the missing $service service."
+    compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --no-deps "$service" 9>&-
+  fi
+done
 
 for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-broker; do
   say "Waiting for $container health."
@@ -148,7 +168,7 @@ for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-brok
 done
 
 say "Building and updating only the Hummingbot API container."
-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --build hummingbot-api 9>&-
+compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --build --no-deps hummingbot-api 9>&-
 
 status="$(podman inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null || true)"
 [[ "$status" == "running" ]] || {
