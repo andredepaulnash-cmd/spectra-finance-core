@@ -53,6 +53,8 @@ on:
     paths:
       - install-alpha.sh
       - scripts/**
+      - tests/test_alpha_backup.py
+      - tests/test_spectra_kraken_execution_flow.py
       - ALPHA-TEST.md
       - README.md
       - pyproject.toml
