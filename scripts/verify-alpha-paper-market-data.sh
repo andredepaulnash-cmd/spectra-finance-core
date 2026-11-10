@@ -113,7 +113,7 @@ def show_diagnostics(label):
     for key in (
         "connector_type", "connector_name", "has_order_book_tracker",
         "tracker_ready", "trading_pairs", "order_books", "tasks",
-        "websocket_status", "metrics",
+        "websocket_status", "metrics", "public_data_connector",
     ):
         if key in data:
             rendered = json.dumps(data[key], sort_keys=True, default=str)
