@@ -635,7 +635,7 @@ export function SpectraOverview() {
               ) : null}
             </div>
             <p className="mt-3 text-xs leading-relaxed text-[var(--color-text-muted)]">
-              {marketDiscovery.data.source}. Scans the top {marketDiscovery.data.criteria.top_by_24h_quote_volume} contracts by 24h volume, requires at least {marketDiscovery.data.criteria.minimum_completed_history_days} days of history and $10M volume, and excludes stablecoins and wrapped assets. Rankings are research candidates, not trade signals. Last refreshed {new Date(marketDiscovery.data.as_of * 1000).toLocaleString()}.
+              {marketDiscovery.data.source}. Scans the top {marketDiscovery.data.criteria.top_by_24h_quote_volume} liquid Kraken USD spot markets by 24h quote volume, requires at least {marketDiscovery.data.criteria.minimum_completed_history_days} completed days of history for mean-reversion scoring, and applies the configured turnover, activity, volatility, and downside guardrails. Rankings are research candidates, not trade signals. Last refreshed {new Date(marketDiscovery.data.as_of * 1000).toLocaleString()}.
             </p>
           </>
         ) : null}
