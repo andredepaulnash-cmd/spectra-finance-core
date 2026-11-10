@@ -130,7 +130,8 @@ say "Checking the existing Postgres and EMQX containers (named volumes are prese
 for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-broker; do
   container_inventory="$(podman ps --all --format '{{.Names}}' 2>/dev/null || true)"
   if ! grep -Fq -- "$container" <<<"$container_inventory"; then
-    say "Podman container inventory: ${container_inventory//
+    say "Podman container inventory: $container_inventory"
+  fi
   status="$(podman inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
   if [[ "$status" != "running" ]]; then
     say "Starting existing $container without recreating it."
