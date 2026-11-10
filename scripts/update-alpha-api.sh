@@ -81,7 +81,7 @@ grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCE
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
 say "Starting the existing Postgres and EMQX services (named volumes are preserved)."
-podman-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d postgres emqx
+podman-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d postgres emqx 9>&-
 
 for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-broker; do
   say "Waiting for $container health."
@@ -105,7 +105,7 @@ for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-brok
 done
 
 say "Building and updating only the Hummingbot API container."
-podman-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --build hummingbot-api
+podman-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --build hummingbot-api 9>&-
 
 status="$(podman inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null || true)"
 [[ "$status" == "running" ]] || {
