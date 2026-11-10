@@ -151,6 +151,11 @@ else
   COMPOSE_KIND="podman"
 fi
 
+# Persist the selected container runtime so the in-place updater uses the same
+# Compose provider and never silently switches Docker/Podman on an existing install.
+printf '%s\n' "$COMPOSE_KIND" > "$INSTALL_ROOT/.compose-kind"
+chmod 600 "$INSTALL_ROOT/.compose-kind"
+
 say "Cloning the pinned Spectra Core alpha branch"
 clone_or_reuse "$CORE_REPO" "$CORE_REF" "$CORE_DIR"
 
