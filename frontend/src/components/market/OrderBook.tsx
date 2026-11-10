@@ -37,6 +37,7 @@ export function OrderBook({ server, connector, pair }: OrderBookProps) {
     staleTime: 3_000,
     refetchInterval: 5_000,
     retry: 1,
+    retryDelay: 0,
   });
 
   // WS live updates — writes to the same ["order-book", ...] query key
