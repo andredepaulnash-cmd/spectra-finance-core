@@ -222,7 +222,7 @@ declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
   ["scripts/systemd/spectra-alpha-doctor.service"]="054b22ea89cb8888419ec8000b5ffa0975f1b73d"
   ["scripts/systemd/spectra-alpha-doctor.timer"]="30af1b179bda4aec03105018e09b07dba1ee4b85"
-  ["scripts/spectra-alpha-backup.sh"]="4f7e0131792b165b25681d7a42917811605ea60e"
+  ["scripts/spectra-alpha-backup.sh"]="1320e0d1ccf552917105c85f17fb67d046d8a3fc"
   ["scripts/systemd/spectra-alpha-backup.service"]="e49bc3d235744a92d7c463e6a98d9b8b282ae08b"
   ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
 )
@@ -262,7 +262,7 @@ CORE_PYTHON_SOURCES=(
 declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="7ab6435bac07dea5c260ce810b5daf6abbcfbfab"
   ["spectra_core/kraken_authorization.py"]="ed23264f3f57e20bcf16b633c86d303ea08e388d"
-  ["spectra_core/market_discovery.py"]="f272eee952700d294d7bc8cc56246b0a96fc64c2"
+  ["spectra_core/market_discovery.py"]="5222e752f46f56bc58e4acd8bdd80f940ae1ce36"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"
