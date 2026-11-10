@@ -128,7 +128,7 @@ say "Checking the existing Postgres and EMQX containers (named volumes are prese
 # broker/database containers. Recreate attempts can collide with their own
 # already-published loopback ports under some Podman Compose providers.
 for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-broker; do
-  if ! podman inspect --type container "$container" >/dev/null 2>&1; then
+  if ! podman ps --all --format '{{.Names}}' | grep -Fxq -- "$container"; then
     die "$container is missing. The updater will not create or replace stateful services; run the Alpha installer only if this is a new installation."
   fi
   status="$(podman inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
