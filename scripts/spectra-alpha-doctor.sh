@@ -120,4 +120,15 @@ done
 "$VERIFY_BIN" || fail "Kraken paper order book did not pass the read-only verification."
 ok "Kraken paper market data verified"
 
+BACKUP_DIR="$INSTALL_ROOT/backups"
+LATEST_BACKUP="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'spectra-paper-*.tar.gz' -printf '%T@ %p\\n' 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)"
+[[ -n "$LATEST_BACKUP" ]] || fail "No paper-state backup exists; run spectra backup."
+tar -tzf "$LATEST_BACKUP" >/dev/null || fail "Latest paper-state backup archive is corrupt."
+BACKUP_AGE="$(($(date +%s) - $(stat -c %Y "$LATEST_BACKUP")))"
+if [[ "$BACKUP_AGE" -gt 172800 ]]; then
+  say "WARN: latest paper-state backup is older than 48 hours."
+else
+  ok "latest paper-state backup is readable and current"
+fi
+
 say "PASS: operational checks completed. No orders, configuration changes, restarts, or capital mutations were performed."
