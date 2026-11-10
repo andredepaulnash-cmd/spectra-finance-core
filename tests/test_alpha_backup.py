@@ -109,7 +109,7 @@ def test_backup_refuses_when_live_execution_is_not_disabled(tmp_path):
 
 def test_backup_refuses_paper_state_that_overlaps_backup_destination(tmp_path):
     root = tmp_path / "recursive"
-    prepare_install(root, extra_env="SPECTRA_PAPER_STATE_DIR=../backups\\n")
+    prepare_install(root, extra_env="SPECTRA_PAPER_STATE_DIR=../backups\n")
 
     result = run_backup(root)
 
