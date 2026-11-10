@@ -613,7 +613,7 @@ export function SpectraOverview() {
                       <td className="py-3 text-right font-semibold tabular-nums">{candidate.selection_score == null ? "—" : `${candidate.selection_score.toFixed(0)}/100`}</td>
                       <td className="py-3 pl-3 text-right tabular-nums">
                         {(() => {
-                          if (candidate.selection_score == null) return <span className="text-[var(--color-text-muted)]">—</span>;
+                          if (activeMarketList !== "mean_reversion_candidates" || candidate.selection_score == null) return <span className="text-[var(--color-text-muted)]">—</span>;
                           const previous = previousDailyCandidates.get(candidate.symbol);
                           if (!previous) return <span className="text-[var(--color-text-muted)]">NEW</span>;
                           const delta = candidate.selection_score - previous.selection_score;
