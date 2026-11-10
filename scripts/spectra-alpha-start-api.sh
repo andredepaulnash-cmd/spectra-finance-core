@@ -53,14 +53,27 @@ PY
 )
 [[ "${#AUTH[@]}" -eq 2 && -n "${AUTH[0]}" && -n "${AUTH[1]}" ]] || exit 1
 AUTH_CONFIG="$(mktemp)"
-trap 'rm -f "$AUTH_CONFIG"' EXIT
-chmod 600 "$AUTH_CONFIG"
+RUNTIME_JSON="$(mktemp)"
+trap 'rm -f "$AUTH_CONFIG" "$RUNTIME_JSON"' EXIT
+chmod 600 "$AUTH_CONFIG" "$RUNTIME_JSON"
 printf 'user = "%s:%s"\n' "${AUTH[0]}" "${AUTH[1]}" > "$AUTH_CONFIG"
 
 for _ in $(seq 1 180); do
-  if curl -fsS --config "$AUTH_CONFIG" http://127.0.0.1:8000/spectra/runtime -o /dev/null; then
-    echo "[SPECTRA START] API stack is ready in paper-only mode."
-    exit 0
+  if curl -fsS --config "$AUTH_CONFIG" http://127.0.0.1:8000/spectra/runtime -o "$RUNTIME_JSON"; then
+    if python3 - "$RUNTIME_JSON" <<'PYRUNTIME'
+import json
+import sys
+runtime = json.load(open(sys.argv[1], encoding="utf-8"))
+assert runtime.get("mode") == "PAPER_ONLY", runtime
+assert runtime.get("paper_only") is True, runtime
+assert runtime.get("paper_connectors_only") is True, runtime
+assert runtime.get("live_dispatch_available") is False, runtime
+assert any(str(item).endswith("/kraken_paper_trade") for item in runtime.get("paper_connectors", [])), runtime
+PYRUNTIME
+    then
+      echo "[SPECTRA START] API stack is ready; Kraken paper-only runtime is verified."
+      exit 0
+    fi
   fi
   sleep 2
 done
