@@ -197,6 +197,68 @@ done
 git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "${CORE_SHELL_SOURCES[@]}"
 say "Updated the reviewed Command Center shell polish without changing application behavior."
 
+# Install the reviewed paper lifecycle operator, health monitor and user services.
+CORE_OPS_SOURCES=(
+  "scripts/spectra"
+  "scripts/spectra-alpha-doctor.sh"
+  "scripts/spectra-alpha-start-api.sh"
+  "scripts/spectra-alpha-core-supervisor.sh"
+  "scripts/systemd/spectra-alpha-core.service"
+  "scripts/systemd/spectra-alpha-doctor.service"
+  "scripts/systemd/spectra-alpha-doctor.timer"
+)
+declare -A CORE_OPS_NEW_BLOBS=(
+  ["scripts/spectra"]="9a42a41bc45f269a03341a19efce191733798406"
+  ["scripts/spectra-alpha-doctor.sh"]="be0d38bc075b31a291f2779ce917eba8c59689f9"
+  ["scripts/spectra-alpha-start-api.sh"]="2c6a536395209ccc21d48f94f0907ffaffc4ffa5"
+  ["scripts/spectra-alpha-core-supervisor.sh"]="e063affc6b22527f5a727bbc47f5afba4c361dff"
+  ["scripts/systemd/spectra-alpha-core.service"]="f7d8fb90d3fb198ac02cfe7b6c5c79bc882d406a"
+  ["scripts/systemd/spectra-alpha-doctor.service"]="eb56913b0cf65117aa3f104f0907ffaffc4ffa5"
+  ["scripts/systemd/spectra-alpha-doctor.timer"]="30af1b179bda4aec03105018e09b07dba1ee4b85"
+)
+for source in "${CORE_OPS_SOURCES[@]}"; do
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  expected_blob="${CORE_OPS_NEW_BLOBS[$source]}"
+  if [[ "$upstream_blob" != "$expected_blob" ]]; then
+    die "Fetched $source is not the reviewed Alpha operations version."
+  fi
+  if [[ -f "$CORE_DIR/$source" ]]; then
+    worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
+    if [[ "$worktree_blob" != "$expected_blob" ]]; then
+      die "Unrecognized local changes in $source. They were preserved; review them before updating."
+    fi
+  fi
+done
+git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "${CORE_OPS_SOURCES[@]}"
+install -m 700 "$CORE_DIR/scripts/spectra" "$HOME/.local/bin/spectra"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$HOME/.local/bin/spectra-alpha-doctor"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-start-api.sh" "$HOME/.local/bin/spectra-alpha-start-api"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-core-supervisor.sh" "$HOME/.local/bin/spectra-alpha-core-supervisor"
+
+SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+mkdir -p "$SYSTEMD_USER_DIR"
+python3 - "$CORE_DIR/scripts/systemd" "$SYSTEMD_USER_DIR" "$INSTALL_ROOT" "$HOME/.local/bin" <<'PYSYSTEMD'
+from pathlib import Path
+import sys
+source, target, install_root, local_bin = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], sys.argv[4]
+for name in (
+    "spectra-alpha-core.service",
+    "spectra-alpha-doctor.service",
+    "spectra-alpha-doctor.timer",
+):
+    text = (source / name).read_text(encoding="utf-8")
+    text = text.replace("@INSTALL_ROOT@", install_root).replace("@LOCAL_BIN@", local_bin)
+    (target / name).write_text(text, encoding="utf-8")
+    (target / name).chmod(0o600)
+PYSYSTEMD
+if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+  systemctl --user daemon-reload
+  systemctl --user enable spectra-alpha-core.service >/dev/null
+  systemctl --user enable --now spectra-alpha-doctor.timer >/dev/null
+  say "Enabled Core restart-on-failure at user login and the two-minute read-only health monitor."
+else
+  say "No active user systemd manager; operator CLI remains available without changing OS services."
+fi
 
 if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   # shellcheck disable=SC1091
