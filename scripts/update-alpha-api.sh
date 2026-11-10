@@ -151,6 +151,41 @@ status="$(podman inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-a
 say "SUCCESS: API image rebuilt and container is running."
 say "Postgres and EMQX were started in place; no volumes or local credentials were deleted."
 
+# Update only the reviewed OrderBook component in the existing Core checkout,
+# then rebuild the static frontend. The running web process serves dist files
+# from disk, so no Core restart or user-data migration is required.
+CORE_DIR="$INSTALL_ROOT/spectra-core"
+CORE_FRONTEND_SOURCE="frontend/src/components/market/OrderBook.tsx"
+[[ -d "$CORE_DIR/.git" ]] || die "Core Git checkout not found at $CORE_DIR."
+[[ -f "$CORE_DIR/frontend/package.json" ]] || die "Core frontend package.json is missing."
+say "Fetching the reviewed Spectra trade-screen market-feed status component."
+git -C "$CORE_DIR" fetch --depth 1 origin alpha/one-command-paper-demo-20261108
+CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$CORE_FRONTEND_SOURCE")"
+CORE_WORKTREE_BLOB="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$CORE_FRONTEND_SOURCE")"
+CORE_OLD_BLOB="47e36a785b4e02a50ca8f34093727403cb692750"
+CORE_NEW_BLOB="7e089fad16334dee3ca0f991c1f2b6bef783ff7a"
+[[ "$CORE_UPSTREAM_BLOB" == "$CORE_NEW_BLOB" ]] \
+  || die "Fetched trade-screen component is not the reviewed version."
+if [[ "$CORE_WORKTREE_BLOB" != "$CORE_NEW_BLOB" && "$CORE_WORKTREE_BLOB" != "$CORE_OLD_BLOB" ]]; then
+  die "Unrecognized local changes in $CORE_FRONTEND_SOURCE. They were preserved; review them before updating."
+fi
+git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "$CORE_FRONTEND_SOURCE"
+
+if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
+  # shellcheck disable=SC1091
+  . "$HOME/.nvm/nvm.sh"
+  nvm use 22 >/dev/null
+fi
+command -v npm >/dev/null 2>&1 || die "npm is required to rebuild the Spectra dashboard."
+cd "$CORE_DIR/frontend"
+if [[ ! -f node_modules/.package-lock.json || package-lock.json -nt node_modules/.package-lock.json ]]; then
+  say "Synchronizing the existing frontend dependencies."
+  npm ci
+fi
+say "Building the updated Spectra trade screen."
+npm run build
+cd "$INSTALL_ROOT"
+
 # Install and run the authenticated read-only verifier as the final deployment
 # step. It reports tracker and underlying public-connector symbol-map state.
 VERIFY_BIN="$HOME/.local/bin/spectra-verify-alpha-paper-market-data"
