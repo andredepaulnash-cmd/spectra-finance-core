@@ -90,7 +90,7 @@ for local in untracked:
             break
 if conflicts:
     print("Untracked local paths would be displaced by the incoming release:", file=sys.stderr)
-    print("\\n".join(conflicts), file=sys.stderr)
+    print("\n".join(conflicts), file=sys.stderr)
     raise SystemExit(2)
 PYSAFE
     git -C "$dest" reset --hard FETCH_HEAD
