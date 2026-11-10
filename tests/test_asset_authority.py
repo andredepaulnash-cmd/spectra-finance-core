@@ -151,3 +151,19 @@ def test_final_executor_boundary_refuses_unapproved_pair_before_market_data(monk
 
     assert "not configured" in result["error"]
     assert "no market data or capital was requested" in result["formatted_output"]
+
+
+def test_symlinked_governor_allowlist_is_rejected(monkeypatch, tmp_path):
+    state = tmp_path / "paper-state"
+    state.mkdir()
+    real = tmp_path / "real-approved-assets.json"
+    write_policy(real, ["BTC-USD"])
+    link = state / "approved_assets.json"
+    link.symlink_to(real)
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+
+    with pytest.raises(AssetAuthorityError, match="must not be a symlink"):
+        load_approved_kraken_assets()
