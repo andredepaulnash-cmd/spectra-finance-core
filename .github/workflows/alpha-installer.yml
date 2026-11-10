@@ -88,7 +88,9 @@ jobs:
         run: |
           bash -n install-alpha.sh
           bash -n scripts/update-alpha-api.sh
-          bash -n scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra
+          for script in scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra; do
+            bash -n "$script"
+          done
           ! grep -q 'compose down' scripts/spectra
           grep -q 'Restart=on-failure' scripts/systemd/spectra-alpha-core.service
           grep -q 'OnUnitActiveSec=120s' scripts/systemd/spectra-alpha-doctor.timer
