@@ -163,19 +163,19 @@ for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-brok
   say "Waiting for $container health."
   healthy=false
   for _ in $(seq 1 90); do
-    status="$(podman inspect --format '{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
+    status="$("$CONTAINER_CLI" inspect --format '{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
     if [[ "$status" == "healthy" ]]; then
       healthy=true
       break
     fi
     if [[ "$status" == "unhealthy" ]]; then
-      podman logs --tail 80 "$container" || true
+      "$CONTAINER_CLI" logs --tail 80 "$container" || true
       die "$container reported unhealthy."
     fi
     sleep 2
   done
   [[ "$healthy" == true ]] || {
-    podman logs --tail 80 "$container" || true
+    "$CONTAINER_CLI" logs --tail 80 "$container" || true
     die "$container did not become healthy within 180 seconds."
   }
 done
@@ -183,9 +183,9 @@ done
 say "Building and updating only the Hummingbot API container."
 compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --build --no-deps hummingbot-api 9>&-
 
-status="$(podman inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null || true)"
+status="$("$CONTAINER_CLI" inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null || true)"
 [[ "$status" == "running" ]] || {
-  podman logs --tail 160 spectra-alpha-hummingbot-api 2>/dev/null || true
+  "$CONTAINER_CLI" logs --tail 160 spectra-alpha-hummingbot-api 2>/dev/null || true
   die "API container is not running after the update."
 }
 
@@ -423,10 +423,10 @@ say "Deployment, supervised-startup setup, and verification sequence complete."
 \\n'/, }"
     die "$container is missing. The updater will not create or replace stateful services; run the Alpha installer only if this is a new installation."
   fi
-  status="$(podman inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
+  status="$("$CONTAINER_CLI" inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
   if [[ "$status" != "running" ]]; then
     say "Starting existing $container without recreating it."
-    podman start "$container" >/dev/null || die "Could not start existing $container."
+    "$CONTAINER_CLI" start "$container" >/dev/null || die "Could not start existing $container."
   else
     say "$container is already running; leaving it in place."
   fi
@@ -436,19 +436,19 @@ for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-brok
   say "Waiting for $container health."
   healthy=false
   for _ in $(seq 1 90); do
-    status="$(podman inspect --format '{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
+    status="$("$CONTAINER_CLI" inspect --format '{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
     if [[ "$status" == "healthy" ]]; then
       healthy=true
       break
     fi
     if [[ "$status" == "unhealthy" ]]; then
-      podman logs --tail 80 "$container" || true
+      "$CONTAINER_CLI" logs --tail 80 "$container" || true
       die "$container reported unhealthy."
     fi
     sleep 2
   done
   [[ "$healthy" == true ]] || {
-    podman logs --tail 80 "$container" || true
+    "$CONTAINER_CLI" logs --tail 80 "$container" || true
     die "$container did not become healthy within 180 seconds."
   }
 done
@@ -456,9 +456,9 @@ done
 say "Building and updating only the Hummingbot API container."
 compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --build --no-deps hummingbot-api 9>&-
 
-status="$(podman inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null || true)"
+status="$("$CONTAINER_CLI" inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null || true)"
 [[ "$status" == "running" ]] || {
-  podman logs --tail 160 spectra-alpha-hummingbot-api 2>/dev/null || true
+  "$CONTAINER_CLI" logs --tail 160 spectra-alpha-hummingbot-api 2>/dev/null || true
   die "API container is not running after the update."
 }
 
