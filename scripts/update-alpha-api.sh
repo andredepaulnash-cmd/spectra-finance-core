@@ -131,6 +131,7 @@ for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-brok
   container_inventory="$(podman ps --all --format '{{.Names}}' 2>/dev/null || true)"
   if ! grep -Fq -- "$container" <<<"$container_inventory"; then
     say "Podman container inventory: $container_inventory"
+    die "$container is missing from Podman inventory; refusing to recreate stateful services."
   fi
   status="$(podman inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
   if [[ "$status" != "running" ]]; then
