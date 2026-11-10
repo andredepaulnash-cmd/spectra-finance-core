@@ -33,6 +33,7 @@ from mcp_servers.hummingbot_api.executor_preferences import executor_preferences
 from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
 from mcp_servers.hummingbot_api.settings import settings
 from spectra_core import CapitalProposal, IntentKind
+from spectra_core.asset_authority import require_approved_kraken_pair
 from spectra_core.decimal_math import exact_decimal_sum
 from mcp_servers.hummingbot_api.tools.dispatch_receipts import (
     dispatch_with_receipt,
@@ -499,6 +500,12 @@ def _authorize_spectra_execution(
         intent_kind = IntentKind(str(intent).strip().upper())
     except ValueError:
         return f"Unknown Spectra capital intent: {intent!r}"
+
+    if settings.paper_only:
+        try:
+            require_approved_kraken_pair(pair, connector_name=connector)
+        except ValueError as exc:
+            return f"Spectra Governor asset authority refused before capital commit: {exc}"
 
     proposal = CapitalProposal(
         proposal_id=str(proposal_id).strip(),
