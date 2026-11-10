@@ -229,17 +229,18 @@ def calculate_24h_change(
         try:
             stamp = _candle_timestamp(row)
             close = _candle_close(row)
-            if stamp <= target:
-                references.append((stamp, close))
+            candle_close_time = stamp + 3_600
+            if candle_close_time <= target:
+                references.append((candle_close_time, close))
         except (TypeError, ValueError, IndexError, KeyError):
             continue
     if not references:
         return None, None
-    stamp, reference_price = max(references, key=lambda item: item[0])
-    age = target - stamp
+    close_time, reference_price = max(references, key=lambda item: item[0])
+    age = target - close_time
     if age < 0 or age > max_reference_age_seconds:
         return None, None
-    return (price / reference_price - 1.0) * 100.0, 86_400.0 + age
+    return (price / reference_price - 1.0) * 100.0, now - close_time
 
 
 def build_dynamic_market_lists(
