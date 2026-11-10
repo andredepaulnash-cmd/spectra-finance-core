@@ -216,9 +216,11 @@ say "Postgres and EMQX were started in place; no volumes or local credentials we
 CORE_FRONTEND_SOURCE="frontend/src/components/market/OrderBook.tsx"
 [[ -d "$CORE_DIR/.git" ]] || die "Core Git checkout not found at $CORE_DIR."
 git -C "$CORE_DIR" fetch --depth 1 origin "$CORE_REF"
+CORE_UPSTREAM_COMMIT="$(git -C "$CORE_DIR" rev-parse FETCH_HEAD^{commit})"
+say "Verified Core source ref $CORE_REF at commit $CORE_UPSTREAM_COMMIT."
 [[ -f "$CORE_DIR/frontend/package.json" ]] || die "Core frontend package.json is missing."
 say "Fetching the reviewed Spectra trade-screen market-feed status component."
-CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$CORE_FRONTEND_SOURCE")"
+CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$CORE_FRONTEND_SOURCE")"
 CORE_WORKTREE_BLOB="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$CORE_FRONTEND_SOURCE")"
 CORE_OLD_BLOB="47e36a785b4e02a50ca8f34093727403cb692750"
 CORE_NEW_BLOB="6ae7ba93d253f2127b47a301b3e33121a9f54895"
@@ -245,7 +247,7 @@ declare -A CORE_SHELL_NEW_BLOBS=(
   ["frontend/src/lib/api.ts"]="16d5a5adbf3af1bd4d5d2244b5d3850bc3c92494"
 )
 for source in "${CORE_SHELL_SOURCES[@]}"; do
-  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
   expected_blob="${CORE_SHELL_NEW_BLOBS[$source]}"
   if [[ "$upstream_blob" != "$expected_blob" ]]; then
     die "Fetched $source is not the reviewed Command Center version."
@@ -285,7 +287,7 @@ declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
 )
 for source in "${CORE_OPS_SOURCES[@]}"; do
-  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
   expected_blob="${CORE_OPS_NEW_BLOBS[$source]}"
   if [[ "$upstream_blob" != "$expected_blob" ]]; then
     die "Fetched $source is not the reviewed Alpha operations version."
@@ -307,7 +309,7 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
   target="$CORE_DIR/$source"
   parent="$(dirname "$target")"
   mkdir -p "$parent"
-  git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$target" || die "Could not write reviewed operator file $target."
+  git -C "$CORE_DIR" show "$CORE_UPSTREAM_COMMIT:$source" > "$target" || die "Could not write reviewed operator file $target."
 done
 
 # Update only the reviewed Python files that implement the paper asset authority
@@ -337,7 +339,7 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
 for source in "${CORE_PYTHON_SOURCES[@]}"; do
-  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
   expected_blob="${CORE_PYTHON_NEW_BLOBS[$source]}"
   if [[ "$upstream_blob" != "$expected_blob" ]]; then
     die "Fetched Python source $source is not the reviewed Governor asset-authority version."
@@ -356,7 +358,7 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
 done
 for source in "${CORE_PYTHON_SOURCES[@]}"; do
   mkdir -p "$(dirname "$CORE_DIR/$source")"
-  git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
+  git -C "$CORE_DIR" show "$CORE_UPSTREAM_COMMIT:$source" > "$CORE_DIR/$source"
 done
 "$CORE_DIR/.venv/bin/python" -m py_compile \
   "$CORE_DIR/spectra_core/asset_authority.py" \
@@ -499,7 +501,7 @@ CORE_FRONTEND_SOURCE="frontend/src/components/market/OrderBook.tsx"
 git -C "$CORE_DIR" fetch --depth 1 origin "$CORE_REF"
 [[ -f "$CORE_DIR/frontend/package.json" ]] || die "Core frontend package.json is missing."
 say "Fetching the reviewed Spectra trade-screen market-feed status component."
-CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$CORE_FRONTEND_SOURCE")"
+CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$CORE_FRONTEND_SOURCE")"
 CORE_WORKTREE_BLOB="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$CORE_FRONTEND_SOURCE")"
 CORE_OLD_BLOB="47e36a785b4e02a50ca8f34093727403cb692750"
 CORE_NEW_BLOB="6ae7ba93d253f2127b47a301b3e33121a9f54895"
@@ -526,7 +528,7 @@ declare -A CORE_SHELL_NEW_BLOBS=(
   ["frontend/src/lib/api.ts"]="16d5a5adbf3af1bd4d5d2244b5d3850bc3c92494"
 )
 for source in "${CORE_SHELL_SOURCES[@]}"; do
-  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
   expected_blob="${CORE_SHELL_NEW_BLOBS[$source]}"
   if [[ "$upstream_blob" != "$expected_blob" ]]; then
     die "Fetched $source is not the reviewed Command Center version."
@@ -566,7 +568,7 @@ declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
 )
 for source in "${CORE_OPS_SOURCES[@]}"; do
-  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
   expected_blob="${CORE_OPS_NEW_BLOBS[$source]}"
   if [[ "$upstream_blob" != "$expected_blob" ]]; then
     die "Fetched $source is not the reviewed Alpha operations version."
@@ -585,7 +587,7 @@ done
 # staging or changing the local Git index.
 for source in "${CORE_OPS_SOURCES[@]}"; do
   mkdir -p "$(dirname "$CORE_DIR/$source")"
-  git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
+  git -C "$CORE_DIR" show "$CORE_UPSTREAM_COMMIT:$source" > "$CORE_DIR/$source"
 done
 
 # Update only the reviewed Python files that implement the paper asset authority
@@ -615,7 +617,7 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
 for source in "${CORE_PYTHON_SOURCES[@]}"; do
-  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
   expected_blob="${CORE_PYTHON_NEW_BLOBS[$source]}"
   if [[ "$upstream_blob" != "$expected_blob" ]]; then
     die "Fetched Python source $source is not the reviewed Governor asset-authority version."
@@ -634,7 +636,7 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
 done
 for source in "${CORE_PYTHON_SOURCES[@]}"; do
   mkdir -p "$(dirname "$CORE_DIR/$source")"
-  git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
+  git -C "$CORE_DIR" show "$CORE_UPSTREAM_COMMIT:$source" > "$CORE_DIR/$source"
 done
 "$CORE_DIR/.venv/bin/python" -m py_compile \
   "$CORE_DIR/spectra_core/asset_authority.py" \
