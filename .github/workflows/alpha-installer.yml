@@ -7,6 +7,7 @@ on:
       - alpha/spectra-command-center-verified-20261109
     paths:
       - install-alpha.sh
+      - scripts/update-alpha-api.sh
       - ALPHA-TEST.md
       - README.md
       - pyproject.toml
@@ -78,7 +79,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check Bash syntax
-        run: bash -n install-alpha.sh
+        run: |
+          bash -n install-alpha.sh
+          bash -n scripts/update-alpha-api.sh
       - name: Enforce paper-only and no host socket mount
         run: |
           grep -q 'SPECTRA_PAPER_ONLY=true' install-alpha.sh
