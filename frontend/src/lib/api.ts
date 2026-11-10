@@ -224,6 +224,7 @@ export interface MarketDiscoveryListRow {
   selection_score?: number | null;
   median_daily_range_30d_pct?: number | null;
   discount_to_vwap_pct?: number | null;
+  return_7d_pct?: number | null;
   rsi_14d?: number | null;
   governor_approved: boolean;
   capital_authorized: false;
