@@ -111,6 +111,8 @@ async def reserve_kraken_capital(
     connector_name = (
         "kraken_paper_trade" if spectra_paper_only_enabled() else "kraken"
     )
+    if spectra_paper_only_enabled():
+        require_approved_kraken_pair(pair, connector_name=connector_name)
 
     snapshot = await build_kraken_capital_snapshot(
         client,
@@ -135,8 +137,6 @@ async def reserve_kraken_capital(
     # The portfolio fetch above is an await boundary. Recheck durable
     # accounting health and dust admission before the Governor reserves capital.
     authorization_now = time.time()
-    if spectra_paper_only_enabled():
-        require_approved_kraken_pair(pair, connector_name=connector_name)
     if intent_kind in {IntentKind.ENTRY, IntentKind.PRESS, IntentKind.RECOVERY, IntentKind.ROTATION}:
         _require_reconciled_existing_exposure(now=authorization_now)
 
