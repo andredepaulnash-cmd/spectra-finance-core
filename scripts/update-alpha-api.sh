@@ -173,14 +173,18 @@ git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "$CORE_FRONTEND_SOU
 
 # Apply the reviewed Command Center shell polish only when the local files are
 # either the exact previous Alpha versions or already match this release.
-CORE_SHELL_SOURCES=("frontend/src/components/layout/AppShell.tsx" "frontend/src/index.css")
+CORE_SHELL_SOURCES=("frontend/src/components/layout/AppShell.tsx" "frontend/src/index.css" "frontend/src/pages/SpectraOverview.tsx" "frontend/src/lib/api.ts")
 declare -A CORE_SHELL_OLD_BLOBS=(
   ["frontend/src/components/layout/AppShell.tsx"]="05426a040450d516f9080628ba56bad71168e03a"
   ["frontend/src/index.css"]="451463a274340865086b505f1d63acbd830e55a5"
+  ["frontend/src/pages/SpectraOverview.tsx"]="79f74823b59409293db89f2704f3678d2f1b5fb9"
+  ["frontend/src/lib/api.ts"]="dfdc7867012c37de2e0c1fc0ea1ee8cffbbccf10"
 )
 declare -A CORE_SHELL_NEW_BLOBS=(
   ["frontend/src/components/layout/AppShell.tsx"]="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
   ["frontend/src/index.css"]="6d79e7a5111d423be6bf260a65e238c0344a4f5e"
+  ["frontend/src/pages/SpectraOverview.tsx"]="dac12adcbe9337309b82e5f58cf551dc35c0c094"
+  ["frontend/src/lib/api.ts"]="16d5a5adbf3af1bd4d5d2244b5d3850bc3c92494"
 )
 for source in "${CORE_SHELL_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
@@ -195,7 +199,7 @@ for source in "${CORE_SHELL_SOURCES[@]}"; do
   fi
 done
 git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "${CORE_SHELL_SOURCES[@]}"
-say "Updated the reviewed Command Center shell polish without changing application behavior."
+say "Updated the reviewed Command Center shell and Kraken discovery UI."
 
 # Install the reviewed paper lifecycle operator, health monitor and user services.
 CORE_OPS_SOURCES=(
@@ -253,6 +257,7 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/market_discovery.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
   "routines/mean_reversion_scanner.py"
+  "condor/web/routes/market.py"
 )
 declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="7ab6435bac07dea5c260ce810b5daf6abbcfbfab"
@@ -260,6 +265,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/market_discovery.py"]="f272eee952700d294d7bc8cc56246b0a96fc64c2"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
+  ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"
 )
 declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/asset_authority.py"]=""
@@ -267,6 +273,7 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a"
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
+  ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
 for source in "${CORE_PYTHON_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
@@ -295,7 +302,8 @@ done
   "$CORE_DIR/spectra_core/kraken_authorization.py" \
   "$CORE_DIR/spectra_core/market_discovery.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
-  "$CORE_DIR/routines/mean_reversion_scanner.py"
+  "$CORE_DIR/routines/mean_reversion_scanner.py" \
+  "$CORE_DIR/condor/web/routes/market.py"
 say "Installed and syntax-checked the reviewed paper asset authority and strategy-discovery code."
 
 install -m 700 "$CORE_DIR/scripts/spectra" "$HOME/.local/bin/spectra"
