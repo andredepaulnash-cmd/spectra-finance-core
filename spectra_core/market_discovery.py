@@ -227,6 +227,18 @@ async def scan_kraken_universe(
     timestamp = time.time() if now is None else _number(now, "now")
     day_start = int(timestamp // 86_400) * 86_400
     quote_assets = tuple(str(q).strip().upper() for q in quote_assets if str(q).strip())
+    approved_asset_source = None
+    if approved_pairs is None:
+        # In paper mode, annotate discovery against the same explicit Governor
+        # allowlist that gates BUY authorization. Missing means research-only.
+        from .asset_authority import load_approved_kraken_assets
+        from .runtime import spectra_paper_only_enabled
+
+        if spectra_paper_only_enabled():
+            asset_policy = load_approved_kraken_assets()
+            if asset_policy.configured:
+                approved_pairs = asset_policy.pairs
+                approved_asset_source = asset_policy.source
     approved = (
         None
         if approved_pairs is None
@@ -346,6 +358,7 @@ async def scan_kraken_universe(
         "candidates": ranked,
         "rejected_data": rejected,
         "governor_approved_list_loaded": approved is not None,
+        "approved_asset_list_source": approved_asset_source,
         "paper_only": True,
         "orders_created": 0,
     }
