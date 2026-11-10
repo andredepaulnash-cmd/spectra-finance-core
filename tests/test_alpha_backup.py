@@ -105,3 +105,14 @@ def test_backup_refuses_when_live_execution_is_not_disabled(tmp_path):
     assert result.returncode != 0
     assert "Backup refused" in result.stdout + result.stderr
     assert not list((root / "backups").glob("spectra-paper-*.tar.gz"))
+
+
+def test_backup_refuses_paper_state_that_overlaps_backup_destination(tmp_path):
+    root = tmp_path / "recursive"
+    prepare_install(root, extra_env="SPECTRA_PAPER_STATE_DIR=../backups\\n")
+
+    result = run_backup(root)
+
+    assert result.returncode != 0
+    assert "paper state and backup destination overlap" in result.stdout + result.stderr
+    assert not list((root / "backups").glob("spectra-paper-*.tar.gz"))
