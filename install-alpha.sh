@@ -75,11 +75,13 @@ clone_or_reuse() {
     # Refuse only if an untracked, non-ignored user file would be displaced by
     # a path newly tracked in the incoming release. All other untracked files,
     # ignored config, credentials, and data remain in place.
-    python3 - "$dest" <<'PYSAFE'
-import subprocess, sys
-root = sys.argv[1]
+    python3 - "$dest" "$backup_dir" <<'PYSAFE'
+import shutil, subprocess, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+backup = Path(sys.argv[2]) / "untracked-collisions"
 def git(*args):
-    return subprocess.check_output(["git", "-C", root, *args], text=True).splitlines()
+    return subprocess.check_output(["git", "-C", str(root), *args], text=True).splitlines()
 untracked = git("ls-files", "--others", "--exclude-standard")
 incoming = git("ls-tree", "-r", "--name-only", "FETCH_HEAD")
 conflicts = []
@@ -88,10 +90,15 @@ for local in untracked:
         if remote == local or remote.startswith(local.rstrip("/") + "/") or local.startswith(remote.rstrip("/") + "/"):
             conflicts.append(local)
             break
-if conflicts:
-    print("Untracked local paths would be displaced by the incoming release:", file=sys.stderr)
-    print("\n".join(conflicts), file=sys.stderr)
-    raise SystemExit(2)
+for relative in conflicts:
+    source = root / relative
+    target = backup / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        raise SystemExit(f"Backup collision already exists; refusing to replace {target}")
+    if source.exists() or source.is_symlink():
+        shutil.move(str(source), str(target))
+        print(f"Preserved colliding untracked path: {relative} -> {target}")
 PYSAFE
     git -C "$dest" reset --hard FETCH_HEAD
     if [[ -n "$account_cfg_backup" ]]; then
