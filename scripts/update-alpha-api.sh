@@ -26,14 +26,31 @@ fi
 exec 9>"$LOCK_FILE"
 flock -n 9 || die "Another Spectra API update is already running. Check $LOG_FILE."
 
-command -v podman >/dev/null 2>&1 || die "Podman is not installed."
-if command -v podman-compose >/dev/null 2>&1; then
-  compose() { podman-compose "$@"; }
-elif podman compose version >/dev/null 2>&1; then
-  compose() { podman compose "$@"; }
-else
-  die "Neither podman-compose nor the Podman Compose plugin is available."
-fi
+COMPOSE_KIND_FILE="$INSTALL_ROOT/.compose-kind"
+[[ -f "$COMPOSE_KIND_FILE" ]] || die "The recorded Compose provider is missing; refusing to switch container runtimes."
+COMPOSE_KIND="$(tr -d '[:space:]' < "$COMPOSE_KIND_FILE")"
+case "$COMPOSE_KIND" in
+  docker)
+    command -v docker >/dev/null 2>&1 || die "This installation uses Docker Compose, but Docker is unavailable."
+    docker compose version >/dev/null 2>&1 || die "The recorded Docker Compose provider is unavailable."
+    compose() { docker compose "$@"; }
+    CONTAINER_CLI="docker"
+    ;;
+  podman)
+    command -v podman >/dev/null 2>&1 || die "This installation uses Podman, but Podman is unavailable."
+    if command -v podman-compose >/dev/null 2>&1; then
+      compose() { podman-compose "$@"; }
+    elif podman compose version >/dev/null 2>&1; then
+      compose() { podman compose "$@"; }
+    else
+      die "Neither podman-compose nor the Podman Compose plugin is available."
+    fi
+    CONTAINER_CLI="podman"
+    ;;
+  *)
+    die "Unknown recorded Compose provider '$COMPOSE_KIND'; refusing to switch container runtimes."
+    ;;
+esac
 command -v git >/dev/null 2>&1 || die "Git is not installed."
 command -v curl >/dev/null 2>&1 || die "curl is not installed."
 [[ -d "$API_DIR/.git" ]] || die "API Git checkout not found at $API_DIR."
@@ -128,15 +145,15 @@ say "Checking the existing Postgres and EMQX containers (named volumes are prese
 # broker/database containers. Recreate attempts can collide with their own
 # already-published loopback ports under some Podman Compose providers.
 for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-broker; do
-  container_inventory="$(podman ps --all --format '{{.Names}}' 2>/dev/null || true)"
+  container_inventory="$("$CONTAINER_CLI" ps --all --format '{{.Names}}' 2>/dev/null || true)"
   if ! grep -Fq -- "$container" <<<"$container_inventory"; then
     say "Podman container inventory: $container_inventory"
     die "$container is missing from Podman inventory; refusing to recreate stateful services."
   fi
-  status="$(podman inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
+  status="$("$CONTAINER_CLI" inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
   if [[ "$status" != "running" ]]; then
     say "Starting existing $container without recreating it."
-    podman start "$container" >/dev/null || die "Could not start existing $container."
+    "$CONTAINER_CLI" start "$container" >/dev/null || die "Could not start existing $container."
   else
     say "$container is already running; leaving it in place."
   fi
