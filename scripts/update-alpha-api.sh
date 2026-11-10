@@ -10,7 +10,7 @@ LOG_DIR="$INSTALL_ROOT/logs"
 LOG_FILE="$LOG_DIR/api-update.log"
 LOCK_FILE="$LOG_DIR/api-update.lock"
 COMPOSE_FILE="$API_DIR/docker-compose.alpha.yml"
-API_SOURCES=("services/unified_connector_service.py" "deps.py")
+API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py")
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
@@ -71,14 +71,18 @@ fi
 # Confirm both reviewed fixes exist upstream before changing either local file.
 git show "FETCH_HEAD:${API_SOURCES[0]}" | grep -q "refusing registration" \
   || die "Fetched API source does not contain the expected fail-closed Kraken fix."
-git show "FETCH_HEAD:${API_SOURCES[1]}" | grep -q "Bot orchestration is disabled in Spectra paper-only mode" \
+git show "FETCH_HEAD:${API_SOURCES[1]}" | grep -q "A read request must be able to initialize its own feed" \
+  || die "Fetched market-data service does not contain the lazy order-book initialization fix."
+git show "FETCH_HEAD:${API_SOURCES[2]}" | grep -q "Bot orchestration is disabled in Spectra paper-only mode" \
   || die "Fetched API dependency does not contain the paper-only bot-status guard."
 
 git restore --source=FETCH_HEAD --worktree -- "${API_SOURCES[@]}"
 
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
-grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[1]}" \
+grep -q "A read request must be able to initialize its own feed" "${API_SOURCES[1]}" \
+  || die "The lazy order-book initialization fix was not applied locally."
+grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[2]}" \
   || die "The paper-only bot-status guard was not applied locally."
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
