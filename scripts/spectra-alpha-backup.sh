@@ -106,9 +106,9 @@ if asset_override:
     asset_path = Path(asset_override).expanduser()
     if not asset_path.is_absolute():
         asset_path = paper / asset_path
-    asset_path = asset_path.resolve()
     if asset_path.is_symlink():
         raise SystemExit("Backup refused: approved asset list is a symlink.")
+    asset_path = asset_path.resolve()
     if asset_path.is_file() and not asset_path.is_relative_to(paper):
         if asset_path == backup_root or backup_root in asset_path.parents:
             raise SystemExit("Backup refused: approved asset list is inside backup destination.")
