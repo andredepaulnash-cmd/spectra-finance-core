@@ -578,3 +578,82 @@ body {
   .spectra-hero { min-height: 0; padding: 1.4rem; }
   .spectra-hero h2 { font-size: 2rem; }
 }
+
+
+/* ── Spectra full-interface design system / visual foundation ──────────────
+   Shared depth, lighting, focus and navigation language for every workspace.
+   Data and actions remain owned by the existing React components. */
+:root,
+[data-theme="dark"] {
+  --spectra-obsidian: #050814;
+  --spectra-midnight: #091326;
+  --spectra-cyan: #35dcff;
+  --spectra-blue: #287bff;
+  --spectra-violet: #9865ff;
+  --spectra-glass: rgba(10, 21, 42, 0.78);
+  --spectra-hairline: rgba(95, 167, 220, 0.22);
+  --spectra-glow-cyan: 0 0 28px rgba(39, 217, 242, 0.13);
+  --spectra-glow-violet: 0 0 30px rgba(139, 92, 246, 0.13);
+}
+html { background: var(--spectra-obsidian, #050814); }
+body {
+  background-color: var(--spectra-obsidian, #050814);
+  background-image:
+    radial-gradient(ellipse at 7% 2%, rgba(39, 217, 242, 0.10), transparent 29%),
+    radial-gradient(ellipse at 94% 7%, rgba(139, 92, 246, 0.12), transparent 31%),
+    linear-gradient(180deg, #050814 0%, #080e1c 52%, #050814 100%);
+}
+.spectra-main::before {
+  background:
+    radial-gradient(ellipse at 10% 4%, rgba(39, 217, 242, 0.075), transparent 32%),
+    radial-gradient(ellipse at 92% 16%, rgba(139, 92, 246, 0.085), transparent 34%),
+    linear-gradient(135deg, rgba(6, 13, 28, 0.15), transparent 52%);
+}
+.spectra-nav {
+  background: linear-gradient(180deg, rgba(8, 17, 34, 0.96), rgba(5, 10, 23, 0.94));
+  border-right: 1px solid rgba(67, 146, 203, 0.18);
+  box-shadow: 12px 0 42px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(22px);
+}
+.spectra-nav-link {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: 0.8rem;
+  margin: 0.18rem 0.55rem;
+}
+.spectra-nav-link:hover {
+  background: linear-gradient(100deg, rgba(39, 217, 242, 0.10), rgba(139, 92, 246, 0.07));
+  border-color: rgba(39, 217, 242, 0.18);
+  box-shadow: inset 0 0 22px rgba(39, 217, 242, 0.035);
+}
+.spectra-nav-link.is-active {
+  background: linear-gradient(100deg, rgba(39, 217, 242, 0.16), rgba(139, 92, 246, 0.10));
+  border-color: rgba(39, 217, 242, 0.30);
+  box-shadow: inset 2px 0 0 #35dcff, 0 0 24px rgba(39, 217, 242, 0.075);
+}
+.spectra-brand img {
+  filter: drop-shadow(0 0 15px rgba(39, 217, 242, 0.26));
+}
+.spectra-runtime-pill {
+  border-color: rgba(73, 161, 213, 0.24);
+  background: linear-gradient(120deg, rgba(10, 25, 47, 0.88), rgba(24, 20, 49, 0.78));
+  box-shadow: inset 0 1px rgba(255,255,255,0.055), var(--spectra-glow-cyan);
+}
+:where(button, [role="button"], a, input, select, textarea):focus-visible {
+  outline: 2px solid rgba(53, 220, 255, 0.88);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(53, 220, 255, 0.12);
+}
+:where(button, [role="button"]) {
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+:where(button, [role="button"]):not(:disabled):hover {
+  border-color: rgba(53, 220, 255, 0.34);
+}
+::selection { color: #f5fbff; background: rgba(39, 130, 255, 0.48); }
+@media (prefers-reduced-motion: reduce) {
+  :where(button, [role="button"], a) { transition: none !important; }
+}
+@media (max-width: 768px) {
+  .spectra-nav { box-shadow: none; }
+}
