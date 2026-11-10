@@ -47,7 +47,7 @@ def read_env(path):
         if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
             value = value[1:-1]
         else:
-            value = re.split(r"\s+#", value, maxsplit=1)[0].strip()
+            value = re.split(r"\\s+#", value, maxsplit=1)[0].strip()
         values[key] = value
     return values
 
@@ -70,6 +70,12 @@ if not 1 <= depth <= 1000:
 token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
 auth = "Basic " + token
 
+class ApiFailure(Exception):
+    def __init__(self, status, detail):
+        self.status = status
+        self.detail = detail
+        super().__init__(f"HTTP {status}: {detail}")
+
 def call(label, path, payload=None):
     headers = {"Accept": "application/json", "Authorization": auth}
     data = None
@@ -80,33 +86,57 @@ def call(label, path, payload=None):
         data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=35) as response:
+        with urllib.request.urlopen(req, timeout=40) as response:
             body = response.read().decode("utf-8")
             try:
                 result = json.loads(body)
             except json.JSONDecodeError:
-                sys.exit(f"[SPECTRA VERIFY] FAIL: {label} returned non-JSON HTTP {response.status}.")
+                raise ApiFailure(response.status, "non-JSON response")
             print(f"[SPECTRA VERIFY] {label}: HTTP {response.status}")
             return result
     except urllib.error.HTTPError as exc:
         # Never print request headers or credential material.
         detail = exc.read().decode("utf-8", errors="replace")[:1200]
-        sys.exit(f"[SPECTRA VERIFY] FAIL: {label}: HTTP {exc.code}: {detail}")
+        raise ApiFailure(exc.code, detail) from None
+    except ApiFailure:
+        raise
     except Exception as exc:
-        sys.exit(f"[SPECTRA VERIFY] FAIL: {label}: {type(exc).__name__}: {exc}")
+        raise RuntimeError(f"{label}: {type(exc).__name__}: {exc}") from None
+
+def show_diagnostics(label):
+    print(f"[SPECTRA VERIFY] {label}")
+    data = call("Order-book tracker diagnostics", f"/market-data/order-book/diagnostics/{connector}")
+    if not isinstance(data, dict):
+        print("  diagnostics response was not an object")
+        return
+    # This endpoint contains runtime state only; do not dump environment/configuration.
+    for key in (
+        "connector_type", "connector_name", "has_order_book_tracker",
+        "tracker_ready", "trading_pairs", "order_books", "tasks",
+        "websocket_status", "metrics",
+    ):
+        if key in data:
+            rendered = json.dumps(data[key], sort_keys=True, default=str)
+            print(f"  {key}: {rendered[:6000]}")
 
 print("[SPECTRA VERIFY] Running authenticated, read-only paper market-data checks.")
-diagnostics = call("Kraken Paper diagnostics", f"/market-data/order-book/diagnostics/{connector}")
-if isinstance(diagnostics, dict):
-    for key in ("connector_name", "status", "is_running", "task_status", "websocket_connected"):
-        if key in diagnostics:
-            print(f"  {key}: {diagnostics[key]}")
+try:
+    show_diagnostics("Before order-book request")
+    book = call(
+        f"{connector} {pair} order book",
+        "/market-data/order-book",
+        {"connector_name": connector, "trading_pair": pair, "depth": depth},
+    )
+except ApiFailure as exc:
+    print(f"[SPECTRA VERIFY] FAIL: order-book request: HTTP {exc.status}: {exc.detail}")
+    try:
+        show_diagnostics("After failed order-book request (failure evidence)")
+    except Exception as diag_exc:
+        print(f"[SPECTRA VERIFY] Could not collect follow-up diagnostics: {diag_exc}")
+    sys.exit(1)
+except Exception as exc:
+    sys.exit(f"[SPECTRA VERIFY] FAIL: {exc}")
 
-book = call(
-    f"{connector} {pair} order book",
-    "/market-data/order-book",
-    {"connector_name": connector, "trading_pair": pair, "depth": depth},
-)
 bids = book.get("bids") if isinstance(book, dict) else None
 asks = book.get("asks") if isinstance(book, dict) else None
 if not isinstance(bids, list) or not isinstance(asks, list):
