@@ -131,7 +131,7 @@ def test_backup_includes_only_valid_external_governor_allowlist(tmp_path):
     env_file = core / ".env"
     env_file.write_text(
         env_file.read_text(encoding="utf-8")
-        + f"SPECTRA_APPROVED_ASSETS_FILE={approved}\\n",
+        + f"SPECTRA_APPROVED_ASSETS_FILE={approved}\n",
         encoding="utf-8",
     )
 
@@ -157,7 +157,7 @@ def test_backup_refuses_invalid_external_governor_allowlist(tmp_path):
     env_file = core / ".env"
     env_file.write_text(
         env_file.read_text(encoding="utf-8")
-        + f"SPECTRA_APPROVED_ASSETS_FILE={approved}\\n",
+        + f"SPECTRA_APPROVED_ASSETS_FILE={approved}\n",
         encoding="utf-8",
     )
 
