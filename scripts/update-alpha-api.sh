@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Foreground updater for the Spectra Alpha paper API on Bazzite.
-# It updates only the reviewed API source files, starts existing dependencies, rebuilds only the API,
-# and never removes containers, networks, or named volumes.
+# Foreground one-command updater for Spectra Finance Alpha on Bazzite.
+# It updates exact reviewed API, Core Python, dashboard, and operator files,
+# preserves all state, and never removes containers, networks, or named volumes.
 set -Eeuo pipefail
 
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -366,7 +366,7 @@ say "Restarting Spectra Core only so reviewed Python changes are loaded; Humming
 # Install and run the authenticated read-only verifier as the final deployment
 # step. It reports tracker and underlying public-connector symbol-map state.
 VERIFY_BIN="$HOME/.local/bin/spectra-verify-alpha-paper-market-data"
-VERIFY_URL="https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/one-command-paper-demo-20261108/scripts/verify-alpha-paper-market-data.sh"
+VERIFY_URL="https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/$CORE_REF/scripts/verify-alpha-paper-market-data.sh"
 mkdir -p "$(dirname "$VERIFY_BIN")"
 say "Installing the read-only Kraken paper market-data verifier."
 curl -fsSL "$VERIFY_URL" -o "$VERIFY_BIN"
