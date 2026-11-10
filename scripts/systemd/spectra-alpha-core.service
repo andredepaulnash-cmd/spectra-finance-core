@@ -7,6 +7,7 @@ After=network-online.target
 [Service]
 Type=simple
 Environment=SPECTRA_ALPHA_HOME=@INSTALL_ROOT@
+Environment=PATH=@LOCAL_BIN@:/usr/bin:/bin
 WorkingDirectory=@INSTALL_ROOT@/spectra-core
 EnvironmentFile=@INSTALL_ROOT@/spectra-core/.env
 UMask=0077
