@@ -389,6 +389,7 @@ async def get_market_discovery(
     top_n: int = Query(default=100, ge=1, le=150),
     show_n: int = Query(default=25, ge=1, le=100),
     min_volume_usd: float = Query(default=10_000_000, ge=0),
+    min_history_days: int = Query(default=90, ge=90, le=365),
     user: WebUser = Depends(require_server_access),
 ):
     """Refresh Kraken spot market lists for volume, 24h movers and VCAP research.
@@ -406,6 +407,7 @@ async def get_market_discovery(
             top_n=top_n,
             show_n=show_n,
             min_volume_usd=min_volume_usd,
+            min_history_days=min_history_days,
             quote_assets=("USD",),
         )
     except Exception as e:
