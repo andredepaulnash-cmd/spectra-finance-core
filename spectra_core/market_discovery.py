@@ -452,7 +452,7 @@ async def scan_kraken_universe(
     ranked = ranked_all[:show_n]
     market_rows = []
     analysis_by_pair = {row["trading_pair"]: row for row in analyzed}
-    for item in candidates:
+    for item in selected:
         analysis = analysis_by_pair.get(item["trading_pair"], {})
         market_rows.append({
             "trading_pair": item["trading_pair"],
