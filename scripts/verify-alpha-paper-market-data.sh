@@ -47,7 +47,7 @@ def read_env(path):
         if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
             value = value[1:-1]
         else:
-            value = re.split(r"\\s+#", value, maxsplit=1)[0].strip()
+            value = re.split(r"\s+#", value, maxsplit=1)[0].strip()
         values[key] = value
     return values
 
