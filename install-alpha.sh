@@ -542,6 +542,7 @@ install -m 700 "$CORE_DIR/scripts/spectra" "$LOCAL_BIN/spectra"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$LOCAL_BIN/spectra-alpha-doctor"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-start-api.sh" "$LOCAL_BIN/spectra-alpha-start-api"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-core-supervisor.sh" "$LOCAL_BIN/spectra-alpha-core-supervisor"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-backup.sh" "$LOCAL_BIN/spectra-alpha-backup"
 install -m 700 "$CORE_DIR/scripts/verify-alpha-paper-market-data.sh" "$LOCAL_BIN/spectra-verify-alpha-paper-market-data"
 
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
@@ -554,6 +555,8 @@ for name in (
     "spectra-alpha-core.service",
     "spectra-alpha-doctor.service",
     "spectra-alpha-doctor.timer",
+    "spectra-alpha-backup.service",
+    "spectra-alpha-backup.timer",
 ):
     text = (source / name).read_text(encoding="utf-8")
     text = text.replace("@INSTALL_ROOT@", install_root).replace("@LOCAL_BIN@", local_bin)
@@ -564,10 +567,12 @@ if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/d
   systemctl --user daemon-reload
   systemctl --user enable spectra-alpha-core.service >/dev/null
   systemctl --user enable --now spectra-alpha-doctor.timer >/dev/null
+  systemctl --user enable --now spectra-alpha-backup.timer >/dev/null
   say "Enabled safe Core restart-on-failure at user login and periodic read-only health checks."
 else
   say "No active user systemd manager; CLI startup remains available and user services were not enabled."
 fi
+"$LOCAL_BIN/spectra-alpha-backup"
 chmod 700 "$LOCAL_BIN/spectra"
 for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
   if [[ -f "$shell_rc" ]] && ! grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "$shell_rc"; then
