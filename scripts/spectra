@@ -3,6 +3,7 @@
 set -Eeuo pipefail
 
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
 API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
 LOCAL_BIN="$HOME/.local/bin"
@@ -129,7 +130,11 @@ case "${1:-status}" in
     "$LOCAL_BIN/spectra-alpha-backup"
     ;;
   update)
-    "$LOCAL_BIN/spectra-update-alpha-api"
+    updater="$LOCAL_BIN/spectra-update-alpha-api"
+    curl -fsSL "https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/$CORE_REF/scripts/update-alpha-api.sh" -o "$updater"
+    chmod 700 "$updater"
+    bash -n "$updater"
+    "$updater"
     ;;
   *)
     echo "Usage: spectra {start|stop|restart|core-restart|status|logs|doctor|backup|update}"
