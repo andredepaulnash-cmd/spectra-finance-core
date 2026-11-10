@@ -55,6 +55,8 @@ def approved_assets_path() -> Path:
 def load_approved_kraken_assets() -> ApprovedKrakenAssets:
     """Load the exact source-attributed allowlist; absence never means allow-all."""
     path = approved_assets_path()
+    if path.is_symlink():
+        raise AssetAuthorityError("Governor-approved asset list must not be a symlink")
     if not path.is_file():
         return ApprovedKrakenAssets(
             configured=False,
@@ -79,13 +81,13 @@ def load_approved_kraken_assets() -> ApprovedKrakenAssets:
             "approved_assets.json connector must be kraken_paper_trade"
         )
     source = raw.get("source")
-    if not isinstance(source, str) or not source.strip():
+    if not isinstance(source, str) or not source.strip() or len(source.strip()) > 256:
         raise AssetAuthorityError(
             "approved_assets.json must identify the Governor asset-list source"
         )
     values = raw.get("approved_pairs")
-    if not isinstance(values, list):
-        raise AssetAuthorityError("approved_assets.json approved_pairs must be a list")
+    if not isinstance(values, list) or len(values) > 150:
+        raise AssetAuthorityError("approved_assets.json approved_pairs must be a list of at most 150 pairs")
 
     pairs: set[str] = set()
     for value in values:
