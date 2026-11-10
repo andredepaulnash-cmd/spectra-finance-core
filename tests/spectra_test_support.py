@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -26,6 +27,10 @@ def configure_spectra_paper_dispatch(monkeypatch, settings, *, agent_slug=True):
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
     monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv(
+        "SPECTRA_APPROVED_ASSETS_FILE",
+        str(Path(__file__).parent / "fixtures" / "approved_assets.json"),
+    )
     monkeypatch.setattr(settings, "paper_only", True)
     if agent_slug:
         monkeypatch.setattr(settings, "agent_slug", "spectra")
