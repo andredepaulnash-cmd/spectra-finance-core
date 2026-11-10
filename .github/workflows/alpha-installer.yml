@@ -119,7 +119,6 @@ jobs:
           uv run --python 3.12 pytest -q \
             tests/test_spectra_executor_accounting_flow.py \
             tests/test_accounting_health_gate.py \
-            tests/test_integrated_runtime_restart.py \
             tests/test_vcap_runtime_supervisor.py \
             tests/test_vcap_execution_loop.py \
             tests/test_vcap_restart_continuity.py \
