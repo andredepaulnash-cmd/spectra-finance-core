@@ -70,6 +70,7 @@ describe("OrderBook market-feed status", () => {
   it("shows the API failure and retries into a visible live order book", async () => {
     mocks.getOrderBook
       .mockRejectedValueOnce(new Error("HTTP 500: Order book not available"))
+      .mockRejectedValueOnce(new Error("HTTP 500: Order book not available"))
       .mockResolvedValueOnce({
         connector: "kraken_paper_trade",
         trading_pair: "BTC-USD",
@@ -81,6 +82,7 @@ describe("OrderBook market-feed status", () => {
 
     expect(container.textContent).toContain("Market feed unavailable");
     expect(container.textContent).toContain("HTTP 500: Order book not available");
+    expect(mocks.getOrderBook).toHaveBeenCalledTimes(2);
 
     const retry = [...container.querySelectorAll("button")].find(
       (button) => button.textContent?.trim() === "Retry market feed",
@@ -94,6 +96,6 @@ describe("OrderBook market-feed status", () => {
 
     expect(container.textContent).toContain("65000.00");
     expect(container.textContent).toContain("65010.00");
-    expect(mocks.getOrderBook).toHaveBeenCalledTimes(2);
+    expect(mocks.getOrderBook).toHaveBeenCalledTimes(3);
   });
 });
