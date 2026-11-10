@@ -68,7 +68,7 @@ git fetch --depth 1 origin main
 #   deps.py: missing paper-only 503 guard for disabled bot orchestration
 # Any other local source version is preserved and causes a safe stop.
 declare -A APPROVED_LEGACY_BLOBS=(
-  ["services/unified_connector_service.py"]="cc16b8fb335296f94ad50f061e7476ed1d938326"
+  ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
   ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
   ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
 )
@@ -93,7 +93,7 @@ done
 # Verify the exact reviewed API source blobs. This is deterministic and avoids
 # shell text-search, pager, locale, and pipefail behavior entirely.
 declare -A EXPECTED_UPSTREAM_BLOBS=(
-  ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
+  ["services/unified_connector_service.py"]="cc16b8fb335296f94ad50f061e7476ed1d938326"
   ["services/market_data_service.py"]="9236689f87dc32aae2478100419b9a2e6e645f73"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
 )
