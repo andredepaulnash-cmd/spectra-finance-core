@@ -812,15 +812,15 @@ function Hero({
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-3 py-6">
-      <div className="w-full max-w-3xl">
-        <section className="spectra-hero mb-5 text-center">
+      <div className="w-full max-w-4xl">
+        <section className="spectra-hero spectra-command-hero mb-6 text-center">
           <div className="mb-3 flex justify-center">
             <span className="spectra-mark"><Sparkles className="h-5 w-5" /></span>
           </div>
           <div className="spectra-eyebrow text-[10px] font-bold uppercase tracking-[0.24em]">
             Spectra Finance / Intelligence Network
           </div>
-          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-text)] md:text-3xl">
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[var(--color-text)] md:text-5xl">
             Ask {brandedAgentName(agent)}
           </h2>
           <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-[var(--color-text-muted)]">
