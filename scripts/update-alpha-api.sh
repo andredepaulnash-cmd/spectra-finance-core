@@ -171,6 +171,32 @@ if [[ "$CORE_WORKTREE_BLOB" != "$CORE_NEW_BLOB" && "$CORE_WORKTREE_BLOB" != "$CO
 fi
 git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "$CORE_FRONTEND_SOURCE"
 
+# Apply the reviewed Command Center shell polish only when the local files are
+# either the exact previous Alpha versions or already match this release.
+CORE_SHELL_SOURCES=("frontend/src/components/layout/AppShell.tsx" "frontend/src/index.css")
+declare -A CORE_SHELL_OLD_BLOBS=(
+  ["frontend/src/components/layout/AppShell.tsx"]="05426a040450d516f9080628ba56bad71168e03a"
+  ["frontend/src/index.css"]="451463a274340865086b505f1d63acbd830e55a5"
+)
+declare -A CORE_SHELL_NEW_BLOBS=(
+  ["frontend/src/components/layout/AppShell.tsx"]="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
+  ["frontend/src/index.css"]="6d79e7a5111d423be6bf260a65e238c0344a4f5e"
+)
+for source in "${CORE_SHELL_SOURCES[@]}"; do
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  expected_blob="${CORE_SHELL_NEW_BLOBS[$source]}"
+  [[ "$upstream_blob" == "$expected_blob" ]] \\
+    || die "Fetched $source is not the reviewed Command Center version."
+  worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
+  old_blob="${CORE_SHELL_OLD_BLOBS[$source]}"
+  if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
+    die "Unrecognized local changes in $source. They were preserved; review them before updating."
+  fi
+done
+git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "${CORE_SHELL_SOURCES[@]}"
+say "Updated the reviewed Command Center shell polish without changing application behavior."
+
+
 if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   # shellcheck disable=SC1091
   . "$HOME/.nvm/nvm.sh"
