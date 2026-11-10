@@ -311,9 +311,9 @@ async def test_paper_scan_loads_the_same_explicit_governor_allowlist_as_executio
 def test_calculate_24h_change_uses_nearest_valid_hourly_reference():
     now = 1_800_000_000.0
     candles = [
-        {"timestamp": now - 90_000, "close": 95},
-        {"timestamp": now - 86_400, "close": 100},
-        {"timestamp": now - 82_800, "close": 105},
+        {"timestamp": now - 90_000, "close": 100},
+        {"timestamp": now - 86_400, "close": 105},
+        {"timestamp": now - 82_800, "close": 108},
     ]
     change, window = calculate_24h_change(
         candles, current_price=110, now=now
@@ -380,9 +380,9 @@ async def test_scan_populates_dynamic_24h_gainer_list_from_hourly_candles():
             self.calls.append((connector, pair, interval, max_records))
             if interval == "1h":
                 return [
-                    {"timestamp": now - 90_000, "close": 95},
-                    {"timestamp": now - 86_400, "close": 100},
-                    {"timestamp": now - 82_800, "close": 105},
+                    {"timestamp": now - 90_000, "close": 100},
+                    {"timestamp": now - 86_400, "close": 105},
+                    {"timestamp": now - 82_800, "close": 108},
                 ]
             return self.candles
 
