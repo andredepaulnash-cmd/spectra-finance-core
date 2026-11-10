@@ -240,7 +240,7 @@ export function SpectraOverview() {
     runtime.data.live_dispatch_available === false;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-5 md:p-8">
+    <div className="spectra-overview mx-auto w-full max-w-7xl space-y-6 p-5 md:p-8">
       <header className="spectra-hero flex flex-wrap items-center justify-between gap-5">
         <div className="relative z-10">
           <div className="mb-3 flex items-center gap-3">
