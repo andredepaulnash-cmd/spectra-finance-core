@@ -208,7 +208,7 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-doctor.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="594d26cc87716409053303e6d441b7e1ad1c2ed2"
+  ["scripts/spectra"]="ef2eb1d147174b26ef5ed328fdb02c0bd0a09753"
   ["scripts/spectra-alpha-doctor.sh"]="a18f147802a72ee14c0fd298877fbfbdf5f2079c"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e063affc6b22527f5a727bbc47f5afba4c361dff"
