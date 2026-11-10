@@ -185,8 +185,9 @@ declare -A CORE_SHELL_NEW_BLOBS=(
 for source in "${CORE_SHELL_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
   expected_blob="${CORE_SHELL_NEW_BLOBS[$source]}"
-  [[ "$upstream_blob" == "$expected_blob" ]] \\
-    || die "Fetched $source is not the reviewed Command Center version."
+  if [[ "$upstream_blob" != "$expected_blob" ]]; then
+    die "Fetched $source is not the reviewed Command Center version."
+  fi
   worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
   old_blob="${CORE_SHELL_OLD_BLOBS[$source]}"
   if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
