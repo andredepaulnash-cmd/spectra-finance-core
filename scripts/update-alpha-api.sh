@@ -153,15 +153,13 @@ status="$(podman inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-a
 say "SUCCESS: API image rebuilt and container is running."
 say "Postgres and EMQX were started in place; no volumes or local credentials were deleted."
 
-# Update only the reviewed OrderBook component in the existing Core checkout,
-# then rebuild the static frontend. The running web process serves dist files
-# from disk, so no Core restart or user-data migration is required.
+# Update exact reviewed Core UI, Python authority, route, and operator files.
+# Rebuild the dashboard and restart Core only; paper execution containers stay up.
 CORE_FRONTEND_SOURCE="frontend/src/components/market/OrderBook.tsx"
 [[ -d "$CORE_DIR/.git" ]] || die "Core Git checkout not found at $CORE_DIR."
 git -C "$CORE_DIR" fetch --depth 1 origin "$CORE_REF"
 [[ -f "$CORE_DIR/frontend/package.json" ]] || die "Core frontend package.json is missing."
 say "Fetching the reviewed Spectra trade-screen market-feed status component."
-git -C "$CORE_DIR" fetch --depth 1 origin alpha/one-command-paper-demo-20261108
 CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$CORE_FRONTEND_SOURCE")"
 CORE_WORKTREE_BLOB="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$CORE_FRONTEND_SOURCE")"
 CORE_OLD_BLOB="47e36a785b4e02a50ca8f34093727403cb692750"
