@@ -384,11 +384,16 @@ fi
 say "Creating the initial consistent paper-state backup."
 "$HOME/.local/bin/spectra-alpha-backup"
 
+# Prefer installer-provisioned Node 22 on Bazzite. CI and hosts with
+# an existing Node runtime should not be forced through an absent NVM install.
 if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   # shellcheck disable=SC1091
   . "$HOME/.nvm/nvm.sh"
-  nvm use 22 >/dev/null
+  if nvm ls 22 2>/dev/null | grep -q 'v22\.'; then
+    nvm use 22 >/dev/null
+  fi
 fi
+command -v node >/dev/null 2>&1 || die "Node.js is required to rebuild the Spectra dashboard."
 command -v npm >/dev/null 2>&1 || die "npm is required to rebuild the Spectra dashboard."
 cd "$CORE_DIR/frontend"
 if [[ ! -f node_modules/.package-lock.json || package-lock.json -nt node_modules/.package-lock.json ]]; then
@@ -657,11 +662,16 @@ fi
 say "Creating the initial consistent paper-state backup."
 "$HOME/.local/bin/spectra-alpha-backup"
 
+# Prefer installer-provisioned Node 22 on Bazzite. CI and hosts with
+# an existing Node runtime should not be forced through an absent NVM install.
 if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   # shellcheck disable=SC1091
   . "$HOME/.nvm/nvm.sh"
-  nvm use 22 >/dev/null
+  if nvm ls 22 2>/dev/null | grep -q 'v22\.'; then
+    nvm use 22 >/dev/null
+  fi
 fi
+command -v node >/dev/null 2>&1 || die "Node.js is required to rebuild the Spectra dashboard."
 command -v npm >/dev/null 2>&1 || die "npm is required to rebuild the Spectra dashboard."
 cd "$CORE_DIR/frontend"
 if [[ ! -f node_modules/.package-lock.json || package-lock.json -nt node_modules/.package-lock.json ]]; then
