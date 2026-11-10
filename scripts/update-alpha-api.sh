@@ -244,6 +244,60 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
   mkdir -p "$(dirname "$CORE_DIR/$source")"
   git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
 done
+
+# Update only the reviewed Python files that implement the paper asset authority
+# and strategy-discovery path. Exact old/new blob checks preserve local edits.
+CORE_PYTHON_SOURCES=(
+  "spectra_core/asset_authority.py"
+  "spectra_core/kraken_authorization.py"
+  "spectra_core/market_discovery.py"
+  "mcp_servers/hummingbot_api/tools/executor_create.py"
+  "routines/mean_reversion_scanner.py"
+)
+declare -A CORE_PYTHON_NEW_BLOBS=(
+  ["spectra_core/asset_authority.py"]="7ab6435bac07dea5c260ce810b5daf6abbcfbfab"
+  ["spectra_core/kraken_authorization.py"]="ed23264f3f57e20bcf16b633c86d303ea08e388d"
+  ["spectra_core/market_discovery.py"]="f272eee952700d294d7bc8cc56246b0a96fc64c2"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
+)
+declare -A CORE_PYTHON_OLD_BLOBS=(
+  ["spectra_core/asset_authority.py"]=""
+  ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050"
+  ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a"
+  ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
+)
+for source in "${CORE_PYTHON_SOURCES[@]}"; do
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  expected_blob="${CORE_PYTHON_NEW_BLOBS[$source]}"
+  if [[ "$upstream_blob" != "$expected_blob" ]]; then
+    die "Fetched Python source $source is not the reviewed Governor asset-authority version."
+  fi
+  if [[ -L "$CORE_DIR/$source" ]]; then
+    die "Refusing to replace symlinked local Python source $source."
+  elif [[ -f "$CORE_DIR/$source" ]]; then
+    worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
+    old_blob="${CORE_PYTHON_OLD_BLOBS[$source]}"
+    if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
+      die "Unrecognized local changes in $source. They were preserved; review them before updating."
+    fi
+  elif [[ -n "${CORE_PYTHON_OLD_BLOBS[$source]}" ]]; then
+    die "Expected existing Core source $source is missing; refusing an incomplete update."
+  fi
+done
+for source in "${CORE_PYTHON_SOURCES[@]}"; do
+  mkdir -p "$(dirname "$CORE_DIR/$source")"
+  git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
+done
+"$CORE_DIR/.venv/bin/python" -m py_compile \
+  "$CORE_DIR/spectra_core/asset_authority.py" \
+  "$CORE_DIR/spectra_core/kraken_authorization.py" \
+  "$CORE_DIR/spectra_core/market_discovery.py" \
+  "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
+  "$CORE_DIR/routines/mean_reversion_scanner.py"
+say "Installed and syntax-checked the reviewed paper asset authority and strategy-discovery code."
+
 install -m 700 "$CORE_DIR/scripts/spectra" "$HOME/.local/bin/spectra"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$HOME/.local/bin/spectra-alpha-doctor"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-start-api.sh" "$HOME/.local/bin/spectra-alpha-start-api"
