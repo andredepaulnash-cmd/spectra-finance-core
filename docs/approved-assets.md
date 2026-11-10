@@ -4,7 +4,7 @@ Spectra Alpha does not infer an approved asset list from market rankings. A rese
 
 For paper BUY-side capital (ENTRY, PRESS, RECOVERY, ROTATION), Spectra requires an explicit source-attributed allowlist. The default location is:
 
-`spectra_core/data/spectra-paper/approved_assets.json`
+`data/spectra-paper/approved_assets.json`
 
 You may instead set `SPECTRA_APPROVED_ASSETS_FILE` in the Core environment to an absolute path.
 
