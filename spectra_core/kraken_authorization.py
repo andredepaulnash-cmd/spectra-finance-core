@@ -59,7 +59,7 @@ def _require_reconciled_existing_exposure(*, now: float) -> None:
 
     Empty position shells do not represent exposure and do not need a fill
     watermark yet. Once confirmed inventory exists, however, missing, stale,
-    held, or conflicted accounting health blocks new ENTRY/RECOVERY capital.
+    held, or conflicted accounting health blocks new buy-side capital.
     Exit-side actions remain available through their separate authorization path.
     """
     ledger = get_economic_position_ledger()
@@ -107,13 +107,12 @@ async def reserve_kraken_capital(
     amount = _positive_decimal(amount_quote, "amount_quote")
     intent_kind = _intent(intent)
 
-    capital_governor = governor or get_capital_governor()
-    connector_name = (
-        "kraken_paper_trade" if spectra_paper_only_enabled() else "kraken"
-    )
-    if spectra_paper_only_enabled():
+    paper_only = spectra_paper_only_enabled()
+    connector_name = "kraken_paper_trade" if paper_only else "kraken"
+    if paper_only:
         require_approved_kraken_pair(pair, connector_name=connector_name)
 
+    capital_governor = governor or get_capital_governor()
     snapshot = await build_kraken_capital_snapshot(
         client,
         account_name=account,
