@@ -99,6 +99,36 @@ for source in sorted(paper.rglob("*")):
         shutil.copy2(source, destination)
         destination.chmod(0o600)
 
+# If the operator explicitly stores the Governor allowlist outside paper state,
+# include only that validated public policy file (never the surrounding live tree).
+asset_override = values.get("SPECTRA_APPROVED_ASSETS_FILE", "").strip()
+if asset_override:
+    asset_path = Path(asset_override).expanduser()
+    if not asset_path.is_absolute():
+        asset_path = paper / asset_path
+    asset_path = asset_path.resolve()
+    if asset_path.is_symlink():
+        raise SystemExit("Backup refused: approved asset list is a symlink.")
+    if asset_path.is_file() and not asset_path.is_relative_to(paper):
+        if asset_path == backup_root or backup_root in asset_path.parents:
+            raise SystemExit("Backup refused: approved asset list is inside backup destination.")
+        try:
+            approved = __import__("json").loads(asset_path.read_text(encoding="utf-8"))
+            if (
+                approved.get("schema_version") != 1
+                or approved.get("connector") != "kraken_paper_trade"
+                or not isinstance(approved.get("source"), str)
+                or not approved["source"].strip()
+                or not isinstance(approved.get("approved_pairs"), list)
+            ):
+                raise ValueError("invalid approved asset schema")
+        except Exception as exc:
+            raise SystemExit(f"Backup refused: external Governor asset list is invalid: {exc}")
+        destination = target / "governor" / "approved_assets.json"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(asset_path, destination)
+        destination.chmod(0o600)
+
 # Keep the validated policy and breaker snapshot; no .env, API credentials,
 # private dispatch key, connector credential directory, or live-state data.
 print(f"Snapshotted isolated paper state from {paper}")
