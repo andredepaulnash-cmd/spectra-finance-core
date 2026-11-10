@@ -6,11 +6,12 @@ After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/SpectraFinance-Alpha/spectra-core
-EnvironmentFile=%h/SpectraFinance-Alpha/spectra-core/.env
+Environment=SPECTRA_ALPHA_HOME=@INSTALL_ROOT@
+WorkingDirectory=@INSTALL_ROOT@/spectra-core
+EnvironmentFile=@INSTALL_ROOT@/spectra-core/.env
 UMask=0077
-ExecStartPre=%h/.local/bin/spectra-alpha-start-api
-ExecStart=%h/SpectraFinance-Alpha/spectra-core/.venv/bin/python %h/SpectraFinance-Alpha/spectra-core/main.py
+ExecStartPre=@LOCAL_BIN@/spectra-alpha-start-api
+ExecStart=@INSTALL_ROOT@/spectra-core/.venv/bin/python @INSTALL_ROOT@/spectra-core/main.py
 Restart=on-failure
 RestartSec=10
 TimeoutStartSec=300
