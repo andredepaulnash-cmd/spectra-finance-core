@@ -375,3 +375,117 @@ body {
   letter-spacing: 0.24em;
   text-shadow: 0 0 18px rgba(39,217,242,0.32);
 }
+
+
+/* ── Command Center shell: luminous glass, restrained motion ── */
+.spectra-topbar {
+  position: relative;
+  z-index: 20;
+  background: linear-gradient(100deg, rgba(8, 15, 29, 0.96), rgba(12, 20, 37, 0.92) 62%, rgba(28, 19, 52, 0.92));
+  backdrop-filter: blur(18px) saturate(135%);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16);
+}
+.spectra-topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(39, 217, 242, 0.7) 24%, rgba(154, 124, 255, 0.62) 76%, transparent);
+  pointer-events: none;
+}
+[data-theme="light"] .spectra-topbar {
+  background: linear-gradient(100deg, rgba(255,255,255,0.96), rgba(242,248,255,0.94) 62%, rgba(247,243,255,0.94));
+}
+.spectra-brand img {
+  filter: drop-shadow(0 0 12px rgba(39, 217, 242, 0.18));
+  transition: filter 180ms ease, transform 180ms ease;
+}
+.spectra-brand:hover img {
+  filter: drop-shadow(0 0 18px rgba(39, 217, 242, 0.38));
+  transform: translateY(-1px);
+}
+.spectra-nav {
+  gap: 0.3rem;
+}
+.spectra-nav-link {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid transparent;
+  transition: color 180ms ease, background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+.spectra-nav-link:hover {
+  transform: translateY(-1px);
+}
+.spectra-nav-link.is-active {
+  border-color: rgba(39, 217, 242, 0.2);
+  background: linear-gradient(120deg, rgba(39, 217, 242, 0.15), rgba(139, 92, 246, 0.12));
+  box-shadow: inset 0 1px rgba(255,255,255,0.07), 0 0 18px rgba(39, 217, 242, 0.08);
+}
+.spectra-runtime-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+  background: rgba(7, 11, 22, 0.32);
+  box-shadow: inset 0 1px rgba(255,255,255,0.045);
+}
+[data-theme="light"] .spectra-runtime-pill {
+  background: rgba(255,255,255,0.72);
+}
+.spectra-runtime-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  background: #f59e0b;
+}
+.spectra-runtime-dot.is-ready {
+  background: #34d399;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.12), 0 0 12px rgba(52, 211, 153, 0.72);
+  animation: spectra-status-pulse 2.8s ease-in-out infinite;
+}
+.spectra-runtime-dot.is-pending {
+  background: #fbbf24;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.45);
+}
+.spectra-runtime-dot.is-locked {
+  background: #fb7185;
+  box-shadow: 0 0 10px rgba(251, 113, 133, 0.38);
+}
+.spectra-safety-banner {
+  position: relative;
+  background: linear-gradient(90deg, rgba(39, 217, 242, 0.055), rgba(139, 92, 246, 0.055));
+}
+.spectra-safety-banner::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #27d9f2, #9a7cff);
+}
+.spectra-main {
+  isolation: isolate;
+}
+.spectra-main::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 3.5rem 0 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 12% 8%, rgba(39, 217, 242, 0.055), transparent 34%),
+    radial-gradient(ellipse at 92% 22%, rgba(139, 92, 246, 0.065), transparent 32%);
+}
+@keyframes spectra-status-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.10), 0 0 9px rgba(52, 211, 153, 0.48); }
+  50% { box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.04), 0 0 15px rgba(52, 211, 153, 0.76); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spectra-runtime-dot.is-ready { animation: none; }
+  .spectra-brand img, .spectra-nav-link { transition: none; }
+  .spectra-brand:hover img, .spectra-nav-link:hover { transform: none; }
+}
