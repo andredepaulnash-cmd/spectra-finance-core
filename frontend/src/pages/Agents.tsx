@@ -1,26 +1,27 @@
 import { AgentChatTab } from "@/pages/tabs/AgentChatTab";
+import { SpectraCoreVisual } from "@/components/layout/SpectraCoreVisual";
 
 /**
- * The home, which is the conversation (FEAT-077).
- *
- * It was briefly two views of one route: FEAT-104 hung a fleet overview off
- * `/?view=fleet` and then made it what a bare `/` means. Both halves of that
- * are undone, and now so is the page it was moved to — what every agent is
- * doing is the Execution panel of this screen's own right rail (FEAT-114),
- * read owner first, beside the conversation rather than a tab away from it.
- *
- * So `?view=` on `/` means nothing here again, and the module that forwarded
- * the old spelling is gone with the page it forwarded to: `/fleet` is still a
- * route, and it redirects into the panel, so a bookmark of either spelling
- * lands on the home with the fleet open.
- *
- * Owns the full viewport and scrolls its own transcript, so the shell drops
- * `main`'s padding for this route (see `AppShell`).
+ * The home is the Intelligence workspace. Keep the existing conversation and
+ * its connected panels fully functional; give it a distinctive Spectra identity
+ * and a lightweight animated neural centerpiece above the working interface.
  */
 export function Agents() {
   return (
-    <div className="h-full min-h-0">
-      <AgentChatTab />
+    <div className="spectra-intelligence-home h-full min-h-0">
+      <SpectraCoreVisual />
+      <div className="spectra-intelligence-console">
+        <div className="spectra-intelligence-console-heading">
+          <div>
+            <p className="spectra-console-eyebrow">COMMAND INTERFACE</p>
+            <h2>Intelligence workspace</h2>
+          </div>
+          <span className="spectra-console-status"><i /> READY FOR INPUT</span>
+        </div>
+        <div className="spectra-intelligence-chat h-full min-h-0">
+          <AgentChatTab />
+        </div>
+      </div>
     </div>
   );
 }
