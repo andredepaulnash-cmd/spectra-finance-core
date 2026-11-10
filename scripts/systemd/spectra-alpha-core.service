@@ -1,0 +1,21 @@
+[Unit]
+Description=Spectra Finance Alpha Core (paper-only)
+Documentation=https://github.com/andredepaulnash-cmd/spectra-finance-core
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/SpectraFinance-Alpha/spectra-core
+EnvironmentFile=%h/SpectraFinance-Alpha/spectra-core/.env
+UMask=0077
+ExecStartPre=%h/.local/bin/spectra-alpha-start-api
+ExecStart=%h/SpectraFinance-Alpha/spectra-core/.venv/bin/python %h/SpectraFinance-Alpha/spectra-core/main.py
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=300
+TimeoutStopSec=45
+KillSignal=SIGINT
+
+[Install]
+WantedBy=default.target
