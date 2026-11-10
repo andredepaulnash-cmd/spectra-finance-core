@@ -68,6 +68,7 @@ case "${1:-status}" in
   stop)
     if systemd_user_available && [[ -f "$HOME/.config/systemd/user/$CORE_UNIT" ]]; then
       systemctl --user stop "$CORE_UNIT" || true
+      stop_core_fallback
     else
       stop_core_fallback
     fi
