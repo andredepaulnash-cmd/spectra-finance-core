@@ -383,6 +383,36 @@ async def get_tickers(
     )
 
 
+@router.get("/servers/{name}/market/discovery")
+async def get_market_discovery(
+    name: str,
+    top_n: int = Query(default=100, ge=1, le=150),
+    show_n: int = Query(default=25, ge=1, le=100),
+    min_volume_usd: float = Query(default=10_000_000, ge=0),
+    user: WebUser = Depends(require_server_access),
+):
+    """Refresh Kraken spot market lists for volume, 24h movers and VCAP research.
+
+    The result is discovery-only: it never grants asset permission, reserves
+    capital, or creates orders. Missing/stale hourly references are excluded
+    from the 24h gainer/loser lists rather than represented as zero change.
+    """
+    from spectra_core.market_discovery import scan_kraken_universe
+
+    try:
+        client = await get_config_manager().get_client(name)
+        return await scan_kraken_universe(
+            client,
+            top_n=top_n,
+            show_n=show_n,
+            min_volume_usd=min_volume_usd,
+            quote_assets=("USD",),
+        )
+    except Exception as e:
+        logger.exception("Failed to refresh Kraken market discovery for '%s'", name)
+        raise upstream_error("Failed to refresh market discovery", e)
+
+
 @router.get("/servers/{name}/market/order-book", response_model=OrderBookResponse)
 async def get_order_book(
     name: str,
