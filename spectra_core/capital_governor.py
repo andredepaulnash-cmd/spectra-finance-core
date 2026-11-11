@@ -1122,6 +1122,27 @@ class CapitalGovernor:
 
         with self._connect() as conn:
             recovery_ledgers = self._attach_recovery_exposure_ledgers(conn)
+            slot_schema = None
+            if max_active_positions is not None:
+                slot_path = Path(ledger_path).resolve()
+                if not slot_path.is_file():
+                    raise ValueError("VCAP slot ledger does not exist")
+                database_rows = conn.execute("PRAGMA database_list").fetchall()
+                slot_schema = next(
+                    (
+                        row["name"]
+                        for row in database_rows
+                        if row["file"]
+                        and Path(row["file"]).resolve() == slot_path
+                    ),
+                    None,
+                )
+                if slot_schema is None:
+                    conn.execute(
+                        "ATTACH DATABASE ? AS vcap_slot_ledger",
+                        (str(slot_path),),
+                    )
+                    slot_schema = "vcap_slot_ledger"
             conn.execute("BEGIN IMMEDIATE")
 
             try:
@@ -1204,23 +1225,6 @@ class CapitalGovernor:
 
                 entry_slot_reason = ""
                 if max_active_positions is not None:
-                    slot_path = Path(ledger_path).resolve()
-                    database_rows = conn.execute("PRAGMA database_list").fetchall()
-                    slot_schema = next(
-                        (
-                            row["name"]
-                            for row in database_rows
-                            if row["file"]
-                            and Path(row["file"]).resolve() == slot_path
-                        ),
-                        None,
-                    )
-                    if slot_schema is None:
-                        conn.execute(
-                            "ATTACH DATABASE ? AS vcap_slot_ledger",
-                            (str(slot_path),),
-                        )
-                        slot_schema = "vcap_slot_ledger"
                     active_position_slots = int(conn.execute(
                         f"SELECT COUNT(*) FROM {slot_schema}.economic_positions "
                         "WHERE status = 'ACTIVE'"
