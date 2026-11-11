@@ -333,9 +333,9 @@ CORE_PYTHON_SOURCES=(
 )
 declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="5644134509e604dc5ed0df9076130608b61fe975"
-  ["spectra_core/kraken_authorization.py"]="1b3443af5f0d52c2b477385a781632a540f5ce8c"
+  ["spectra_core/kraken_authorization.py"]="f96c69ec60232377f67408a7bbb757cbefb315d4"
   ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
-  ["spectra_core/capital_governor.py"]="29bb31a4e8e779aff5950cd0eb29bc9a28b7f58a"
+  ["spectra_core/capital_governor.py"]="f143231ddcc9eab97fdc83afcd01ef3722d52138"
   ["spectra_core/vcap_entry.py"]="58f6bd6a163e90496f919eb6c92abc06baf7a65e"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
