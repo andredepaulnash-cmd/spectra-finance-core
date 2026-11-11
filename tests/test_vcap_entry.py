@@ -191,3 +191,28 @@ async def test_live_execution_flag_blocks_vcap_candidate_admission(monkeypatch):
             account_name="master_account",
             now=1_000.0,
         )
+
+
+@pytest.mark.asyncio
+async def test_fresh_paper_entry_returns_planned_position_id_without_opening_slot(
+    monkeypatch,
+):
+    configure(monkeypatch)
+    reserved = authorization()
+    reserved.economic_position_id = None
+
+    async def reserve(*args, **kwargs):
+        return reserved
+
+    monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
+
+    result = await vcap_entry.reserve_vcap_candidate_entry(
+        object(),
+        scan_result=scan_result(),
+        trading_pair="BTC-USD",
+        account_name="master_account",
+        now=1_000.0,
+    )
+
+    assert result.position_id == f"spectra-position-{result.proposal_id}"
+    assert result.order_dispatched is False
