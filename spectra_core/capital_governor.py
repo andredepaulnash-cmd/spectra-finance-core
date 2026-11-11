@@ -1232,6 +1232,37 @@ class CapitalGovernor:
 
                 entry_slot_reason = ""
                 if max_active_positions is not None:
+                    from .economic_position import normalized_base_asset
+
+                    base_asset = normalized_base_asset(pair)
+                    active_asset_rows = conn.execute(
+                        f"SELECT position_id FROM {slot_schema}.economic_positions "
+                        "WHERE base_asset = ? AND status = 'ACTIVE'",
+                        (base_asset,),
+                    ).fetchall()
+                    active_other = [
+                        row["position_id"]
+                        for row in active_asset_rows
+                        if row["position_id"] != pending_position_id
+                    ]
+                    if active_other:
+                        entry_slot_reason = (
+                            f"{base_asset} already has an ACTIVE economic position"
+                        )
+                    else:
+                        reserved_entry_rows = conn.execute(
+                            "SELECT pair FROM capital_reservations "
+                            "WHERE intent = ? AND status = ?",
+                            (IntentKind.ENTRY.value, DecisionStatus.RESERVED.value),
+                        ).fetchall()
+                        if any(
+                            normalized_base_asset(row["pair"]) == base_asset
+                            for row in reserved_entry_rows
+                        ):
+                            entry_slot_reason = (
+                                f"{base_asset} already has a RESERVED ENTRY proposal"
+                            )
+
                     active_position_slots = int(conn.execute(
                         f"SELECT COUNT(*) FROM {slot_schema}.economic_positions "
                         "WHERE status = 'ACTIVE'"
@@ -1250,7 +1281,10 @@ class CapitalGovernor:
                         (IntentKind.ENTRY.value, DecisionStatus.RESERVED.value),
                     ).fetchone()[0])
                     active_entry_slots = active_position_slots + reserved_entry_slots
-                    if active_entry_slots >= max_active_positions:
+                    if (
+                        not entry_slot_reason
+                        and active_entry_slots >= max_active_positions
+                    ):
                         entry_slot_reason = (
                             "VCAP active position limit reached: "
                             f"{active_entry_slots}/{max_active_positions}"
