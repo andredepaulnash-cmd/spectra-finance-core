@@ -314,7 +314,7 @@ def test_paper_vcap_entry_governor_rejects_a_51st_reserved_or_committed_slot(
                 quote_asset="USD",
             ),
             max_active_positions=50,
-            ledger_path=ledger.db_path,
+            ledger_path=ledger.path,
         )
         assert decision.status == DecisionStatus.RESERVED
 
