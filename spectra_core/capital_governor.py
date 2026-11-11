@@ -1098,6 +1098,8 @@ class CapitalGovernor:
         self,
         proposal: CapitalProposal,
         snapshot: CapitalSnapshot,
+        *,
+        max_active_positions: int | None = None,
     ) -> CapitalDecision:
         pair = proposal.pair.strip().upper()
 
@@ -1106,6 +1108,14 @@ class CapitalGovernor:
 
         if not pair:
             raise ValueError("pair is required")
+        if max_active_positions is not None and (
+            isinstance(max_active_positions, bool)
+            or not isinstance(max_active_positions, int)
+            or max_active_positions < 1
+        ):
+            raise ValueError("max_active_positions must be a positive integer")
+        if max_active_positions is not None and proposal.intent != IntentKind.ENTRY:
+            raise ValueError("max_active_positions applies only to ENTRY proposals")
 
         with self._connect() as conn:
             recovery_ledgers = self._attach_recovery_exposure_ledgers(conn)
@@ -1189,6 +1199,24 @@ class CapitalGovernor:
                     conn.commit()
                     return self._decision_from_row(existing)
 
+                entry_slot_reason = ""
+                if max_active_positions is not None:
+                    reserved_entry_slots = int(conn.execute(
+                        "SELECT COUNT(*) FROM capital_reservations "
+                        "WHERE intent = ? AND status = ?",
+                        (IntentKind.ENTRY.value, DecisionStatus.RESERVED.value),
+                    ).fetchone()[0])
+                    committed_entry_slots = int(conn.execute(
+                        "SELECT COUNT(*) FROM entry_submission_claims "
+                        "WHERE state IN ('COMMITTED', 'DISPATCHED')"
+                    ).fetchone()[0])
+                    active_entry_slots = reserved_entry_slots + committed_entry_slots
+                    if active_entry_slots >= max_active_positions:
+                        entry_slot_reason = (
+                            "VCAP active position limit reached: "
+                            f"{active_entry_slots}/{max_active_positions}"
+                        )
+
                 active_total = self._protected(conn)
 
                 active_pair = self._protected(
@@ -1256,7 +1284,7 @@ class CapitalGovernor:
                     reconciled_recovery=reconciled_recovery,
                     available_after=available_after,
                 )
-                reason = authority_reason or reason
+                reason = entry_slot_reason or authority_reason or reason
 
                 if reason:
                     status = DecisionStatus.REJECTED
