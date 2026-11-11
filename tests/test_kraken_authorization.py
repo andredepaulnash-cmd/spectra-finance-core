@@ -414,3 +414,61 @@ def test_dust_successor_uses_one_of_the_fifty_vcap_slots_not_two(
     assert auth.decision.status == DecisionStatus.RESERVED
     assert auth.economic_position_id == f"successor-{auth.proposal.proposal_id}"
     assert len(ledger.list_active_position_ids()) == 50
+
+
+def test_paper_vcap_entry_rejects_duplicate_reserved_asset(monkeypatch, tmp_path):
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    configure_paper_entry(monkeypatch, tmp_path, ledger)
+    g = governor(tmp_path)
+
+    first = asyncio.run(
+        reserve_kraken_capital(
+            PaperClient(500),
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="20",
+            governor=g,
+        )
+    )
+    second = asyncio.run(
+        reserve_kraken_capital(
+            PaperClient(500),
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="20",
+            governor=g,
+        )
+    )
+
+    assert first.decision.status == DecisionStatus.RESERVED
+    assert second.decision.status == DecisionStatus.REJECTED
+    assert "BTC already has a RESERVED ENTRY proposal" in second.decision.reason
+
+
+def test_paper_vcap_entry_rejects_asset_with_existing_active_position(
+    monkeypatch, tmp_path
+):
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    ledger.open_position(
+        position_id="existing-btc-position",
+        pair="BTC-USD",
+        created_at=1_000,
+    )
+    configure_paper_entry(monkeypatch, tmp_path, ledger)
+    g = governor(tmp_path)
+
+    auth = asyncio.run(
+        reserve_kraken_capital(
+            PaperClient(500),
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="20",
+            governor=g,
+        )
+    )
+
+    assert auth.decision.status == DecisionStatus.REJECTED
+    assert "BTC already has an ACTIVE economic position" in auth.decision.reason
