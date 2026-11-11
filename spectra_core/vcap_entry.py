@@ -35,6 +35,7 @@ class VCAPPaperEntryAdmission:
     selection_score: float
     scanner_as_of: float
     paper_only: bool = True
+    position_slot_opened: bool = False
     order_dispatched: bool = False
 
 
