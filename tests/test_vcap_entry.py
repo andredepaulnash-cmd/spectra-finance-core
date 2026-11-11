@@ -97,6 +97,7 @@ async def test_fresh_shortlist_candidate_reserves_exactly_one_twenty_dollar_pape
     assert result.amount_quote == Decimal("20")
     assert result.decision_status == DecisionStatus.RESERVED
     assert result.paper_only is True
+    assert result.position_slot_opened is True
     assert result.order_dispatched is False
     assert len(calls) == 1
     assert calls[0]["intent"] == IntentKind.ENTRY
@@ -215,4 +216,5 @@ async def test_fresh_paper_entry_returns_planned_position_id_without_opening_slo
     )
 
     assert result.position_id == f"spectra-position-{result.proposal_id}"
+    assert result.position_slot_opened is False
     assert result.order_dispatched is False
