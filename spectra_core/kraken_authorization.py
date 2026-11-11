@@ -153,6 +153,9 @@ async def reserve_kraken_capital(
             if vcap_slot_accounting
             else None
         ),
+        pending_position_id=(
+            economic_position_id if vcap_slot_accounting else None
+        ),
     )
     if decision.status in {
         DecisionStatus.REJECTED,
