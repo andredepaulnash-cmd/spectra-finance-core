@@ -341,7 +341,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/vcap_entry.py"]="b74582cb2a08c61b742dd6693b638f695d1d5477"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
-  ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"
+  ["condor/web/routes/market.py"]="4964ae142eb47644bd23f00047c4dda1bf660d15"
 )
 declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/asset_authority.py"]=""
