@@ -127,13 +127,11 @@ async def reserve_vcap_candidate_entry(
         amount_quote=PAPER_VCAP_SEED_QUOTE,
         governor=governor,
     )
-    position_id = None
-    if authorization.decision.approved:
-        position_id = authorization.economic_position_id
-        if not position_id:
-            # The exact ID is deterministic but remains a plan until the
-            # executor commit claims the Governor reservation and opens a slot.
-            position_id = f"spectra-position-{authorization.proposal.proposal_id}"
+    position_id = (
+        authorization.economic_position_id
+        if authorization.decision.approved
+        else None
+    )
 
     return VCAPPaperEntryAdmission(
         pair=pair,
