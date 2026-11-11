@@ -251,7 +251,7 @@ declare -A CORE_SHELL_NEW_BLOBS=(
   ["frontend/src/components/layout/AppShell.tsx"]="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
   ["frontend/src/index.css"]="6d79e7a5111d423be6bf260a65e238c0344a4f5e"
   ["frontend/src/pages/SpectraOverview.tsx"]="dac12adcbe9337309b82e5f58cf551dc35c0c094"
-  ["frontend/src/lib/api.ts"]="16d5a5adbf3af1bd4d5d2244b5d3850bc3c92494"
+  ["frontend/src/lib/api.ts"]="66671b1e314b8aecdced32b45df18b488f984bfa"
 )
 for source in "${CORE_SHELL_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
@@ -334,10 +334,10 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="5644134509e604dc5ed0df9076130608b61fe975"
   ["spectra_core/kraken_authorization.py"]="8cdc9d9bf4e6124b6f9f1d41e744dcb5802f22bb"
   ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
-  ["spectra_core/vcap_entry.py"]="b74582cb2a08c61b742dd6693b638f695d1d5477"
+  ["spectra_core/vcap_entry.py"]="8f43a8424634798cf3cff07d89cf416ae7d354a9"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
-  ["condor/web/routes/market.py"]="4964ae142eb47644bd23f00047c4dda1bf660d15"
+  ["condor/web/routes/market.py"]="5ac6111aa0fc192a7e0324e6dc8761e090316aa7"
 )
 declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/asset_authority.py"]=""
