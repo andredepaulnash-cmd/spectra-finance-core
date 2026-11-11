@@ -126,13 +126,16 @@ async def reserve_vcap_candidate_entry(
         amount_quote=PAPER_VCAP_SEED_QUOTE,
         governor=governor,
     )
-    if authorization.decision.approved and not authorization.economic_position_id:
-        raise RuntimeError("approved paper ENTRY has no canonical economic position ID")
+    position_id = authorization.economic_position_id
+    if authorization.decision.approved and not position_id:
+        # The exact ID is deterministic but remains a plan until the executor
+        # commit atomically claims the Governor reservation and opens the slot.
+        position_id = f"spectra-position-{authorization.proposal.proposal_id}"
 
     return VCAPPaperEntryAdmission(
         pair=pair,
         proposal_id=authorization.proposal.proposal_id,
-        position_id=authorization.economic_position_id,
+        position_id=position_id,
         amount_quote=PAPER_VCAP_SEED_QUOTE,
         decision_status=authorization.decision.status,
         decision_reason=authorization.decision.reason,
