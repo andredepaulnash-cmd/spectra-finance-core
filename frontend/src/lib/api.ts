@@ -272,6 +272,19 @@ export interface MarketDiscoveryResponse {
   orders_created: 0;
 }
 
+export interface VCAPPaperEntryAdmissionResponse {
+  pair: string;
+  proposal_id: string;
+  position_id: string | null;
+  amount_quote: string;
+  decision_status: "RESERVED" | "REJECTED" | "EXPIRED" | "RELEASED" | "COMMITTED" | "RECONCILED";
+  decision_reason: string;
+  selection_score: number;
+  scanner_as_of: number;
+  paper_only: true;
+  order_dispatched: false;
+}
+
 export interface ServerInfo {
   name: string;
   host: string;
@@ -3046,6 +3059,12 @@ export const api = {
 
   getMarketDiscovery: (server: string) =>
     apiFetch<MarketDiscoveryResponse>(`/api/v1/servers/${encodeURIComponent(server)}/market/discovery?top_n=80&show_n=25&min_volume_usd=10000000&min_history_days=90`),
+
+  reserveVcapEntry: (server: string, tradingPair: string, accountName = "master_account") =>
+    apiFetch<VCAPPaperEntryAdmissionResponse>(
+      `/api/v1/servers/${encodeURIComponent(server)}/market/vcap-entry?trading_pair=${encodeURIComponent(tradingPair)}&account_name=${encodeURIComponent(accountName)}`,
+      { method: "POST" },
+    ),
 
   getOrderBook: (server: string, connector: string, pair: string, depth = 20) =>
     apiFetch<OrderBookResponse>(
