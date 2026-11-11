@@ -81,6 +81,7 @@ def test_explicit_vcap_entry_route_reserves_candidate_but_never_dispatches_order
             selection_score=88.0,
             scanner_as_of=1_800_000_000.0,
             paper_only=True,
+            position_slot_opened=False,
             order_dispatched=False,
         )
 
