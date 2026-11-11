@@ -493,6 +493,7 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             intent="ENTRY",
             amount_quote="25",
             governor=governor,
+            position_id=position_id,
             refresh=True,
         )
         assert authorization.decision.status == DecisionStatus.RESERVED
