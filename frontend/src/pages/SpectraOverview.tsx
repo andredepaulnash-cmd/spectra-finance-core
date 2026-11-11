@@ -107,6 +107,14 @@ export function SpectraOverview() {
       api.setSpectraModuleTrigger(server!, moduleId, enabled),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["spectra-modules", server] }),
   });
+  const vcapEntryMutation = useMutation({
+    mutationFn: (tradingPair: string) =>
+      api.reserveVcapEntry(server!, tradingPair),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spectra-runtime", server] });
+      queryClient.invalidateQueries({ queryKey: ["spectra-market-discovery", server] });
+    },
+  });
   const [dailyMarketHistory, setDailyMarketHistory] = useState<DailyMarketHistory>(() => {
     try {
       const saved = window.localStorage.getItem(DAILY_MARKET_HISTORY_KEY);
@@ -477,11 +485,11 @@ export function SpectraOverview() {
               <h2 className="font-semibold">Market discovery</h2>
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              Kraken USD spot markets ranked for mean-reversion research — no orders are created.
+              Kraken USD spot discovery for mean reversion. An explicit action can reserve a $20 paper entry through the Governor; this screen never sends an order.
             </p>
           </div>
           <span className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 py-1 text-[11px] font-medium text-emerald-500">
-            RESEARCH ONLY · NO ORDERS
+            RESEARCH · MANUAL PAPER RESERVE
           </span>
         </div>
         {marketDiscovery.isLoading ? (
@@ -574,7 +582,7 @@ export function SpectraOverview() {
               {marketDiscovery.data.list_scope}. The 24h leaderboards only include assets with a valid hourly reference; stale or missing data is not guessed.
             </p>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1040px] text-left text-sm">
+              <table className="w-full min-w-[1160px] text-left text-sm">
                 <thead className="text-xs text-[var(--color-text-muted)]">
                   <tr>
                     <th className="pb-2 pr-3 font-medium">Rank / Asset</th>
@@ -586,6 +594,7 @@ export function SpectraOverview() {
                     <th className="pb-2 pr-3 font-medium">Governor authority</th>
                     <th className="pb-2 text-right font-medium">Score</th>
                     <th className="pb-2 pl-3 text-right font-medium">1d Δ</th>
+                    <th className="pb-2 pl-4 font-medium">Paper entry</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -622,6 +631,21 @@ export function SpectraOverview() {
                           </span>;
                         })()}
                       </td>
+                      <td className="py-3 pl-4">
+                        {activeMarketList === "mean_reversion_candidates" && candidate.eligible && candidate.governor_approved ? (
+                          <button
+                            type="button"
+                            disabled={!paperConfirmed || !krakenPaperReady || !accountingHealthy || marketDiscovery.isFetching || vcapEntryMutation.isPending}
+                            title="Reserve exactly $20 through CapitalGovernor. No order is sent."
+                            onClick={() => vcapEntryMutation.mutate(candidate.trading_pair)}
+                            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-xs font-semibold text-[var(--color-text)] transition-colors hover:border-emerald-500/50 hover:text-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            {vcapEntryMutation.isPending && vcapEntryMutation.variables === candidate.trading_pair ? "Reserving…" : "Reserve $20"}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-[var(--color-text-muted)]">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -634,6 +658,29 @@ export function SpectraOverview() {
                 </p>
               ) : null}
             </div>
+            {vcapEntryMutation.data ? (
+              <div className="mt-3 rounded-lg border border-[var(--color-border)] p-3 text-sm">
+                <p className="font-semibold">
+                  {vcapEntryMutation.data.decision_status === "RESERVED"
+                    ? `Governor reserved ${formatUsd(Number(vcapEntryMutation.data.amount_quote))} for ${vcapEntryMutation.data.pair}.`
+                    : `Governor declined ${vcapEntryMutation.data.pair}: ${vcapEntryMutation.data.decision_reason}`}
+                </p>
+                {vcapEntryMutation.data.position_id ? (
+                  <p className="mt-1 break-all text-xs text-[var(--color-text-muted)]">
+                    Planned position: {vcapEntryMutation.data.position_id}
+                    {vcapEntryMutation.data.position_slot_opened ? " · successor slot prepared" : " · slot opens at executor submission"}
+                  </p>
+                ) : null}
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                  Paper reservation only. No executor was created and no order was dispatched.
+                </p>
+              </div>
+            ) : null}
+            {vcapEntryMutation.isError ? (
+              <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-500">
+                Paper entry reservation was refused: {vcapEntryMutation.error instanceof Error ? vcapEntryMutation.error.message : "Unknown error"}
+              </div>
+            ) : null}
             <p className="mt-3 text-xs leading-relaxed text-[var(--color-text-muted)]">
               {marketDiscovery.data.source}. Scans the top {marketDiscovery.data.criteria.top_by_24h_quote_volume} liquid Kraken USD spot markets by 24h quote volume, requires at least {marketDiscovery.data.criteria.minimum_completed_history_days} completed days of history for mean-reversion scoring, and applies the configured turnover, activity, volatility, and downside guardrails. Rankings are research candidates, not trade signals. Last refreshed {new Date(marketDiscovery.data.as_of * 1000).toLocaleString()}.
             </p>

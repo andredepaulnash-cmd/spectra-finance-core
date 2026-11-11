@@ -274,6 +274,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
             intent="ENTRY",
             amount_quote="50",
             governor=g,
+            position_id="e2e-entry",
         )
     )
 
@@ -493,6 +494,7 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             intent="ENTRY",
             amount_quote="25",
             governor=governor,
+            position_id=position_id,
             refresh=True,
         )
         assert authorization.decision.status == DecisionStatus.RESERVED

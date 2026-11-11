@@ -37,6 +37,8 @@ on:
       - tests/test_spectra_kraken_execution_flow.py
       - tests/test_alpha_backup.py
       - tests/test_asset_authority.py
+      - tests/test_kraken_authorization.py
+      - tests/test_vcap_entry.py
       - tests/test_market_discovery_route.py
       - tests/test_market_discovery.py
       - tests/spectra_test_support.py
@@ -67,6 +69,8 @@ on:
       - routines/**
       - tests/test_alpha_backup.py
       - tests/test_asset_authority.py
+      - tests/test_kraken_authorization.py
+      - tests/test_vcap_entry.py
       - tests/test_market_discovery_route.py
       - tests/spectra_test_support.py
       - tests/fixtures/**
@@ -140,6 +144,8 @@ jobs:
           uv run --python 3.12 pytest -q \
             tests/test_alpha_backup.py \
             tests/test_asset_authority.py \
+            tests/test_kraken_authorization.py \
+            tests/test_vcap_entry.py \
             tests/test_market_discovery_route.py \
             tests/test_market_discovery.py \
             tests/test_spectra_executor_accounting_flow.py \
@@ -184,11 +190,11 @@ jobs:
       - name: Run the public one-command installer
         run: bash install-alpha.sh
         env:
-          SPECTRA_ALPHA_CORE_REF: automation/paper-lifecycle-accounting-strategy-ops-20261110
+          SPECTRA_ALPHA_CORE_REF: feature/vcap-paper-entry-admission-20261110
       - name: Run the exact one-command in-place updater
         run: bash scripts/update-alpha-api.sh
         env:
-          SPECTRA_ALPHA_CORE_REF: automation/paper-lifecycle-accounting-strategy-ops-20261110
+          SPECTRA_ALPHA_CORE_REF: feature/vcap-paper-entry-admission-20261110
       - name: Verify dashboard and Kraken paper runtime
         shell: bash
         run: |

@@ -1098,6 +1098,10 @@ class CapitalGovernor:
         self,
         proposal: CapitalProposal,
         snapshot: CapitalSnapshot,
+        *,
+        max_active_positions: int | None = None,
+        ledger_path: str | Path | None = None,
+        pending_position_id: str | None = None,
     ) -> CapitalDecision:
         pair = proposal.pair.strip().upper()
 
@@ -1106,9 +1110,46 @@ class CapitalGovernor:
 
         if not pair:
             raise ValueError("pair is required")
+        if max_active_positions is not None and (
+            isinstance(max_active_positions, bool)
+            or not isinstance(max_active_positions, int)
+            or max_active_positions < 1
+        ):
+            raise ValueError("max_active_positions must be a positive integer")
+        if max_active_positions is not None and proposal.intent != IntentKind.ENTRY:
+            raise ValueError("max_active_positions applies only to ENTRY proposals")
+        if max_active_positions is not None and ledger_path is None:
+            raise ValueError("ledger_path is required for active ENTRY slot accounting")
+        if pending_position_id is not None and max_active_positions is None:
+            raise ValueError("pending_position_id requires active ENTRY slot accounting")
+        if pending_position_id is not None and (
+            not isinstance(pending_position_id, str) or not pending_position_id.strip()
+        ):
+            raise ValueError("pending_position_id must be a non-empty string")
 
         with self._connect() as conn:
             recovery_ledgers = self._attach_recovery_exposure_ledgers(conn)
+            slot_schema = None
+            if max_active_positions is not None:
+                slot_path = Path(ledger_path).resolve()
+                if not slot_path.is_file():
+                    raise ValueError("VCAP slot ledger does not exist")
+                database_rows = conn.execute("PRAGMA database_list").fetchall()
+                slot_schema = next(
+                    (
+                        row["name"]
+                        for row in database_rows
+                        if row["file"]
+                        and Path(row["file"]).resolve() == slot_path
+                    ),
+                    None,
+                )
+                if slot_schema is None:
+                    conn.execute(
+                        "ATTACH DATABASE ? AS vcap_slot_ledger",
+                        (str(slot_path),),
+                    )
+                    slot_schema = "vcap_slot_ledger"
             conn.execute("BEGIN IMMEDIATE")
 
             try:
@@ -1189,6 +1230,66 @@ class CapitalGovernor:
                     conn.commit()
                     return self._decision_from_row(existing)
 
+                entry_slot_reason = ""
+                if max_active_positions is not None:
+                    from .economic_position import normalized_base_asset
+
+                    base_asset = normalized_base_asset(pair)
+                    active_asset_rows = conn.execute(
+                        f"SELECT position_id FROM {slot_schema}.economic_positions "
+                        "WHERE base_asset = ? AND status = 'ACTIVE'",
+                        (base_asset,),
+                    ).fetchall()
+                    active_other = [
+                        row["position_id"]
+                        for row in active_asset_rows
+                        if row["position_id"] != pending_position_id
+                    ]
+                    if active_other:
+                        entry_slot_reason = (
+                            f"{base_asset} already has an ACTIVE economic position"
+                        )
+                    else:
+                        reserved_entry_rows = conn.execute(
+                            "SELECT pair FROM capital_reservations "
+                            "WHERE intent = ? AND status = ?",
+                            (IntentKind.ENTRY.value, DecisionStatus.RESERVED.value),
+                        ).fetchall()
+                        if any(
+                            normalized_base_asset(row["pair"]) == base_asset
+                            for row in reserved_entry_rows
+                        ):
+                            entry_slot_reason = (
+                                f"{base_asset} already has a RESERVED ENTRY proposal"
+                            )
+
+                    active_position_slots = int(conn.execute(
+                        f"SELECT COUNT(*) FROM {slot_schema}.economic_positions "
+                        "WHERE status = 'ACTIVE'"
+                    ).fetchone()[0])
+                    if pending_position_id is not None:
+                        pending_active = conn.execute(
+                            f"SELECT 1 FROM {slot_schema}.economic_positions "
+                            "WHERE position_id = ? AND status = 'ACTIVE'",
+                            (pending_position_id.strip(),),
+                        ).fetchone()
+                        if pending_active is not None:
+                            active_position_slots -= 1
+                    reserved_entry_slots = int(conn.execute(
+                        "SELECT COUNT(*) FROM capital_reservations "
+                        "WHERE intent = ? AND status = ?",
+                        (IntentKind.ENTRY.value, DecisionStatus.RESERVED.value),
+                    ).fetchone()[0])
+                    active_entry_slots = active_position_slots + reserved_entry_slots
+                    if (
+                        not entry_slot_reason
+                        and active_entry_slots >= max_active_positions
+                    ):
+                        entry_slot_reason = (
+                            "VCAP active position limit reached: "
+                            f"{active_entry_slots}/{max_active_positions}"
+                        )
+
                 active_total = self._protected(conn)
 
                 active_pair = self._protected(
@@ -1256,7 +1357,7 @@ class CapitalGovernor:
                     reconciled_recovery=reconciled_recovery,
                     available_after=available_after,
                 )
-                reason = authority_reason or reason
+                reason = entry_slot_reason or authority_reason or reason
 
                 if reason:
                     status = DecisionStatus.REJECTED
