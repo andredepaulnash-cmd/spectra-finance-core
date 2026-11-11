@@ -1101,6 +1101,7 @@ class CapitalGovernor:
         *,
         max_active_positions: int | None = None,
         ledger_path: str | Path | None = None,
+        pending_position_id: str | None = None,
     ) -> CapitalDecision:
         pair = proposal.pair.strip().upper()
 
@@ -1119,6 +1120,12 @@ class CapitalGovernor:
             raise ValueError("max_active_positions applies only to ENTRY proposals")
         if max_active_positions is not None and ledger_path is None:
             raise ValueError("ledger_path is required for active ENTRY slot accounting")
+        if pending_position_id is not None and max_active_positions is None:
+            raise ValueError("pending_position_id requires active ENTRY slot accounting")
+        if pending_position_id is not None and (
+            not isinstance(pending_position_id, str) or not pending_position_id.strip()
+        ):
+            raise ValueError("pending_position_id must be a non-empty string")
 
         with self._connect() as conn:
             recovery_ledgers = self._attach_recovery_exposure_ledgers(conn)
@@ -1229,6 +1236,14 @@ class CapitalGovernor:
                         f"SELECT COUNT(*) FROM {slot_schema}.economic_positions "
                         "WHERE status = 'ACTIVE'"
                     ).fetchone()[0])
+                    if pending_position_id is not None:
+                        pending_active = conn.execute(
+                            f"SELECT 1 FROM {slot_schema}.economic_positions "
+                            "WHERE position_id = ? AND status = 'ACTIVE'",
+                            (pending_position_id.strip(),),
+                        ).fetchone()
+                        if pending_active is not None:
+                            active_position_slots -= 1
                     reserved_entry_slots = int(conn.execute(
                         "SELECT COUNT(*) FROM capital_reservations "
                         "WHERE intent = ? AND status = ?",
