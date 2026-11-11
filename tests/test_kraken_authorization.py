@@ -363,3 +363,54 @@ def test_paper_vcap_entry_counts_existing_active_positions_toward_fifty_slot_cei
     assert "VCAP active position limit reached: 50/50" in auth.decision.reason
     assert auth.economic_position_id is None
     assert len(ledger.list_active_position_ids()) == 50
+
+
+class DustSuccessorLifecycle:
+    def __init__(self, ledger):
+        self.ledger = ledger
+
+    def prepare_entry(self, *, proposal, account_name, now):
+        position_id = f"successor-{proposal.proposal_id}"
+        self.ledger.open_position(
+            position_id=position_id,
+            pair=proposal.pair,
+            created_at=now,
+        )
+        return position_id
+
+    def cancel_unsubmitted_entry(self, *, proposal_id, now):
+        return False
+
+
+def test_dust_successor_uses_one_of_the_fifty_vcap_slots_not_two(
+    monkeypatch, tmp_path
+):
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    for index in range(49):
+        ledger.open_position(
+            position_id=f"existing-position-{index}",
+            pair=f"ACTIVE{index}-USD",
+            created_at=1_000 + index,
+        )
+    configure_paper_entry(monkeypatch, tmp_path, ledger)
+    monkeypatch.setattr(
+        kraken_authorization,
+        "get_dust_lifecycle",
+        lambda governor=None: DustSuccessorLifecycle(ledger),
+    )
+    g = governor(tmp_path)
+
+    auth = asyncio.run(
+        reserve_kraken_capital(
+            PaperClient(500),
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="20",
+            governor=g,
+        )
+    )
+
+    assert auth.decision.status == DecisionStatus.RESERVED
+    assert auth.economic_position_id == f"successor-{auth.proposal.proposal_id}"
+    assert len(ledger.list_active_position_ids()) == 50
