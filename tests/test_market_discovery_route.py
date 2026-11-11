@@ -74,7 +74,7 @@ def test_explicit_vcap_entry_route_reserves_candidate_but_never_dispatches_order
         return SimpleNamespace(
             pair="BTC-USD",
             proposal_id="spectra-entry-test",
-            position_id="spectra-position-test",
+            position_id=None,
             amount_quote=Decimal("20"),
             decision_status=DecisionStatus.RESERVED,
             decision_reason="reserved",
@@ -113,7 +113,7 @@ def test_explicit_vcap_entry_route_reserves_candidate_but_never_dispatches_order
     assert result["decision_status"] == "RESERVED"
     assert result["amount_quote"] == "20"
     assert result["proposal_id"] == "spectra-entry-test"
-    assert result["position_id"] == "spectra-position-test"
+    assert result["position_id"] is None
     assert result["paper_only"] is True
     assert result["order_dispatched"] is False
     assert calls[0] == ("client", "spectra-paper")
