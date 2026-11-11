@@ -140,8 +140,14 @@ async def reserve_kraken_capital(
         _require_reconciled_existing_exposure(now=authorization_now)
 
     dust_lifecycle = get_dust_lifecycle(governor=capital_governor)
+    vcap_position_limit = (
+        50 if paper_only and intent_kind == IntentKind.ENTRY else None
+    )
     economic_position_id = dust_lifecycle.prepare_entry(
-        proposal=proposal, account_name=account, now=authorization_now
+        proposal=proposal,
+        account_name=account,
+        now=authorization_now,
+        max_active_positions=vcap_position_limit,
     )
     decision = capital_governor.reserve(proposal, snapshot)
     if decision.status in {
@@ -164,6 +170,7 @@ async def reserve_kraken_capital(
                 position_id=position_id,
                 pair=pair,
                 created_at=authorization_now,
+                max_active_positions=vcap_position_limit,
             )
         except Exception as exc:
             # Never leave a reserved paper claim behind when the canonical
