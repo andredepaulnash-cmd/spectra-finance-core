@@ -143,11 +143,15 @@ async def reserve_kraken_capital(
     economic_position_id = dust_lifecycle.prepare_entry(
         proposal=proposal, account_name=account, now=authorization_now
     )
+    vcap_slot_accounting = paper_only and intent_kind == IntentKind.ENTRY
     decision = capital_governor.reserve(
         proposal,
         snapshot,
-        max_active_positions=(
-            50 if paper_only and intent_kind == IntentKind.ENTRY else None
+        max_active_positions=50 if vcap_slot_accounting else None,
+        ledger_path=(
+            get_economic_position_ledger().db_path
+            if vcap_slot_accounting
+            else None
         ),
     )
     if decision.status in {
