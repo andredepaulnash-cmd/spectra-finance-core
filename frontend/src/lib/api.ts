@@ -282,7 +282,7 @@ export interface VCAPPaperEntryAdmissionResponse {
   selection_score: number;
   scanner_as_of: number;
   paper_only: true;
-  position_slot_opened: false;
+  position_slot_opened: boolean;
   order_dispatched: false;
 }
 
