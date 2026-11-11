@@ -13,6 +13,7 @@ from spectra_core import (
 from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core import kraken_authorization
 from spectra_core.kraken_authorization import reserve_kraken_capital
+from spectra_core.models import CapitalProposal, CapitalSnapshot
 
 
 D = Decimal
@@ -284,3 +285,50 @@ def test_rejected_first_paper_entry_does_not_create_prefill_position(
     assert ledger.list_active_position_ids() == ()
 
 
+
+
+def test_paper_vcap_entry_governor_rejects_a_51st_reserved_or_committed_slot(
+    monkeypatch, tmp_path
+):
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    configure_paper_entry(monkeypatch, tmp_path, ledger)
+    g = governor(tmp_path)
+
+    for index in range(50):
+        proposal = CapitalProposal(
+            proposal_id=f"reserved-vcap-slot-{index}",
+            pair=f"ASSET{index}-USD",
+            intent=IntentKind.ENTRY,
+            amount_quote=D("1"),
+            leverage=D("1"),
+            account_name="master_account",
+            connector_name="kraken_paper_trade",
+            quote_asset="USD",
+        )
+        decision = g.reserve(
+            proposal,
+            CapitalSnapshot(
+                free_quote=D("500"),
+                account_name="master_account",
+                connector_name="kraken_paper_trade",
+                quote_asset="USD",
+            ),
+            max_active_positions=50,
+        )
+        assert decision.status == DecisionStatus.RESERVED
+
+    auth = asyncio.run(
+        reserve_kraken_capital(
+            PaperClient(500),
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="20",
+            governor=g,
+        )
+    )
+
+    assert auth.decision.status == DecisionStatus.REJECTED
+    assert "VCAP active position limit reached: 50/50" in auth.decision.reason
+    assert auth.economic_position_id is None
+    assert ledger.list_active_position_ids() == ()
