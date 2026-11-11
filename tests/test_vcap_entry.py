@@ -195,7 +195,7 @@ async def test_live_execution_flag_blocks_vcap_candidate_admission(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_fresh_paper_entry_returns_planned_position_id_without_opening_slot(
+async def test_fresh_paper_entry_does_not_fabricate_position_id_before_dispatch(
     monkeypatch,
 ):
     configure(monkeypatch)
@@ -215,6 +215,6 @@ async def test_fresh_paper_entry_returns_planned_position_id_without_opening_slo
         now=1_000.0,
     )
 
-    assert result.position_id == f"spectra-position-{result.proposal_id}"
+    assert result.position_id is None
     assert result.position_slot_opened is False
     assert result.order_dispatched is False
