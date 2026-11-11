@@ -1100,6 +1100,7 @@ class CapitalGovernor:
         snapshot: CapitalSnapshot,
         *,
         max_active_positions: int | None = None,
+        ledger_path: str | Path | None = None,
     ) -> CapitalDecision:
         pair = proposal.pair.strip().upper()
 
@@ -1116,6 +1117,8 @@ class CapitalGovernor:
             raise ValueError("max_active_positions must be a positive integer")
         if max_active_positions is not None and proposal.intent != IntentKind.ENTRY:
             raise ValueError("max_active_positions applies only to ENTRY proposals")
+        if max_active_positions is not None and ledger_path is None:
+            raise ValueError("ledger_path is required for active ENTRY slot accounting")
 
         with self._connect() as conn:
             recovery_ledgers = self._attach_recovery_exposure_ledgers(conn)
@@ -1201,16 +1204,33 @@ class CapitalGovernor:
 
                 entry_slot_reason = ""
                 if max_active_positions is not None:
+                    slot_path = Path(ledger_path).resolve()
+                    database_rows = conn.execute("PRAGMA database_list").fetchall()
+                    slot_schema = next(
+                        (
+                            row["name"]
+                            for row in database_rows
+                            if row["file"]
+                            and Path(row["file"]).resolve() == slot_path
+                        ),
+                        None,
+                    )
+                    if slot_schema is None:
+                        conn.execute(
+                            "ATTACH DATABASE ? AS vcap_slot_ledger",
+                            (str(slot_path),),
+                        )
+                        slot_schema = "vcap_slot_ledger"
+                    active_position_slots = int(conn.execute(
+                        f"SELECT COUNT(*) FROM {slot_schema}.economic_positions "
+                        "WHERE status = 'ACTIVE'"
+                    ).fetchone()[0])
                     reserved_entry_slots = int(conn.execute(
                         "SELECT COUNT(*) FROM capital_reservations "
                         "WHERE intent = ? AND status = ?",
                         (IntentKind.ENTRY.value, DecisionStatus.RESERVED.value),
                     ).fetchone()[0])
-                    committed_entry_slots = int(conn.execute(
-                        "SELECT COUNT(*) FROM entry_submission_claims "
-                        "WHERE state IN ('COMMITTED', 'DISPATCHED')"
-                    ).fetchone()[0])
-                    active_entry_slots = reserved_entry_slots + committed_entry_slots
+                    active_entry_slots = active_position_slots + reserved_entry_slots
                     if active_entry_slots >= max_active_positions:
                         entry_slot_reason = (
                             "VCAP active position limit reached: "
