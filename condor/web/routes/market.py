@@ -692,6 +692,7 @@ async def reserve_server_vcap_entry(
         "selection_score": admission.selection_score,
         "scanner_as_of": admission.scanner_as_of,
         "paper_only": admission.paper_only,
+        "position_slot_opened": admission.position_slot_opened,
         "order_dispatched": admission.order_dispatched,
     }
 
