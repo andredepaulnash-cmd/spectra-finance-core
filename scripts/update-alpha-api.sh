@@ -333,7 +333,7 @@ CORE_PYTHON_SOURCES=(
 )
 declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="5644134509e604dc5ed0df9076130608b61fe975"
-  ["spectra_core/kraken_authorization.py"]="5cac711ff09998005a32d912407f0fee68b6c94a"
+  ["spectra_core/kraken_authorization.py"]="a6f2b56b24f27c953afe2391405d63dc3318b1d2"
   ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
   ["spectra_core/capital_governor.py"]="a34f6b5bb0551e00b7bf209e34135723f0cc3207"
   ["spectra_core/vcap_entry.py"]="58f6bd6a163e90496f919eb6c92abc06baf7a65e"
