@@ -274,6 +274,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
             intent="ENTRY",
             amount_quote="50",
             governor=g,
+            position_id="e2e-entry",
         )
     )
 
