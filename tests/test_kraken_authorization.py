@@ -200,7 +200,9 @@ class PaperClient:
 
 
 class EmptyDustLifecycle:
-    def prepare_entry(self, *, proposal, account_name, now):
+    def prepare_entry(
+        self, *, proposal, account_name, now, max_active_positions=None
+    ):
         return None
 
     def cancel_unsubmitted_entry(self, *, proposal_id, now):
