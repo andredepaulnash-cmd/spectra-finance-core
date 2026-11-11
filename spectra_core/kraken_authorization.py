@@ -149,7 +149,7 @@ async def reserve_kraken_capital(
         snapshot,
         max_active_positions=50 if vcap_slot_accounting else None,
         ledger_path=(
-            get_economic_position_ledger().db_path
+            get_economic_position_ledger().path
             if vcap_slot_accounting
             else None
         ),
