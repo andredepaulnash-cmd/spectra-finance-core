@@ -299,6 +299,11 @@ def test_first_paper_entry_releases_reservation_if_asset_slot_is_already_active(
     )
     configure_paper_entry(monkeypatch, tmp_path, ledger)
     g = governor(tmp_path)
+    monkeypatch.setattr(
+        kraken_authorization,
+        "uuid4",
+        lambda: type("FixedId", (), {"hex": "collision-test"})(),
+    )
 
     with pytest.raises(ValueError, match="already has ACTIVE economic position"):
         asyncio.run(
@@ -313,10 +318,7 @@ def test_first_paper_entry_releases_reservation_if_asset_slot_is_already_active(
         )
 
     # The failed slot claim cannot strand reserved quote.
-    decisions = [
-        g.get_decision(row["proposal_id"])
-        for row in g.list_reservations()
-    ]
-    assert len(decisions) == 1
-    assert decisions[0].status == DecisionStatus.RELEASED
+    decision = g.get_decision("spectra-entry-collision-test")
+    assert decision is not None
+    assert decision.status == DecisionStatus.RELEASED
     assert ledger.list_active_position_ids() == ("existing-btc-position",)
