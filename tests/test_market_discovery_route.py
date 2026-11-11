@@ -1,5 +1,8 @@
 import asyncio
+from decimal import Decimal
 from types import SimpleNamespace
+
+from spectra_core.models import DecisionStatus
 
 from condor.web.routes import market as market_routes
 
@@ -72,10 +75,8 @@ def test_explicit_vcap_entry_route_reserves_candidate_but_never_dispatches_order
             pair="BTC-USD",
             proposal_id="spectra-entry-test",
             position_id="spectra-position-test",
-            amount_quote=__import__("decimal").Decimal("20"),
-            decision_status=__import__(
-                "spectra_core.models", fromlist=["DecisionStatus"]
-            ).DecisionStatus.RESERVED,
+            amount_quote=Decimal("20"),
+            decision_status=DecisionStatus.RESERVED,
             decision_reason="reserved",
             selection_score=88.0,
             scanner_as_of=1_800_000_000.0,
