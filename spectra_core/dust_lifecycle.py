@@ -1007,7 +1007,6 @@ class DustLifecycle:
         pair: str,
         checkpoint_ids: tuple[str, ...],
         now: float,
-        max_active_positions: int | None = None,
     ) -> None:
         """Atomically open one slot after checking *all* same-base predecessors.
 
@@ -1024,12 +1023,6 @@ class DustLifecycle:
         base = normalized_base_asset(pair)
         if not checkpoint_ids or len(set(checkpoint_ids)) != len(checkpoint_ids):
             raise ValueError("provide distinct checkpoints for every dust predecessor")
-        if max_active_positions is not None and (
-            isinstance(max_active_positions, bool)
-            or not isinstance(max_active_positions, int)
-            or max_active_positions < 1
-        ):
-            raise ValueError("max_active_positions must be a positive integer")
         with self._transaction() as conn:
             existing = conn.execute(
                 "SELECT * FROM economic_positions WHERE position_id = ?", (pid,)
@@ -1050,15 +1043,6 @@ class DustLifecycle:
                 (base,),
             ).fetchone():
                 raise ValueError("base asset already has an ACTIVE position")
-            if max_active_positions is not None:
-                active_count = int(conn.execute(
-                    "SELECT COUNT(*) FROM economic_positions WHERE status = 'ACTIVE'"
-                ).fetchone()[0])
-                if active_count >= max_active_positions:
-                    raise ValueError(
-                        "VCAP active position limit reached: "
-                        f"{active_count}/{max_active_positions}"
-                    )
             checked = self._validate_predecessors(
                 conn, base=base, checkpoint_ids=checkpoint_ids, now=now
             )
@@ -1203,12 +1187,7 @@ class DustLifecycle:
             self.cancel_unsubmitted_entry(proposal_id=row["proposal_id"], now=now)
 
     def prepare_entry(
-        self,
-        *,
-        proposal: CapitalProposal,
-        account_name: str,
-        now: float,
-        max_active_positions: int | None = None,
+        self, *, proposal: CapitalProposal, account_name: str, now: float
     ) -> str | None:
         """Bind existing entry authorization to current dust checkpoints.
 
@@ -1308,7 +1287,6 @@ class DustLifecycle:
                 created_at=now,
                 dust_lifecycle=self,
                 dust_checkpoint_ids=tuple(checkpoints),
-                max_active_positions=max_active_positions,
             )
         with self._transaction() as conn:
             self._validate_predecessors(
