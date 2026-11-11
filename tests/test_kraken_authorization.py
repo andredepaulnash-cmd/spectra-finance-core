@@ -322,3 +322,39 @@ def test_first_paper_entry_releases_reservation_if_asset_slot_is_already_active(
     assert decision is not None
     assert decision.status == DecisionStatus.RELEASED
     assert ledger.list_active_position_ids() == ("existing-btc-position",)
+
+
+def test_paper_entry_refuses_a_51st_active_position_and_releases_reservation(
+    monkeypatch, tmp_path
+):
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    for index in range(50):
+        ledger.open_position(
+            position_id=f"existing-position-{index}",
+            pair=f"ASSET{index}-USD",
+            created_at=1_000 + index,
+        )
+    configure_paper_entry(monkeypatch, tmp_path, ledger)
+    monkeypatch.setattr(
+        kraken_authorization,
+        "uuid4",
+        lambda: type("FixedId", (), {"hex": "fifty-first"})(),
+    )
+    g = governor(tmp_path)
+
+    with pytest.raises(ValueError, match="VCAP active position limit reached: 50/50"):
+        asyncio.run(
+            reserve_kraken_capital(
+                PaperClient(500),
+                account_name="master_account",
+                trading_pair="BTC-USD",
+                intent="ENTRY",
+                amount_quote="20",
+                governor=g,
+            )
+        )
+
+    decision = g.get_decision("spectra-entry-fifty-first")
+    assert decision is not None
+    assert decision.status == DecisionStatus.RELEASED
+    assert len(ledger.list_active_position_ids()) == 50
