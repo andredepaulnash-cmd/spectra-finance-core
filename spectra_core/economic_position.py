@@ -489,7 +489,6 @@ class EconomicPositionLedger:
         created_at: float,
         dust_lifecycle=None,
         dust_checkpoint_ids: tuple[str, ...] = (),
-        max_active_positions: int | None = None,
     ) -> None:
         pid = _text(position_id, "position_id")
         normalized_pair = _pair(pair)
@@ -504,17 +503,10 @@ class EconomicPositionLedger:
                 pair=normalized_pair,
                 checkpoint_ids=dust_checkpoint_ids,
                 now=timestamp,
-                max_active_positions=max_active_positions,
             )
             return
         if dust_checkpoint_ids:
             raise ValueError("dust checkpoints require the enabled admission gate")
-        if max_active_positions is not None and (
-            isinstance(max_active_positions, bool)
-            or not isinstance(max_active_positions, int)
-            or max_active_positions < 1
-        ):
-            raise ValueError("max_active_positions must be a positive integer")
 
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -556,17 +548,6 @@ class EconomicPositionLedger:
                         f"{active_same_asset['position_id']} "
                         f"({active_same_asset['pair']})"
                     )
-
-                if max_active_positions is not None:
-                    active_count = int(conn.execute(
-                        "SELECT COUNT(*) FROM economic_positions WHERE status = ?",
-                        (EconomicPositionStatus.ACTIVE.value,),
-                    ).fetchone()[0])
-                    if active_count >= max_active_positions:
-                        raise ValueError(
-                            "VCAP active position limit reached: "
-                            f"{active_count}/{max_active_positions}"
-                        )
 
                 residual = conn.execute(
                     """
