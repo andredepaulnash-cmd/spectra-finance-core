@@ -250,7 +250,7 @@ declare -A CORE_SHELL_OLD_BLOBS=(
 declare -A CORE_SHELL_NEW_BLOBS=(
   ["frontend/src/components/layout/AppShell.tsx"]="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
   ["frontend/src/index.css"]="6d79e7a5111d423be6bf260a65e238c0344a4f5e"
-  ["frontend/src/pages/SpectraOverview.tsx"]="dac12adcbe9337309b82e5f58cf551dc35c0c094"
+  ["frontend/src/pages/SpectraOverview.tsx"]="47e8b5c52c71e3b25d771321135937a931dc1068"
   ["frontend/src/lib/api.ts"]="b972bc5ec8c393bd92f8dc3b1cdc1e534f68d248"
 )
 for source in "${CORE_SHELL_SOURCES[@]}"; do
@@ -335,7 +335,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="5644134509e604dc5ed0df9076130608b61fe975"
   ["spectra_core/kraken_authorization.py"]="5cac711ff09998005a32d912407f0fee68b6c94a"
   ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
-  ["spectra_core/capital_governor.py"]="f143231ddcc9eab97fdc83afcd01ef3722d52138"
+  ["spectra_core/capital_governor.py"]="a34f6b5bb0551e00b7bf209e34135723f0cc3207"
   ["spectra_core/vcap_entry.py"]="58f6bd6a163e90496f919eb6c92abc06baf7a65e"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
