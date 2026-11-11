@@ -140,14 +140,8 @@ async def reserve_kraken_capital(
         _require_reconciled_existing_exposure(now=authorization_now)
 
     dust_lifecycle = get_dust_lifecycle(governor=capital_governor)
-    vcap_position_limit = (
-        50 if paper_only and intent_kind == IntentKind.ENTRY else None
-    )
     economic_position_id = dust_lifecycle.prepare_entry(
-        proposal=proposal,
-        account_name=account,
-        now=authorization_now,
-        max_active_positions=vcap_position_limit,
+        proposal=proposal, account_name=account, now=authorization_now
     )
     decision = capital_governor.reserve(proposal, snapshot)
     if decision.status in {
@@ -158,38 +152,6 @@ async def reserve_kraken_capital(
         dust_lifecycle.cancel_unsubmitted_entry(
             proposal_id=proposal.proposal_id, now=time.time()
         )
-    elif paper_only and intent_kind == IntentKind.ENTRY and economic_position_id is None:
-        # A first-time paper entry has no dust successor to supply its canonical
-        # economic-position identity. The executor commit path requires an
-        # existing zero-inventory ACTIVE prefill position, so create that shell
-        # only after the Governor has reserved the exact ENTRY proposal.
-        ledger = get_economic_position_ledger()
-        position_id = f"spectra-position-{proposal.proposal_id}"
-        try:
-            ledger.open_position(
-                position_id=position_id,
-                pair=pair,
-                created_at=authorization_now,
-                max_active_positions=vcap_position_limit,
-            )
-        except Exception as exc:
-            # Never leave a reserved paper claim behind when the canonical
-            # asset slot could not be opened. A failed release remains bounded
-            # by the Governor reservation lease and is surfaced to the caller.
-            released = capital_governor.release(
-                proposal.proposal_id,
-                reason="paper_entry_position_bootstrap_failed",
-            )
-            if not released:
-                raise RuntimeError(
-                    "paper ENTRY position bootstrap failed and its reservation "
-                    "could not be released"
-                ) from exc
-            raise ValueError(
-                "paper ENTRY position bootstrap failed; reserved capital was released"
-            ) from exc
-        economic_position_id = position_id
-
     return KrakenCapitalAuthorization(
         proposal=proposal,
         decision=decision,
