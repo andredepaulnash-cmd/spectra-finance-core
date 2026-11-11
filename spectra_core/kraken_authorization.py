@@ -85,6 +85,7 @@ async def reserve_kraken_capital(
     intent: IntentKind | str,
     amount_quote: Decimal | str | int | float,
     governor=None,
+    position_id: str | None = None,
     refresh: bool = True,
 ) -> KrakenCapitalAuthorization:
     """
@@ -143,6 +144,24 @@ async def reserve_kraken_capital(
     economic_position_id = dust_lifecycle.prepare_entry(
         proposal=proposal, account_name=account, now=authorization_now
     )
+    if position_id is not None:
+        if intent_kind != IntentKind.ENTRY:
+            raise ValueError("position_id is only valid for ENTRY proposals")
+        supplied_position_id = position_id.strip()
+        if not supplied_position_id:
+            raise ValueError("position_id must be a non-empty string")
+        if economic_position_id and economic_position_id != supplied_position_id:
+            raise ValueError("position_id does not match the dust successor admission")
+        ledger = get_economic_position_ledger()
+        if supplied_position_id not in ledger.list_active_position_ids():
+            raise ValueError("position_id must identify an ACTIVE economic position")
+        position_snapshot = ledger.snapshot(supplied_position_id)
+        if position_snapshot.pair != pair or Decimal(str(position_snapshot.active_base)) != 0:
+            raise ValueError(
+                "ENTRY prefill position must match the pair and have zero inventory"
+            )
+        economic_position_id = supplied_position_id
+
     vcap_slot_accounting = paper_only and intent_kind == IntentKind.ENTRY
     decision = capital_governor.reserve(
         proposal,
