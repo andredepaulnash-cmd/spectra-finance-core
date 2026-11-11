@@ -118,7 +118,7 @@ async def test_stale_shortlist_is_rejected_before_governor_reservation(monkeypat
     with pytest.raises(ValueError, match="stale"):
         await vcap_entry.reserve_vcap_candidate_entry(
             object(),
-            scan_result(as_of=600.0),
+            scan_result=scan_result(as_of=600.0),
             trading_pair="BTC-USD",
             account_name="master_account",
             now=1_000.0,
@@ -139,7 +139,7 @@ async def test_non_candidate_and_ineligible_assets_are_rejected(monkeypatch):
     with pytest.raises(ValueError, match="not in the current"):
         await vcap_entry.reserve_vcap_candidate_entry(
             object(),
-            scan_result(),
+            scan_result=scan_result(),
             trading_pair="ETH-USD",
             account_name="master_account",
             now=1_000.0,
@@ -148,7 +148,7 @@ async def test_non_candidate_and_ineligible_assets_are_rejected(monkeypatch):
     with pytest.raises(ValueError, match="eligibility"):
         await vcap_entry.reserve_vcap_candidate_entry(
             object(),
-            scan_result(eligible=False),
+            scan_result=scan_result(eligible=False),
             trading_pair="BTC-USD",
             account_name="master_account",
             now=1_000.0,
@@ -167,7 +167,7 @@ async def test_candidate_requires_explicit_governor_asset_approval(monkeypatch):
     with pytest.raises(ValueError, match="explicit Governor-approved"):
         await vcap_entry.reserve_vcap_candidate_entry(
             object(),
-            scan_result(),
+            scan_result=scan_result(),
             trading_pair="BTC-USD",
             account_name="master_account",
             now=1_000.0,
@@ -187,7 +187,7 @@ async def test_live_execution_flag_blocks_vcap_candidate_admission(monkeypatch):
     with pytest.raises(ValueError, match="live execution"):
         await vcap_entry.reserve_vcap_candidate_entry(
             object(),
-            scan_result(),
+            scan_result=scan_result(),
             trading_pair="BTC-USD",
             account_name="master_account",
             now=1_000.0,
