@@ -143,7 +143,13 @@ async def reserve_kraken_capital(
     economic_position_id = dust_lifecycle.prepare_entry(
         proposal=proposal, account_name=account, now=authorization_now
     )
-    decision = capital_governor.reserve(proposal, snapshot)
+    decision = capital_governor.reserve(
+        proposal,
+        snapshot,
+        max_active_positions=(
+            50 if paper_only and intent_kind == IntentKind.ENTRY else None
+        ),
+    )
     if decision.status in {
         DecisionStatus.REJECTED,
         DecisionStatus.EXPIRED,
