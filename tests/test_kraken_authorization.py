@@ -1,4 +1,5 @@
 import asyncio
+import json
 from decimal import Decimal
 
 import pytest
@@ -9,6 +10,8 @@ from spectra_core import (
     DecisionStatus,
     IntentKind,
 )
+from spectra_core.economic_position import EconomicPositionLedger
+from spectra_core import kraken_authorization
 from spectra_core.kraken_authorization import reserve_kraken_capital
 
 
@@ -170,3 +173,150 @@ def test_authorization_threads_governor_recovery_attribution(
     assert auth.snapshot.pair_exposure_quote == D("0")
     assert auth.snapshot.position_exposure_quote == D("0")
     assert auth.decision.status == DecisionStatus.RESERVED
+
+
+class PaperPortfolio:
+    def __init__(self, available):
+        self.available = available
+        self.calls = []
+
+    async def get_state(self, **kwargs):
+        self.calls.append(kwargs)
+        return {
+            "master_account": {
+                "kraken_paper_trade": [{
+                    "token": "USD",
+                    "units": self.available,
+                    "available_units": self.available,
+                    "value": self.available,
+                }]
+            }
+        }
+
+
+class PaperClient:
+    def __init__(self, available=500):
+        self.portfolio = PaperPortfolio(available)
+
+
+class EmptyDustLifecycle:
+    def prepare_entry(self, *, proposal, account_name, now):
+        return None
+
+    def cancel_unsubmitted_entry(self, *, proposal_id, now):
+        return False
+
+
+def configure_paper_entry(monkeypatch, tmp_path, ledger):
+    state = tmp_path / "paper-state"
+    state.mkdir()
+    (state / "approved_assets.json").write_text(
+        json.dumps({
+            "schema_version": 1,
+            "source": "test Governor allowlist",
+            "connector": "kraken_paper_trade",
+            "approved_pairs": ["BTC-USD"],
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+    monkeypatch.setattr(
+        kraken_authorization,
+        "get_economic_position_ledger",
+        lambda: ledger,
+    )
+    monkeypatch.setattr(
+        kraken_authorization,
+        "get_dust_lifecycle",
+        lambda governor=None: EmptyDustLifecycle(),
+    )
+
+
+def test_first_paper_entry_gets_canonical_prefill_position_after_governor_reserve(
+    monkeypatch, tmp_path
+):
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    configure_paper_entry(monkeypatch, tmp_path, ledger)
+    g = governor(tmp_path)
+    client = PaperClient(500)
+
+    auth = asyncio.run(
+        reserve_kraken_capital(
+            client,
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="20",
+            governor=g,
+        )
+    )
+
+    assert auth.decision.status == DecisionStatus.RESERVED
+    assert auth.economic_position_id == (
+        f"spectra-position-{auth.proposal.proposal_id}"
+    )
+    assert ledger.list_active_position_ids() == (auth.economic_position_id,)
+    position = ledger.snapshot(auth.economic_position_id)
+    assert position.pair == "BTC-USD"
+    assert position.active_base == D("0")
+
+
+def test_rejected_first_paper_entry_does_not_create_prefill_position(
+    monkeypatch, tmp_path
+):
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    configure_paper_entry(monkeypatch, tmp_path, ledger)
+    g = governor(tmp_path)
+    client = PaperClient(110)
+
+    auth = asyncio.run(
+        reserve_kraken_capital(
+            client,
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="20",
+            governor=g,
+        )
+    )
+
+    assert auth.decision.status == DecisionStatus.REJECTED
+    assert auth.economic_position_id is None
+    assert ledger.list_active_position_ids() == ()
+
+
+def test_first_paper_entry_releases_reservation_if_asset_slot_is_already_active(
+    monkeypatch, tmp_path
+):
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    ledger.open_position(
+        position_id="existing-btc-position",
+        pair="BTC-USD",
+        created_at=1_000,
+    )
+    configure_paper_entry(monkeypatch, tmp_path, ledger)
+    g = governor(tmp_path)
+
+    with pytest.raises(ValueError, match="already has ACTIVE economic position"):
+        asyncio.run(
+            reserve_kraken_capital(
+                PaperClient(500),
+                account_name="master_account",
+                trading_pair="BTC-USD",
+                intent="ENTRY",
+                amount_quote="20",
+                governor=g,
+            )
+        )
+
+    # The failed slot claim cannot strand reserved quote.
+    decisions = [
+        g.get_decision(row["proposal_id"])
+        for row in g.list_reservations()
+    ]
+    assert len(decisions) == 1
+    assert decisions[0].status == DecisionStatus.RELEASED
+    assert ledger.list_active_position_ids() == ("existing-btc-position",)
