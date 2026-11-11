@@ -325,8 +325,6 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/asset_authority.py"
   "spectra_core/kraken_authorization.py"
   "spectra_core/market_discovery.py"
-  "spectra_core/economic_position.py"
-  "spectra_core/dust_lifecycle.py"
   "spectra_core/vcap_entry.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
   "routines/mean_reversion_scanner.py"
@@ -334,10 +332,8 @@ CORE_PYTHON_SOURCES=(
 )
 declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="5644134509e604dc5ed0df9076130608b61fe975"
-  ["spectra_core/kraken_authorization.py"]="ed31a9ed926c99b76e8c5e27a8e228d8a2ccf1cb"
+  ["spectra_core/kraken_authorization.py"]="8cdc9d9bf4e6124b6f9f1d41e744dcb5802f22bb"
   ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
-  ["spectra_core/economic_position.py"]="6bf2b97c66f3e452c03d60658b0cf20dfa6b2ff7"
-  ["spectra_core/dust_lifecycle.py"]="ebaabdc637dfa36c63bbec3db1d7978c129c9256"
   ["spectra_core/vcap_entry.py"]="b74582cb2a08c61b742dd6693b638f695d1d5477"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
@@ -347,8 +343,6 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/asset_authority.py"]=""
   ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050"
   ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
-  ["spectra_core/economic_position.py"]="3d63e76d57081c5a9b232d3966b7ef20f975ca8a"
-  ["spectra_core/dust_lifecycle.py"]="9fc8b7a6239d94c8a0ea2d9e37d8c231e3fa68a8"
   ["spectra_core/vcap_entry.py"]=""
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a"
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
@@ -380,8 +374,6 @@ done
   "$CORE_DIR/spectra_core/asset_authority.py" \
   "$CORE_DIR/spectra_core/kraken_authorization.py" \
   "$CORE_DIR/spectra_core/market_discovery.py" \
-  "$CORE_DIR/spectra_core/economic_position.py" \
-  "$CORE_DIR/spectra_core/dust_lifecycle.py" \
   "$CORE_DIR/spectra_core/vcap_entry.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
   "$CORE_DIR/routines/mean_reversion_scanner.py" \
