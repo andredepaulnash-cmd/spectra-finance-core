@@ -251,7 +251,7 @@ declare -A CORE_SHELL_NEW_BLOBS=(
   ["frontend/src/components/layout/AppShell.tsx"]="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
   ["frontend/src/index.css"]="6d79e7a5111d423be6bf260a65e238c0344a4f5e"
   ["frontend/src/pages/SpectraOverview.tsx"]="dac12adcbe9337309b82e5f58cf551dc35c0c094"
-  ["frontend/src/lib/api.ts"]="66671b1e314b8aecdced32b45df18b488f984bfa"
+  ["frontend/src/lib/api.ts"]="b972bc5ec8c393bd92f8dc3b1cdc1e534f68d248"
 )
 for source in "${CORE_SHELL_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
