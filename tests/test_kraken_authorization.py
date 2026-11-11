@@ -314,6 +314,7 @@ def test_paper_vcap_entry_governor_rejects_a_51st_reserved_or_committed_slot(
                 quote_asset="USD",
             ),
             max_active_positions=50,
+            ledger_path=ledger.db_path,
         )
         assert decision.status == DecisionStatus.RESERVED
 
@@ -332,3 +333,33 @@ def test_paper_vcap_entry_governor_rejects_a_51st_reserved_or_committed_slot(
     assert "VCAP active position limit reached: 50/50" in auth.decision.reason
     assert auth.economic_position_id is None
     assert ledger.list_active_position_ids() == ()
+
+
+def test_paper_vcap_entry_counts_existing_active_positions_toward_fifty_slot_ceiling(
+    monkeypatch, tmp_path
+):
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    for index in range(50):
+        ledger.open_position(
+            position_id=f"active-position-{index}",
+            pair=f"ACTIVE{index}-USD",
+            created_at=1_000 + index,
+        )
+    configure_paper_entry(monkeypatch, tmp_path, ledger)
+    g = governor(tmp_path)
+
+    auth = asyncio.run(
+        reserve_kraken_capital(
+            PaperClient(500),
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="20",
+            governor=g,
+        )
+    )
+
+    assert auth.decision.status == DecisionStatus.REJECTED
+    assert "VCAP active position limit reached: 50/50" in auth.decision.reason
+    assert auth.economic_position_id is None
+    assert len(ledger.list_active_position_ids()) == 50
