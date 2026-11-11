@@ -634,6 +634,68 @@ async def get_server_market_discovery(
     return result
 
 
+@router.post("/servers/{name}/market/vcap-entry")
+async def reserve_server_vcap_entry(
+    name: str,
+    trading_pair: str = Query(..., description="A pair in the current mean-reversion shortlist"),
+    account_name: str = Query(default="master_account", min_length=1, max_length=128),
+    user: WebUser = Depends(require_server_access),
+):
+    """Reserve one explicit $20 VCAP paper ENTRY from the current MR shortlist.
+
+    This endpoint is an operator-triggered admission only. CapitalGovernor and
+    the paper asset allowlist remain authoritative; it does not create an
+    executor or dispatch an exchange order.
+    """
+    from spectra_core.market_discovery import scan_kraken_universe
+    from spectra_core.vcap_entry import reserve_vcap_candidate_entry
+
+    key = "kraken:{}:80:25:10000000:90".format(name)
+    cached = _discovery_cache.get(key)
+    cache_fresh = cached is not None and time.monotonic() - cached[0] < _DISCOVERY_CACHE_TTL
+
+    try:
+        client = await get_config_manager().get_client(name)
+        if cache_fresh:
+            scan = cached[1]
+        else:
+            scan = await scan_kraken_universe(
+                client,
+                top_n=80,
+                show_n=25,
+                min_volume_usd=10_000_000,
+                min_history_days=90,
+                quote_assets=("USD",),
+            )
+            _discovery_cache[key] = (time.monotonic(), scan)
+
+        admission = await reserve_vcap_candidate_entry(
+            client,
+            scan_result=scan,
+            trading_pair=trading_pair,
+            account_name=account_name,
+            now=time.time(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except Exception as exc:
+        logger.exception("VCAP paper entry admission failed for server %s", name)
+        raise upstream_error("VCAP paper entry admission unavailable", exc)
+
+    return {
+        "pair": admission.pair,
+        "proposal_id": admission.proposal_id,
+        "position_id": admission.position_id,
+        "amount_quote": str(admission.amount_quote),
+        "decision_status": admission.decision_status.value,
+        "decision_reason": admission.decision_reason,
+        "selection_score": admission.selection_score,
+        "scanner_as_of": admission.scanner_as_of,
+        "paper_only": admission.paper_only,
+        "order_dispatched": admission.order_dispatched,
+    }
+
+
 @router.get("/market/discovery")
 async def get_market_discovery(
     top_n: int = Query(default=80, ge=1, le=150),
