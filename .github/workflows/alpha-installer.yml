@@ -37,6 +37,7 @@ on:
       - tests/test_spectra_runtime_fail_closed.py
       - tests/test_spectra_runtime.py
       - tests/test_spectra_kraken_execution_flow.py
+      - tests/test_ambiguous_executor_dispatch.py
       - tests/test_alpha_backup.py
       - tests/test_asset_authority.py
       - tests/test_kraken_authorization.py
@@ -137,7 +138,7 @@ jobs:
       - name: Install locked Core dependencies
         run: uv sync --locked --dev --python 3.12
       - name: Test alpha runtime safety and paper configuration
-        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py tests/test_market_discovery.py tests/test_hummingbot_paper_trade_compat.py
+        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_ambiguous_executor_dispatch.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py tests/test_market_discovery.py tests/test_hummingbot_paper_trade_compat.py
       - name: Test persistent module lifecycle and registry
         run: uv run --python 3.12 pytest -q tests/test_module_lifecycle.py tests/test_module_registry.py
       - name: Test authenticated module trigger API
