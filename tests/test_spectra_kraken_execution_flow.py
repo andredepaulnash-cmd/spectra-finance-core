@@ -16,6 +16,7 @@ from spectra_core import (
 )
 from spectra_core import kraken_authorization
 from spectra_core.kraken_authorization import reserve_kraken_capital
+from spectra_core.kraken_market_fabric import normalize_kraken_trading_rules
 from spectra_core.accounting_health import AccountingHealthState, AccountingHealthSupervisor
 from mcp_servers.hummingbot_api.tools.accounting_health import synchronize_position_accounting_health
 
@@ -440,7 +441,11 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
         json.dumps(
             {
                 "reserve_floor_quote": "100",
-                "max_total_committed_quote": "100",
+                # The isolated paper connector starts with a simulated portfolio,
+                # not just free USD. The Governor correctly counts all non-quote
+                # holdings toward the global envelope; use the project paper cap
+                # here while keeping the per-pair and per-position test caps at $50.
+                "max_total_committed_quote": "25000",
                 "max_pair_quote": "50",
                 "max_position_quote": "50",
                 "max_recovery_quote": "25",
@@ -465,6 +470,12 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             }
         ),
         encoding="utf-8",
+    )
+    from spectra_core.runtime import spectra_state_dir
+
+    assert spectra_state_dir().resolve() == paper_state.resolve()
+    assert "max_total_committed_quote" in json.loads(
+        (paper_state / "capital_policy.json").read_text(encoding="utf-8")
     )
     reset_runtime_cache()
 
@@ -497,16 +508,44 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             position_id=position_id,
             refresh=True,
         )
-        assert authorization.decision.status == DecisionStatus.RESERVED
+        assert authorization.decision.status == DecisionStatus.RESERVED, (
+            "paper capital reservation rejected: "
+            f"reason={authorization.decision.reason!r}; "
+            f"free_quote={authorization.snapshot.free_quote}; "
+            f"committed_quote={authorization.snapshot.committed_quote}; "
+            f"pair_exposure_quote={authorization.snapshot.pair_exposure_quote}; "
+            f"position_exposure_quote={authorization.snapshot.position_exposure_quote}; "
+            f"recovery_exposure_quote={authorization.snapshot.recovery_exposure_quote}"
+        )
+
+        # Anchor the integration fixture to an independently observed market
+        # midpoint. The protected BUY path still takes its own fresh book
+        # immediately before dispatch and must remain inside the immutable
+        # 10 bps price cap; stale hard-coded BTC prices can never be marketable.
+        raw_rules = await client.connectors.get_trading_rules(
+            connector_name="kraken_paper_trade",
+            trading_pairs=["BTC-USD"],
+        )
+        normalized_rules, rejected_rules = normalize_kraken_trading_rules(
+            raw_rules,
+            quote_assets=("USD",),
+        )
+        trading_rule = normalized_rules.get("BTC-USD")
+        assert trading_rule is not None, rejected_rules
+        observed_book = await execution_book.fetch_protected_kraken_book(trading_rule)
+        reference_mid = (observed_book.best_bid + observed_book.best_ask) / Decimal("2")
+        start_price = reference_mid * Decimal("0.999")
+        end_price = reference_mid * Decimal("1.001")
+        limit_price = reference_mid * Decimal("0.998")
 
         result = await create_grid_executor(
             client,
             connector_name="kraken_paper_trade",
             trading_pair="BTC-USD",
             side=1,
-            start_price=90,
-            end_price=100,
-            limit_price=80,
+            start_price=float(start_price),
+            end_price=float(end_price),
+            limit_price=float(limit_price),
             total_amount_quote=25,
             leverage=1,
             account_name="master_account",
