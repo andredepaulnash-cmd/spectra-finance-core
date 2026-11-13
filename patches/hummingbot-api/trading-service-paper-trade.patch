@@ -1,7 +1,7 @@
 diff --git a/services/trading_service.py b/services/trading_service.py
 --- a/services/trading_service.py
 +++ b/services/trading_service.py
-@@
+@@ -237,3 +237,27 @@
 -        if trading_pair not in connector._trading_pairs:
 -            connector._trading_pairs.append(trading_pair)
 -            logger.debug(f"Registered {trading_pair} with connector {type(connector).__name__}")
