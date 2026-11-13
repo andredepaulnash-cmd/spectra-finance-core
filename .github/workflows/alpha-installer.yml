@@ -9,7 +9,11 @@ on:
       - install-alpha.sh
       - scripts/**
       - patches/**
+      - scripts/update-alpha-api.sh
+      - scripts/patch_hummingbot_paper_trade_compat.py
       - patches/**
+      - scripts/update-alpha-api.sh
+      - scripts/patch_hummingbot_paper_trade_compat.py
       - scripts/update-alpha-api.sh
       - scripts/spectra-alpha-doctor.sh
       - scripts/spectra-alpha-start-api.sh
@@ -68,6 +72,8 @@ on:
       - install-alpha.sh
       - scripts/**
       - patches/**
+      - scripts/update-alpha-api.sh
+      - scripts/patch_hummingbot_paper_trade_compat.py
       - spectra_core/**
       - mcp_servers/hummingbot_api/tools/**
       - routines/**
