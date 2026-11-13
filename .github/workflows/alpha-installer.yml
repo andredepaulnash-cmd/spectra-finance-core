@@ -78,6 +78,9 @@ on:
       - tests/spectra_test_support.py
       - tests/fixtures/**
       - tests/test_spectra_kraken_execution_flow.py
+      - tests/test_market_intelligence_provider.py
+      - condor/agents/**
+      - docs/SPECTRA-MARKET-INTELLIGENCE.md
       - ALPHA-TEST.md
       - README.md
       - pyproject.toml
