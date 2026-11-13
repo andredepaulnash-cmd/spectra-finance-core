@@ -335,6 +335,18 @@ def test_probe_openrouter_marks_rejected_key_invalid_without_echoing_it(monkeypa
     assert len(calls) == 1
 
 
+def test_probe_openrouter_treats_forbidden_key_as_invalid(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    _fake_openrouter_client(monkeypatch, status_code=403)
+    result = asyncio.run(
+        readiness.probe("openrouter", {"OPENROUTER_API_KEY": "sk-forbidden-test"})
+    )
+    assert result.state == INVALID
+    assert result.usable is False
+    assert "HTTP 403" in result.detail
+    assert "sk-forbidden-test" not in result.detail
+
+
 def test_probe_openrouter_transient_failure_is_unverified_not_invalid(monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     _fake_openrouter_client(monkeypatch, error=OSError("network unavailable"))
