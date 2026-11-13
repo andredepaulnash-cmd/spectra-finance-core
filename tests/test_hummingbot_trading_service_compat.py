@@ -23,7 +23,8 @@ def test_paper_trade_registration_uses_public_pair_mapping():
 def test_other_connectors_keep_list_registration():
     patched = patch_source(source_fixture())
     assert "trading_pairs = getattr(connector, \"_trading_pairs\", None)" in patched
-    assert "does not expose a supported trading-pair registration interface" in patched
+    assert "does not expose a supported " in patched
+    assert "trading-pair registration interface" in patched
 
 
 def test_patch_is_idempotent():
