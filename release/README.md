@@ -25,8 +25,9 @@ From the repository root:
 python scripts/check_upstream_releases.py
 ```
 
-The command writes `release-candidates.json` (ignored from version control by
-design if locally generated) and prints the same report. It is read-only: it
+The command writes `release-candidates.json` by default and prints the same
+report. Treat this generated report as an artifact; do not commit it as an
+approved component manifest. It is read-only: it
 does not edit the manifest, update a checkout, pull an image, restart a
 service, change credentials, or approve a candidate.
 
