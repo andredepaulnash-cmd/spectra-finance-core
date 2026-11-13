@@ -45,16 +45,13 @@ class UpstreamWatchTests(unittest.TestCase):
         self.assertEqual(MANIFEST["release_status"], "candidate")
 
     def test_prior_candidate_becomes_the_comparison_baseline(self):
-        prior = {
-            "upstream": {
-                "hummingbot_client": {
-                    "repository": "hummingbot/hummingbot",
-                    "release": "v2.18.0",
-                    "published_at": "2026-11-13T00:00:00Z",
-                },
-                **MANIFEST["upstream_snapshot"],
-            }
+        prior_upstream = dict(MANIFEST["upstream_snapshot"])
+        prior_upstream["hummingbot_client"] = {
+            "repository": "hummingbot/hummingbot",
+            "release": "v2.18.0",
+            "published_at": "2026-11-13T00:00:00Z",
         }
+        prior = {"upstream": prior_upstream}
         url = f"{API}/repos/hummingbot/hummingbot/releases/latest"
         fetcher = self.fixture_fetcher({url: {
             "tag_name": "v2.18.0",
