@@ -645,7 +645,7 @@ body {
 
 
 /* ── Spectra Intelligence: animated command environment ─────────────── */
-.spectra-intelligence-home { display:flex; flex-direction:column; gap:1rem; padding:clamp(.8rem,1.8vw,1.5rem); overflow:auto; background:radial-gradient(ellipse at 72% 0%,rgba(40,213,241,.07),transparent 38%),radial-gradient(ellipse at 5% 30%,rgba(132,93,255,.07),transparent 34%); }
+.spectra-intelligence-home { display:flex; flex-direction:column; gap:1rem; min-height:100%; padding:clamp(.8rem,1.8vw,1.5rem); overflow:visible; background:radial-gradient(ellipse at 72% 0%,rgba(40,213,241,.07),transparent 38%),radial-gradient(ellipse at 5% 30%,rgba(132,93,255,.07),transparent 34%); }
 .spectra-core-stage { position:relative; isolation:isolate; display:grid; grid-template-columns:minmax(0,1fr) minmax(260px,.9fr); min-height:330px; overflow:hidden; border:1px solid rgba(73,206,239,.22); border-radius:24px; padding:clamp(1.35rem,3vw,2.6rem); background:radial-gradient(ellipse at 75% 45%,rgba(30,133,190,.16),transparent 35%),linear-gradient(116deg,#071426 0%,#0b1830 53%,#171431 100%); box-shadow:0 24px 70px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.07); }
 .spectra-core-stage:before { content:"";position:absolute;inset:0;z-index:-1;opacity:.16;background-image:linear-gradient(rgba(101,179,216,.15) 1px,transparent 1px),linear-gradient(90deg,rgba(101,179,216,.15) 1px,transparent 1px);background-size:36px 36px;mask-image:linear-gradient(100deg,black,transparent 90%); }
 .spectra-core-copy { align-self:center;position:relative;z-index:2;max-width:640px; }
