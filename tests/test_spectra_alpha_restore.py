@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import importlib.util
 import sqlite3
 import tarfile
 from pathlib import Path
 
 import pytest
 
-from scripts.spectra_alpha_restore import restore_paper_state
+_RESTORE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "spectra-alpha-restore.py"
+_SPEC = importlib.util.spec_from_file_location("spectra_alpha_restore", _RESTORE_PATH)
+_RESTORE = importlib.util.module_from_spec(_SPEC)
+assert _SPEC is not None and _SPEC.loader is not None
+_SPEC.loader.exec_module(_RESTORE)
+restore_paper_state = _RESTORE.restore_paper_state
 
 
 def make_install(tmp_path: Path, *, paper_path: str | None = None, live_path: str | None = None):
@@ -19,7 +25,7 @@ def make_install(tmp_path: Path, *, paper_path: str | None = None, live_path: st
     if not live.is_absolute():
         live = core / live
     paper.mkdir(parents=True)
-    live.mkdir(parents=True)
+    live.mkdir(parents=True, exist_ok=True)
     (paper / "journal.json").write_text('{"version":"old"}', encoding="utf-8")
     (live / "live.json").write_text('{"protected":true}', encoding="utf-8")
     (core / ".env").write_text(
