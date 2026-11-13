@@ -9,12 +9,6 @@ on:
       - install-alpha.sh
       - scripts/**
       - patches/**
-      - scripts/update-alpha-api.sh
-      - scripts/patch_hummingbot_paper_trade_compat.py
-      - patches/**
-      - scripts/update-alpha-api.sh
-      - scripts/patch_hummingbot_paper_trade_compat.py
-      - scripts/update-alpha-api.sh
       - scripts/spectra-alpha-doctor.sh
       - scripts/spectra-alpha-start-api.sh
       - scripts/spectra
@@ -72,8 +66,6 @@ on:
       - install-alpha.sh
       - scripts/**
       - patches/**
-      - scripts/update-alpha-api.sh
-      - scripts/patch_hummingbot_paper_trade_compat.py
       - spectra_core/**
       - mcp_servers/hummingbot_api/tools/**
       - routines/**
@@ -85,6 +77,14 @@ on:
       - tests/spectra_test_support.py
       - tests/fixtures/**
       - tests/test_spectra_kraken_execution_flow.py
+      - tests/test_ambiguous_executor_dispatch.py
+      - tests/test_model_readiness.py
+      - tests/test_session_options_readiness.py
+      - tests/test_llm_picker_readiness.py
+      - tests/test_market_intelligence_provider.py
+      - tests/test_agent_start_model_check.py
+      - tests/test_vcap_tranches.py
+      - tests/test_vcap_execution_loop.py
       - ALPHA-TEST.md
       - README.md
       - pyproject.toml
