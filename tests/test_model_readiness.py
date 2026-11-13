@@ -13,7 +13,7 @@ import subprocess
 import pytest
 
 from handlers.agents import readiness
-from handlers.agents.readiness import MISSING, READY, UNVERIFIED
+from handlers.agents.readiness import INVALID, MISSING, READY, UNVERIFIED
 
 # ── npx package resolution ──────────────────────────────────────────────────
 
@@ -280,15 +280,87 @@ def test_probe_reachable_local_server_lists_its_models(monkeypatch):
     assert "2 model(s)" in r.detail
 
 
-def test_probe_openrouter_reads_the_passed_env_not_just_the_process(monkeypatch):
+def _fake_openrouter_client(monkeypatch, status_code=200, error=None):
+    calls = []
+
+    class Response:
+        def __init__(self, code):
+            self.status_code = code
+
+    class Client:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def get(self, url, headers):
+            calls.append((url, headers))
+            if error is not None:
+                raise error
+            return Response(status_code)
+
+    monkeypatch.setattr(readiness.httpx, "AsyncClient", Client)
+    readiness._openrouter_key_cache.clear()
+    return calls
+
+
+def test_probe_openrouter_reads_the_passed_env_and_verifies_the_key(monkeypatch):
     """The wizard runs before anything loads .env, so the key comes in by argument."""
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    calls = _fake_openrouter_client(monkeypatch, status_code=200)
     assert asyncio.run(readiness.probe("openrouter", {})).state == MISSING
-    ready = asyncio.run(readiness.probe("openrouter", {"OPENROUTER_API_KEY": "sk-x"}))
+    ready = asyncio.run(readiness.probe("openrouter", {"OPENROUTER_API_KEY": "sk-test"}))
     assert ready.state == READY
+    assert ready.usable is True
+    assert calls == [
+        (readiness.OPENROUTER_KEY_URL, {"Authorization": "Bearer sk-test"})
+    ]
+    assert "sk-test" not in ready.detail
+
+
+def test_probe_openrouter_marks_rejected_key_invalid_without_echoing_it(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    calls = _fake_openrouter_client(monkeypatch, status_code=401)
+    result = asyncio.run(
+        readiness.probe("openrouter", {"OPENROUTER_API_KEY": "sk-invalid-test"})
+    )
+    assert result.state == INVALID
+    assert result.usable is False
+    assert "rejected" in result.detail.lower()
+    assert "sk-invalid-test" not in result.detail
+    assert len(calls) == 1
+
+
+def test_probe_openrouter_transient_failure_is_unverified_not_invalid(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    _fake_openrouter_client(monkeypatch, error=OSError("network unavailable"))
+    result = asyncio.run(
+        readiness.probe("openrouter", {"OPENROUTER_API_KEY": "sk-test"})
+    )
+    assert result.state == UNVERIFIED
+    assert result.usable is True
+
+
+def test_probe_openrouter_validation_is_cached_by_key_fingerprint(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    calls = _fake_openrouter_client(monkeypatch, status_code=200)
+
+    async def twice():
+        first = await readiness.probe("openrouter", {"OPENROUTER_API_KEY": "sk-test"})
+        second = await readiness.probe("openrouter", {"OPENROUTER_API_KEY": "sk-test"})
+        return first, second
+
+    first, second = asyncio.run(twice())
+    assert first.state == second.state == READY
+    assert len(calls) == 1
 
 
 def test_probe_all_probes_each_source_once(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     calls = {"bridges": 0, "servers": 0}
 
     def bridges():
