@@ -147,7 +147,7 @@ export function ChatThread({
             : "Spectra Intelligence",
         resolveSpeaker,
       ),
-    [slot?.messages, slot?.info.label, boundAgent?.name, resolveSpeaker],
+    [slot?.messages, slot?.info.agent_slug, slot?.info.label, boundAgent?.name, resolveSpeaker],
   );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
