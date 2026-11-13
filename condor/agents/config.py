@@ -110,6 +110,37 @@ class AgentConfig(BaseModel):
         description="PnL drift since the last canvas revision that triggers a "
         "revise-your-canvas nudge",
     )
+    market_connector_name: str = Field(
+        default="",
+        description="Read-only market intelligence connector; empty disables the shared market snapshot",
+    )
+    market_trading_pair: str = Field(
+        default="",
+        description="Exact trading pair for the read-only market intelligence snapshot; empty disables it",
+    )
+    market_candle_interval: str = Field(
+        default="1m", description="Market intelligence candle interval"
+    )
+    market_candle_records: int = Field(
+        default=120, ge=20, le=500, description="Number of market intelligence candles"
+    )
+    market_data_max_age_seconds: float = Field(
+        default=180.0,
+        ge=5.0,
+        description="Maximum age allowed for decision-grade market data",
+    )
+    market_order_book_depth: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Order-book levels per side for market intelligence",
+    )
+    market_data_cache_ttl_seconds: float = Field(
+        default=10.0,
+        ge=1.0,
+        le=30.0,
+        description="Maximum shared market snapshot cache lifetime; bounded by source freshness",
+    )
     risk_limits: RiskLimitsConfig = Field(default_factory=RiskLimitsConfig)
 
     def to_engine_dict(self) -> dict[str, Any]:
