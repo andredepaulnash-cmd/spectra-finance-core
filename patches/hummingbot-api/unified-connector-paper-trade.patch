@@ -1,0 +1,31 @@
+diff --git a/services/unified_connector_service.py b/services/unified_connector_service.py
+--- a/services/unified_connector_service.py
++++ b/services/unified_connector_service.py
+@@ -247,8 +247,23 @@
+-            if trading_pair not in connector._trading_pairs:
+-                connector._trading_pairs.append(trading_pair)
++            # SPECTRA_PAPER_TRADE_DATA_CONNECTOR_PAIR_MAP_COMPAT:
++            # PaperTradeExchange exposes its Cython cdef dict through the
++            # public trading_pair property; _trading_pairs is not Python-visible.
++            if type(connector).__name__ == "PaperTradeExchange":
++                paper_pair_map = getattr(connector, "trading_pair", None)
++                if not isinstance(paper_pair_map, dict):
++                    raise TypeError("PaperTradeExchange did not expose its trading_pair mapping")
++                if trading_pair not in paper_pair_map:
++                    from hummingbot.connector.exchange.paper_trade.trading_pair import TradingPair
++                    base_asset, quote_asset = connector.split_trading_pair(trading_pair)
++                    paper_pair_map[trading_pair] = TradingPair(trading_pair, base_asset, quote_asset)
++            else:
++                trading_pairs = getattr(connector, "_trading_pairs", None)
++                if not isinstance(trading_pairs, list):
++                    raise TypeError(f"Connector {type(connector).__name__} has no supported trading-pair list")
++                if trading_pair not in trading_pairs:
++                    trading_pairs.append(trading_pair)
+@@ -306,7 +321,12 @@
+-        targets = [getattr(connector, "_trading_pairs", None)]
++        # PaperTradeExchange stores its pair map behind the public property.
++        if type(connector).__name__ == "PaperTradeExchange":
++            paper_pair_map = getattr(connector, "trading_pair", None)
++            if isinstance(paper_pair_map, dict):
++                paper_pair_map.pop(trading_pair, None)
++        targets = [getattr(connector, "_trading_pairs", None)]
