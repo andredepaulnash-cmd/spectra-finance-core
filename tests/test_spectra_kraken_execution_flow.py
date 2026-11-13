@@ -466,6 +466,12 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
         ),
         encoding="utf-8",
     )
+    from spectra_core.runtime import spectra_state_dir
+
+    assert spectra_state_dir().resolve() == paper_state.resolve()
+    assert "max_total_committed_quote" in json.loads(
+        (paper_state / "capital_policy.json").read_text(encoding="utf-8")
+    )
     reset_runtime_cache()
 
     client = HummingbotAPIClient(
