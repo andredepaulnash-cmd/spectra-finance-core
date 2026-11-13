@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "manifest_kind": "release-candidate-inventory",
+  "observed_at": "2026-11-13",
+  "release_status": "candidate",
+  "release_policy": {
+    "promotion": "manual-review-after-compatibility-ci",
+    "upstream_changes_create_candidates": true,
+    "automatic_merge": false,
+    "automatic_deploy": false,
+    "mutable_image_tags_allowed": false
+  },
+  "authority_invariant": "Condor may think. Hummingbot may execute. Only Spectra Core may authorize capital.",
+  "components": {
+    "spectra_core": {
+      "kind": "git",
+      "repository": "andredepaulnash-cmd/spectra-finance-core",
+      "path": ".",
+      "revision_policy": "resolved-from-release-tag",
+      "runtime_status": "candidate",
+      "update_policy": "spectra-semver-release"
+    },
+    "condor": {
+      "kind": "embedded-upstream-overlay",
+      "repository": "hummingbot/condor",
+      "path": "condor/",
+      "upstream_ref": "main",
+      "upstream_revision": "2442752df1259651002034055a32d974da29a361",
+      "local_revision_policy": "same-as-spectra-core-release",
+      "runtime_status": "embedded-in-spectra-core",
+      "update_policy": "upstream-compatibility-pr-preserve-spectra-overlay"
+    },
+    "hummingbot_api": {
+      "kind": "git-source",
+      "repository": "andredepaulnash-cmd/spectra-hummingbot-api",
+      "ref": "main",
+      "revision": "f8fa4591ed09a966188eb2091a3cde966eac3247",
+      "runtime_status": "source-managed",
+      "update_policy": "pinned-commit-compatibility-pr"
+    },
+    "hummingbot_client": {
+      "kind": "python-package",
+      "repository": "hummingbot/hummingbot",
+      "upstream_release": "v2.17.0",
+      "package_version": "20260922",
+      "dependency_file": "spectra-hummingbot-api/environment.yml",
+      "runtime_status": "pinned-api-dependency",
+      "update_policy": "upstream-release-compatibility-pr"
+    },
+    "gateway": {
+      "kind": "git-or-container-component",
+      "repository": "hummingbot/gateway",
+      "upstream_release": "v2.17.0",
+      "runtime_status": "not-verified-in-alpha-runtime",
+      "enabled": false,
+      "update_policy": "separately-pinned-optional-component"
+    }
+  },
+  "deployment": {
+    "paper_only_default": true,
+    "live_execution_enabled": false,
+    "capital_authority": "spectra_core",
+    "ready_for_installable_release": false,
+    "blockers": [
+      "The current Spectra Alpha stack has not passed a complete clean-install and Bazzite runtime acceptance cycle.",
+      "The Hummingbot API and infrastructure image build inputs still need immutable release identities and provenance.",
+      "Gateway is tracked as an upstream component but is not verified as installed or enabled in the Alpha runtime.",
+      "Upstream Condor and Hummingbot changes must be tested against the Spectra overlay before promotion.",
+      "Backup, restore, and rollback must be proven against real persisted paper state before an approved release."
+    ]
+  },
+  "upstream_snapshot": {
+    "hummingbot_client": {
+      "repository": "hummingbot/hummingbot",
+      "release": "v2.17.0",
+      "published_at": "2026-09-22T08:55:11Z"
+    },
+    "gateway": {
+      "repository": "hummingbot/gateway",
+      "release": "v2.17.0"
+    },
+    "condor": {
+      "repository": "hummingbot/condor",
+      "ref": "main",
+      "revision": "2442752df1259651002034055a32d974da29a361"
+    },
+    "hummingbot_api": {
+      "repository": "andredepaulnash-cmd/spectra-hummingbot-api",
+      "ref": "main",
+      "revision": "f8fa4591ed09a966188eb2091a3cde966eac3247"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/andredepaulnash-cmd/spectra-finance-core/blob/main/release/spectra-release-manifest.schema.json",
+  "title": "Spectra Finance release manifest",
+  "type": "object",
+  "required": ["schema_version", "manifest_kind", "release_status", "authority_invariant", "components", "deployment"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "manifest_kind": {"const": "release-candidate-inventory"},
+    "observed_at": {"type": "string", "format": "date"},
+    "release_status": {"enum": ["draft", "candidate", "approved"]},
+    "authority_invariant": {"const": "Condor may think. Hummingbot may execute. Only Spectra Core may authorize capital."},
+    "components": {
+      "type": "object",
+      "required": ["spectra_core", "condor", "hummingbot_api", "hummingbot_client", "gateway"],
+      "additionalProperties": {"type": "object", "required": ["kind", "repository", "runtime_status", "update_policy"]}
+    },
+    "deployment": {
+      "type": "object",
+      "required": ["paper_only_default", "live_execution_enabled", "capital_authority", "ready_for_installable_release", "blockers"],
+      "properties": {
+        "paper_only_default": {"const": true},
+        "live_execution_enabled": {"const": false},
+        "capital_authority": {"const": "spectra_core"},
+        "ready_for_installable_release": {"type": "boolean"},
+        "blockers": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
