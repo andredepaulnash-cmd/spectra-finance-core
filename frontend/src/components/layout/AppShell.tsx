@@ -205,8 +205,8 @@ function AppShellBody() {
         <RelaunchBanner />
         <TelemetryConsentBanner />
         <main
-          className={`spectra-main relative min-h-0 flex-1 ${
-            isFullBleed && isSpectraSafeRoute ? "overflow-hidden" : "overflow-auto p-6"
+          className={`spectra-main relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${
+            isFullBleed && isSpectraSafeRoute ? "" : "p-6"
           }`}
         >
           <ErrorBoundary resetKey={pathname + server}>
