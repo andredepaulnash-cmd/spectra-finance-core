@@ -243,6 +243,14 @@ def test_no_supported_exit_order_type_fails_closed():
 
 
 
+def test_default_vcap_policy_uses_architects_exact_zone_boundaries():
+    policy = VCAPTranchePolicy()
+
+    assert policy.early_fat_end_bps == D("1174")
+    assert policy.middle_skinny_end_bps == D("1777")
+    assert policy.deep_fat_end_bps == D("2400")
+
+
 @pytest.mark.parametrize(
     "drawdown,expected",
     [
