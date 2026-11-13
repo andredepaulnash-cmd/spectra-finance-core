@@ -8,6 +8,7 @@ on:
     paths:
       - install-alpha.sh
       - scripts/**
+      - patches/**
       - scripts/update-alpha-api.sh
       - scripts/spectra-alpha-doctor.sh
       - scripts/spectra-alpha-start-api.sh
