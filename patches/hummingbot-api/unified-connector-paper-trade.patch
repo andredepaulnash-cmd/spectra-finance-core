@@ -1,7 +1,7 @@
 diff --git a/services/unified_connector_service.py b/services/unified_connector_service.py
 --- a/services/unified_connector_service.py
 +++ b/services/unified_connector_service.py
-@@ -247,8 +247,23 @@
+@@ -249,2 +249,17 @@
 -            if trading_pair not in connector._trading_pairs:
 -                connector._trading_pairs.append(trading_pair)
 +            # SPECTRA_PAPER_TRADE_DATA_CONNECTOR_PAIR_MAP_COMPAT:
@@ -21,7 +21,7 @@ diff --git a/services/unified_connector_service.py b/services/unified_connector_
 +                    raise TypeError(f"Connector {type(connector).__name__} has no supported trading-pair list")
 +                if trading_pair not in trading_pairs:
 +                    trading_pairs.append(trading_pair)
-@@ -306,7 +321,12 @@
+@@ -309,1 +324,6 @@
 -        targets = [getattr(connector, "_trading_pairs", None)]
 +        # PaperTradeExchange stores its pair map behind the public property.
 +        if type(connector).__name__ == "PaperTradeExchange":
