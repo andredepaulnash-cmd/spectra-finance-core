@@ -1,0 +1,42 @@
+name: Spectra upstream release watch
+
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: spectra-upstream-release-watch
+  cancel-in-progress: false
+
+jobs:
+  discover-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compare upstream releases and mainline commits
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/spectra_upstream_watch.py
+      - name: Open or update a review-only candidate PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          commit-message: "chore(release): refresh upstream candidate snapshot"
+          branch: automation/spectra-upstream-candidates
+          delete-branch: false
+          title: "chore(release): review new Hummingbot and Condor upstream versions"
+          body: |
+            This automated PR records newly observed upstream versions or commits.
+
+            It does not change approved component pins, install software, merge itself,
+            deploy, or alter trading settings. Review the diff, run compatibility
+            testing, and explicitly promote only the components that pass.
+          add-paths: release/upstream-candidates.json

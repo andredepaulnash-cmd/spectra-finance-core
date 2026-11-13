@@ -54,11 +54,24 @@ There is deliberately no `apply` command yet. Update application must not be
 added until the manifest is consumed by a transactional updater with preflight,
 backup, immutable artifact verification, health checks, and rollback.
 
+## Upstream discovery
+
+The scheduled `.github/workflows/upstream-release-watch.yml` workflow checks
+the official Hummingbot Client and Gateway latest releases and the current
+Condor and Spectra Hummingbot API main commits. When the observed upstream
+snapshot differs from the last reviewed snapshot, it opens or updates a PR
+containing `release/upstream-candidates.json`.
+
+That PR is discovery only. It never changes the approved component pins or
+updates the running installation. A human-reviewed compatibility PR must
+select the candidate revisions and run the complete test matrix before a new
+Spectra release can be approved.
+
 ## Planned lifecycle
 
 1. **Discover:** scheduled GitHub Actions compare upstream Hummingbot Client
    and Gateway releases, Condor commits, and Spectra API commits.
-2. **Propose:** create a candidate manifest update and a reviewable dependency
+2. **Propose:** create a candidate snapshot and a reviewable dependency-update
    pull request. Never merge automatically.
 3. **Validate:** run unit, integration, paper lifecycle, clean-install,
    migration, backup/restore, and Bazzite acceptance tests.
