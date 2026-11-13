@@ -440,7 +440,11 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
         json.dumps(
             {
                 "reserve_floor_quote": "100",
-                # The isolated paper connector starts with a simulated portfolio,\n                # not just free USD. The Governor correctly counts all non-quote\n                # holdings toward the global envelope; use the project paper cap\n                # here while keeping the per-pair and per-position test caps at $50.\n                "max_total_committed_quote": "25000",
+                # The isolated paper connector starts with a simulated portfolio,
+                # not just free USD. The Governor correctly counts all non-quote
+                # holdings toward the global envelope; use the project paper cap
+                # here while keeping the per-pair and per-position test caps at $50.
+                "max_total_committed_quote": "25000",
                 "max_pair_quote": "50",
                 "max_position_quote": "50",
                 "max_recovery_quote": "25",
