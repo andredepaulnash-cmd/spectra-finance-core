@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_DOWN
+from enum import StrEnum
 from math import isfinite
 
 from .kraken_market_fabric import KrakenTradingRule
@@ -11,6 +12,13 @@ from .recovery_fingerprint import VCAPRecoveryPlan
 ZERO = Decimal("0")
 ONE = Decimal("1")
 BPS = Decimal("10000")
+
+
+class VCAPDrawdownZone(StrEnum):
+    EARLY_FAT = "EARLY_FAT"
+    MIDDLE_SKINNY = "MIDDLE_SKINNY"
+    DEEP_FAT = "DEEP_FAT"
+    OUTSIDE = "OUTSIDE"
 
 
 def _decimal(
@@ -47,6 +55,9 @@ class VCAPTranchePolicy:
     max_tranches: int = 5
     aggressive_min_tranches: int = 2
     sellability_buffer_bps: Decimal = Decimal("100")
+    early_fat_end_bps: Decimal = Decimal("1174")
+    middle_skinny_end_bps: Decimal = Decimal("1777")
+    deep_fat_end_bps: Decimal = Decimal("2400")
 
     def __post_init__(self) -> None:
         if isinstance(self.max_tranches, bool) or not isinstance(
@@ -74,6 +85,19 @@ class VCAPTranchePolicy:
         if self.sellability_buffer_bps >= BPS:
             raise ValueError("sellability_buffer_bps must be < 10000")
 
+        for name, value in (
+            ("early_fat_end_bps", self.early_fat_end_bps),
+            ("middle_skinny_end_bps", self.middle_skinny_end_bps),
+            ("deep_fat_end_bps", self.deep_fat_end_bps),
+        ):
+            _decimal(value, name, positive=True)
+        if not (
+            self.early_fat_end_bps
+            < self.middle_skinny_end_bps
+            < self.deep_fat_end_bps
+        ):
+            raise ValueError("VCAP drawdown zone boundaries must be strictly increasing")
+
 
 @dataclass(frozen=True)
 class VCAPTranche:
@@ -95,16 +119,36 @@ class VCAPTranchePlan:
     tranches: tuple[VCAPTranche, ...]
     reasons: tuple[str, ...]
     replan_after_fill: bool = True
+    zone: VCAPDrawdownZone | None = None
+    drawdown_bps: Decimal | None = None
 
     @property
     def fully_allocated(self) -> bool:
         return self.unallocated_quote == ZERO
 
 
+def classify_vcap_drawdown_zone(
+    drawdown_bps: Decimal,
+    policy: VCAPTranchePolicy | None = None,
+) -> VCAPDrawdownZone:
+    policy = policy or VCAPTranchePolicy()
+    drawdown = _decimal(drawdown_bps, "drawdown_bps", non_negative=True)
+    if drawdown <= policy.early_fat_end_bps:
+        return VCAPDrawdownZone.EARLY_FAT
+    if drawdown <= policy.middle_skinny_end_bps:
+        return VCAPDrawdownZone.MIDDLE_SKINNY
+    if drawdown <= policy.deep_fat_end_bps:
+        return VCAPDrawdownZone.DEEP_FAT
+    return VCAPDrawdownZone.OUTSIDE
+
+
 def _desired_tranche_count(
     recovery: VCAPRecoveryPlan,
     policy: VCAPTranchePolicy,
+    zone: VCAPDrawdownZone | None = None,
 ) -> int:
+    if zone == VCAPDrawdownZone.MIDDLE_SKINNY:
+        return policy.max_tranches
     if not recovery.aggressive:
         return policy.max_tranches
 
@@ -223,6 +267,7 @@ def plan_vcap_tranches(
     current_price: Decimal,
     trading_rule: KrakenTradingRule,
     policy: VCAPTranchePolicy | None = None,
+    drawdown_bps: Decimal | None = None,
 ) -> VCAPTranchePlan:
     """Fracture authorized VCAP recovery capital into sellable exchange parcels.
 
@@ -273,8 +318,28 @@ def plan_vcap_tranches(
         authorized_quote,
         recovery.planned_amount_quote,
     )
-    desired = _desired_tranche_count(recovery, policy)
+    zone = (
+        None
+        if drawdown_bps is None
+        else classify_vcap_drawdown_zone(drawdown_bps, policy)
+    )
+    desired = _desired_tranche_count(recovery, policy, zone)
     reasons: list[str] = []
+
+    if zone == VCAPDrawdownZone.OUTSIDE:
+        reasons.append("drawdown_outside_vcap_zone")
+        return VCAPTranchePlan(
+            pair=pair,
+            authorized_quote=authorized_quote,
+            deployable_quote=ZERO,
+            unallocated_quote=envelope,
+            desired_tranche_count=desired,
+            actual_tranche_count=0,
+            tranches=(),
+            reasons=tuple(reasons),
+            zone=zone,
+            drawdown_bps=drawdown_bps,
+        )
 
     if envelope <= ZERO or recovery.proposal is None:
         reasons.append("no_authorized_recovery_capital")
@@ -292,6 +357,11 @@ def plan_vcap_tranches(
     if authorized_quote < recovery.planned_amount_quote:
         reasons.append("governor_reduced_recovery_envelope")
 
+    fracture_aggressive = (
+        recovery.aggressive
+        if zone is None
+        else zone in {VCAPDrawdownZone.EARLY_FAT, VCAPDrawdownZone.DEEP_FAT}
+    )
     selected: tuple[VCAPTranche, ...] | None = None
     selected_count = 0
 
@@ -300,7 +370,7 @@ def plan_vcap_tranches(
             envelope_quote=envelope,
             price=current_price,
             count=count,
-            aggressive=recovery.aggressive,
+            aggressive=fracture_aggressive,
             rule=trading_rule,
             policy=policy,
         )
@@ -324,7 +394,11 @@ def plan_vcap_tranches(
 
     if selected_count < desired:
         reasons.append("tranche_count_reduced_for_sellability")
-    if recovery.aggressive:
+    if zone in {VCAPDrawdownZone.EARLY_FAT, VCAPDrawdownZone.DEEP_FAT}:
+        reasons.append("fat_zone_front_loaded_fracture")
+    elif zone == VCAPDrawdownZone.MIDDLE_SKINNY:
+        reasons.append("skinny_zone_equal_fracture")
+    elif recovery.aggressive:
         reasons.append("aggressive_front_loaded_fracture")
     else:
         reasons.append("equal_weight_fracture")
