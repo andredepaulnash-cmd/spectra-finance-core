@@ -531,6 +531,9 @@ class TickEngine:
         drift_result = skill_results.get("drift")
         if drift_result:
             self._last_skill_data["drift"] = drift_result.data
+        market_result = skill_results.get("market_intelligence")
+        if market_result:
+            self._last_skill_data["market_intelligence"] = market_result.data
 
         # Convert provider results to summary strings
         core_data_summaries: dict[str, str] = {
