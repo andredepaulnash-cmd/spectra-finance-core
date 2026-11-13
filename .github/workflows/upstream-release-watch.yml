@@ -2,6 +2,12 @@ name: Spectra upstream release watch
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "release/**"
+      - "scripts/check_upstream_releases.py"
+      - "tests/test_release_manifest.py"
+      - ".github/workflows/upstream-release-watch.yml"
   schedule:
     - cron: "23 9 * * 1"
 
@@ -23,13 +29,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Validate manifest and discover upstream candidates
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate release manifest tests
         run: |
           python -m json.tool release/components.json >/dev/null
-          python scripts/check_upstream_releases.py --output release-candidates.json
+          python -m unittest discover -s tests -p "test_release_manifest.py" -v
+      - name: Discover upstream candidates
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/check_upstream_releases.py --output release-candidates.json
       - name: Publish candidate report
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: spectra-upstream-release-candidates
