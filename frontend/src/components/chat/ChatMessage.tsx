@@ -316,7 +316,7 @@ function Attachment({ attachment }: { attachment: ChatAttachment }) {
 export const ChatMessageView = memo(function ChatMessageView({
   message,
   live = false,
-  agentName = "Assistant",
+  agentName = "Spectra Intelligence",
 }: {
   message: ChatMessageType;
   /**
