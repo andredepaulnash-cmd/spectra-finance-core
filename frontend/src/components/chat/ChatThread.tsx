@@ -140,7 +140,11 @@ export function ChatThread({
     () =>
       speakerNames(
         slot?.messages ?? [],
-        boundAgent?.name || slot?.info.label || "Assistant",
+        boundAgent
+          ? brandedAgentName({ slug: slot?.info.agent_slug || CHAT_SLUG, name: boundAgent.name })
+          : slot?.info.agent_slug
+            ? brandedAgentName({ slug: slot.info.agent_slug, name: slot.info.label || slot.info.agent_slug })
+            : "Spectra Intelligence",
         resolveSpeaker,
       ),
     [slot?.messages, slot?.info.label, boundAgent?.name, resolveSpeaker],
@@ -248,7 +252,7 @@ export function ChatThread({
                   <>
                     <Icon className="mb-3 h-10 w-10 text-[var(--color-text-muted)] opacity-30" />
                     <p className="text-sm font-medium text-[var(--color-text)]">
-                      {bound ? bound.name : "Assistant"}
+                      {bound ? brandedAgentName({ slug: slot.info.agent_slug || CHAT_SLUG, name: bound.name }) : "Spectra Intelligence"}
                     </p>
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                       {bound
