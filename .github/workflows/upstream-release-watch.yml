@@ -25,6 +25,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python scripts/spectra_upstream_watch.py
+      # GITHUB_TOKEN-created PRs do not trigger other workflow runs. Validate
+      # the candidate here before asking create-pull-request to publish it.
+      - name: Validate the release manifest
+        run: python scripts/spectra_release.py validate
+      - name: Test release manifest invariants
+        run: python -m unittest discover -s tests -p 'test_spectra_release_manifest.py' -v
+      - name: Test upstream discovery invariants
+        run: python -m unittest discover -s tests -p 'test_spectra_upstream_watch.py' -v
       - name: Open or update a review-only candidate PR
         uses: peter-evans/create-pull-request@v7
         with:
