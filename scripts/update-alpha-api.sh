@@ -17,7 +17,7 @@ COMPOSE_FILE="$API_DIR/docker-compose.alpha.yml"
 API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py")
 PAPER_TRADE_SOURCE="services/trading_service.py"
 PAPER_TRADE_EXPECTED_BLOB="11041d61a683ce60a06714405403a79453a8fa6c"
-PAPER_TRADE_PATCH="$REPO_ROOT/patches/hummingbot-api/trading-service-paper-trade.patch"
+PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_trading_service_compat.py"
 UNIFIED_PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_paper_trade_compat.py"
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
@@ -159,23 +159,14 @@ done
 
 # Apply the narrow PaperTradeExchange adapter only to the exact reviewed
 # fork-main trading_service.py. Unknown upstream/local versions fail closed.
-[[ -f "$PAPER_TRADE_PATCH" ]] || die "Reviewed paper-trade compatibility patch is missing: $PAPER_TRADE_PATCH"
 paper_trade_upstream_blob="$(git rev-parse "$API_UPSTREAM_COMMIT:$PAPER_TRADE_SOURCE")"
 [[ "$paper_trade_upstream_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
   || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed fork-main version (expected $PAPER_TRADE_EXPECTED_BLOB, got $paper_trade_upstream_blob)."
-paper_trade_worktree_blob="$(git hash-object "$PAPER_TRADE_SOURCE")"
-if [[ "$paper_trade_worktree_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]]; then
-  git apply --check "$PAPER_TRADE_PATCH" \
-    || die "The reviewed PaperTradeExchange compatibility patch did not apply cleanly."
-  git apply "$PAPER_TRADE_PATCH" \
-    || die "Could not apply the reviewed PaperTradeExchange compatibility patch."
-elif grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE"; then
-  say "PaperTradeExchange compatibility patch is already present."
-else
-  die "Unrecognized local changes in $PAPER_TRADE_SOURCE; preserving them and stopping."
-fi
+[[ -f "$PAPER_TRADE_PATCHER" ]] || die "Reviewed trading-service patcher is missing: $PAPER_TRADE_PATCHER"
+python3 "$PAPER_TRADE_PATCHER" "$PAPER_TRADE_SOURCE" \
+  || die "Could not apply the reviewed PaperTradeExchange trading-service adapter."
 grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE" \
-  || die "PaperTradeExchange compatibility patch marker is missing after application."
+  || die "PaperTradeExchange compatibility marker is missing after application."
 
 # Patch the second PaperTradeExchange pair-registration path in the unified
 # connector service. The patcher changes only exact reviewed blocks and refuses
