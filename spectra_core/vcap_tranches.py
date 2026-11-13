@@ -352,6 +352,8 @@ def plan_vcap_tranches(
             actual_tranche_count=0,
             tranches=(),
             reasons=tuple(reasons),
+            zone=zone,
+            drawdown_bps=drawdown_bps,
         )
 
     if authorized_quote < recovery.planned_amount_quote:
@@ -390,6 +392,8 @@ def plan_vcap_tranches(
             actual_tranche_count=0,
             tranches=(),
             reasons=tuple(reasons),
+            zone=zone,
+            drawdown_bps=drawdown_bps,
         )
 
     if selected_count < desired:
@@ -429,4 +433,6 @@ def plan_vcap_tranches(
         actual_tranche_count=selected_count,
         tranches=selected,
         reasons=tuple(reasons),
+        zone=zone,
+        drawdown_bps=drawdown_bps,
     )
