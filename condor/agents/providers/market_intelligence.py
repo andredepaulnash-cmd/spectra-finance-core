@@ -13,6 +13,7 @@ import logging
 import math
 import threading
 import time
+import weakref
 from datetime import datetime
 from typing import Any
 
@@ -229,7 +230,7 @@ class MarketIntelligenceProvider(BaseProvider):
             or f"client:{id(client)}"
         )
         key = (
-            id(asyncio.get_running_loop()),
+            weakref.ref(asyncio.get_running_loop()),
             str(client_scope),
             str(config.get("server_name") or "local"),
             connector,
@@ -238,6 +239,7 @@ class MarketIntelligenceProvider(BaseProvider):
             records,
             depth,
             max_age,
+            requested_ttl,
         )
 
         async def load() -> ProviderResult:
