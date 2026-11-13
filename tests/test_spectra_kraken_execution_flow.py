@@ -497,7 +497,15 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             position_id=position_id,
             refresh=True,
         )
-        assert authorization.decision.status == DecisionStatus.RESERVED
+        assert authorization.decision.status == DecisionStatus.RESERVED, (
+            "paper capital reservation rejected: "
+            f"reason={authorization.decision.reason!r}; "
+            f"free_quote={authorization.snapshot.free_quote}; "
+            f"committed_quote={authorization.snapshot.committed_quote}; "
+            f"pair_exposure_quote={authorization.snapshot.pair_exposure_quote}; "
+            f"position_exposure_quote={authorization.snapshot.position_exposure_quote}; "
+            f"recovery_exposure_quote={authorization.snapshot.recovery_exposure_quote}"
+        )
 
         result = await create_grid_executor(
             client,
