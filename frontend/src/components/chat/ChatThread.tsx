@@ -136,18 +136,14 @@ export function ChatThread({
    * The name is also the key the gutter colour is hashed from, which is what
    * makes a transcript with two counterparts in it scannable at a glance.
    */
+  const defaultSpeakerName = boundAgent
+    ? brandedAgentName({ slug: slot?.info.agent_slug || CHAT_SLUG, name: boundAgent.name })
+    : slot?.info.agent_slug
+      ? brandedAgentName({ slug: slot.info.agent_slug, name: slot.info.label || slot.info.agent_slug })
+      : "Spectra Intelligence";
   const speakers = useMemo(
-    () =>
-      speakerNames(
-        slot?.messages ?? [],
-        boundAgent
-          ? brandedAgentName({ slug: slot?.info.agent_slug || CHAT_SLUG, name: boundAgent.name })
-          : slot?.info.agent_slug
-            ? brandedAgentName({ slug: slot.info.agent_slug, name: slot.info.label || slot.info.agent_slug })
-            : "Spectra Intelligence",
-        resolveSpeaker,
-      ),
-    [slot?.messages, slot?.info.agent_slug, slot?.info.label, boundAgent?.name, resolveSpeaker],
+    () => speakerNames(slot?.messages ?? [], defaultSpeakerName, resolveSpeaker),
+    [slot?.messages, defaultSpeakerName, resolveSpeaker],
   );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
