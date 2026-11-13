@@ -61,6 +61,9 @@ on:
       - routines/market_scanner.py
       - tests/test_market_discovery.py
       - tests/test_spectra_core.py
+      - tests/test_market_intelligence_provider.py
+      - condor/agents/**
+      - docs/SPECTRA-MARKET-INTELLIGENCE.md
       - .github/workflows/alpha-installer.yml
   pull_request:
     paths:
@@ -78,6 +81,9 @@ on:
       - tests/spectra_test_support.py
       - tests/fixtures/**
       - tests/test_spectra_kraken_execution_flow.py
+      - tests/test_market_intelligence_provider.py
+      - condor/agents/**
+      - docs/SPECTRA-MARKET-INTELLIGENCE.md
       - ALPHA-TEST.md
       - README.md
       - pyproject.toml
@@ -138,6 +144,8 @@ jobs:
         run: uv sync --locked --dev --python 3.12
       - name: Test alpha runtime safety and paper configuration
         run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py tests/test_market_discovery.py tests/test_hummingbot_paper_trade_compat.py
+      - name: Test shared market intelligence provider
+        run: uv run --python 3.12 pytest -q tests/test_market_intelligence_provider.py
       - name: Test persistent module lifecycle and registry
         run: uv run --python 3.12 pytest -q tests/test_module_lifecycle.py tests/test_module_registry.py
       - name: Test authenticated module trigger API
