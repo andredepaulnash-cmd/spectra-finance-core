@@ -303,10 +303,11 @@ def test_unpinned_agent_inherits_the_users_active_model(client, monkeypatch):
     """A stock Agent without a pin inherits the model selected by its owner."""
     captured = {}
 
-    monkeypatch.setattr(
-        "condor.preferences.get_active_agent_key",
-        lambda user_id: captured.setdefault("user_id", user_id) or "openrouter:test-model",
-    )
+    def active_model(user_id):
+        captured["user_id"] = user_id
+        return "openrouter:test-model"
+
+    monkeypatch.setattr("condor.preferences.get_active_agent_key", active_model)
 
     async def accept_model(agent_key, **kwargs):
         captured["agent_key"] = agent_key
