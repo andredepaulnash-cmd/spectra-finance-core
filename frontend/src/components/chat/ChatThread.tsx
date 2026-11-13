@@ -136,14 +136,14 @@ export function ChatThread({
    * The name is also the key the gutter colour is hashed from, which is what
    * makes a transcript with two counterparts in it scannable at a glance.
    */
+  const defaultSpeakerName = boundAgent
+    ? brandedAgentName({ slug: slot?.info.agent_slug || CHAT_SLUG, name: boundAgent.name })
+    : slot?.info.agent_slug
+      ? brandedAgentName({ slug: slot.info.agent_slug, name: slot.info.label || slot.info.agent_slug })
+      : "Spectra Intelligence";
   const speakers = useMemo(
-    () =>
-      speakerNames(
-        slot?.messages ?? [],
-        boundAgent?.name || slot?.info.label || "Assistant",
-        resolveSpeaker,
-      ),
-    [slot?.messages, slot?.info.label, boundAgent?.name, resolveSpeaker],
+    () => speakerNames(slot?.messages ?? [], defaultSpeakerName, resolveSpeaker),
+    [slot?.messages, defaultSpeakerName, resolveSpeaker],
   );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -248,11 +248,11 @@ export function ChatThread({
                   <>
                     <Icon className="mb-3 h-10 w-10 text-[var(--color-text-muted)] opacity-30" />
                     <p className="text-sm font-medium text-[var(--color-text)]">
-                      {bound ? bound.name : "Assistant"}
+                      {bound ? brandedAgentName({ slug: slot.info.agent_slug || CHAT_SLUG, name: bound.name }) : "Spectra Intelligence"}
                     </p>
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                       {bound
-                        ? bound.description || `Ask ${bound.name} anything.`
+                        ? bound.description || `Ask ${brandedAgentName({ slug: slot.info.agent_slug || CHAT_SLUG, name: bound.name })} anything.`
                         : "Ask about your portfolio, prices, trades, or bot status."}
                     </p>
                     <p className="mt-2 flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] opacity-60">

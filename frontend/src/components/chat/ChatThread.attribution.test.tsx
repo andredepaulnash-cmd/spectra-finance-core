@@ -125,7 +125,7 @@ describe("a transcript that changed hands", () => {
       ROSTER,
     );
 
-    expect(speakerLabels()).toEqual(["Condor", "Brigado"]);
+    expect(speakerLabels()).toEqual(["Spectra Intelligence", "Brigado"]);
   });
 
   it("says the same thing after a reload, off the stored turns", () => {
@@ -141,7 +141,7 @@ describe("a transcript that changed hands", () => {
       ROSTER,
     );
 
-    expect(speakerLabels()).toEqual(["Condor", "Brigado"]);
+    expect(speakerLabels()).toEqual(["Spectra Intelligence", "Brigado"]);
   });
 
   it("still separates the two when the roster has not loaded yet", () => {
@@ -156,7 +156,7 @@ describe("a transcript that changed hands", () => {
       ]),
     );
 
-    expect(speakerLabels()).toEqual(["Condor", "Brigado"]);
+    expect(speakerLabels()).toEqual(["Spectra Intelligence", "Brigado"]);
   });
 
   it("leaves an unstamped legacy transcript to the divider walk", () => {

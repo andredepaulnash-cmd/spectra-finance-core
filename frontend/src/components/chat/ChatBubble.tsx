@@ -23,6 +23,7 @@ import {
   normalizeAgentSlug,
 } from "@/lib/agentSlug";
 import { api, CHAT_SLUG } from "@/lib/api";
+import { brandedAgentName } from "@/lib/brandIdentity";
 import { routeFacts } from "@/lib/pageFacts";
 import { BUBBLE_OPEN_KEY } from "@/lib/sessionState";
 import { collectViewFacts, renderViewBlock } from "@/lib/viewFacts";
@@ -157,8 +158,8 @@ export function ChatBubble() {
 
   const boundSummary = slug ? agents.find((a) => a.slug === slug) : undefined;
   const name = slug
-    ? slot?.info.label || boundSummary?.name || slug
-    : agents.find((a) => a.slug === CHAT_SLUG)?.name || "Condor";
+    ? brandedAgentName({ slug, name: slot?.info.label || boundSummary?.name || slug })
+    : brandedAgentName(agents.find((a) => a.slug === CHAT_SLUG) || { slug: CHAT_SLUG, name: "Spectra Intelligence" });
 
   const ask = (text: string, files?: File[]) => {
     let id = slotId;

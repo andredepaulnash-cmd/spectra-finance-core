@@ -8,9 +8,9 @@ export function SpectraCoreVisual() {
         <h1>Think clearly.<br /><span>Move deliberately.</span></h1>
         <p>The intelligence layer for a governed trading system. Research, orchestration and execution visibility—connected, but never confused.</p>
         <div className="spectra-core-pill-row">
-          <span><BrainCircuit size={14} /> Condor · analysis</span>
-          <span><Activity size={14} /> Hummingbot · paper execution</span>
-          <span><ShieldCheck size={14} /> Governor · authority</span>
+          <span><BrainCircuit size={14} /> Spectra Intelligence · orchestration</span>
+          <span><Activity size={14} /> Spectra Execution · paper mode</span>
+          <span><ShieldCheck size={14} /> Spectra Governor · capital authority</span>
         </div>
       </div>
       <div className="spectra-neural-wrap" aria-hidden="true">
