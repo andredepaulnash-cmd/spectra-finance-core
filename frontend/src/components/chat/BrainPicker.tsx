@@ -75,7 +75,9 @@ export function BrainMenuBody({
 
   // Direct picks are everything the backend didn't flag as a picker.
   const directAgents = agents.filter((a) => !a.picker);
-  const hasOpenRouter = agents.some((a) => a.key === "openrouter:" && a.picker);
+  const openRouterOption = agents.find((a) => a.key === "openrouter:" && a.picker);
+  const hasOpenRouter = !!openRouterOption;
+  const openRouterBlocked = openRouterOption?.ready === false;
   const { boundAgent, effectiveKey } = useBrainLabel({
     agents,
     agentBindings,
@@ -180,17 +182,27 @@ export function BrainMenuBody({
         {hasOpenRouter && (
           <button
             onClick={() => {
+              if (openRouterBlocked) return;
               setSubmenu({ kind: "openrouter" });
               loadModels();
             }}
-            className={`flex w-full items-center justify-between px-2.5 py-1.5 text-left text-xs hover:bg-[var(--color-surface-hover)] ${
+            disabled={openRouterBlocked}
+            title={openRouterBlocked ? openRouterOption?.detail : undefined}
+            className={`flex w-full flex-col items-start gap-0.5 px-2.5 py-1.5 text-left text-xs hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-60 ${
               effectiveKey.startsWith("openrouter:")
                 ? "font-medium text-[var(--color-primary)]"
                 : "text-[var(--color-text)]"
             }`}
           >
-            <span>OpenRouter — Pick Model</span>
-            <ChevronRight className="h-3 w-3 shrink-0 text-[var(--color-text-muted)]" />
+            <span className="flex w-full items-center justify-between">
+              <span>OpenRouter — Pick Model</span>
+              <ChevronRight className="h-3 w-3 shrink-0 text-[var(--color-text-muted)]" />
+            </span>
+            {openRouterBlocked && openRouterOption?.detail && (
+              <span className="w-full truncate text-[10px] text-[var(--color-text-muted)]" title={openRouterOption.detail}>
+                {openRouterOption.detail}
+              </span>
+            )}
           </button>
         )}
         {customProviders.length > 0 && sectionHeader("Custom endpoints")}
