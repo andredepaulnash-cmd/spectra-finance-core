@@ -10,7 +10,9 @@ from spectra_core.recovery_fingerprint import (
     VCAPRecoveryPlan,
 )
 from spectra_core.vcap_tranches import (
+    VCAPDrawdownZone,
     VCAPTranchePolicy,
+    classify_vcap_drawdown_zone,
     plan_vcap_tranches,
 )
 
@@ -237,4 +239,99 @@ def test_no_supported_exit_order_type_fails_closed():
                 limit_orders=False,
                 market_orders=False,
             ),
+        )
+
+
+
+@pytest.mark.parametrize(
+    "drawdown,expected",
+    [
+        ("0", VCAPDrawdownZone.EARLY_FAT),
+        ("1174", VCAPDrawdownZone.EARLY_FAT),
+        ("1174.01", VCAPDrawdownZone.MIDDLE_SKINNY),
+        ("1777", VCAPDrawdownZone.MIDDLE_SKINNY),
+        ("1777.01", VCAPDrawdownZone.DEEP_FAT),
+        ("2400", VCAPDrawdownZone.DEEP_FAT),
+        ("2400.01", VCAPDrawdownZone.OUTSIDE),
+    ],
+)
+def test_fat_skinny_fat_drawdown_boundaries_are_exact(drawdown, expected):
+    assert classify_vcap_drawdown_zone(D(drawdown)) == expected
+
+
+def test_fat_zone_front_loads_five_sellable_tranches():
+    result = plan_vcap_tranches(
+        recovery_plan(planned="100"),
+        authorized_quote=D("100"),
+        current_price=D("10"),
+        trading_rule=trading_rule(min_order_size="0.01", min_notional_size="1"),
+        policy=VCAPTranchePolicy(sellability_buffer_bps=D("0")),
+        drawdown_bps=D("1000"),
+    )
+
+    assert result.zone == VCAPDrawdownZone.EARLY_FAT
+    assert result.drawdown_bps == D("1000")
+    assert result.actual_tranche_count == 5
+    assert all(
+        left.quote_amount > right.quote_amount
+        for left, right in zip(result.tranches, result.tranches[1:])
+    )
+    assert "fat_zone_front_loaded_fracture" in result.reasons
+
+
+def test_skinny_zone_keeps_five_equal_parcels_even_with_aggressive_signal():
+    result = plan_vcap_tranches(
+        recovery_plan(planned="100", aggressive=True, score=1.0),
+        authorized_quote=D("100"),
+        current_price=D("10"),
+        trading_rule=trading_rule(min_order_size="0.01", min_notional_size="1"),
+        policy=VCAPTranchePolicy(sellability_buffer_bps=D("0")),
+        drawdown_bps=D("1500"),
+    )
+
+    assert result.zone == VCAPDrawdownZone.MIDDLE_SKINNY
+    assert result.actual_tranche_count == 5
+    assert [row.quote_amount for row in result.tranches] == [D("20")] * 5
+    assert "skinny_zone_equal_fracture" in result.reasons
+
+
+def test_deep_fat_zone_reuses_front_loaded_geometry():
+    result = plan_vcap_tranches(
+        recovery_plan(planned="100"),
+        authorized_quote=D("100"),
+        current_price=D("10"),
+        trading_rule=trading_rule(min_order_size="0.01", min_notional_size="1"),
+        policy=VCAPTranchePolicy(sellability_buffer_bps=D("0")),
+        drawdown_bps=D("2000"),
+    )
+
+    assert result.zone == VCAPDrawdownZone.DEEP_FAT
+    assert result.actual_tranche_count == 5
+    assert result.tranches[0].quote_amount > result.tranches[-1].quote_amount
+    assert "fat_zone_front_loaded_fracture" in result.reasons
+
+
+def test_vcap_outside_24_percent_stays_unallocated():
+    result = plan_vcap_tranches(
+        recovery_plan(planned="100"),
+        authorized_quote=D("100"),
+        current_price=D("10"),
+        trading_rule=trading_rule(min_order_size="0.01", min_notional_size="1"),
+        policy=VCAPTranchePolicy(sellability_buffer_bps=D("0")),
+        drawdown_bps=D("2401"),
+    )
+
+    assert result.zone == VCAPDrawdownZone.OUTSIDE
+    assert result.tranches == ()
+    assert result.deployable_quote == D("0")
+    assert result.unallocated_quote == D("100")
+    assert "drawdown_outside_vcap_zone" in result.reasons
+
+
+def test_vcap_zone_policy_rejects_non_monotonic_boundaries():
+    with pytest.raises(ValueError, match="strictly increasing"):
+        VCAPTranchePolicy(
+            early_fat_end_bps=D("1777"),
+            middle_skinny_end_bps=D("1174"),
+            deep_fat_end_bps=D("2400"),
         )
