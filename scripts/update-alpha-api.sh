@@ -18,7 +18,7 @@ API_SOURCES=("services/unified_connector_service.py" "services/market_data_servi
 PAPER_TRADE_SOURCE="services/trading_service.py"
 PAPER_TRADE_EXPECTED_BLOB="4620157fbf39ba94eed2d50a77757b10e4fefd47"
 PAPER_TRADE_PATCH="$REPO_ROOT/patches/hummingbot-api/trading-service-paper-trade.patch"
-UNIFIED_PAPER_TRADE_PATCH="$REPO_ROOT/patches/hummingbot-api/unified-connector-paper-trade.patch"
+UNIFIED_PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_paper_trade_compat.py"
 PAPER_TRADE_SOURCE="services/trading_service.py"
 PAPER_TRADE_EXPECTED_BLOB="4620157fbf39ba94eed2d50a77757b10e4fefd47"
 PAPER_TRADE_PATCH="$REPO_ROOT/patches/hummingbot-api/trading-service-paper-trade.patch"
@@ -180,21 +180,13 @@ fi
 grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE" \
   || die "PaperTradeExchange compatibility patch marker is missing after application."
 
-# The same Cython-private-member issue also exists in the unified connector
-# service's data-connector registration path. Apply a narrow reviewed adapter
-# after the source merge, preserving every unrelated local Alpha change.
-[[ -f "$UNIFIED_PAPER_TRADE_PATCH" ]] \
-  || die "Reviewed unified PaperTradeExchange compatibility patch is missing: $UNIFIED_PAPER_TRADE_PATCH"
-if grep -q "SPECTRA_PAPER_TRADE_DATA_CONNECTOR_PAIR_MAP_COMPAT" "$UNIFIED_SOURCE"; then
-  say "Unified PaperTradeExchange pair-map compatibility patch is already present."
-else
-  git apply --check "$UNIFIED_PAPER_TRADE_PATCH" \
-    || die "The reviewed unified PaperTradeExchange compatibility patch did not apply cleanly."
-  git apply "$UNIFIED_PAPER_TRADE_PATCH" \
-    || die "Could not apply the reviewed unified PaperTradeExchange compatibility patch."
-fi
-grep -q "SPECTRA_PAPER_TRADE_DATA_CONNECTOR_PAIR_MAP_COMPAT" "$UNIFIED_SOURCE" \
-  || die "Unified PaperTradeExchange compatibility marker is missing after application."
+# Patch the second PaperTradeExchange pair-registration path in the unified
+# connector service. The patcher changes only exact reviewed blocks and refuses
+# source drift; it is safe to run again on an already-patched checkout.
+[[ -f "$UNIFIED_PAPER_TRADE_PATCHER" ]] \
+  || die "Reviewed unified PaperTradeExchange patcher is missing: $UNIFIED_PAPER_TRADE_PATCHER"
+python3 "$UNIFIED_PAPER_TRADE_PATCHER" "$UNIFIED_SOURCE" \
+  || die "Could not apply the reviewed unified PaperTradeExchange compatibility adapter."
 
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
