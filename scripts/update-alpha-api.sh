@@ -179,26 +179,6 @@ fi
 grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE" \
   || die "PaperTradeExchange compatibility patch marker is missing after application."
 
-# Apply the narrow PaperTradeExchange adapter only to the exact reviewed
-# upstream trading_service.py. Unknown upstream/local versions fail closed.
-[[ -f "$PAPER_TRADE_PATCH" ]] || die "Reviewed paper-trade compatibility patch is missing: $PAPER_TRADE_PATCH"
-paper_trade_upstream_blob="$(git rev-parse "$API_UPSTREAM_COMMIT:$PAPER_TRADE_SOURCE")"
-[[ "$paper_trade_upstream_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
-  || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed upstream version (expected $PAPER_TRADE_EXPECTED_BLOB, got $paper_trade_upstream_blob)."
-paper_trade_worktree_blob="$(git hash-object "$PAPER_TRADE_SOURCE")"
-if [[ "$paper_trade_worktree_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]]; then
-  git apply --check "$PAPER_TRADE_PATCH" \
-    || die "The reviewed PaperTradeExchange compatibility patch did not apply cleanly."
-  git apply "$PAPER_TRADE_PATCH" \
-    || die "Could not apply the reviewed PaperTradeExchange compatibility patch."
-elif grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE"; then
-  say "PaperTradeExchange compatibility patch is already present."
-else
-  die "Unrecognized local changes in $PAPER_TRADE_SOURCE; preserving them and stopping."
-fi
-grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE" \
-  || die "PaperTradeExchange compatibility patch marker is missing after application."
-
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
 grep -q "A read request must be able to initialize its own feed" "${API_SOURCES[1]}" \
