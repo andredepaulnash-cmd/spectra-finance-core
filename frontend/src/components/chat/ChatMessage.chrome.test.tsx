@@ -59,6 +59,13 @@ describe("an agent's turn", () => {
     expect(AGENT_COLOR_VARS.some((v) => gutter!.style.borderColor.includes(v))).toBe(true);
   });
 
+  it("uses Spectra Intelligence when no agent label is supplied", () => {
+    act(() => {
+      root.render(<ChatMessageView message={message({ role: "assistant", text: "Hello." })} />);
+    });
+    expect(container.textContent).toContain("Spectra Intelligence");
+  });
+
   it("draws no container of its own — the answer sits on the page ground", () => {
     render(message({ role: "assistant", text: "The book is thin." }));
     expect(container.innerHTML).not.toContain("--color-surface-hover");
