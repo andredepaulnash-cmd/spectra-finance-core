@@ -18,6 +18,9 @@ API_SOURCES=("services/unified_connector_service.py" "services/market_data_servi
 PAPER_TRADE_SOURCE="services/trading_service.py"
 PAPER_TRADE_EXPECTED_BLOB="4620157fbf39ba94eed2d50a77757b10e4fefd47"
 PAPER_TRADE_PATCH="$REPO_ROOT/patches/hummingbot-api/trading-service-paper-trade.patch"
+PAPER_TRADE_SOURCE="services/trading_service.py"
+PAPER_TRADE_EXPECTED_BLOB="4620157fbf39ba94eed2d50a77757b10e4fefd47"
+PAPER_TRADE_PATCH="$REPO_ROOT/patches/hummingbot-api/trading-service-paper-trade.patch"
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
@@ -155,6 +158,26 @@ for source in "${API_SOURCES[@]}"; do
     git restore --source="$API_UPSTREAM_COMMIT" --worktree -- "$source"
   fi
 done
+
+# Apply the narrow PaperTradeExchange adapter only to the exact reviewed
+# upstream trading_service.py. Unknown upstream/local versions fail closed.
+[[ -f "$PAPER_TRADE_PATCH" ]] || die "Reviewed paper-trade compatibility patch is missing: $PAPER_TRADE_PATCH"
+paper_trade_upstream_blob="$(git rev-parse "$API_UPSTREAM_COMMIT:$PAPER_TRADE_SOURCE")"
+[[ "$paper_trade_upstream_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
+  || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed upstream version (expected $PAPER_TRADE_EXPECTED_BLOB, got $paper_trade_upstream_blob)."
+paper_trade_worktree_blob="$(git hash-object "$PAPER_TRADE_SOURCE")"
+if [[ "$paper_trade_worktree_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]]; then
+  git apply --check "$PAPER_TRADE_PATCH" \
+    || die "The reviewed PaperTradeExchange compatibility patch did not apply cleanly."
+  git apply "$PAPER_TRADE_PATCH" \
+    || die "Could not apply the reviewed PaperTradeExchange compatibility patch."
+elif grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE"; then
+  say "PaperTradeExchange compatibility patch is already present."
+else
+  die "Unrecognized local changes in $PAPER_TRADE_SOURCE; preserving them and stopping."
+fi
+grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE" \
+  || die "PaperTradeExchange compatibility patch marker is missing after application."
 
 # Apply the narrow PaperTradeExchange adapter only to the exact reviewed
 # upstream trading_service.py. Unknown upstream/local versions fail closed.
