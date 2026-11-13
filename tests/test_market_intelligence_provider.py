@@ -183,8 +183,13 @@ async def test_market_snapshot_cache_is_scoped_to_pair_and_connector():
         {**base, "market_trading_pair": "ETH-USD"},
         agent_id="agent-b",
     )
+    await provider.execute(
+        client,
+        {**base, "market_data_cache_ttl_seconds": 2},
+        agent_id="agent-c",
+    )
 
-    assert client.market_data.calls == {"tickers": 2, "candles": 2, "order_book": 2}
+    assert client.market_data.calls == {"tickers": 3, "candles": 3, "order_book": 3}
 
 
 
