@@ -130,14 +130,52 @@ case "${1:-status}" in
     "$LOCAL_BIN/spectra-alpha-backup"
     ;;
   update)
-    updater="$LOCAL_BIN/spectra-update-alpha-api"
-    curl -fsSL "https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/$CORE_REF/scripts/update-alpha-api.sh" -o "$updater"
-    chmod 700 "$updater"
-    bash -n "$updater"
-    "$updater"
+    subcommand="${2:-legacy}"
+    case "$subcommand" in
+      check)
+        cd "$CORE_DIR"
+        python3 scripts/check_upstream_releases.py
+        ;;
+      plan)
+        cd "$CORE_DIR"
+        python3 scripts/check_upstream_releases.py
+        cat <<'PLAN'
+
+Spectra update plan:
+  1. Compare candidates with verified installed source refs and image digests.
+  2. Run compatibility, paper-execution, accounting, and recovery gates.
+  3. Create a state backup and stage the approved component set.
+  4. Apply, health-check, and retain the previous known-good release.
+
+Apply is intentionally unavailable until installed-version inventory, immutable
+image pinning, backup/restore verification, and staged rollback are implemented.
+No component was changed by this plan.
+PLAN
+        ;;
+      apply)
+        echo "Refusing update apply: the staged, backup-protected release transaction is not implemented yet." >&2
+        exit 3
+        ;;
+      rollback)
+        echo "Refusing rollback: no verified release snapshot/restore transaction is configured yet." >&2
+        exit 3
+        ;;
+      legacy)
+        echo "Using the existing Alpha API updater. This is not the full multi-component release manager."
+        updater="$LOCAL_BIN/spectra-update-alpha-api"
+        curl -fsSL "https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/$CORE_REF/scripts/update-alpha-api.sh" -o "$updater"
+        chmod 700 "$updater"
+        bash -n "$updater"
+        "$updater"
+        ;;
+      *)
+        echo "Usage: spectra update {check|plan|apply|rollback}" >&2
+        exit 2
+        ;;
+    esac
     ;;
   *)
-    echo "Usage: spectra {start|stop|restart|core-restart|status|logs|doctor|backup|update}"
+    echo "Usage: spectra {start|stop|restart|core-restart|status|logs|doctor|backup|update [check|plan|apply|rollback]}"
     exit 2
     ;;
 esac
