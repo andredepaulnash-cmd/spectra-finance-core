@@ -7,14 +7,23 @@ on:
       - alpha/spectra-command-center-verified-20261109
     paths:
       - install-alpha.sh
+      - scripts/**
       - scripts/update-alpha-api.sh
+      - scripts/spectra-alpha-doctor.sh
+      - scripts/spectra-alpha-start-api.sh
+      - scripts/spectra
+      - scripts/systemd/**
       - ALPHA-TEST.md
       - README.md
       - pyproject.toml
       - uv.lock
       - condor/fetchers/spectra_runtime.py
       - condor/web/routes/servers.py
-      - spectra_core/runtime.py
+      - spectra_core/**
+      - mcp_servers/hummingbot_api/tools/**
+      - condor/web/routes/**
+      - frontend/**
+      - routines/**
       - spectra_core/module_lifecycle.py
       - tests/test_module_lifecycle.py
       - tests/test_module_lifecycle_api.py
@@ -26,6 +35,12 @@ on:
       - tests/test_spectra_runtime_fail_closed.py
       - tests/test_spectra_runtime.py
       - tests/test_spectra_kraken_execution_flow.py
+      - tests/test_alpha_backup.py
+      - tests/test_asset_authority.py
+      - tests/test_market_discovery_route.py
+      - tests/test_market_discovery.py
+      - tests/spectra_test_support.py
+      - tests/fixtures/**
       - tests/test_configure_alpha_paper_connector.py
       - tests/test_configure_alpha_paper_state.py
       - tests/test_hummingbot_mcp_config_dir.py
@@ -46,6 +61,16 @@ on:
   pull_request:
     paths:
       - install-alpha.sh
+      - scripts/**
+      - spectra_core/**
+      - mcp_servers/hummingbot_api/tools/**
+      - routines/**
+      - tests/test_alpha_backup.py
+      - tests/test_asset_authority.py
+      - tests/test_market_discovery_route.py
+      - tests/spectra_test_support.py
+      - tests/fixtures/**
+      - tests/test_spectra_kraken_execution_flow.py
       - ALPHA-TEST.md
       - README.md
       - pyproject.toml
@@ -82,6 +107,15 @@ jobs:
         run: |
           bash -n install-alpha.sh
           bash -n scripts/update-alpha-api.sh
+          for script in scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra-alpha-backup.sh scripts/spectra; do
+            bash -n "$script"
+          done
+          ! grep -q 'compose down' scripts/spectra
+          grep -q 'Restart=on-failure' scripts/systemd/spectra-alpha-core.service
+          grep -q 'OnUnitActiveSec=120s' scripts/systemd/spectra-alpha-doctor.timer
+          grep -q 'OnCalendar=\*-\*-\* 03:30:00' scripts/systemd/spectra-alpha-backup.timer
+          grep -q 'spectra-alpha-backup' scripts/spectra
+          ! grep -Eq 'podman (volume|system) prune|docker (volume|system) prune|compose down -v' scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra
       - name: Enforce paper-only and no host socket mount
         run: |
           grep -q 'SPECTRA_PAPER_ONLY=true' install-alpha.sh
@@ -101,6 +135,24 @@ jobs:
         run: uv run --python 3.12 pytest -q tests/test_module_lifecycle.py tests/test_module_registry.py
       - name: Test authenticated module trigger API
         run: uv run --python 3.12 pytest -q tests/test_module_lifecycle_api.py
+      - name: Test strategy, accounting, restart, and recovery invariants
+        run: |
+          uv run --python 3.12 pytest -q \
+            tests/test_alpha_backup.py \
+            tests/test_asset_authority.py \
+            tests/test_market_discovery_route.py \
+            tests/test_market_discovery.py \
+            tests/test_spectra_executor_accounting_flow.py \
+            tests/test_accounting_health_gate.py \
+            tests/test_vcap_runtime_supervisor.py \
+            tests/test_vcap_execution_loop.py \
+            tests/test_vcap_restart_continuity.py \
+            tests/test_strategy_laboratory.py \
+            tests/test_strategy_replay.py \
+            tests/test_strategy_replay_vcap.py \
+            tests/test_module_lifecycle.py \
+            tests/test_module_registry.py \
+            tests/test_restart_on_boot_optin.py
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -126,6 +178,12 @@ jobs:
           node-version: '24'
       - name: Run the public one-command installer
         run: bash install-alpha.sh
+        env:
+          SPECTRA_ALPHA_CORE_REF: automation/paper-lifecycle-accounting-strategy-ops-20261110
+      - name: Run the exact one-command in-place updater
+        run: bash scripts/update-alpha-api.sh
+        env:
+          SPECTRA_ALPHA_CORE_REF: automation/paper-lifecycle-accounting-strategy-ops-20261110
       - name: Verify dashboard and Kraken paper runtime
         shell: bash
         run: |
@@ -146,6 +204,52 @@ jobs:
           print("Clean Linux install verified: Spectra dashboard and Kraken paper connector are running.")
           PY
           "$HOME/.local/bin/spectra" status
+      - name: Export isolated paper API test environment
+        shell: bash
+        run: |
+          python - "$HOME/SpectraFinance-Alpha/spectra-hummingbot-api/.env" "$HOME/SpectraFinance-Alpha/spectra-core/.env" "$GITHUB_ENV" <<'PY'
+          from pathlib import Path
+          import sys
+
+          def read_env(path):
+              values = {}
+              for raw in Path(path).read_text(encoding="utf-8").splitlines():
+                  line = raw.strip()
+                  if not line or line.startswith("#") or "=" not in line:
+                      continue
+                  key, value = line.split("=", 1)
+                  value = value.strip()
+                  if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                      value = value[1:-1]
+                  values[key.strip()] = value
+              return values
+
+          api = read_env(sys.argv[1])
+          core = read_env(sys.argv[2])
+          required = {
+              "HUMMINGBOT_API_URL": "http://127.0.0.1:8000",
+              "HUMMINGBOT_USERNAME": api.get("USERNAME", ""),
+              "HUMMINGBOT_PASSWORD": api.get("PASSWORD", ""),
+              "SPECTRA_DISPATCH_PRIVATE_KEY": core.get("SPECTRA_DISPATCH_PRIVATE_KEY", ""),
+              "SPECTRA_PAPER_ONLY": core.get("SPECTRA_PAPER_ONLY", ""),
+              "SPECTRA_ALLOW_LIVE_EXECUTION": core.get("SPECTRA_ALLOW_LIVE_EXECUTION", ""),
+              "CONDOR_AGENT_SLUG": core.get("CONDOR_AGENT_SLUG", ""),
+          }
+          missing = [key for key, value in required.items() if not value]
+          if missing:
+              raise SystemExit("Paper integration test environment is incomplete: " + ", ".join(missing))
+          if required["SPECTRA_PAPER_ONLY"].lower() != "true" or required["SPECTRA_ALLOW_LIVE_EXECUTION"].lower() != "false":
+              raise SystemExit("Paper integration test refused: unsafe execution flags.")
+          with open(sys.argv[3], "a", encoding="utf-8") as env:
+              for key, value in required.items():
+                  env.write(f"{key}={value}\n")
+          PY
+      - name: Verify governed Kraken paper order, fill, accounting, and restart recovery
+        env:
+          SPECTRA_CI_PAPER_EXECUTION: "1"
+        run: |
+          cd "$HOME/SpectraFinance-Alpha/spectra-core"
+          .venv/bin/python -m pytest -q tests/test_spectra_kraken_execution_flow.py -k live_api_paper_execution
       - name: Stop alpha services
         if: always()
         run: '$HOME/.local/bin/spectra stop || true'

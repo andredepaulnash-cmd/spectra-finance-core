@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import uuid4
 
+from .asset_authority import require_approved_kraken_pair
 from .kraken_snapshot import build_kraken_capital_snapshot
 from .models import (
     CapitalDecision,
@@ -58,7 +59,7 @@ def _require_reconciled_existing_exposure(*, now: float) -> None:
 
     Empty position shells do not represent exposure and do not need a fill
     watermark yet. Once confirmed inventory exists, however, missing, stale,
-    held, or conflicted accounting health blocks new ENTRY/RECOVERY capital.
+    held, or conflicted accounting health blocks new buy-side capital.
     Exit-side actions remain available through their separate authorization path.
     """
     ledger = get_economic_position_ledger()
@@ -106,11 +107,12 @@ async def reserve_kraken_capital(
     amount = _positive_decimal(amount_quote, "amount_quote")
     intent_kind = _intent(intent)
 
-    capital_governor = governor or get_capital_governor()
-    connector_name = (
-        "kraken_paper_trade" if spectra_paper_only_enabled() else "kraken"
-    )
+    paper_only = spectra_paper_only_enabled()
+    connector_name = "kraken_paper_trade" if paper_only else "kraken"
+    if paper_only:
+        require_approved_kraken_pair(pair, connector_name=connector_name)
 
+    capital_governor = governor or get_capital_governor()
     snapshot = await build_kraken_capital_snapshot(
         client,
         account_name=account,
@@ -134,7 +136,7 @@ async def reserve_kraken_capital(
     # The portfolio fetch above is an await boundary. Recheck durable
     # accounting health and dust admission before the Governor reserves capital.
     authorization_now = time.time()
-    if intent_kind in {IntentKind.ENTRY, IntentKind.RECOVERY}:
+    if intent_kind in {IntentKind.ENTRY, IntentKind.PRESS, IntentKind.RECOVERY, IntentKind.ROTATION}:
         _require_reconciled_existing_exposure(now=authorization_now)
 
     dust_lifecycle = get_dust_lifecycle(governor=capital_governor)

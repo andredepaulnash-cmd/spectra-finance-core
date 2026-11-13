@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Spectra Finance Alpha health checks periodically
+
+[Timer]
+OnBootSec=90s
+OnUnitActiveSec=120s
+AccuracySec=20s
+Persistent=true
+Unit=spectra-alpha-doctor.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# Read-only operational health monitor for Spectra Finance Alpha.
+set -Eeuo pipefail
+
+INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
+CORE_DIR="$INSTALL_ROOT/spectra-core"
+API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
+LOG_DIR="$INSTALL_ROOT/logs"
+LOG_FILE="$LOG_DIR/doctor.log"
+LOCK_FILE="$LOG_DIR/doctor.lock"
+API_ENV="$API_DIR/.env"
+CORE_ENV="$CORE_DIR/.env"
+VERIFY_BIN="$HOME/.local/bin/spectra-verify-alpha-paper-market-data"
+
+mkdir -p "$LOG_DIR"
+if [[ -f "$LOG_FILE" && "$(stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)" -gt 5242880 ]]; then
+  mv -f "$LOG_FILE" "$LOG_FILE.1"
+fi
+exec 9>"$LOCK_FILE"
+flock -n 9 || exit 0
+exec >>"$LOG_FILE" 2>&1
+
+say() { printf '[%s] [SPECTRA DOCTOR] %s\n' "$(date -Is)" "$*"; }
+fail() { say "FAIL: $*"; exit 1; }
+ok() { say "OK: $*"; }
+
+[[ -f "$API_ENV" && -f "$CORE_ENV" ]] || fail "Core/API configuration files are missing."
+[[ -f "$INSTALL_ROOT/.compose-kind" ]] || fail "Compose runtime marker is missing."
+
+# Parse only the fields required for checks. Never print credentials.
+mapfile -t AUTH < <(python3 - "$API_ENV" <<'PY'
+from pathlib import Path
+import sys
+values = {}
+for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    line = raw.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    key, value = line.split("=", 1)
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        value = value[1:-1]
+    values[key.strip()] = value
+for key in ("USERNAME", "PASSWORD"):
+    value = values.get(key, "")
+    if not value:
+        raise SystemExit(2)
+    print(value)
+PY
+) || fail "API credentials could not be read safely."
+[[ "${#AUTH[@]}" -eq 2 ]] || fail "API credential configuration is incomplete."
+
+CURL_AUTH_CONFIG="$(mktemp)"
+RUNTIME_JSON="$(mktemp)"
+trap 'rm -f "$CURL_AUTH_CONFIG" "$RUNTIME_JSON"' EXIT
+chmod 600 "$CURL_AUTH_CONFIG" "$RUNTIME_JSON"
+printf 'user = "%s:%s"\n' "${AUTH[0]}" "${AUTH[1]}" > "$CURL_AUTH_CONFIG"
+
+python3 - "$API_ENV" "$CORE_ENV" <<'PY'
+from pathlib import Path
+import sys
+
+def read(path):
+    result = {}
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        result[key.strip()] = value.strip().strip('"').strip("'")
+    return result
+
+api, core = map(read, sys.argv[1:])
+for label, values in (("API", api), ("Core", core)):
+    if values.get("SPECTRA_PAPER_ONLY", "").lower() != "true":
+        raise SystemExit(f"{label} paper-only flag is not true")
+    if values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "").lower() != "false":
+        raise SystemExit(f"{label} live-execution flag is not false")
+if api.get("SPECTRA_PAPER_CONNECTORS") != "kraken_paper_trade":
+    raise SystemExit("API paper connector allowlist is not Kraken paper only")
+PY
+ok "paper-only and live-disabled configuration"
+
+ASSET_STATUS="$("$CORE_DIR/.venv/bin/python" - "$CORE_ENV" "$CORE_DIR" <<'PYASSETS'
+import os
+import sys
+from pathlib import Path
+core = Path(sys.argv[2]).resolve()
+values = {}
+for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    line = raw.strip()
+    if line and not line.startswith("#") and "=" in line:
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+os.environ.update(values)
+os.environ["SPECTRA_PAPER_ONLY"] = "true"
+os.environ["SPECTRA_ALLOW_LIVE_EXECUTION"] = "false"
+os.environ["CONDOR_AGENT_SLUG"] = "spectra"
+os.chdir(core)
+sys.path.insert(0, str(core))
+from spectra_core.asset_authority import load_approved_kraken_assets
+policy = load_approved_kraken_assets()
+if not policy.configured:
+    print("MISSING")
+elif not policy.pairs:
+    print("EMPTY")
+else:
+    print(f"LOADED:{len(policy.pairs)}")
+PYASSETS
+)" || fail "Governor asset allowlist is malformed or unreadable."
+case "$ASSET_STATUS" in
+  MISSING) say "WARN: no Governor-approved asset list is configured; all paper BUY-side intents remain blocked." ;;
+  EMPTY) say "WARN: Governor asset list is present but empty; all paper BUY-side intents remain blocked." ;;
+  LOADED:*) ok "Governor-approved Kraken asset list loaded (${ASSET_STATUS#LOADED:} pairs)" ;;
+  *) fail "Unexpected Governor asset-authority status: $ASSET_STATUS" ;;
+esac
+
+API_BASE="${SPECTRA_API_URL:-http://127.0.0.1:8000}"
+curl -fsS --config "$CURL_AUTH_CONFIG" "$API_BASE/spectra/runtime" -o "$RUNTIME_JSON" \
+  || fail "authenticated Spectra runtime endpoint is unavailable."
+python3 - "$RUNTIME_JSON" <<'PY'
+import json
+import sys
+runtime = json.load(open(sys.argv[1], encoding="utf-8"))
+assert runtime.get("mode") == "PAPER_ONLY", runtime
+assert runtime.get("paper_only") is True, runtime
+assert runtime.get("paper_connectors_only") is True, runtime
+assert runtime.get("live_dispatch_available") is False, runtime
+assert any(str(item).endswith("/kraken_paper_trade") for item in runtime.get("paper_connectors", [])), runtime
+PY
+ok "authenticated API runtime confirms Kraken paper-only mode"
+
+curl -fsS http://127.0.0.1:8088/overview -o /dev/null \
+  || fail "Spectra dashboard is not responding on 127.0.0.1:8088."
+ok "dashboard responds on loopback"
+
+COMPOSE_KIND="$(cat "$INSTALL_ROOT/.compose-kind")"
+for container in spectra-alpha-hummingbot-api spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-broker; do
+  if [[ "$COMPOSE_KIND" == "docker" ]]; then
+    status="$(docker inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container" 2>/dev/null || true)"
+  elif [[ "$COMPOSE_KIND" == "podman" ]]; then
+    status="$(podman inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container" 2>/dev/null || true)"
+  else
+    fail "Unknown Compose runtime: $COMPOSE_KIND"
+  fi
+  [[ "$status" == running* ]] || fail "$container is not running."
+  if [[ "$container" != "spectra-alpha-hummingbot-api" && "$status" == *unhealthy* ]]; then
+    fail "$container health check is unhealthy."
+  fi
+  ok "$container: $status"
+done
+
+[[ -x "$VERIFY_BIN" ]] || fail "Read-only market-data verifier is not installed."
+"$VERIFY_BIN" || fail "Kraken paper order book did not pass the read-only verification."
+ok "Kraken paper market data verified"
+
+BACKUP_DIR="$INSTALL_ROOT/backups"
+LATEST_BACKUP="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'spectra-paper-*.tar.gz' -printf '%T@ %p\\n' 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)"
+[[ -n "$LATEST_BACKUP" ]] || fail "No paper-state backup exists; run spectra backup."
+tar -tzf "$LATEST_BACKUP" >/dev/null || fail "Latest paper-state backup archive is corrupt."
+BACKUP_AGE="$(($(date +%s) - $(stat -c %Y "$LATEST_BACKUP")))"
+if [[ "$BACKUP_AGE" -gt 172800 ]]; then
+  say "WARN: latest paper-state backup is older than 48 hours."
+else
+  ok "latest paper-state backup is readable and current"
+fi
+
+say "PASS: operational checks completed. No orders, configuration changes, restarts, or capital mutations were performed."

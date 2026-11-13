@@ -168,10 +168,12 @@ export interface SpectraModuleRegistry {
 export interface MarketDiscoveryCandidate {
   symbol: string;
   base_asset: string;
+  quote_asset: string;
   trading_pair: string;
   current_price: number;
   volume_24h_usd: number;
-  change_24h_pct: number;
+  change_24h_pct: number | null;
+  volume_rank_24h: number;
   history_days: number;
   high_90d: number;
   low_90d: number;
@@ -184,33 +186,52 @@ export interface MarketDiscoveryCandidate {
   return_7d_pct: number;
   return_30d_pct: number;
   rsi_14d: number;
+  median_daily_range_30d_pct: number;
+  active_range_days_30d: number;
+  active_day_ratio_30d: number;
+  median_daily_quote_volume_30d_usd: number;
+  max_daily_range_30d_pct: number;
+  current_move_from_last_close_pct: number;
+  volatility_consistency_score: number;
+  mean_reversion_score: number;
   selection_score: number;
   eligible: boolean;
   rejection_reasons: string[];
   selection_reasons: string[];
+  governor_approved: boolean;
+  capital_authorized: false;
 }
 
 export interface MarketDiscoveryResponse {
   source: string;
   as_of: number;
+  kraken_ticker_snapshot_at: number;
   universe: string;
   criteria: {
     top_by_24h_quote_volume: number;
-    minimum_24h_volume_usd: number;
-    minimum_history_days: number;
-    excluded_bases: string[];
+    minimum_24h_volume_quote: number;
+    minimum_completed_history_days: number;
+    minimum_median_daily_quote_volume_usd: number;
+    minimum_active_day_ratio_30d: number;
+    minimum_median_daily_range_30d_pct: number;
+    maximum_current_move_from_last_close_pct: number;
+    quote_assets: string[];
     ranking: string;
   };
   counts: {
-    liquid_contracts_found: number;
-    contracts_selected_for_history: number;
+    eligible_kraken_markets: number;
+    liquid_markets_found: number;
+    markets_selected_for_history: number;
     analyzed: number;
     eligible: number;
     rejected_by_guardrails: number;
     history_or_data_rejected: number;
+    governor_approved: number;
   };
   candidates: MarketDiscoveryCandidate[];
-  rejected_data: Array<{ symbol: string; reason: string }>;
+  rejected_data: Array<{ trading_pair: string; reason: string }>;
+  governor_approved_list_loaded: boolean;
+  approved_asset_list_source: string | null;
   paper_only: true;
   orders_created: 0;
 }
@@ -2987,8 +3008,8 @@ export const api = {
       `/api/v1/servers/${encodeURIComponent(server)}/market/tickers?connector=${encodeURIComponent(connector)}`,
     ),
 
-  getMarketDiscovery: () =>
-    apiFetch<MarketDiscoveryResponse>("/api/v1/market/discovery?top_n=80&show_n=25&min_volume_usd=10000000&min_history_days=90"),
+  getMarketDiscovery: (server: string) =>
+    apiFetch<MarketDiscoveryResponse>(`/api/v1/servers/${encodeURIComponent(server)}/market/discovery?top_n=80&show_n=25&min_volume_usd=10000000&min_history_days=90`),
 
   getOrderBook: (server: string, connector: string, pair: string, depth = 20) =>
     apiFetch<OrderBookResponse>(

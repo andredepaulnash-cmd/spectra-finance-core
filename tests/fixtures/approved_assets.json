@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "source": "offline-test-fixture-not-production",
+  "connector": "kraken_paper_trade",
+  "approved_pairs": [
+    "BTC-USD",
+    "ETH-USD",
+    "SOL-USD",
+    "XRP-USD",
+    "DOGE-USD"
+  ]
+}
