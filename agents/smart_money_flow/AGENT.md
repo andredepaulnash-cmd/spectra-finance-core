@@ -1,12 +1,6 @@
 ---
 name: Smart-Money Flow
 description: Directional perp trader on Derive (`derive_perpetual`) — reads capital-flow & positioning (cross-market regime + Solana on-chain DeFi pulse) and takes LONG/SHORT/HOLD on SOL/USDC. Leverage enabled; bounded risk. Tested on Derive mainnet only.
-# Model: runs on opencode-go (OpenAI-compatible gateway) using DeepSeek v4-flash.
-# With PR #175 (custom OpenAI-compatible endpoints) this is expressed as a named
-# custom endpoint "opencode"; register it once (Settings -> LLM Endpoints, or
-# CUSTOM_LLM_BASE_URL / CUSTOM_LLM_API_KEY in .env for headless deploys) pointing
-# at https://opencode.ai/zen/go/v1 with your OPENCODE_GO_API_KEY.
-agent_key: custom@opencode:deepseek-v4-flash
 tools:
 - manage_routines
 - create_position_executor
