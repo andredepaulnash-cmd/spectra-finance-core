@@ -118,10 +118,23 @@ class AgentConfig(BaseModel):
         default="",
         description="Exact trading pair for the read-only market intelligence snapshot; empty disables it",
     )
-    market_candle_interval: str = Field(default="1m", description="Market intelligence candle interval")
-    market_candle_records: int = Field(default=120, ge=20, le=500, description="Number of market intelligence candles")
-    market_data_max_age_seconds: float = Field(default=180.0, ge=5.0, description="Maximum age allowed for decision-grade market data")
-    market_order_book_depth: int = Field(default=20, ge=1, le=100, description="Order-book levels per side for market intelligence")
+    market_candle_interval: str = Field(
+        default="1m", description="Market intelligence candle interval"
+    )
+    market_candle_records: int = Field(
+        default=120, ge=20, le=500, description="Number of market intelligence candles"
+    )
+    market_data_max_age_seconds: float = Field(
+        default=180.0,
+        ge=5.0,
+        description="Maximum age allowed for decision-grade market data",
+    )
+    market_order_book_depth: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Order-book levels per side for market intelligence",
+    )
     risk_limits: RiskLimitsConfig = Field(default_factory=RiskLimitsConfig)
 
     def to_engine_dict(self) -> dict[str, Any]:
