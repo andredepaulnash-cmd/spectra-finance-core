@@ -1,0 +1,38 @@
+name: Spectra upstream release watch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 9 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spectra-upstream-release-watch
+  cancel-in-progress: false
+
+jobs:
+  discover-upstream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out Spectra manifest
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate manifest and discover upstream candidates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m json.tool release/components.json >/dev/null
+          python scripts/check_upstream_releases.py --output release-candidates.json
+      - name: Publish candidate report
+        uses: actions/upload-artifact@v4
+        with:
+          name: spectra-upstream-release-candidates
+          path: release-candidates.json
+          if-no-files-found: error
+          retention-days: 30
