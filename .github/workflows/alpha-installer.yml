@@ -251,6 +251,8 @@ jobs:
               raise SystemExit("Paper integration test environment is incomplete: " + ", ".join(missing))
           if required["SPECTRA_PAPER_ONLY"].lower() != "true" or required["SPECTRA_ALLOW_LIVE_EXECUTION"].lower() != "false":
               raise SystemExit("Paper integration test refused: unsafe execution flags.")
+          for name in ("HUMMINGBOT_USERNAME", "HUMMINGBOT_PASSWORD", "SPECTRA_DISPATCH_PRIVATE_KEY"):
+              print(f"::add-mask::{required[name]}")
           with open(sys.argv[3], "a", encoding="utf-8") as env:
               for key, value in required.items():
                   env.write(f"{key}={value}\n")
