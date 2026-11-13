@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "platform": "Spectra Finance",
+  "policy": {
+    "automatic_apply": false,
+    "automatic_merge": false,
+    "require_compatibility_ci": true,
+    "require_operator_approval": true,
+    "require_backup_before_apply": true,
+    "preserve_local_state": true,
+    "paper_only_default": true,
+    "live_execution_default": false
+  },
+  "components": [
+    {
+      "id": "spectra-core",
+      "name": "Spectra Core",
+      "repository": "andredepaulnash-cmd/spectra-finance-core",
+      "tracking": "internal-release",
+      "version_source": "git-tag",
+      "approved_ref": null,
+      "notes": "Spectra-owned authority, orchestration integration, and platform code. Publish SemVer tags only after release acceptance."
+    },
+    {
+      "id": "condor",
+      "name": "Condor",
+      "repository": "hummingbot/condor",
+      "tracking": "branch",
+      "tracking_ref": "main",
+      "version_source": "git-commit",
+      "approved_ref": null,
+      "notes": "Continuously deployed upstream. Capture candidate commit SHAs; never follow main directly in a production install."
+    },
+    {
+      "id": "hummingbot-api",
+      "name": "Hummingbot API",
+      "repository": "hummingbot/hummingbot-api",
+      "tracking": "branch",
+      "tracking_ref": "main",
+      "version_source": "git-commit",
+      "approved_ref": null,
+      "notes": "Continuously deployed upstream. Repository commit and container image must be tracked as separate facets before approval."
+    },
+    {
+      "id": "hummingbot-client",
+      "name": "Hummingbot Client",
+      "repository": "hummingbot/hummingbot",
+      "tracking": "latest-release",
+      "version_source": "git-tag",
+      "approved_ref": null,
+      "notes": "Versioned upstream releases. Candidate tags require Spectra compatibility tests before approval."
+    },
+    {
+      "id": "gateway",
+      "name": "Gateway",
+      "repository": "hummingbot/gateway",
+      "tracking": "latest-release",
+      "version_source": "git-tag",
+      "approved_ref": null,
+      "notes": "Versioned upstream releases. Keep optional until Spectra's CEX/paper foundation is accepted."
+    }
+  ]
+}
