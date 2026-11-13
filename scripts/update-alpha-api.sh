@@ -309,6 +309,8 @@ CORE_OPS_SOURCES=(
   "scripts/spectra-alpha-start-api.sh"
   "scripts/spectra-alpha-core-supervisor.sh"
   "scripts/spectra-alpha-backup.sh"
+  "scripts/spectra-alpha-restore.py"
+  "scripts/spectra-alpha-restore.sh"
   "scripts/systemd/spectra-alpha-core.service"
   "scripts/systemd/spectra-alpha-doctor.service"
   "scripts/systemd/spectra-alpha-doctor.timer"
@@ -316,7 +318,7 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-backup.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="774ae8e7912896d7266fbb06c459b9f5a48a7dc3"
+  ["scripts/spectra"]="5de293a338841b21d36a63a38e14f1eae09ccbd4"
   ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
@@ -324,6 +326,8 @@ declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/systemd/spectra-alpha-doctor.service"]="054b22ea89cb8888419ec8000b5ffa0975f1b73d"
   ["scripts/systemd/spectra-alpha-doctor.timer"]="30af1b179bda4aec03105018e09b07dba1ee4b85"
   ["scripts/spectra-alpha-backup.sh"]="1320e0d1ccf552917105c85f17fb67d046d8a3fc"
+  ["scripts/spectra-alpha-restore.py"]="c4dd00abb24369396a0cfda8b50d55e30efd73a8"
+  ["scripts/spectra-alpha-restore.sh"]="a6ae3573164ff801ccdd1a2157996d28a6a79d91"
   ["scripts/systemd/spectra-alpha-backup.service"]="e49bc3d235744a92d7c463e6a98d9b8b282ae08b"
   ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
 )
@@ -423,6 +427,7 @@ install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$HOME/.local/bin/spe
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-start-api.sh" "$HOME/.local/bin/spectra-alpha-start-api"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-core-supervisor.sh" "$HOME/.local/bin/spectra-alpha-core-supervisor"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-backup.sh" "$HOME/.local/bin/spectra-alpha-backup"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-restore.sh" "$HOME/.local/bin/spectra-alpha-restore"
 
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 mkdir -p "$SYSTEMD_USER_DIR"
