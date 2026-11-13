@@ -252,7 +252,7 @@ export function ChatThread({
                     </p>
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                       {bound
-                        ? bound.description || `Ask ${bound.name} anything.`
+                        ? bound.description || `Ask ${brandedAgentName({ slug: slot.info.agent_slug || CHAT_SLUG, name: bound.name })} anything.`
                         : "Ask about your portfolio, prices, trades, or bot status."}
                     </p>
                     <p className="mt-2 flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] opacity-60">
