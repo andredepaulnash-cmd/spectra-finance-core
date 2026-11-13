@@ -9,6 +9,7 @@ on:
       - install-alpha.sh
       - scripts/**
       - patches/**
+      - patches/**
       - scripts/update-alpha-api.sh
       - scripts/spectra-alpha-doctor.sh
       - scripts/spectra-alpha-start-api.sh
@@ -65,6 +66,7 @@ on:
     paths:
       - install-alpha.sh
       - scripts/**
+      - patches/**
       - spectra_core/**
       - mcp_servers/hummingbot_api/tools/**
       - routines/**
