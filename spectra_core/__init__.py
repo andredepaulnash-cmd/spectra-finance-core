@@ -67,9 +67,11 @@ from .recovery_fingerprint import (
     shape_recovery_proposal,
 )
 from .vcap_tranches import (
+    VCAPDrawdownZone,
     VCAPTranche,
     VCAPTranchePlan,
     VCAPTranchePolicy,
+    classify_vcap_drawdown_zone,
     plan_vcap_tranches,
 )
 from .vcap_execution import (
@@ -169,7 +171,6 @@ __all__ = [
     "VCAPTranchePlan",
     "VCAPTranchePolicy",
     "VCAPDrawdownZone",
-    "VCAPTranchePolicy",
     "classify_vcap_drawdown_zone",
     "plan_vcap_tranches",
     "VCAPExecutionDecision",
