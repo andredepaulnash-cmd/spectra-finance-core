@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+import asyncio
 import time
 
 import pytest
 
+from condor.agents.providers.base import ProviderResult
+from condor.agents.providers import market_intelligence as market_module
 from condor.agents.providers.market_intelligence import MarketIntelligenceProvider
+
+
+@pytest.fixture(autouse=True)
+def clear_market_intelligence_cache():
+    with market_module._MARKET_CACHE_GUARD:
+        market_module._MARKET_CACHE.clear()
+        market_module._MARKET_CACHE_LOCKS.clear()
+    yield
 
 
 class FakeMarketData:
@@ -144,8 +155,10 @@ async def test_market_snapshot_is_shared_across_agent_ticks_and_copied_per_calle
         "market_data_cache_ttl_seconds": 10,
     }
 
-    first = await provider.execute(client, config, agent_id="spectra-grid")
-    second = await provider.execute(client, config, agent_id="spectra-momentum")
+    first, second = await asyncio.gather(
+        provider.execute(client, config, agent_id="spectra-grid"),
+        provider.execute(client, config, agent_id="spectra-momentum"),
+    )
 
     assert first.data["status"] == second.data["status"] == "FRESH"
     assert client.market_data.calls == {"tickers": 1, "candles": 1, "order_book": 1}
@@ -172,3 +185,40 @@ async def test_market_snapshot_cache_is_scoped_to_pair_and_connector():
     )
 
     assert client.market_data.calls == {"tickers": 2, "candles": 2, "order_book": 2}
+
+
+
+def test_cached_market_snapshot_recomputes_age_and_never_stays_fresh_after_expiry():
+    now = time.time()
+    stale_stamp = now - 181
+    result = ProviderResult(
+        name="market_intelligence",
+        data={
+            "connector": "kraken_paper_trade",
+            "trading_pair": "BTC-USD",
+            "max_age_seconds": 180,
+            "ticker_updated_at": stale_stamp,
+            "candle_updated_at": stale_stamp,
+            "order_book_updated_at": stale_stamp,
+            "price": 100.0,
+            "candle_count": 20,
+            "best_bid": 99.0,
+            "best_ask": 101.0,
+            "volume_24h_usd": 1000.0,
+            "candle_interval": "1m",
+            "sma20": 100.0,
+            "rsi14": 50.0,
+            "spread_bps": 200.0,
+            "ticker_age_seconds": 0.0,
+            "candle_age_seconds": 0.0,
+            "order_book_age_seconds": 0.0,
+            "errors": {},
+        },
+        summary="",
+    )
+
+    refreshed = market_module._refresh_cached_result(result)
+
+    assert refreshed.data["status"] == "STALE"
+    assert refreshed.data["decision_grade"] is False
+    assert set(refreshed.data["stale_sources"]) == {"ticker", "candles", "order_book"}
