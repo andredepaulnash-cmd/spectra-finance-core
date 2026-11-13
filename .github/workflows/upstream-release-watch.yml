@@ -2,6 +2,14 @@ name: Spectra upstream release watch
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - release/spectra-release-manager-foundation-20261113
+    paths:
+      - "release/**"
+      - "scripts/check_upstream_releases.py"
+      - "tests/test_release_manifest.py"
+      - ".github/workflows/upstream-release-watch.yml"
   pull_request:
     paths:
       - "release/**"
