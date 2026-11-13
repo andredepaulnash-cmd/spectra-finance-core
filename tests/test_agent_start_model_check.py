@@ -299,6 +299,28 @@ def test_notify_reaches_the_owner_of_a_dashboard_launch(tmp_path, monkeypatch):
     assert sent == [{"chat_id": 42, "text": "hello"}]
 
 
+@pytest.mark.parametrize(
+    "run_key,strategy_key,agent_key,expected",
+    [
+        ("openrouter:run-model", "claude-acp:opus", "codex", "openrouter:run-model"),
+        ("", "claude-acp:opus", "codex", "claude-acp:opus"),
+        ("", "", "codex", "codex"),
+    ],
+)
+def test_explicit_run_strategy_and_agent_pins_override_owner_preference(
+    run_key, strategy_key, agent_key, expected, monkeypatch
+):
+    monkeypatch.setattr(
+        "condor.preferences.get_active_agent_key",
+        lambda user_id: "openrouter:user-model",
+    )
+    agent = Agent(slug="brigado", name="Brigado", agent_key=agent_key)
+    strategy = Strategy(agent_slug="brigado", name="Scalp", agent_key=strategy_key)
+    config = {"agent_key": run_key} if run_key else {}
+
+    assert engine_module.resolve_agent_key(config, strategy, agent, USER.id) == expected
+
+
 def test_unpinned_agent_inherits_the_users_active_model(client, monkeypatch):
     """A stock Agent without a pin inherits the model selected by its owner."""
     captured = {}
