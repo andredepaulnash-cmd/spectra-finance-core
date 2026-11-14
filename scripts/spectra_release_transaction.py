@@ -23,10 +23,11 @@ _RELEASE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 
 def _safe_root(root: Path) -> Path:
-    root = root.expanduser().resolve()
-    root.mkdir(parents=True, exist_ok=True)
+    root = root.expanduser()
     if root.is_symlink():
         raise ValueError("release root must not be a symlink")
+    root = root.resolve()
+    root.mkdir(parents=True, exist_ok=True)
     return root
 
 
@@ -106,6 +107,8 @@ def rollback_release(root: Path, transaction_id: str) -> Path:
         raise ValueError("transaction id contains unsupported characters")
     root = _safe_root(root)
     transactions = root / "transactions"
+    if transactions.is_symlink():
+        raise ValueError("transaction directory must not be a symlink")
     record_path = transactions / f"{transaction_id}.json"
     if record_path.is_symlink() or not record_path.is_file():
         raise ValueError("release transaction record does not exist")
