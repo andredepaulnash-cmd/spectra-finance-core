@@ -100,7 +100,7 @@ def patch_source(source: str) -> str:
     required = (
         "await self.initialize_order_book(",
         "if hasattr(connector, '_orderbook_ds') and connector._orderbook_ds:",
-        "return {"error": f"Order book not available",
+        'return {"error": f"Order book not available',
     )
     if not all(token in source for token in required):
         raise RuntimeError("market-data service is missing expected fail-closed anchors")
