@@ -13,7 +13,7 @@ def test_registry_preserves_dual_mode_architecture_and_conservative_readiness():
     assert registry["paper_only_target"] is False
     assert {"asset-intelligence", "portfolio-scheduler", "dttp", "dtsl", "pssm", "vcap", "mir", "live-execution"} <= set(modules)
     assert modules["vcap"]["status"] == "partial"
-    assert modules["portfolio-scheduler"]["status"] == "not-implemented"
+    assert modules["portfolio-scheduler"]["status"] == "integration-in-progress"
     assert modules["dttp"]["readiness"] == "source-recovered"
     assert modules["dtsl"]["status"] == "unverified"
     assert modules["pssm"]["status"] == "not-implemented"
