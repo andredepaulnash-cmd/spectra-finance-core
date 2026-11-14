@@ -116,7 +116,7 @@ async def reserve_vcap_candidate_entry(
     if current_price <= 0 or volume <= 0:
         raise ValueError("candidate price and 24h USD volume must be positive")
     if str(candidate.get("quote_asset") or "USD").strip().upper() != "USD":
-        raise ValueError("VCAP paper entries are restricted to Kraken USD spot pairs")
+        raise ValueError("VCAP entries are restricted to Kraken USD spot pairs")
 
     connector_name = "kraken_paper_trade" if paper_only else "kraken"
     asset_policy = require_approved_kraken_pair(
@@ -155,4 +155,5 @@ async def reserve_vcap_candidate_entry(
             authorization.decision.approved
             and authorization.economic_position_id is not None
         ),
+        paper_only=paper_only,
     )
