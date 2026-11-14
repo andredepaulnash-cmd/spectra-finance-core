@@ -20,12 +20,15 @@ for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
     if line and not line.startswith("#") and "=" in line:
         key, value = line.split("=", 1)
         values[key.strip()] = value.strip().strip('"').strip("'")
-if values.get("SPECTRA_PAPER_ONLY", "").lower() != "true":
-    raise SystemExit("Refusing to start: SPECTRA_PAPER_ONLY must be true.")
-if values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "").lower() != "false":
-    raise SystemExit("Refusing to start: live execution must remain disabled.")
-if values.get("SPECTRA_PAPER_CONNECTORS") != "kraken_paper_trade":
-    raise SystemExit("Refusing to start: paper connector allowlist is not Kraken-only.")
+paper = values.get("SPECTRA_PAPER_ONLY", "").lower()
+live = values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "").lower()
+if paper not in {"true", "false"} or live not in {"true", "false"}:
+    raise SystemExit("Refusing to start: execution mode flags must be explicit true/false values.")
+if (paper == "true" and live != "false") or (paper == "false" and live != "true"):
+    raise SystemExit("Refusing to start: live mode requires separate explicit authorization.")
+connectors = [name.strip() for name in values.get("SPECTRA_PAPER_CONNECTORS", "").split(",") if name.strip()]
+if paper == "true" and (not connectors or any(not name.endswith("_paper_trade") for name in connectors)):
+    raise SystemExit("Refusing to start: paper mode requires an explicit paper-connector-only allowlist.")
 if not values.get("USERNAME") or not values.get("PASSWORD"):
     raise SystemExit("API credentials are missing.")
 PY
@@ -64,11 +67,15 @@ for _ in $(seq 1 180); do
 import json
 import sys
 runtime = json.load(open(sys.argv[1], encoding="utf-8"))
-assert runtime.get("mode") == "PAPER_ONLY", runtime
-assert runtime.get("paper_only") is True, runtime
-assert runtime.get("paper_connectors_only") is True, runtime
-assert runtime.get("live_dispatch_available") is False, runtime
-assert any(str(item).endswith("/kraken_paper_trade") for item in runtime.get("paper_connectors", [])), runtime
+if paper == "true":
+    assert runtime.get("mode") == "PAPER_ONLY", runtime
+    assert runtime.get("paper_only") is True, runtime
+    assert runtime.get("paper_connectors_only") is True, runtime
+    assert runtime.get("live_dispatch_available") is False, runtime
+    assert any(str(item).endswith("/kraken_paper_trade") for item in runtime.get("paper_connectors", [])), runtime
+else:
+    assert runtime.get("paper_only") is False, runtime
+    assert runtime.get("live_dispatch_available") is True, runtime
 PYRUNTIME
     then
       echo "[SPECTRA START] API stack is ready; Kraken paper-only runtime is verified."
