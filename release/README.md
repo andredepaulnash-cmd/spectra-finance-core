@@ -1,44 +1,83 @@
 # Spectra Release Manager
 
-This directory is the source of truth for the platform's intended component
-inventory and release policy.
+This directory separates upstream candidate discovery from the measured local
+runtime inventory and the compatibility gates required before a release can
+be approved.
 
-## First milestone: observe before changing
+## Upstream candidate discovery
 
-`components.json` records the upstream repositories and their update models:
+`components.json` records upstream repositories and how candidates are found.
+Condor and Hummingbot API candidates are immutable commit SHAs; Hummingbot
+Client and Gateway candidates are release tags. A candidate is not an approved
+version, and no mutable `latest` tag is a release pin.
 
-- Spectra Core: Spectra-owned, SemVer release tags.
-- Condor and Hummingbot API: continuously deployed upstream branches; capture
-  commit SHAs as candidates, never install directly from `main`.
-- Hummingbot Client and Gateway: versioned upstream releases; capture tags as
-  candidates.
-
-The approved refs are intentionally `null` until the currently installed
-versions have been measured and compatibility-tested. Do not invent a baseline
-or label an unverified version as approved.
-
-## Check upstream candidates
-
-From the repository root:
+Run:
 
 ```bash
-python scripts/check_upstream_releases.py
+python3 scripts/check_upstream_releases.py
 ```
 
-The command writes `release-candidates.json` by default and prints the same
-report. Treat this generated report as an artifact; do not commit it as an
-approved component manifest. It is read-only: it
-does not edit the manifest, update a checkout, pull an image, restart a
-service, change credentials, or approve a candidate.
+The discovery command is read-only. It does not edit the manifest, update a
+checkout, pull an image, restart a service, change credentials, or approve a
+candidate.
 
-GitHub Actions runs the same discovery weekly and on manual dispatch, then
-publishes the report as an artifact.
+## Installed runtime inventory
 
-## Approval gates before an updater exists
+`runtime-components.json` lists the host and runtime layers that must be
+measured, including Spectra Core, Condor, Hummingbot API/Client, Kraken paper
+connector, PostgreSQL, EMQX, optional Gateway, dashboard, Python, and the
+container runtime.
+
+Run on the actual installed machine:
+
+```bash
+python3 scripts/spectra_release_inventory.py --install-root "$HOME/SpectraFinance-Alpha"
+```
+
+The command records source commits/branches/dirty flags, Compose file hash,
+container IDs and immutable local image IDs, host OS facts, Core Python and
+frontend versions, paper/live safety flags, and aggregate state-directory
+metadata. It deliberately does **not** record .env values, credentials,
+journal contents, or filenames inside state directories. The report is written
+with owner-only permissions under the installation's backups directory.
+
+Do not guess the local image IDs, versions, volume identities, or host
+deployment from CI. The actual Bazzite installation must run this command
+before any component can be approved.
+
+## Compatibility matrix
+
+`compatibility-matrix.json` maps component dependencies to required gates:
+agent/model inheritance, provider contracts, CapitalGovernor, Kraken paper
+tracker readiness, order acknowledgement/reconciliation, fill lifecycle,
+executor restart recovery, backup/restore, and dashboard connectivity.
+
+The baseline remains `awaiting-host-inventory`. A green unit test or an
+upstream candidate does not approve a runtime combination.
+
+## Recoverable release transaction proof
+
+The staged-release pointer primitive in
+`scripts/spectra_release_transaction.py` atomically switches a `current`
+symlink to a staged release and can restore the previous pointer. CI exercises
+an isolated apply/rollback cycle:
+
+```bash
+python3 scripts/spectra_release_transaction.py self-test
+```
+
+This proof runs entirely in a temporary directory and confirms that the prior
+release remains intact. It does **not** touch the live Alpha installation.
+The staged-release transaction is currently a tested primitive, not a live
+installer integration. It is intentionally not wired into the updater or the
+fixed-path Alpha installation. Live release switching remains out of scope
+until a separately reviewed deployment design exists.
+
+## Approval gates
 
 A candidate must not become an installed version until Spectra has:
 
-1. Recorded the current repo commit and image digest independently.
+1. Recorded the current repo commit and container image ID/digest independently.
 2. Identified compatibility constraints and upstream breaking changes.
 3. Passed unit, integration, clean-install, paper-execution, accounting,
    restart-recovery, and backup/restore tests.
@@ -49,10 +88,3 @@ The eventual apply workflow must create a backup, stage the update, verify
 health, and retain a known-good rollback target. It must preserve local
 credentials, agent memory/journals, strategies, database volumes, and paper
 history. It must never use a mutable `latest` image as an approved version.
-
-## Deliberate limitations of this first milestone
-
-This is upstream discovery, not yet an installer/updater. It does not guess
-installed image tags or digests, because the current repository audit has not
-established those runtime facts. The next milestones add image/source inventory,
-compatibility PR generation, staged apply/rollback, and Spectra CLI commands.

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "baseline_status": "awaiting-host-inventory",
+  "policy": {
+    "candidate_refs_are_not_approved": true,
+    "mutable_latest_tags_are_not_release_pins": true,
+    "apply_requires_operator_approval": true,
+    "rollback_target_must_be_retained": true,
+    "paper_only_default": true,
+    "live_execution_default": false
+  },
+  "components": [
+    {
+      "id": "spectra-core",
+      "depends_on": ["condor", "hummingbot-api", "python-runtime", "spectra-dashboard"],
+      "gates": ["agent-model-inheritance", "market-intelligence-provider", "capital-governor", "paper-entry", "fill-accounting", "restart-recovery", "paper-state-restore"]
+    },
+    {
+      "id": "condor",
+      "depends_on": ["python-runtime", "hummingbot-api"],
+      "gates": ["ACP-authentication", "active-model-inheritance", "provider-contract", "tick-restart-recovery"]
+    },
+    {
+      "id": "hummingbot-api",
+      "depends_on": ["hummingbot-client", "postgres", "emqx", "container-runtime"],
+      "gates": ["paper-connector-compatibility", "market-data-tracker-readiness", "order-submit-ack-reconciliation", "fill-lifecycle", "executor-restart-recovery"]
+    },
+    {
+      "id": "hummingbot-client",
+      "depends_on": ["hummingbot-api"],
+      "gates": ["installed-package-version-measured", "connector-symbol-map", "paper-order-book-tracker"]
+    },
+    {
+      "id": "kraken-paper-connector",
+      "depends_on": ["hummingbot-client", "hummingbot-api"],
+      "gates": ["BTC-USD-market-rules", "public-websocket-tracker", "marketable-protected-buy", "confirmed-paper-fill"]
+    },
+    {
+      "id": "postgres",
+      "depends_on": ["container-runtime"],
+      "gates": ["image-id-measured", "persistent-volume-identified", "backup-integrity", "restore-test"]
+    },
+    {
+      "id": "emqx",
+      "depends_on": ["container-runtime"],
+      "gates": ["image-id-measured", "auth-and-acl-smoke-test", "persistent-volume-identified"]
+    },
+    {
+      "id": "gateway",
+      "depends_on": ["container-runtime"],
+      "gates": ["optional-component-only", "image-id-measured-if-deployed"]
+    },
+    {
+      "id": "spectra-dashboard",
+      "depends_on": ["spectra-core"],
+      "gates": ["frontend-build", "local-route-smoke-test", "authenticated-api-connectivity"]
+    },
+    {
+      "id": "host-os",
+      "depends_on": ["container-runtime", "python-runtime"],
+      "gates": ["booted-deployment-measured", "rollback-deployment-retained"]
+    }
+  ],
+  "known_constraints": [
+    "The Alpha Compose baseline includes an API service, PostgreSQL, and EMQX; local container names and image IDs must be measured rather than assumed.",
+    "Hummingbot Client may be bundled inside the API image and must be inspected there.",
+    "Gateway is optional for the initial Kraken spot paper baseline and must not be marked deployed without runtime evidence.",
+    "Condor and Hummingbot API branch candidates are commit SHAs; candidate discovery does not approve or install them.",
+    "No release component is approved until the local inventory, compatibility tests, paper execution, accounting, restore, and rollback gates pass."
+  ]
+}
