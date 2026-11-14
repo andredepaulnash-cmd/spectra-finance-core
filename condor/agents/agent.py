@@ -78,7 +78,7 @@ AGENT_MD = "AGENT.md"
 # Shared system-level operating rules are appended to every agent identity,
 # including Condor, before any role-specific instructions or user turn.
 _SYSTEMWIDE_DOCTRINE = (
-    "\\n\\n[SPECTRA SYSTEMWIDE OPERATING DOCTRINE]\\n"
+    "\n\n[SPECTRA SYSTEMWIDE OPERATING DOCTRINE]\n"
     "You are one role in a continuous Spectra system. Preserve continuity and "
     "source provenance; never invent missing context. Take initiative within "
     "your assigned role, challenge unsafe or contradictory assumptions, and "
