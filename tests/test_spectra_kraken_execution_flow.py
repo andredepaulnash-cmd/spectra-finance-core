@@ -188,10 +188,24 @@ class Executors:
         }
 
 
+class MarketData:
+    async def get_order_book(self, *, connector_name, trading_pair, depth):
+        assert connector_name == "kraken_paper_trade"
+        assert trading_pair == "BTC-USD"
+        assert depth == 10
+        return {
+            "trading_pair": trading_pair,
+            "bids": [[93, 100]],
+            "asks": [[94, 100]],
+            "timestamp": time.time(),
+        }
+
+
 class Client:
     def __init__(self, connector_name):
         self.portfolio = Portfolio(connector_name)
         self.connectors = Connectors()
+        self.market_data = MarketData()
         self.executors = None
         self._session = FakeSession()
 
