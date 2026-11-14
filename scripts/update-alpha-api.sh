@@ -306,8 +306,8 @@ say "Verified Core source ref $CORE_REF at commit $CORE_UPSTREAM_COMMIT."
 
 ensure_env_default() {
   local file="$1" key="$2" value="$3"
-  if ! grep -Eq "^\${key}=" "$file"; then
-    printf '%s=%s\\n' "$key" "$value" >> "$file"
+  if ! grep -Eq "^${key}=" "$file"; then
+    printf '%s=%s\n' "$key" "$value" >> "$file"
   fi
 }
 ensure_env_default "$CORE_DIR/.env" SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED true
