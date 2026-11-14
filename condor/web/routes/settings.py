@@ -668,6 +668,9 @@ async def list_connectors(
         if isinstance(c, str)
         and "testnet" not in c.lower()
         and "sandbox" not in c.lower()
+        # Exchange credentials belong to the real venue connector, never the
+        # simulated paper execution adapter (e.g. kraken_paper_trade).
+        and "paper_trade" not in c.lower()
         and "/" not in c
     ]
     if type:
