@@ -1,0 +1,27 @@
+name: Spectra Kraken market intelligence config
+
+on:
+  pull_request:
+    paths:
+      - agents/spectra/strategies/kraken_spot_market_intelligence/strategy.md
+      - condor/agents/config.py
+      - tests/test_spectra_kraken_market_intelligence_config.py
+      - tests/test_market_intelligence_provider.py
+      - .github/workflows/spectra-market-intelligence-config.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate-read-only-market-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: uv sync --locked --dev --python 3.12
+      - name: Validate read-only strategy and provider
+        run: uv run --python 3.12 pytest -q tests/test_spectra_kraken_market_intelligence_config.py tests/test_market_intelligence_provider.py
