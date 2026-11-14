@@ -129,6 +129,12 @@ class AgentConfig(BaseModel):
         ge=5.0,
         description="Maximum age allowed for decision-grade market data",
     )
+    market_data_cache_ttl_seconds: float = Field(
+        default=10.0,
+        ge=1.0,
+        le=30.0,
+        description="Shared market intelligence cache lifetime in seconds",
+    )
     market_order_book_depth: int = Field(
         default=20,
         ge=1,
