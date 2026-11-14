@@ -29,7 +29,10 @@ def make_install(tmp_path: Path, *, paper_path: str | None = None, live_path: st
     (paper / "journal.json").write_text('{"version":"old"}', encoding="utf-8")
     (live / "live.json").write_text('{"protected":true}', encoding="utf-8")
     (core / ".env").write_text(
-        "SPECTRA_PAPER_ONLY=true\nSPECTRA_ALLOW_LIVE_EXECUTION=false\n",
+        "SPECTRA_PAPER_ONLY=true\n"
+        "SPECTRA_ALLOW_LIVE_EXECUTION=false\n"
+        f"SPECTRA_PAPER_STATE_DIR={paper}\n"
+        f"SPECTRA_STATE_DIR={live}\n",
         encoding="utf-8",
     )
     backup = install / "backups"
