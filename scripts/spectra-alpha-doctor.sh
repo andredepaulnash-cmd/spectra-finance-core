@@ -56,7 +56,7 @@ trap 'rm -f "$CURL_AUTH_CONFIG" "$RUNTIME_JSON"' EXIT
 chmod 600 "$CURL_AUTH_CONFIG" "$RUNTIME_JSON"
 printf 'user = "%s:%s"\n' "${AUTH[0]}" "${AUTH[1]}" > "$CURL_AUTH_CONFIG"
 
-python3 - "$API_ENV" "$CORE_ENV" <<'PY'
+EXECUTION_MODE="$(python3 - "$API_ENV" "$CORE_ENV" <<'PY'
 from pathlib import Path
 import sys
 
@@ -67,19 +67,26 @@ def read(path):
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        result[key.strip()] = value.strip().strip('"').strip("'")
+        result[key.strip()] = value.strip().strip('"').strip("'").lower()
     return result
 
 api, core = map(read, sys.argv[1:])
-for label, values in (("API", api), ("Core", core)):
-    if values.get("SPECTRA_PAPER_ONLY", "").lower() != "true":
-        raise SystemExit(f"{label} paper-only flag is not true")
-    if values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "").lower() != "false":
-        raise SystemExit(f"{label} live-execution flag is not false")
-if api.get("SPECTRA_PAPER_CONNECTORS") != "kraken_paper_trade":
-    raise SystemExit("API paper connector allowlist is not Kraken paper only")
+for key in ("SPECTRA_PAPER_ONLY", "SPECTRA_ALLOW_LIVE_EXECUTION"):
+    if api.get(key) != core.get(key):
+        raise SystemExit("API/Core execution-mode mismatch for " + key)
+paper = api.get("SPECTRA_PAPER_ONLY")
+live = api.get("SPECTRA_ALLOW_LIVE_EXECUTION")
+if paper not in {"true", "false"} or live not in {"true", "false"}:
+    raise SystemExit("Execution mode flags must be explicit true/false values")
+if (paper == "true" and live != "false") or (paper == "false" and live != "true"):
+    raise SystemExit("Live mode requires separate explicit authorization")
+connectors = [name.strip() for name in api.get("SPECTRA_PAPER_CONNECTORS", "").split(",") if name.strip()]
+if paper == "true" and (not connectors or any(not name.endswith("_paper_trade") for name in connectors)):
+    raise SystemExit("Paper mode requires a paper-connector-only allowlist")
+print("PAPER_ONLY" if paper == "true" else "LIVE_AUTHORIZED")
 PY
-ok "paper-only and live-disabled configuration"
+)" || fail "Execution-mode configuration is inconsistent or unsafe."
+ok "execution mode: $EXECUTION_MODE"
 
 ASSET_STATUS="$("$CORE_DIR/.venv/bin/python" - "$CORE_ENV" "$CORE_DIR" <<'PYASSETS'
 import os
@@ -93,42 +100,49 @@ for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
         key, value = line.split("=", 1)
         values[key.strip()] = value.strip().strip('"').strip("'")
 os.environ.update(values)
-os.environ["SPECTRA_PAPER_ONLY"] = "true"
-os.environ["SPECTRA_ALLOW_LIVE_EXECUTION"] = "false"
 os.environ["CONDOR_AGENT_SLUG"] = "spectra"
 os.chdir(core)
 sys.path.insert(0, str(core))
-from spectra_core.asset_authority import load_approved_kraken_assets
-policy = load_approved_kraken_assets()
-if not policy.configured:
-    print("MISSING")
-elif not policy.pairs:
-    print("EMPTY")
+if values.get("SPECTRA_PAPER_ONLY", "true").lower() != "true":
+    print("LIVE_MODE")
 else:
-    print(f"LOADED:{len(policy.pairs)}")
+    from spectra_core.asset_authority import load_approved_kraken_assets
+    policy = load_approved_kraken_assets()
+    if not policy.configured:
+        print("MISSING")
+    elif not policy.pairs:
+        print("EMPTY")
+    else:
+        print(f"LOADED:{len(policy.pairs)}")
 PYASSETS
 )" || fail "Governor asset allowlist is malformed or unreadable."
 case "$ASSET_STATUS" in
   MISSING) say "WARN: no Governor-approved asset list is configured; all paper BUY-side intents remain blocked." ;;
   EMPTY) say "WARN: Governor asset list is present but empty; all paper BUY-side intents remain blocked." ;;
   LOADED:*) ok "Governor-approved Kraken asset list loaded (${ASSET_STATUS#LOADED:} pairs)" ;;
+  LIVE_MODE) ok "live asset admission remains governed by Core policy and explicit execution authorization" ;;
   *) fail "Unexpected Governor asset-authority status: $ASSET_STATUS" ;;
 esac
 
 API_BASE="${SPECTRA_API_URL:-http://127.0.0.1:8000}"
 curl -fsS --config "$CURL_AUTH_CONFIG" "$API_BASE/spectra/runtime" -o "$RUNTIME_JSON" \
   || fail "authenticated Spectra runtime endpoint is unavailable."
-python3 - "$RUNTIME_JSON" <<'PY'
+python3 - "$RUNTIME_JSON" "$EXECUTION_MODE" <<'PY'
 import json
 import sys
 runtime = json.load(open(sys.argv[1], encoding="utf-8"))
-assert runtime.get("mode") == "PAPER_ONLY", runtime
-assert runtime.get("paper_only") is True, runtime
-assert runtime.get("paper_connectors_only") is True, runtime
-assert runtime.get("live_dispatch_available") is False, runtime
-assert any(str(item).endswith("/kraken_paper_trade") for item in runtime.get("paper_connectors", [])), runtime
+mode = sys.argv[2]
+if mode == "PAPER_ONLY":
+    assert runtime.get("mode") == "PAPER_ONLY", runtime
+    assert runtime.get("paper_only") is True, runtime
+    assert runtime.get("paper_connectors_only") is True, runtime
+    assert runtime.get("live_dispatch_available") is False, runtime
+    assert any(str(item).endswith("/kraken_paper_trade") for item in runtime.get("paper_connectors", [])), runtime
+else:
+    assert runtime.get("paper_only") is False, runtime
+    assert runtime.get("live_dispatch_available") is True, runtime
 PY
-ok "authenticated API runtime confirms Kraken paper-only mode"
+ok "authenticated API runtime matches $EXECUTION_MODE"
 
 curl -fsS http://127.0.0.1:8088/overview -o /dev/null \
   || fail "Spectra dashboard is not responding on 127.0.0.1:8088."
@@ -150,9 +164,13 @@ for container in spectra-alpha-hummingbot-api spectra-alpha-hummingbot-postgres 
   ok "$container: $status"
 done
 
-[[ -x "$VERIFY_BIN" ]] || fail "Read-only market-data verifier is not installed."
-"$VERIFY_BIN" || fail "Kraken paper order book did not pass the read-only verification."
-ok "Kraken paper market data verified"
+if [[ "$EXECUTION_MODE" == "PAPER_ONLY" ]]; then
+  [[ -x "$VERIFY_BIN" ]] || fail "Read-only market-data verifier is not installed."
+  "$VERIFY_BIN" || fail "Kraken paper order book did not pass the read-only verification."
+  ok "Kraken paper market data verified"
+else
+  ok "paper market-data verifier skipped in explicitly authorized live mode"
+fi
 
 BACKUP_DIR="$INSTALL_ROOT/backups"
 LATEST_BACKUP="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'spectra-paper-*.tar.gz' -printf '%T@ %p\\n' 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)"
