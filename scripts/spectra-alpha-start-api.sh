@@ -63,10 +63,17 @@ printf 'user = "%s:%s"\n' "${AUTH[0]}" "${AUTH[1]}" > "$AUTH_CONFIG"
 
 for _ in $(seq 1 180); do
   if curl -fsS --config "$AUTH_CONFIG" http://127.0.0.1:8000/spectra/runtime -o "$RUNTIME_JSON"; then
-    if python3 - "$RUNTIME_JSON" <<'PYRUNTIME'
+    if python3 - "$RUNTIME_JSON" "$ENV_FILE" <<'PYRUNTIME'
 import json
 import sys
 runtime = json.load(open(sys.argv[1], encoding="utf-8"))
+values = {}
+for raw in open(sys.argv[2], encoding="utf-8"):
+    line = raw.strip()
+    if line and not line.startswith("#") and "=" in line:
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'").lower()
+paper = values.get("SPECTRA_PAPER_ONLY")
 if paper == "true":
     assert runtime.get("mode") == "PAPER_ONLY", runtime
     assert runtime.get("paper_only") is True, runtime
