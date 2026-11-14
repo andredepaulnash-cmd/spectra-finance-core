@@ -106,7 +106,18 @@ def test_identity_header_falls_back_to_the_slug():
     assert "nameless" in identity_header("nameless")
 
 
-@pytest.mark.parametrize("slug,name", [("condor", "Condor"), ("adaptive_grid_trader", "Adaptive Grid Trader")])
+@pytest.mark.parametrize("slug,name", [
+    ("condor", "Condor"),
+    ("spectra", "Spectra"),
+    ("adaptive_grid_trader", "Adaptive Grid Trader"),
+    ("directional_trader", "Directional Trader"),
+    ("fundamental_analyst", "Fundamental Analyst"),
+    ("market_making_expert", "Market Making Expert"),
+    ("smart_money_flow", "Smart-Money Flow"),
+    ("meteora_launch_lp", "Meteora Launch LP"),
+    ("solana_dex_lp_expert", "Solana DEX LP Expert"),
+    ("xrpl_market_maker", "XRPL Market Maker"),
+])
 def test_every_agent_identity_carries_the_systemwide_doctrine(slug, name):
     header = identity_header(slug, name)
     assert "[SPECTRA SYSTEMWIDE OPERATING DOCTRINE]" in header
