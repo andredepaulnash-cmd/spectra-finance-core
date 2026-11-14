@@ -16,8 +16,12 @@ import sqlite3
 import tarfile
 import tempfile
 import uuid
+
+MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 10_000
+MAX_MEMBER_BYTES = 128 * 1024 * 1024
+MAX_TOTAL_BYTES = 512 * 1024 * 1024
 from pathlib import Path, PurePosixPath
-from typing import Any
 
 
 def read_env(path: Path) -> dict[str, str]:
@@ -55,7 +59,7 @@ def _validate_archive_member(member: tarfile.TarInfo) -> PurePosixPath:
         raise ValueError(f"unsupported archive member type: {name!r}")
     if any(part.lower() in {"credentials", "secrets"} for part in path.parts):
         raise ValueError(f"credential-like path is not permitted in paper-state archive: {name!r}")
-    if path.name == ".env":
+    if path.name == ".env" or path.name.startswith(".env."):
         raise ValueError("environment files are not permitted in paper-state archives")
     return path
 
@@ -67,9 +71,18 @@ def _extract_verified(archive: Path, destination: Path) -> None:
         members = bundle.getmembers()
         if not members:
             raise ValueError("paper-state archive is empty")
+        if len(members) > MAX_ARCHIVE_MEMBERS:
+            raise ValueError(f"paper-state archive exceeds the {MAX_ARCHIVE_MEMBERS} member limit")
+        total_bytes = 0
         validated: list[tuple[tarfile.TarInfo, PurePosixPath]] = []
         for member in members:
             relative = _validate_archive_member(member)
+            if member.isfile():
+                if member.size > MAX_MEMBER_BYTES:
+                    raise ValueError(f"archive member exceeds the {MAX_MEMBER_BYTES}-byte limit: {member.name!r}")
+                total_bytes += member.size
+                if total_bytes > MAX_TOTAL_BYTES:
+                    raise ValueError(f"paper-state archive exceeds the {MAX_TOTAL_BYTES}-byte extracted-size limit")
             if member.name in seen:
                 raise ValueError(f"duplicate archive member: {member.name!r}")
             seen.add(member.name)
@@ -135,10 +148,19 @@ def restore_paper_state(
     if values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "").lower() != "false":
         raise ValueError("restore refused: live execution must be explicitly disabled")
 
-    backup_root = (install_root / "backups").resolve()
+    backup_root_path = install_root / "backups"
+    if backup_root_path.is_symlink():
+        raise ValueError("installation backups directory must not be a symlink")
+    backup_root = backup_root_path.resolve()
+    if not backup_root.is_dir():
+        raise ValueError("installation backups directory does not exist")
     archive = archive_path.expanduser()
+    if not archive.is_absolute():
+        archive = install_root / archive
     if archive.is_symlink() or not archive.is_file():
         raise ValueError("restore archive must be a regular, non-symlink file")
+    if archive.stat().st_size > MAX_ARCHIVE_BYTES:
+        raise ValueError(f"restore archive exceeds the {MAX_ARCHIVE_BYTES}-byte compressed-size limit")
     archive = archive.resolve(strict=True)
     if archive == backup_root or backup_root not in archive.parents:
         raise ValueError("restore archive must be inside the installation backups directory")
