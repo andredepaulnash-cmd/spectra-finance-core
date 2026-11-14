@@ -548,7 +548,6 @@ install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$LOCAL_BIN/spectra-a
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-start-api.sh" "$LOCAL_BIN/spectra-alpha-start-api"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-core-supervisor.sh" "$LOCAL_BIN/spectra-alpha-core-supervisor"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-backup.sh" "$LOCAL_BIN/spectra-alpha-backup"
-install -m 700 "$CORE_DIR/scripts/spectra-alpha-restore.sh" "$LOCAL_BIN/spectra-alpha-restore"
 install -m 700 "$CORE_DIR/scripts/verify-alpha-paper-market-data.sh" "$LOCAL_BIN/spectra-verify-alpha-paper-market-data"
 
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
