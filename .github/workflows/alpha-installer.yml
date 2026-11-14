@@ -38,6 +38,7 @@ on:
       - tests/test_ambiguous_executor_dispatch.py
       - tests/test_alpha_backup.py
       - tests/test_spectra_alpha_restore.py
+      - tests/test_spectra_alpha_restore.py
       - tests/test_asset_authority.py
       - tests/test_kraken_authorization.py
       - tests/test_vcap_entry.py
@@ -155,6 +156,7 @@ jobs:
         run: |
           uv run --python 3.12 pytest -q \
             tests/test_alpha_backup.py \
+            tests/test_spectra_alpha_restore.py \
             tests/test_spectra_alpha_restore.py \
             tests/test_asset_authority.py \
             tests/test_kraken_authorization.py \
