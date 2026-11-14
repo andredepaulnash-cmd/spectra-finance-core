@@ -727,6 +727,11 @@ async def _bounded_protected_buy(
     return order.executor_config, policy, raw_rule
 
 
+def _select_controller_tag(controller_id: str | None) -> str:
+    """Honor explicit Condor attribution; use the agent default only as fallback."""
+    return controller_id or ("spectra" if settings.agent_slug == "spectra" else "main")
+
+
 async def create_executor(
     client: Any,
     executor_type: str,
@@ -749,7 +754,7 @@ async def create_executor(
     (``validate_executor_config``) existed only because the config was an opaque dict.
     """
     account = account_name or "master_account"
-    tag = controller_id or ("spectra" if settings.agent_slug == "spectra" else "main")
+    tag = _select_controller_tag(controller_id)
 
     merged_config = executor_preferences.merge_with_defaults(executor_type, config)
     merged_config["type"] = executor_type
