@@ -6,7 +6,7 @@ set -Eeuo pipefail
 
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
-CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-fix/spectra-connectivity-and-agent-auth}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
@@ -303,6 +303,20 @@ else
 fi
 CORE_UPSTREAM_COMMIT="$(git -C "$CORE_DIR" rev-parse FETCH_HEAD^{commit})"
 say "Verified Core source ref $CORE_REF at commit $CORE_UPSTREAM_COMMIT."
+
+ensure_env_default() {
+  local file="$1" key="$2" value="$3"
+  if ! grep -Eq "^\${key}=" "$file"; then
+    printf '%s=%s\\n' "$key" "$value" >> "$file"
+  fi
+}
+ensure_env_default "$CORE_DIR/.env" SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED true
+ensure_env_default "$CORE_DIR/.env" SPECTRA_PORTFOLIO_AUTORUN true
+ensure_env_default "$CORE_DIR/.env" SPECTRA_LIVE_AUTORUN false
+ensure_env_default "$CORE_DIR/.env" SPECTRA_AUTO_ASSET_SELECTION true
+ensure_env_default "$CORE_DIR/.env" SPECTRA_TARGET_ACTIVE_POSITIONS 83
+ensure_env_default "$CORE_DIR/.env" SPECTRA_MAX_NEW_ENTRIES_PER_TICK 3
+ensure_env_default "$CORE_DIR/.env" SPECTRA_VCAP_SEED_QUOTE 20
 [[ -f "$CORE_DIR/frontend/package.json" ]] || die "Core frontend package.json is missing."
 say "Fetching the reviewed Spectra trade-screen market-feed status component."
 CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$CORE_FRONTEND_SOURCE")"
