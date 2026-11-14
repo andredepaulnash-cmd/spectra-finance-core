@@ -495,7 +495,7 @@ class CapitalGovernor:
                     )
                     conn.commit()
                     return False
-                self._expire_stale(conn)
+                self._expire_stale(conn, now=current_time)
                 if self._protected(conn) > ZERO:
                     raise RuntimeError(
                         "cash activation requires no unresolved RESERVED/COMMITTED claims"
@@ -1100,7 +1100,21 @@ class CapitalGovernor:
         self,
         proposal: CapitalProposal,
         snapshot: CapitalSnapshot,
+        *,
+        now: float | None = None,
     ) -> CapitalDecision:
+        if now is None:
+            current_time = self._now()
+        else:
+            if isinstance(now, bool):
+                raise ValueError("CapitalGovernor clock must return a finite timestamp")
+            try:
+                current_time = float(now)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("CapitalGovernor clock must return a finite timestamp") from exc
+            if not math.isfinite(current_time) or current_time < 0:
+                raise ValueError("CapitalGovernor clock must return a finite timestamp")
+
         pair = proposal.pair.strip().upper()
 
         if not proposal.proposal_id.strip():
@@ -1266,8 +1280,6 @@ class CapitalGovernor:
                     status = DecisionStatus.RESERVED
                     reason = "authorized within deterministic " "capital envelope"
 
-                now = self._now()
-
                 conn.execute(
                     """
                     INSERT INTO capital_reservations (
@@ -1294,8 +1306,8 @@ class CapitalGovernor:
                         status.value,
                         reason,
                         str(available_after),
-                        now,
-                        now,
+                        current_time,
+                        current_time,
                         (
                             None
                             if not isinstance(proposal.account_name, str)
