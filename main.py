@@ -778,6 +778,22 @@ async def startup(application: Application) -> None:
     except Exception:
         logger.exception("Boot reconciliation failed; continuing startup")
 
+    # The portfolio supervisor is a Core-owned process, not a chat command.
+    # The installer opts in explicitly; its own mode gates keep paper as the
+    # default and require a second authorization for live automation.
+    if os.getenv("SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED", "false").strip().lower() in {
+        "1", "true", "yes", "on"
+    }:
+        try:
+            from spectra_core.portfolio_supervisor import run_portfolio_supervisor
+
+            _spawn_background(
+                run_portfolio_supervisor(),
+                "Spectra autonomous portfolio supervisor",
+            )
+        except Exception:
+            logger.exception("Spectra portfolio supervisor failed to initialize")
+
     # Schedule periodic update checks (notifies admin)
     from handlers.admin.update import schedule_update_checks
 
@@ -834,6 +850,16 @@ async def teardown(application: Application) -> None:
     same reason: ``Application.shutdown()`` does not call that hook either.
     Called explicitly from :func:`_run_dual`.
     """
+    # Stop background services before closing their Hummingbot/API clients.
+    # In particular, the portfolio supervisor must never outlive the client it
+    # uses for governed VCAP and executor reconciliation.
+    background_tasks = tuple(_BACKGROUND_TASKS)
+    for task in background_tasks:
+        task.cancel()
+    if background_tasks:
+        await asyncio.gather(*background_tasks, return_exceptions=True)
+    _BACKGROUND_TASKS.clear()
+
     from condor.runtime import client as runtime
     from condor.runtime import sessions as runtime_sessions
     from condor.runtime.confirmations import get_registry
