@@ -4,7 +4,6 @@ description: Early-liquidity specialist for tokens graduating from launchpads in
   Meteora DAMM v2 — detects fresh graduations (EasyA), gates them on safety and real
   post-graduation demand, provides early two-sided liquidity, and exits on decay/risk
   triggers. Also harvests fee yield on established DAMM v2 pools between graduations.
-agent_key: claude-acp:sonnet
 tools:
 - manage_amm
 - explore_dex_pools
