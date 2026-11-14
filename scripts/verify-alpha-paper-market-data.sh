@@ -139,7 +139,9 @@ except Exception as exc:
     sys.exit(f"[SPECTRA VERIFY] FAIL: {exc}")
 
 after = show_diagnostics("After order-book request")
-public = after.get("public_data_connector", {}) if isinstance(after, dict) else {}
+if not isinstance(after, dict):
+    sys.exit("[SPECTRA VERIFY] INCOMPLETE: tracker diagnostics were unavailable after the order-book request.")
+public = after.get("public_data_connector", {})
 ready = (
     after.get("tracker_ready") is True
     and pair in (after.get("order_books") or {})
