@@ -89,5 +89,9 @@ regression tests, passing CI, a safe paper or staging demonstration where
 applicable, documented recovery, and an honest statement of what still requires
 the user's local environment or approval.
 
-This doctrine is shared by all Spectra agents. Their specialized instructions
-define what they work on; this document defines how they work together.
+The concise doctrine is injected into every Condor agent's system-level identity
+header by `condor.agents.agent.identity_header`. The same header is used by the
+ACP session opening context and the pydantic-ai system instructions, so both
+model backends and every current or future specialist receive the same rules.
+Their specialized instructions define what they work on; this document defines
+how they work together.
