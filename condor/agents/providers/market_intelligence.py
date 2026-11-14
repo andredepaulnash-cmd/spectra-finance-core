@@ -7,9 +7,13 @@ healthy/flat market reading.
 """
 from __future__ import annotations
 
+import asyncio
+import copy
 import logging
 import math
+import threading
 import time
+import weakref
 from datetime import datetime
 from typing import Any
 
@@ -19,6 +23,122 @@ from . import register_provider
 from .base import BaseProvider, ProviderResult
 
 log = logging.getLogger(__name__)
+
+
+# A bounded process-local cache shares one market fetch across concurrent
+# agent ticks. Cache keys are scoped to the event loop, API server and market
+# configuration; callers receive independent copies.
+_MARKET_CACHE: dict[tuple[Any, ...], tuple[float, ProviderResult]] = {}
+_MARKET_CACHE_LOCKS: dict[tuple[Any, ...], asyncio.Lock] = {}
+_MARKET_CACHE_GUARD = threading.Lock()
+
+
+def _summary(data: dict[str, Any]) -> str:
+    lines = [
+        f"Market: {data.get('connector')} {data.get('trading_pair')} | status={data.get('status')} | decision_grade={data.get('decision_grade')}",
+        f"Price={data.get('price') if data.get('price') is not None else 'unavailable'} | 24h USD volume={data.get('volume_24h_usd') if data.get('volume_24h_usd') is not None else 'unavailable'}",
+        f"Bid/ask={data.get('best_bid') if data.get('best_bid') is not None else 'unavailable'}/{data.get('best_ask') if data.get('best_ask') is not None else 'unavailable'} | spread={data.get('spread_bps') if data.get('spread_bps') is not None else 'unavailable'} bps",
+        f"Candles={data.get('candle_count', 0)} {data.get('candle_interval')} | SMA20={data.get('sma20') if data.get('sma20') is not None else 'unavailable'} | RSI14={data.get('rsi14') if data.get('rsi14') is not None else 'unavailable'}",
+        f"Data ages seconds: ticker={data.get('ticker_age_seconds')}, candles={data.get('candle_age_seconds')}, order_book={data.get('order_book_age_seconds')}",
+    ]
+    if not data.get("decision_grade"):
+        lines.append(
+            "NO-TRADE DATA GUARD: market snapshot is not decision-grade. "
+            "Do not propose new exposure from this snapshot; explain the missing, stale, or failed inputs."
+        )
+    errors = data.get("errors") or {}
+    if errors:
+        lines.append("Errors: " + "; ".join(f"{key}={value}" for key, value in errors.items()))
+    return "\\n".join(lines)
+
+
+def _refresh_cached_result(result: ProviderResult) -> ProviderResult:
+    data = copy.deepcopy(result.data)
+    now = time.time()
+    timestamp_fields = (
+        ("ticker_updated_at", "ticker_age_seconds", "ticker"),
+        ("candle_updated_at", "candle_age_seconds", "candles"),
+        ("order_book_source_timestamp", "order_book_age_seconds", "order_book"),
+    )
+    stale_sources: list[str] = []
+    missing_timestamps: list[str] = []
+    future_sources: list[str] = []
+    max_age = float(data.get("max_age_seconds", 180.0))
+    for timestamp_key, age_key, source in timestamp_fields:
+        stamp = _number(data.get(timestamp_key))
+        if stamp is None:
+            data[age_key] = None
+            missing_timestamps.append(source)
+        else:
+            age = max(0.0, now - stamp)
+            data[age_key] = age
+            if stamp > now + 5.0:
+                future_sources.append(source)
+            if age > max_age:
+                stale_sources.append(source)
+    required_missing = (
+        data.get("price") is None
+        or int(data.get("candle_count") or 0) < 20
+        or data.get("best_bid") is None
+        or data.get("best_ask") is None
+    )
+    errors = data.get("errors") or {}
+    if stale_sources:
+        status = "STALE"
+    elif required_missing or missing_timestamps or future_sources or errors:
+        status = "DEGRADED"
+    else:
+        status = "FRESH"
+    data["retrieved_at"] = now
+    data["stale_sources"] = stale_sources
+    data["missing_timestamps"] = missing_timestamps
+    data["future_sources"] = future_sources
+    data["status"] = status
+    data["decision_grade"] = status == "FRESH"
+    return ProviderResult(name=result.name, data=data, summary=_summary(data))
+
+
+async def _shared_snapshot(key: tuple[Any, ...], requested_ttl: float, loader) -> ProviderResult:
+    now = time.monotonic()
+    with _MARKET_CACHE_GUARD:
+        cached = _MARKET_CACHE.get(key)
+        lock = _MARKET_CACHE_LOCKS.setdefault(key, asyncio.Lock())
+        if cached is not None and now < cached[0]:
+            return _refresh_cached_result(cached[1])
+
+    async with lock:
+        now = time.monotonic()
+        with _MARKET_CACHE_GUARD:
+            cached = _MARKET_CACHE.get(key)
+            if cached is not None and now < cached[0]:
+                return _refresh_cached_result(cached[1])
+
+        result = await loader()
+        data = result.data or {}
+        if data.get("status") == "FRESH":
+            ages = [
+                _number(data.get(name))
+                for name in ("ticker_age_seconds", "candle_age_seconds", "order_book_age_seconds")
+            ]
+            known_ages = [age for age in ages if age is not None]
+            headroom = float(data.get("max_age_seconds", 180.0)) - max(known_ages, default=0.0)
+            ttl = min(requested_ttl, max(0.0, headroom))
+        else:
+            ttl = min(requested_ttl, 2.0)
+
+        if ttl > 0.25:
+            with _MARKET_CACHE_GUARD:
+                _MARKET_CACHE[key] = (time.monotonic() + ttl, copy.deepcopy(result))
+                expired = [cache_key for cache_key, value in _MARKET_CACHE.items() if value[0] <= time.monotonic()]
+                for cache_key in expired:
+                    _MARKET_CACHE.pop(cache_key, None)
+                    _MARKET_CACHE_LOCKS.pop(cache_key, None)
+                while len(_MARKET_CACHE) > 256:
+                    oldest = next(iter(_MARKET_CACHE))
+                    _MARKET_CACHE.pop(oldest, None)
+                    _MARKET_CACHE_LOCKS.pop(oldest, None)
+        return result
+
 
 
 def _epoch_seconds(value: Any) -> float | None:
@@ -84,6 +204,52 @@ class MarketIntelligenceProvider(BaseProvider):
     is_core = True
 
     async def execute(
+        self,
+        client: Any,
+        config: dict,
+        agent_id: str = "",
+        bot_names: list[str] | None = None,
+        since: float = 0.0,
+    ) -> ProviderResult:
+        connector = str(config.get("market_connector_name") or "").strip()
+        pair = str(config.get("market_trading_pair") or "").strip().upper()
+        if not connector or not pair:
+            return await self._execute_uncached(
+                client, config, agent_id=agent_id, bot_names=bot_names, since=since
+            )
+
+        interval = str(config.get("market_candle_interval") or "1m").strip()
+        records = max(20, min(int(config.get("market_candle_records", 120)), 500))
+        max_age = max(5.0, float(config.get("market_data_max_age_seconds", 180)))
+        depth = max(1, min(int(config.get("market_order_book_depth", 20)), 100))
+        requested_ttl = max(1.0, min(float(config.get("market_data_cache_ttl_seconds", 10)), 30.0))
+        client_scope = (
+            getattr(client, "base_url", None)
+            or getattr(client, "_base_url", None)
+            or getattr(client, "api_url", None)
+            or f"client:{id(client)}"
+        )
+        key = (
+            weakref.ref(asyncio.get_running_loop()),
+            str(client_scope),
+            str(config.get("server_name") or "local"),
+            connector,
+            pair,
+            interval,
+            records,
+            depth,
+            max_age,
+            requested_ttl,
+        )
+
+        async def load() -> ProviderResult:
+            return await self._execute_uncached(
+                client, config, agent_id=agent_id, bot_names=bot_names, since=since
+            )
+
+        return await _shared_snapshot(key, requested_ttl, load)
+
+    async def _execute_uncached(
         self,
         client: Any,
         config: dict,
