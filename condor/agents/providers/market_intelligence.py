@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 # agent ticks. Cache keys are scoped to the event loop, API server and market
 # configuration; callers receive independent copies.
 _MARKET_CACHE: dict[tuple[Any, ...], tuple[float, ProviderResult]] = {}
-_MARKET_CACHE_LOCKS: weakref.WeakValueDictionary[tuple[Any, ...], asyncio.Lock] = weakref.WeakValueDictionary()
+_MARKET_CACHE_LOCKS: dict[tuple[Any, ...], tuple[asyncio.Lock, int]] = {}
 _MARKET_CACHE_GUARD = threading.Lock()
 
 
@@ -102,42 +102,67 @@ async def _shared_snapshot(key: tuple[Any, ...], requested_ttl: float, loader) -
     now = time.monotonic()
     with _MARKET_CACHE_GUARD:
         cached = _MARKET_CACHE.get(key)
-        lock = _MARKET_CACHE_LOCKS.setdefault(key, asyncio.Lock())
         if cached is not None and now < cached[0]:
             return _refresh_cached_result(cached[1])
 
-    async with lock:
-        now = time.monotonic()
-        with _MARKET_CACHE_GUARD:
-            cached = _MARKET_CACHE.get(key)
-            if cached is not None and now < cached[0]:
-                return _refresh_cached_result(cached[1])
-
-        result = await loader()
-        data = result.data or {}
-        if data.get("status") == "FRESH":
-            ages = [
-                _number(data.get(name))
-                for name in ("ticker_age_seconds", "candle_age_seconds", "order_book_age_seconds")
-            ]
-            known_ages = [age for age in ages if age is not None]
-            headroom = float(data.get("max_age_seconds", 180.0)) - max(known_ages, default=0.0)
-            ttl = min(requested_ttl, max(0.0, headroom))
+        lock_entry = _MARKET_CACHE_LOCKS.get(key)
+        if lock_entry is None:
+            lock = asyncio.Lock()
+            _MARKET_CACHE_LOCKS[key] = (lock, 1)
         else:
-            ttl = min(requested_ttl, 2.0)
+            lock, users = lock_entry
+            _MARKET_CACHE_LOCKS[key] = (lock, users + 1)
 
-        if ttl > 0.25:
+    try:
+        async with lock:
+            now = time.monotonic()
             with _MARKET_CACHE_GUARD:
-                _MARKET_CACHE[key] = (time.monotonic() + ttl, copy.deepcopy(result))
-                expired = [cache_key for cache_key, value in _MARKET_CACHE.items() if value[0] <= time.monotonic()]
-                for cache_key in expired:
-                    _MARKET_CACHE.pop(cache_key, None)
-                    # Active waiters keep their lock alive through the weak-value registry.
-                while len(_MARKET_CACHE) > 256:
-                    oldest = next(iter(_MARKET_CACHE))
-                    _MARKET_CACHE.pop(oldest, None)
-                    # Inactive locks disappear automatically; active waiters retain theirs.
-        return result
+                cached = _MARKET_CACHE.get(key)
+                if cached is not None and now < cached[0]:
+                    return _refresh_cached_result(cached[1])
+
+            result = await loader()
+            data = result.data or {}
+            if data.get("status") == "FRESH":
+                ages = [
+                    _number(data.get(name))
+                    for name in ("ticker_age_seconds", "candle_age_seconds", "order_book_age_seconds")
+                ]
+                known_ages = [age for age in ages if age is not None]
+                headroom = float(data.get("max_age_seconds", 180.0)) - max(known_ages, default=0.0)
+                ttl = min(requested_ttl, max(0.0, headroom))
+            else:
+                ttl = min(requested_ttl, 2.0)
+
+            if ttl > 0.25:
+                with _MARKET_CACHE_GUARD:
+                    _MARKET_CACHE[key] = (time.monotonic() + ttl, copy.deepcopy(result))
+                    now = time.monotonic()
+                    expired = [cache_key for cache_key, value in _MARKET_CACHE.items() if value[0] <= now]
+                    for cache_key in expired:
+                        _MARKET_CACHE.pop(cache_key, None)
+                        lock_entry = _MARKET_CACHE_LOCKS.get(cache_key)
+                        if lock_entry is None or lock_entry[1] == 0:
+                            _MARKET_CACHE_LOCKS.pop(cache_key, None)
+                    while len(_MARKET_CACHE) > 256:
+                        oldest = next(iter(_MARKET_CACHE))
+                        _MARKET_CACHE.pop(oldest, None)
+                        lock_entry = _MARKET_CACHE_LOCKS.get(oldest)
+                        if lock_entry is None or lock_entry[1] == 0:
+                            _MARKET_CACHE_LOCKS.pop(oldest, None)
+            return result
+    finally:
+        # Reference counts keep a lock registered while holders or waiters use it.
+        # A pruned cache entry must never let a new caller create a competing lock.
+        with _MARKET_CACHE_GUARD:
+            lock_entry = _MARKET_CACHE_LOCKS.get(key)
+            if lock_entry is not None and lock_entry[0] is lock:
+                users = max(0, lock_entry[1] - 1)
+                cached = _MARKET_CACHE.get(key)
+                if users == 0 and (cached is None or cached[0] <= time.monotonic()):
+                    _MARKET_CACHE_LOCKS.pop(key, None)
+                else:
+                    _MARKET_CACHE_LOCKS[key] = (lock, users)
 
 
 
