@@ -17,8 +17,9 @@ COMPOSE_FILE="$API_DIR/docker-compose.alpha.yml"
 API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py")
 PAPER_TRADE_SOURCE="services/trading_service.py"
 PAPER_TRADE_EXPECTED_BLOB="11041d61a683ce60a06714405403a79453a8fa6c"
-PAPER_TRADE_PATCH="$REPO_ROOT/patches/hummingbot-api/trading-service-paper-trade.patch"
+PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_trading_service_compat.py"
 UNIFIED_PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_paper_trade_compat.py"
+MARKET_DATA_PAPER_GUARD_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_market_data_paper_guard.py"
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
@@ -159,23 +160,14 @@ done
 
 # Apply the narrow PaperTradeExchange adapter only to the exact reviewed
 # fork-main trading_service.py. Unknown upstream/local versions fail closed.
-[[ -f "$PAPER_TRADE_PATCH" ]] || die "Reviewed paper-trade compatibility patch is missing: $PAPER_TRADE_PATCH"
 paper_trade_upstream_blob="$(git rev-parse "$API_UPSTREAM_COMMIT:$PAPER_TRADE_SOURCE")"
 [[ "$paper_trade_upstream_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
   || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed fork-main version (expected $PAPER_TRADE_EXPECTED_BLOB, got $paper_trade_upstream_blob)."
-paper_trade_worktree_blob="$(git hash-object "$PAPER_TRADE_SOURCE")"
-if [[ "$paper_trade_worktree_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]]; then
-  git apply --check "$PAPER_TRADE_PATCH" \
-    || die "The reviewed PaperTradeExchange compatibility patch did not apply cleanly."
-  git apply "$PAPER_TRADE_PATCH" \
-    || die "Could not apply the reviewed PaperTradeExchange compatibility patch."
-elif grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE"; then
-  say "PaperTradeExchange compatibility patch is already present."
-else
-  die "Unrecognized local changes in $PAPER_TRADE_SOURCE; preserving them and stopping."
-fi
+[[ -f "$PAPER_TRADE_PATCHER" ]] || die "Reviewed trading-service patcher is missing: $PAPER_TRADE_PATCHER"
+python3 "$PAPER_TRADE_PATCHER" "$PAPER_TRADE_SOURCE" \
+  || die "Could not apply the reviewed PaperTradeExchange trading-service adapter."
 grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE" \
-  || die "PaperTradeExchange compatibility patch marker is missing after application."
+  || die "PaperTradeExchange compatibility marker is missing after application."
 
 # Patch the second PaperTradeExchange pair-registration path in the unified
 # connector service. The patcher changes only exact reviewed blocks and refuses
@@ -185,10 +177,21 @@ grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE" \
 python3 "$UNIFIED_PAPER_TRADE_PATCHER" "$UNIFIED_SOURCE" \
   || die "Could not apply the reviewed unified PaperTradeExchange compatibility adapter."
 
+# REST fallback order books are research-only evidence. PaperTradeExchange fills
+# require the shared public WebSocket tracker to be ready for the exact pair.
+MARKET_DATA_SOURCE="services/market_data_service.py"
+[[ -f "$MARKET_DATA_PAPER_GUARD_PATCHER" ]] \
+  || die "Reviewed paper market-data tracker guard is missing: $MARKET_DATA_PAPER_GUARD_PATCHER"
+python3 "$MARKET_DATA_PAPER_GUARD_PATCHER" "$MARKET_DATA_SOURCE" \
+  || die "Could not apply the reviewed paper market-data tracker guard."
+grep -q "SPECTRA_PAPER_ORDER_BOOK_TRACKER_REQUIRED" "$MARKET_DATA_SOURCE" \
+  || die "Paper market-data tracker guard marker is missing after application."
+
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
 grep -q "A read request must be able to initialize its own feed" "${API_SOURCES[1]}" \
-  || die "The lazy order-book initialization fix was not applied locally."
+  || grep -q "SPECTRA_PAPER_ORDER_BOOK_TRACKER_REQUIRED" "${API_SOURCES[1]}" \
+  || die "The lazy order-book initialization or paper tracker guard was not applied locally."
 grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[2]}" \
   || die "The paper-only bot-status guard was not applied locally."
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
@@ -316,7 +319,7 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-backup.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="774ae8e7912896d7266fbb06c459b9f5a48a7dc3"
+  ["scripts/spectra"]="44dc4f3d0dc8f056d424560d7627e6b7084dfa37"
   ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
@@ -371,7 +374,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
   ["spectra_core/capital_governor.py"]="a34f6b5bb0551e00b7bf209e34135723f0cc3207"
   ["spectra_core/vcap_entry.py"]="0e3b2bff874cb8a55803dac91b2ec061df5d25b8"
-  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="cfe54b7d11775263abf409077c877b364ac520e3"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="5ac6111aa0fc192a7e0324e6dc8761e090316aa7"
 )

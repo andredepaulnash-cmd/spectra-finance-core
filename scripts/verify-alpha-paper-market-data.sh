@@ -118,6 +118,7 @@ def show_diagnostics(label):
         if key in data:
             rendered = json.dumps(data[key], sort_keys=True, default=str)
             print(f"  {key}: {rendered[:6000]}")
+    return data
 
 print("[SPECTRA VERIFY] Running authenticated, read-only paper market-data checks.")
 try:
@@ -136,6 +137,24 @@ except ApiFailure as exc:
     sys.exit(1)
 except Exception as exc:
     sys.exit(f"[SPECTRA VERIFY] FAIL: {exc}")
+
+after = show_diagnostics("After order-book request")
+if not isinstance(after, dict):
+    sys.exit("[SPECTRA VERIFY] INCOMPLETE: tracker diagnostics were unavailable after the order-book request.")
+public = after.get("public_data_connector", {})
+ready = (
+    after.get("tracker_ready") is True
+    and pair in (after.get("order_books") or {})
+    and public.get("network_started") is True
+    and public.get("tracker_ready") is True
+    and pair in (public.get("tracker_trading_pairs") or [])
+)
+if not ready:
+    sys.exit(
+        "[SPECTRA VERIFY] INCOMPLETE: REST may have returned a snapshot, but "
+        "the shared Kraken public WebSocket tracker is not ready for "
+        f"{pair}; no paper execution should be attempted."
+    )
 
 bids = book.get("bids") if isinstance(book, dict) else None
 asks = book.get("asks") if isinstance(book, dict) else None

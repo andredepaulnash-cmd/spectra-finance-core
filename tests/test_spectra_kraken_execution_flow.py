@@ -188,10 +188,24 @@ class Executors:
         }
 
 
+class MarketData:
+    async def get_order_book(self, *, connector_name, trading_pair, depth):
+        assert connector_name == "kraken_paper_trade"
+        assert trading_pair == "BTC-USD"
+        assert depth == 10
+        return {
+            "trading_pair": trading_pair,
+            "bids": [[93, 100]],
+            "asks": [[94, 100]],
+            "timestamp": time.time(),
+        }
+
+
 class Client:
     def __init__(self, connector_name):
         self.portfolio = Portfolio(connector_name)
         self.connectors = Connectors()
+        self.market_data = MarketData()
         self.executors = None
         self._session = FakeSession()
 
@@ -631,11 +645,39 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
                 return
             await asyncio.sleep(2)
 
+        try:
+            executor_detail = await client.executors.get_executor(executor_id)
+            executor_logs = await client.executors.get_executor_logs(
+                executor_id,
+                limit=20,
+            )
+            executor_summary = {
+                key: executor_detail.get(key)
+                for key in (
+                    "status",
+                    "executor_type",
+                    "connector_name",
+                    "trading_pair",
+                    "filled_amount_quote",
+                    "filled_amount_base",
+                    "custom_info",
+                    "error",
+                )
+                if key in executor_detail
+            }
+            recent_logs = (executor_logs.get("logs") or [])[-20:]
+        except Exception as diagnostics_error:
+            executor_summary = {"diagnostics_error": str(diagnostics_error)}
+            recent_logs = []
+
         raise AssertionError(
             "No fully reconciled confirmed paper fill within 60 seconds: "
             f"executor={executor_id}, state={getattr(last_health, 'state', None)}, "
+            f"reason={getattr(last_health, 'reason', None)}, "
             f"confirmed={getattr(last_health, 'confirmed_fills', 0)}, "
-            f"ledgered={getattr(last_health, 'ledgered_fills', 0)}"
+            f"ledgered={getattr(last_health, 'ledgered_fills', 0)}, "
+            f"executor_detail={json.dumps(executor_summary, default=str)}, "
+            f"executor_logs={json.dumps(recent_logs[-20:], default=str)}"
         )
     finally:
         await client.close()
