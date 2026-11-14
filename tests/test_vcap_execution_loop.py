@@ -315,9 +315,23 @@ class Executors:
         return {"executor_id": "vcap-exec-1"}
 
 
+class MarketData:
+    async def get_order_book(self, *, connector_name, trading_pair, depth):
+        assert connector_name == "kraken_paper_trade"
+        assert trading_pair == "BTC-USD"
+        assert depth == 10
+        return {
+            "trading_pair": trading_pair,
+            "bids": [[D("99.99"), D("10")]],
+            "asks": [[D("100"), D("10")]],
+            "timestamp": time.time(),
+        }
+
+
 class Client:
     def __init__(self):
         self.connectors = Connectors()
+        self.market_data = MarketData()
         self._session = FakeSession()
         self.executors = Executors()
 
