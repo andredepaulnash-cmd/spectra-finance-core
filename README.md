@@ -6,7 +6,7 @@ Spectra Finance integrates the Condor intelligence layer with the Hummingbot exe
 
 The local install defaults to an isolated paper account. A fresh paper account is initialized with 25,000 USD-equivalent simulated capital, a target fleet of 83 unique active positions, and a 20 USD initial allocation per new position. VCAP/DCS additions are separately governed. The historical 25% reserve and 5% per-asset limits are configurable recovered defaults, not immutable strategy rules.
 
-Live execution remains part of the architecture. It is not enabled by default: the API and Core must both be explicitly configured with `SPECTRA_PAPER_ONLY=false` and `SPECTRA_ALLOW_LIVE_EXECUTION=true`; the separate live capital policy starts at zero limits and the live breaker starts HALTED.
+Live execution remains part of the architecture. It is not enabled by default: the API and Core must both be explicitly configured with `SPECTRA_PAPER_ONLY=false` and `SPECTRA_ALLOW_LIVE_EXECUTION=true`. Automated live portfolio operation additionally requires `SPECTRA_LIVE_AUTORUN=true` in Core; the separate live capital policy starts at zero limits and the live breaker starts HALTED.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/fix/spectra-connectivity-and-agent-auth/install-alpha.sh | bash
