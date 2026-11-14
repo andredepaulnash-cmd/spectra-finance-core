@@ -14,7 +14,7 @@ LOG_DIR="$INSTALL_ROOT/logs"
 LOG_FILE="$LOG_DIR/api-update.log"
 LOCK_FILE="$LOG_DIR/api-update.lock"
 COMPOSE_FILE="$API_DIR/docker-compose.alpha.yml"
-API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py")
+API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py" "services/accounts_service.py" "utils/spectra_dispatch_receipt.py")
 PAPER_TRADE_SOURCE="services/trading_service.py"
 PAPER_TRADE_EXPECTED_BLOB="11041d61a683ce60a06714405403a79453a8fa6c"
 TRADING_PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_trading_service_paper_trade.py"
@@ -88,7 +88,7 @@ cd "$API_DIR"
 # Pin the exact API source revision whose connector and market-data changes
 # were reviewed against the Spectra compatibility patchers. Never follow main
 # implicitly: an upstream source change must be reviewed before this pin moves.
-API_UPSTREAM_REF="df5f111dc7cadf934abb5c44c4e689a47543e3b3"
+API_UPSTREAM_REF="2e4c621eec43faceac8a9258167ffea7ccb47e1f"
 say "Fetching the reviewed pinned API commit $API_UPSTREAM_REF."
 git fetch --depth 1 origin "$API_UPSTREAM_REF"
 API_UPSTREAM_COMMIT="$(git rev-parse FETCH_HEAD)"
@@ -101,11 +101,15 @@ API_UPSTREAM_COMMIT="$(git rev-parse FETCH_HEAD)"
 declare -A APPROVED_LEGACY_BLOBS=(
   ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
   ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
+  ["services/accounts_service.py"]="737292da2837a187a0495c112bf09cdaa1e4ad82"
+  ["utils/spectra_dispatch_receipt.py"]="50a536b9fc6f7a0ae7fc9718dda4e9715d0d2f86"
 )
 declare -A EXPECTED_UPSTREAM_BLOBS=(
-  ["services/unified_connector_service.py"]="68a881d33293ce49c23f3aa95ce0656f9d138f00"
+  ["services/unified_connector_service.py"]="a35c432e74d829b02c8c153b334e20abcd10dd2b"
   ["services/market_data_service.py"]="95e8e31c5e9be5bb2945b80038419b88b35ba41f"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
+  ["services/accounts_service.py"]="c53325a7b46e0091d9386bef8d11b65c6b8244a4"
+  ["utils/spectra_dispatch_receipt.py"]="eb76959c88e08793a4d34eebb8f9c7b13d853fe9"
 )
 
 MERGE_TMP="$(mktemp -d "$LOG_DIR/api-source-merge.XXXXXX")"
@@ -153,8 +157,8 @@ for source in "${API_SOURCES[@]}"; do
 done
 
 # Apply only after every source passed preflight. Local non-conflicting edits to
-# unified_connector_service.py survive; the other two files use exact approved
-# legacy versions or exact upstream versions.
+# unified_connector_service.py survive; all other files use exact approved
+# legacy versions or exact reviewed upstream versions.
 for source in "${API_SOURCES[@]}"; do
   if [[ "$source" == "$UNIFIED_SOURCE" && -f "$MERGE_TMP/unified.install" ]]; then
     cat "$MERGE_TMP/unified.install" > "$source"
@@ -192,6 +196,10 @@ python3 "$UNIFIED_PAPER_TRADE_PATCHER" "$UNIFIED_SOURCE" \
 
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
+grep -q "_start_paper_trade_clock" "${API_SOURCES[0]}" \
+  || die "The managed PaperTradeExchange clock was not applied locally."
+grep -q "spectra_dispatch_receipt" "${API_SOURCES[3]}" \
+  || die "The Core-signed paper dispatch path was not applied locally."
 grep -q "A read request must be able to initialize its own feed" "${API_SOURCES[1]}" \
   || die "The lazy order-book initialization fix was not applied locally."
 grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[2]}" \
