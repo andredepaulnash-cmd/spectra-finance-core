@@ -45,6 +45,7 @@ async def dispatch_with_receipt(
     account_name: str | None = None,
     connector_name: str | None = None,
     trading_pair: str | None = None,
+    api_namespace: str = "executors",
 ):
     """Sign and send one exact request, restoring shared session headers afterward."""
     validate_dispatch_transport(client)
@@ -72,7 +73,10 @@ async def dispatch_with_receipt(
         previous = headers.get(header_name)
         headers[header_name] = receipt.token
         try:
-            method_fn = getattr(client.executors, api_method, None)
+            if api_namespace not in {"executors", "trading"}:
+                raise RuntimeError(f"Unsupported Hummingbot API namespace: {api_namespace}")
+            namespace = getattr(client, api_namespace, None)
+            method_fn = getattr(namespace, api_method, None)
             if method_fn is None or not callable(method_fn):
                 raise RuntimeError(f"Unsupported Hummingbot API mutation method: {api_method}")
             result = await method_fn(**request_kwargs)

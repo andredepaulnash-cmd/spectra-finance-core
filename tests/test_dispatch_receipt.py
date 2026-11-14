@@ -170,3 +170,109 @@ def test_executor_stop_receipt_signs_exact_id_and_shared_transport(monkeypatch):
     assert payload["path"] == "/executors/executor-123/stop"
     assert payload["intent"] == "EXIT"
     assert client._session.headers == {}
+
+
+
+def test_paper_trade_receipt_signs_exact_order_and_uses_trading_namespace(monkeypatch):
+    private = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
+    private_raw = private.private_bytes(
+        serialization.Encoding.Raw,
+        serialization.PrivateFormat.Raw,
+        serialization.NoEncryption(),
+    )
+    monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", _encoded(private_raw))
+
+    body = {
+        "account_name": "master_account",
+        "connector_name": "kraken_paper_trade",
+        "trading_pair": "BTC-USD",
+        "trade_type": "BUY",
+        "amount": "0.001",
+        "order_type": "MARKET",
+        "price": None,
+        "position_action": "OPEN",
+    }
+
+    class Session:
+        def __init__(self):
+            self.headers = {}
+
+    class Trading:
+        def __init__(self, headers):
+            self.headers = headers
+            self.receipt_token = None
+
+        async def place_trade(self, **kwargs):
+            self.receipt_token = self.headers.get("X-Spectra-Dispatch-Receipt")
+            assert self.receipt_token
+            assert kwargs == body
+            return {"order_id": "paper-order-1"}
+
+    class Client:
+        def __init__(self):
+            self._session = Session()
+            self.trading = Trading(self._session.headers)
+
+    client = Client()
+    result, receipt = asyncio.run(
+        dispatch_with_receipt(
+            client,
+            api_method="place_trade",
+            request_body=body,
+            request_kwargs=body,
+            proposal_id="paper-order-proposal-1",
+            intent="ENTRY",
+            amount_quote="65",
+            operation="place_trade",
+            method="POST",
+            path="/trading/orders",
+            account_name="master_account",
+            connector_name="kraken_paper_trade",
+            trading_pair="BTC-USD",
+            api_namespace="trading",
+        )
+    )
+
+    payload_part, signature_part = client.trading.receipt_token.split(".")
+    payload_bytes = base64.urlsafe_b64decode(payload_part + "=" * (-len(payload_part) % 4))
+    signature = base64.urlsafe_b64decode(signature_part + "=" * (-len(signature_part) % 4))
+    private.public_key().verify(signature, payload_bytes)
+    payload = json.loads(payload_bytes)
+
+    assert result["order_id"] == "paper-order-1"
+    assert receipt.receipt_id == payload["receipt_id"]
+    assert payload["operation"] == "place_trade"
+    assert payload["path"] == "/trading/orders"
+    assert payload["connector_name"] == "kraken_paper_trade"
+    assert client._session.headers == {}
+
+
+def test_direct_trade_receipts_cannot_sign_live_connectors(monkeypatch):
+    private = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
+    private_raw = private.private_bytes(
+        serialization.Encoding.Raw,
+        serialization.PrivateFormat.Raw,
+        serialization.NoEncryption(),
+    )
+    monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", _encoded(private_raw))
+    body = {
+        "account_name": "master_account",
+        "connector_name": "kraken",
+        "trading_pair": "BTC-USD",
+        "trade_type": "BUY",
+        "amount": "0.001",
+        "order_type": "MARKET",
+        "price": None,
+        "position_action": "OPEN",
+    }
+    with pytest.raises(ValueError, match="paper-trade connectors"):
+        issue_executor_dispatch_receipt(
+            request_body=body,
+            proposal_id="paper-order-proposal-2",
+            intent="ENTRY",
+            amount_quote="65",
+            now=1000,
+            operation="place_trade",
+            method="POST",
+            path="/trading/orders",
+        )
