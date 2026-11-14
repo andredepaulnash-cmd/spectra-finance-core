@@ -156,13 +156,13 @@ class MarketIntelligenceProvider(BaseProvider):
             best_ask = min(level[0] for level in asks)
             if best_ask < best_bid:
                 raise ValueError("crossed order book")
-            book_timestamp = (
+            book_source_timestamp = (
                 _epoch_seconds(book.get("timestamp"))
                 or _epoch_seconds(book.get("updated_at"))
                 or _epoch_seconds(book.get("last_update_timestamp"))
             )
-            book_timestamp_basis = "exchange_or_api_timestamp" if book_timestamp else "retrieved_at"
-            book_timestamp = book_timestamp or now
+            book_timestamp_basis = "exchange_or_api_timestamp" if book_source_timestamp else "retrieved_at"
+            book_observed_at = book_source_timestamp or now
             spread = best_ask - best_bid
             spread_bps = (spread / ((best_ask + best_bid) / 2.0)) * 10_000.0
             bid_depth_quote = sum(price_level * size for price_level, size in bids)
@@ -173,7 +173,8 @@ class MarketIntelligenceProvider(BaseProvider):
             bids, asks = [], []
             best_bid = best_ask = spread_bps = None
             bid_depth_quote = ask_depth_quote = None
-            book_timestamp = None
+            book_source_timestamp = None
+            book_observed_at = None
             book_timestamp_basis = "unavailable"
             errors["order_book"] = str(exc)[:180]
 
@@ -182,28 +183,36 @@ class MarketIntelligenceProvider(BaseProvider):
         candle_timestamp = _epoch_seconds(normalized_candles[-1].get("timestamp")) if normalized_candles else None
         candle_age = max(0.0, now - candle_timestamp) if candle_timestamp else None
         ticker_age = max(0.0, now - ticker_updated) if ticker_updated else None
-        book_age = max(0.0, now - book_timestamp) if book_timestamp else None
+        book_age = max(0.0, now - book_observed_at) if book_observed_at else None
 
+        source_timestamps = (
+            ("ticker", ticker_updated),
+            ("candles", candle_timestamp),
+            ("order_book", book_source_timestamp),
+        )
+        future_sources = [
+            name for name, stamp in source_timestamps
+            if stamp is not None and stamp > now + 5.0
+        ]
         stale_sources = [
             name for name, age in (("ticker", ticker_age), ("candles", candle_age), ("order_book", book_age))
             if age is not None and age > max_age
         ]
         missing_timestamps = [
-            name for name, stamp in (("ticker", ticker_updated), ("candles", candle_timestamp), ("order_book", book_timestamp))
-            if stamp is None
+            name for name, stamp in source_timestamps if stamp is None
         ]
         required_missing = (
-            price is None or not normalized_candles or not bids or not asks
+            price is None or len(closes) < 20 or not bids or not asks
         )
         if stale_sources:
             status = "STALE"
-        elif required_missing or missing_timestamps or errors:
+        elif required_missing or missing_timestamps or future_sources or errors:
             status = "DEGRADED"
         else:
             status = "FRESH"
 
         decision_grade = status == "FRESH"
-        sma20 = sum(closes[-20:]) / min(20, len(closes)) if closes else None
+        sma20 = sum(closes[-20:]) / 20.0 if len(closes) >= 20 else None
         last_return_pct = (
             ((closes[-1] / closes[-2]) - 1.0) * 100.0
             if len(closes) >= 2 and closes[-2] != 0
@@ -238,9 +247,11 @@ class MarketIntelligenceProvider(BaseProvider):
             "ask_depth_quote": ask_depth_quote,
             "order_book_depth": depth,
             "order_book_age_seconds": book_age,
+            "order_book_source_timestamp": book_source_timestamp,
             "order_book_timestamp_basis": book_timestamp_basis,
             "stale_sources": stale_sources,
             "missing_timestamps": missing_timestamps,
+            "future_sources": future_sources,
             "errors": errors,
         }
 
