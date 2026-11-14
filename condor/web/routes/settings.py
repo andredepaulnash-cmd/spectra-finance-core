@@ -661,13 +661,19 @@ async def list_connectors(
             status_code=502, detail="Cannot fetch connectors from server"
         )
 
-    # API returns plain strings — filter out testnet/gateway connectors
+    # API returns plain strings. Credential entry must target the real exchange
+    # connector (e.g. "kraken"), never its simulated paper-trading adapter
+    # ("kraken_paper_trade"). The paper adapter is an execution simulator and
+    # deliberately rejects exchange credentials; exposing it in this picker
+    # caused the browser to submit keys to the wrong connector and made the
+    # exchange appear disconnected for market-data discovery.
     names = [
         c
         for c in raw
         if isinstance(c, str)
         and "testnet" not in c.lower()
         and "sandbox" not in c.lower()
+        and "paper_trade" not in c.lower()
         and "/" not in c
     ]
     if type:
