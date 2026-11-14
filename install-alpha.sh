@@ -544,7 +544,7 @@ if [[ "$MARKET_DATA_READY" != true ]]; then
     podman-compose -p spectra-alpha -f "$API_DIR/docker-compose.alpha.yml" logs --tail=100 >> "$INSTALL_ROOT/market-data-bootstrap.log" 2>&1 || true
   fi
 fi
-rm -f "$INSTALL_ROOT/kraken-paper-rules.json" "$INSTALL_ROOT/kraken-paper-pair.json" "$INSTALL_ROOT/kraken-paper-book.json" "$INSTALL_ROOT/kraken-paper-prices.json" "$INSTALL_ROOT/kraken-paper-diagnostics.json"
+rm -f "$INSTALL_ROOT/kraken-paper-rules.json" "$INSTALL_ROOT/kraken-paper-pair.json" "$INSTALL_ROOT/kraken-paper-book.json" "$INSTALL_ROOT/kraken-paper-prices.json" "$INSTALL_ROOT/kraken-paper-diagnostics.json" "$INSTALL_ROOT/kraken-paper-diagnostics.json"
 
 cat > "$INSTALL_ROOT/.compose-kind" <<EOF
 $COMPOSE_KIND
