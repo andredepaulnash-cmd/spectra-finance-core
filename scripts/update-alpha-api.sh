@@ -334,6 +334,8 @@ CORE_OPS_SOURCES=(
   "scripts/spectra-alpha-start-api.sh"
   "scripts/spectra-alpha-core-supervisor.sh"
   "scripts/spectra-alpha-backup.sh"
+  "scripts/configure_alpha_paper_connector.py"
+  "scripts/configure_alpha_paper_state.py"
   "scripts/systemd/spectra-alpha-core.service"
   "scripts/systemd/spectra-alpha-doctor.service"
   "scripts/systemd/spectra-alpha-doctor.timer"
@@ -342,15 +344,24 @@ CORE_OPS_SOURCES=(
 )
 declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/spectra"]="44dc4f3d0dc8f056d424560d7627e6b7084dfa37"
-  ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
-  ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
+  ["scripts/spectra-alpha-doctor.sh"]="615fca24406c8589f39f93a6de88993a974a930a"
+  ["scripts/spectra-alpha-start-api.sh"]="e50a0829b1dbe14f00a94c13ab76d40e5ccdb574"
+  ["scripts/configure_alpha_paper_connector.py"]="45301ed748b35619f9c11334a8c8adc2805fb153"
+  ["scripts/configure_alpha_paper_state.py"]="1bdf145fc56c7c1eddaac9762f6c8cf5b2890ef6"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
-  ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
+  ["scripts/systemd/spectra-alpha-core.service"]="03e063445ff6f44c87d857e847d6e1c2ddc0f103"
   ["scripts/systemd/spectra-alpha-doctor.service"]="054b22ea89cb8888419ec8000b5ffa0975f1b73d"
   ["scripts/systemd/spectra-alpha-doctor.timer"]="30af1b179bda4aec03105018e09b07dba1ee4b85"
   ["scripts/spectra-alpha-backup.sh"]="1320e0d1ccf552917105c85f17fb67d046d8a3fc"
   ["scripts/systemd/spectra-alpha-backup.service"]="e49bc3d235744a92d7c463e6a98d9b8b282ae08b"
   ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
+ )
+declare -A CORE_OPS_OLD_BLOBS=(
+  ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
+  ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
+  ["scripts/configure_alpha_paper_connector.py"]="c8c0312e412f942747087aacb62fc3a6f28d3d16"
+  ["scripts/configure_alpha_paper_state.py"]="64e9261c644421ee353e568f7475d47106fbb860"
+  ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
 )
 for source in "${CORE_OPS_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
@@ -362,7 +373,8 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
     die "Refusing to replace symlinked local path $source."
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-    if [[ "$worktree_blob" != "$expected_blob" ]]; then
+    old_blob="${CORE_OPS_OLD_BLOBS[$source]:-}"
+    if [[ "$worktree_blob" != "$expected_blob" && "|$old_blob|" != *"|$worktree_blob|"* ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
   fi
@@ -386,6 +398,7 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/market_discovery.py"
   "spectra_core/capital_governor.py"
   "spectra_core/vcap_entry.py"
+  "spectra_core/module_registry.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
   "routines/mean_reversion_scanner.py"
   "condor/web/routes/market.py"
@@ -393,6 +406,7 @@ CORE_PYTHON_SOURCES=(
 declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="5644134509e604dc5ed0df9076130608b61fe975"
   ["spectra_core/kraken_authorization.py"]="8b2bea839be8eab5614236b08cf57968a247dbdc"
+  ["spectra_core/module_registry.py"]="7bd2e5c3bf00477a8a9381b8e0ac828ba2ad296e"
   ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
   ["spectra_core/capital_governor.py"]="a34f6b5bb0551e00b7bf209e34135723f0cc3207"
   ["spectra_core/vcap_entry.py"]="0e3b2bff874cb8a55803dac91b2ec061df5d25b8"
@@ -402,7 +416,8 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
 )
 declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/asset_authority.py"]=""
-  ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050"
+  ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050|a6f2b56b24f27c953afe2391405d63dc3318b1d2"
+  ["spectra_core/module_registry.py"]="1c1ccc2d0e14f4c5760dbbd9aa6d9f00f6de093b|45d5d8e22346e6e5becad1372499cc775093843f"
   ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
   ["spectra_core/capital_governor.py"]="3fac868f19d71b817f66d7cecf9a06ed209f7c00"
   ["spectra_core/vcap_entry.py"]=""
@@ -421,7 +436,7 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
     old_blob="${CORE_PYTHON_OLD_BLOBS[$source]}"
-    if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
+    if [[ "$worktree_blob" != "$expected_blob" && "|$old_blob|" != *"|$worktree_blob|"* ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
   elif [[ -n "${CORE_PYTHON_OLD_BLOBS[$source]}" ]]; then
@@ -438,6 +453,7 @@ done
   "$CORE_DIR/spectra_core/market_discovery.py" \
   "$CORE_DIR/spectra_core/capital_governor.py" \
   "$CORE_DIR/spectra_core/vcap_entry.py" \
+  "$CORE_DIR/spectra_core/module_registry.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
   "$CORE_DIR/routines/mean_reversion_scanner.py" \
   "$CORE_DIR/condor/web/routes/market.py"
