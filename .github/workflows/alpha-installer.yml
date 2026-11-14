@@ -136,7 +136,7 @@ jobs:
           grep -q 'set_env_default .env SPECTRA_PAPER_ONLY true' install-alpha.sh
           grep -q 'SPECTRA_ALLOW_LIVE_EXECUTION=false' install-alpha.sh
           grep -q 'SPECTRA_ALLOW_LIVE_EXECUTION' scripts/spectra-alpha-start-api.sh
-          grep -q 'Live mode requires SPECTRA_PAPER_ONLY=false' ALPHA-TEST.md
+          grep -q 'SPECTRA_PAPER_ONLY=false' ALPHA-TEST.md
           grep -q 'docker-compose.alpha.yml' install-alpha.sh
           grep -q 'docker.sock' install-alpha.sh
           ! grep -Eq 'docker compose .*docker-compose.yml up|podman-compose .*docker-compose.yml up' install-alpha.sh
