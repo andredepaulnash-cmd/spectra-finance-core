@@ -84,6 +84,17 @@ if paper == "true" and (not connectors or any(not name.endswith("_paper_trade") 
     raise SystemExit("Paper mode requires an explicit paper-connector-only allowlist.")
 print("Execution mode verified: " + ("PAPER_ONLY" if paper == "true" else "LIVE_AUTHORIZED"))
 PY
+EXECUTION_MODE="$("$CORE_DIR/.venv/bin/python" - "$API_DIR/.env" <<'PYMODE'
+from pathlib import Path
+import sys
+values = {}
+for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if "=" in raw and not raw.lstrip().startswith("#"):
+        key, value = raw.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'").lower()
+print("PAPER_ONLY" if values.get("SPECTRA_PAPER_ONLY") == "true" else "LIVE_AUTHORIZED")
+PYMODE
+)"
 
 cd "$API_DIR"
 # Pin the exact API source revision whose connector and market-data changes
@@ -499,13 +510,17 @@ say "Restarting Spectra Core only so reviewed Python changes are loaded; Humming
 VERIFY_BIN="$HOME/.local/bin/spectra-verify-alpha-paper-market-data"
 VERIFY_URL="https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/$CORE_REF/scripts/verify-alpha-paper-market-data.sh"
 mkdir -p "$(dirname "$VERIFY_BIN")"
-say "Installing the read-only Kraken paper market-data verifier."
-curl -fsSL "$VERIFY_URL" -o "$VERIFY_BIN"
-chmod 700 "$VERIFY_BIN"
-bash -n "$VERIFY_BIN" || die "The downloaded paper market-data verifier failed shell syntax validation."
-say "Running authenticated, read-only Kraken paper market-data verification."
-if ! "$VERIFY_BIN"; then
-  say "API deployment succeeded, but Kraken paper market data is not yet verified. Review the diagnostics above."
+if [[ "$EXECUTION_MODE" == "PAPER_ONLY" ]]; then
+  say "Installing the read-only Kraken paper market-data verifier."
+  curl -fsSL "$VERIFY_URL" -o "$VERIFY_BIN"
+  chmod 700 "$VERIFY_BIN"
+  bash -n "$VERIFY_BIN" || die "The downloaded paper market-data verifier failed shell syntax validation."
+  say "Running authenticated, read-only Kraken paper market-data verification."
+  if ! "$VERIFY_BIN"; then
+    say "API deployment succeeded, but Kraken paper market data is not yet verified. Review the diagnostics above."
+  fi
+else
+  say "Skipping paper-only market-data verification in live mode; no live order or capital action was performed."
 fi
 say "Running read-only operational health checks."
 if ! "$HOME/.local/bin/spectra-alpha-doctor"; then
