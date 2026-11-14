@@ -1,5 +1,5 @@
 [Unit]
-Description=Spectra Finance Alpha Core (paper-only)
+Description=Spectra Finance Core (paper default; live separately authorized)
 Documentation=https://github.com/andredepaulnash-cmd/spectra-finance-core
 Wants=network-online.target
 After=network-online.target
