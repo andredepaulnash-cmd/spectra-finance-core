@@ -47,6 +47,7 @@ def configure(
     config = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     paper = config.setdefault("paper_trade", {})
     exchanges = paper.setdefault("paper_trade_exchanges", [])
+    legacy_kraken_only = exchanges == ["kraken"]
     if not isinstance(exchanges, list):
         raise ValueError("paper_trade_exchanges must be a list")
     if "kraken" not in exchanges:
@@ -60,6 +61,7 @@ def configure(
     elif (
         upgrade_legacy_default
         and core_root is not None
+        and legacy_kraken_only
         and balances == LEGACY_ALPHA_BALANCES
         and not has_paper_position_history(core_root)
     ):
