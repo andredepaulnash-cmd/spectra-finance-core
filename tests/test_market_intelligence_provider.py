@@ -287,3 +287,54 @@ async def test_cached_market_snapshot_summary_uses_real_line_breaks():
 
     assert "\n" in cached.summary
     assert "\\n" not in cached.summary
+
+
+@pytest.mark.asyncio
+async def test_cache_pruning_keeps_lock_registered_for_waiting_requests():
+    key_a = ("market-a",)
+    key_b = ("market-b",)
+    expired = ProviderResult(
+        name="market_intelligence",
+        data={"status": "DEGRADED", "errors": {}},
+        summary="",
+    )
+    with market_module._MARKET_CACHE_GUARD:
+        market_module._MARKET_CACHE[key_a] = (time.monotonic() - 1, expired)
+
+    loader_entered = asyncio.Event()
+    release_loader = asyncio.Event()
+    calls = 0
+
+    async def slow_loader():
+        nonlocal calls
+        calls += 1
+        loader_entered.set()
+        await release_loader.wait()
+        return ProviderResult(
+            name="market_intelligence",
+            data={"status": "DEGRADED", "errors": {}},
+            summary="",
+        )
+
+    async def fast_loader():
+        return ProviderResult(
+            name="market_intelligence",
+            data={"status": "DEGRADED", "errors": {}},
+            summary="",
+        )
+
+    first = asyncio.create_task(market_module._shared_snapshot(key_a, 1, slow_loader))
+    await loader_entered.wait()
+    second = asyncio.create_task(market_module._shared_snapshot(key_a, 1, slow_loader))
+    await asyncio.sleep(0)
+
+    # Inserting another key prunes the expired A entry while A has a holder
+    # and a waiter. Both must continue to share the original lock.
+    await market_module._shared_snapshot(key_b, 1, fast_loader)
+    third = asyncio.create_task(market_module._shared_snapshot(key_a, 1, slow_loader))
+    await asyncio.sleep(0)
+
+    release_loader.set()
+    await asyncio.gather(first, second, third)
+
+    assert calls == 1
