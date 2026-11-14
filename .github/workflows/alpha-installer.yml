@@ -209,11 +209,11 @@ jobs:
       - name: Run the public one-command installer
         run: bash install-alpha.sh
         env:
-          SPECTRA_ALPHA_CORE_REF: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          SPECTRA_ALPHA_CORE_REF: feature/vcap-paper-entry-admission-20261110
       - name: Run the exact one-command in-place updater
         run: bash scripts/update-alpha-api.sh
         env:
-          SPECTRA_ALPHA_CORE_REF: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          SPECTRA_ALPHA_CORE_REF: feature/vcap-paper-entry-admission-20261110
       - name: Verify dashboard and Kraken paper runtime
         shell: bash
         run: |
