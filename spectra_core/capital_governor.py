@@ -81,9 +81,11 @@ class CapitalGovernor:
         db_path: str | Path,
         policy: CapitalPolicy,
         *,
-        clock: Callable[[], float] = time.time,
+        clock: Callable[[], float] | None = None,
     ):
-        self._clock = clock
+        # Resolve the default at construction time so tests and deployments can
+        # inject/replace the wall clock without a definition-time function capture.
+        self._clock = clock or time.time
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.policy = policy
