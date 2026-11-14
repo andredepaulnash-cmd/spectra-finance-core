@@ -133,6 +133,29 @@ def issue_executor_dispatch_receipt(
         resolved_connector = str(connector_name or "").strip().lower()
         resolved_pair = str(trading_pair or "").strip()
         config_hash = canonical_sha256({"executor_id": resolved_executor_id})
+    elif operation == "place_trade":
+        if normalized_method != "POST" or normalized_path != "/trading/orders":
+            raise ValueError("Paper trade receipt must target POST /trading/orders")
+        required_fields = ("account_name", "connector_name", "trading_pair", "trade_type", "amount", "order_type", "position_action")
+        if any(request_body.get(field) in (None, "") for field in required_fields):
+            raise ValueError("Paper trade receipt is missing required order fields")
+        resolved_account = str(request_body["account_name"]).strip()
+        resolved_connector = str(request_body["connector_name"]).strip().lower()
+        resolved_pair = str(request_body["trading_pair"]).strip()
+        if not resolved_connector.endswith("_paper_trade"):
+            raise ValueError("Direct trade receipts are restricted to paper-trade connectors")
+        if request_body["trade_type"] not in {"BUY", "SELL"} or request_body["order_type"] not in {"LIMIT", "MARKET", "LIMIT_MAKER"}:
+            raise ValueError("Paper trade side or order type is unsupported")
+        if request_body["order_type"] in {"LIMIT", "LIMIT_MAKER"} and request_body.get("price") is None:
+            raise ValueError("Paper limit trade receipt requires a price")
+        trade_amount = Decimal(str(request_body["amount"]))
+        if not trade_amount.is_finite() or trade_amount <= 0:
+            raise ValueError("Paper trade amount must be positive")
+        scope = {
+            key: request_body.get(key)
+            for key in ("account_name", "connector_name", "trading_pair", "trade_type", "amount", "order_type", "price", "position_action")
+        }
+        config_hash = canonical_sha256(scope)
     else:
         raise ValueError("Unsupported Spectra dispatch operation")
 
