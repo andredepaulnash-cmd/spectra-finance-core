@@ -56,3 +56,42 @@ def test_configuration_is_idempotent(tmp_path: Path):
     first = path.read_text(encoding="utf-8")
     configure(path)
     assert path.read_text(encoding="utf-8") == first
+
+
+def test_migrates_exact_legacy_balance_only_without_position_history(tmp_path: Path):
+    from scripts.configure_alpha_paper_connector import LEGACY_ALPHA_BALANCES
+
+    path = tmp_path / "conf_client.yml"
+    path.write_text(
+        yaml.safe_dump({"paper_trade": {"paper_trade_account_balance": LEGACY_ALPHA_BALANCES}}),
+        encoding="utf-8",
+    )
+
+    configure(path, core_root=tmp_path, upgrade_legacy_default=True)
+    result = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    assert result["paper_trade"]["paper_trade_account_balance"] == {"USD": 25000.0}
+
+
+def test_preserves_legacy_balance_when_paper_position_history_exists(tmp_path: Path):
+    from scripts.configure_alpha_paper_connector import LEGACY_ALPHA_BALANCES
+    from spectra_core.economic_position import EconomicPositionLedger
+
+    path = tmp_path / "conf_client.yml"
+    path.write_text(
+        yaml.safe_dump({"paper_trade": {"paper_trade_account_balance": LEGACY_ALPHA_BALANCES}}),
+        encoding="utf-8",
+    )
+    ledger_path = tmp_path / "data" / "spectra-paper" / "economic_positions.sqlite3"
+    ledger_path.parent.mkdir(parents=True)
+    ledger = EconomicPositionLedger(ledger_path)
+    ledger.open_position(
+        position_id="existing-paper-position",
+        pair="BTC-USD",
+        created_at=1,
+    )
+
+    configure(path, core_root=tmp_path, upgrade_legacy_default=True)
+    result = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    assert result["paper_trade"]["paper_trade_account_balance"] == LEGACY_ALPHA_BALANCES
