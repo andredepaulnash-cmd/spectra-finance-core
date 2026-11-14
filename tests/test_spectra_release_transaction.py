@@ -61,3 +61,40 @@ def test_release_transaction_record_tracks_rollback(tmp_path):
     record = json.loads(record_path.read_text(encoding="utf-8"))
     assert record["status"] == "rolled-back"
     assert (root / "current").resolve() == (releases / "known-good").resolve()
+
+
+
+def test_release_transaction_rejects_symlink_root(tmp_path):
+    target = tmp_path / "real-root"
+    target.mkdir()
+    link = tmp_path / "linked-root"
+    link.symlink_to(target, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="release root must not be a symlink"):
+        activate_release(link, "candidate")
+
+
+def test_release_rollback_rejects_symlink_transaction_directory(tmp_path):
+    root = tmp_path / "release-root"
+    releases = root / "releases"
+    (releases / "known-good").mkdir(parents=True)
+    (releases / "candidate").mkdir()
+    os.symlink("releases/candidate", root / "current")
+
+    outside = tmp_path / "outside-transactions"
+    outside.mkdir()
+    transaction_id = "20261113T000000Z-deadbeef"
+    (outside / f"{transaction_id}.json").write_text(
+        json.dumps({
+            "schema_version": 1,
+            "transaction_id": transaction_id,
+            "status": "active",
+            "previous_target": "releases/known-good",
+            "candidate_target": "releases/candidate",
+        }),
+        encoding="utf-8",
+    )
+    (root / "transactions").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="transaction directory must not be a symlink"):
+        rollback_release(root, transaction_id)
