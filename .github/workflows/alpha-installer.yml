@@ -130,10 +130,13 @@ jobs:
           grep -q 'OnCalendar=\*-\*-\* 03:30:00' scripts/systemd/spectra-alpha-backup.timer
           grep -q 'spectra-alpha-backup' scripts/spectra
           ! grep -Eq 'podman (volume|system) prune|docker (volume|system) prune|compose down -v' scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra
-      - name: Enforce paper-only and no host socket mount
+      - name: Enforce paper default, explicit live authorization, and no host socket mount
         run: |
           grep -q 'SPECTRA_PAPER_ONLY=true' install-alpha.sh
+          grep -q 'set_env_default .env SPECTRA_PAPER_ONLY true' install-alpha.sh
           grep -q 'SPECTRA_ALLOW_LIVE_EXECUTION=false' install-alpha.sh
+          grep -q 'SPECTRA_ALLOW_LIVE_EXECUTION' scripts/spectra-alpha-start-api.sh
+          grep -q 'Live mode requires SPECTRA_PAPER_ONLY=false' ALPHA-TEST.md
           grep -q 'docker-compose.alpha.yml' install-alpha.sh
           grep -q 'docker.sock' install-alpha.sh
           ! grep -Eq 'docker compose .*docker-compose.yml up|podman-compose .*docker-compose.yml up' install-alpha.sh
