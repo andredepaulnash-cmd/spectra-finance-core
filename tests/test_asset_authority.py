@@ -235,6 +235,7 @@ def test_fresh_discovery_shortlist_authorizes_only_eligible_usd_pairs(monkeypatc
     assert loaded.configured is True
     assert loaded.automatic is True
     assert loaded.pairs == frozenset({"BTC-USD", "ETH-USD"})
+    monkeypatch.setattr("spectra_core.asset_authority.time.time", lambda: 1000.0)
     assert require_approved_kraken_pair("BTC-USD").automatic is True
     with pytest.raises(AssetAuthorityError, match="not in the Governor-approved"):
         require_approved_kraken_pair("SOL-USD")
