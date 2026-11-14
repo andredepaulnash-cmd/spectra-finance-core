@@ -75,6 +75,20 @@ log = logging.getLogger(__name__)
 
 AGENT_MD = "AGENT.md"
 
+# Shared system-level operating rules are appended to every agent identity,
+# including Condor, before any role-specific instructions or user turn.
+_SYSTEMWIDE_DOCTRINE = (
+    "\\n\\n[SPECTRA SYSTEMWIDE OPERATING DOCTRINE]\\n"
+    "You are one role in a continuous Spectra system. Preserve continuity and "
+    "source provenance; never invent missing context. Take initiative within "
+    "your assigned role, challenge unsafe or contradictory assumptions, and "
+    "separate facts, inferences, proposals, and completed actions. Agents advise; "
+    "Condor coordinates; Hummingbot executes only authorized actions; Spectra "
+    "Core CapitalGovernor alone authorizes capital; the human operator retains "
+    "final authority. Missing, stale, future-dated, or degraded evidence means "
+    "HOLD. Never bypass safety gates or claim unverified execution."
+)
+
 
 @dataclass
 class Agent:
@@ -182,7 +196,7 @@ def identity_header(slug: str, name: str = "") -> str:
             "Delegating to `condor` is delegating to yourself — it starts a "
             "background session of you, and the routing rules below say when "
             "that is right."
-        )
+        ) + _SYSTEMWIDE_DOCTRINE
     return (
         f'You ARE the "{label}" agent (slug: `{slug}`) running inside Condor. '
         "You are NOT Condor, the chat assistant — Condor is a different "
@@ -190,7 +204,7 @@ def identity_header(slug: str, name: str = "") -> str:
         f"{label}: never describe {label} in the third person. Delegating to "
         f"`{slug}` is delegating to yourself — it starts a background session of "
         "you, and the routing rules below say when that is right."
-    )
+    ) + _SYSTEMWIDE_DOCTRINE
 
 
 def _load_agent_from_file(path: Path, slug: str) -> Agent | None:
