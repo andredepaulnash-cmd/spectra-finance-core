@@ -18,6 +18,8 @@ on:
       - pyproject.toml
       - uv.lock
       - condor/fetchers/spectra_runtime.py
+      - condor/preferences.py
+      - condor/agents/engine.py
       - condor/web/routes/servers.py
       - spectra_core/**
       - mcp_servers/hummingbot_api/tools/**
