@@ -63,7 +63,7 @@ def test_migrates_exact_legacy_balance_only_without_position_history(tmp_path: P
 
     path = tmp_path / "conf_client.yml"
     path.write_text(
-        yaml.safe_dump({"paper_trade": {"paper_trade_account_balance": LEGACY_ALPHA_BALANCES}}),
+        yaml.safe_dump({"paper_trade": {"paper_trade_exchanges": ["kraken"], "paper_trade_account_balance": LEGACY_ALPHA_BALANCES}}),
         encoding="utf-8",
     )
 
@@ -79,7 +79,7 @@ def test_preserves_legacy_balance_when_paper_position_history_exists(tmp_path: P
 
     path = tmp_path / "conf_client.yml"
     path.write_text(
-        yaml.safe_dump({"paper_trade": {"paper_trade_account_balance": LEGACY_ALPHA_BALANCES}}),
+        yaml.safe_dump({"paper_trade": {"paper_trade_exchanges": ["kraken"], "paper_trade_account_balance": LEGACY_ALPHA_BALANCES}}),
         encoding="utf-8",
     )
     ledger_path = tmp_path / "data" / "spectra-paper" / "economic_positions.sqlite3"
