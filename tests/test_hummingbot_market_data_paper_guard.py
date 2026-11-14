@@ -56,7 +56,7 @@ def test_paper_market_data_requires_shared_tracker_and_has_no_rest_fallback():
     assert 'is_paper_trade = connector_name.endswith("_paper_trade")' in patched
     assert 'getattr(tracker, "ready", False)' in patched
     assert 'tracked_books.get(trading_pair)' in patched
-    guard = patched[patched.index(MARKER):patched.index("# Fallback to getting fresh order book data source")]
+    guard = patched[patched.index(MARKER):patched.index("# Fallback to getting fresh order book from data source")]
     assert "REST fallback is not" in guard
     assert "if is_paper_trade:" in guard
 
