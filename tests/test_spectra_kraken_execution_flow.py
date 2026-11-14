@@ -631,11 +631,27 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
                 return
             await asyncio.sleep(2)
 
+        try:
+            executor_detail = await client.executors.get_executor(executor_id)
+        except Exception as exc:
+            executor_detail = {"diagnostic_error": str(exc)}
+        try:
+            log_response = await client.executors.session.get(
+                f"{client.executors.base_url}/executors/{executor_id}/logs",
+                params={"limit": 80},
+            )
+            log_response.raise_for_status()
+            executor_logs = await log_response.json()
+        except Exception as exc:
+            executor_logs = {"diagnostic_error": str(exc)}
+        final_snapshot = ledger.snapshot(position_id)
         raise AssertionError(
             "No fully reconciled confirmed paper fill within 60 seconds: "
             f"executor={executor_id}, state={getattr(last_health, 'state', None)}, "
             f"confirmed={getattr(last_health, 'confirmed_fills', 0)}, "
-            f"ledgered={getattr(last_health, 'ledgered_fills', 0)}"
+            f"ledgered={getattr(last_health, 'ledgered_fills', 0)}, "
+            f"health={last_health!r}, snapshot={final_snapshot!r}, "
+            f"executor_detail={executor_detail!r}, executor_logs={executor_logs!r}"
         )
     finally:
         await client.close()
