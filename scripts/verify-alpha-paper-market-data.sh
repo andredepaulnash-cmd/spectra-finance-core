@@ -147,7 +147,6 @@ ready = (
     and pair in (after.get("order_books") or {})
     and public.get("network_started") is True
     and public.get("tracker_ready") is True
-    and public.get("symbol_map_initialized") is True
     and pair in (public.get("tracker_trading_pairs") or [])
 )
 if not ready:
