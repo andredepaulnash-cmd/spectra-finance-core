@@ -41,3 +41,34 @@ def test_rerun_preserves_operator_changes(tmp_path: Path):
     assert json.loads(policy_path.read_text()) == {
         "max_total_committed_quote": "250"
     }
+
+
+def test_upgrades_exact_legacy_policy_when_no_position_history_exists(tmp_path: Path):
+    from scripts.configure_alpha_paper_state import LEGACY_PAPER_POLICY, PAPER_POLICY
+
+    paper = tmp_path / "data" / "spectra-paper"
+    paper.mkdir(parents=True)
+    (paper / "capital_policy.json").write_text(json.dumps(LEGACY_PAPER_POLICY))
+
+    configure(tmp_path)
+
+    assert json.loads((paper / "capital_policy.json").read_text()) == PAPER_POLICY
+
+
+def test_preserves_legacy_policy_when_any_position_history_exists(tmp_path: Path):
+    from scripts.configure_alpha_paper_state import LEGACY_PAPER_POLICY
+    from spectra_core.economic_position import EconomicPositionLedger
+
+    paper = tmp_path / "data" / "spectra-paper"
+    paper.mkdir(parents=True)
+    (paper / "capital_policy.json").write_text(json.dumps(LEGACY_PAPER_POLICY))
+    ledger = EconomicPositionLedger(paper / "economic_positions.sqlite3")
+    ledger.open_position(
+        position_id="existing-paper-position",
+        pair="BTC-USD",
+        created_at=1,
+    )
+
+    configure(tmp_path)
+
+    assert json.loads((paper / "capital_policy.json").read_text()) == LEGACY_PAPER_POLICY
