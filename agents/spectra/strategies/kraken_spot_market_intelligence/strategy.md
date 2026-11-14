@@ -13,6 +13,7 @@ default_config:
   market_candle_interval: 1m
   market_candle_records: 120
   market_data_max_age_seconds: 180
+  market_data_cache_ttl_seconds: 10
   market_order_book_depth: 20
   risk_limits:
     max_position_size_quote: 0
