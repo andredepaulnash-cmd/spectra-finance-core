@@ -57,7 +57,7 @@ PYENVDEFAULT
 [[ "$(uname -m)" =~ ^(x86_64|aarch64|arm64)$ ]] || die "Unsupported CPU architecture: $(uname -m)"
 mkdir -p "$INSTALL_ROOT"
 FRESH_INSTALL=true
-if [[ -f "$API_DIR/.env" ]]; then
+if [[ -f "$API_DIR/.env" || -f "$CORE_DIR/.env" || -d "$CORE_DIR/data/spectra-paper" ]]; then
   FRESH_INSTALL=false
 fi
 
@@ -641,7 +641,8 @@ printf 'Paper venue: Kraken (kraken_paper_trade) — simulated balances only\n'
 if [[ "$(env_value SPECTRA_PAPER_ONLY)" == "true" ]]; then
   printf 'Execution mode: PAPER_ONLY; live dispatch remains disabled.\n'
 else
-  printf 'Execution mode: LIVE explicitly authorized; live breaker and zero-cap policy remain fail-closed.\n'
+  printf 'Execution mode: LIVE explicitly authorized; no live orders were submitted by installation.\n'
+  printf 'Existing live capital policy and breaker state were preserved.\n'
 fi
 printf 'API credentials were generated locally and stored with mode 0600. They were not printed.\n'
 printf 'Control: spectra status | spectra stop | spectra start | spectra logs\n'
