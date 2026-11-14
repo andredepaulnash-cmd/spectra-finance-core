@@ -136,9 +136,25 @@ case "${1:-status}" in
         cd "$CORE_DIR"
         python3 scripts/check_upstream_releases.py
         ;;
+      inventory)
+        cd "$CORE_DIR"
+        python3 scripts/spectra_release_inventory.py --install-root "$INSTALL_ROOT"
+        ;;
+      verify-rollback)
+        cd "$CORE_DIR"
+        python3 scripts/spectra_release_transaction.py self-test
+        ;;
       plan)
         cd "$CORE_DIR"
+        python3 scripts/spectra_release_inventory.py --install-root "$INSTALL_ROOT"
         python3 scripts/check_upstream_releases.py
+        python3 - <<'PY'
+import json
+from pathlib import Path
+matrix = json.loads(Path("release/compatibility-matrix.json").read_text(encoding="utf-8"))
+print("\\nCompatibility baseline:", matrix["baseline_status"])
+print("Apply gates remain closed until local inventory, image IDs, compatibility CI, paper execution, backup/restore, and operator approval are verified.")
+PY
         cat <<'PLAN'
 
 Spectra update plan:
@@ -147,17 +163,22 @@ Spectra update plan:
   3. Create a state backup and stage the approved component set.
   4. Apply, health-check, and retain the previous known-good release.
 
-Apply is intentionally unavailable until installed-version inventory, immutable
-image pinning, backup/restore verification, and staged rollback are implemented.
+The inventory and compatibility matrix are now implemented. The local inventory
+must be run on the actual Bazzite installation; CI cannot invent its image IDs,
+container versions, or state-volume identities. Apply remains disabled until
+those observed facts, immutable component pins, compatibility CI, paper
+execution, backup/restore, staged rollback, and operator approval are verified.
 No component was changed by this plan.
 PLAN
         ;;
       apply)
-        echo "Refusing update apply: the staged, backup-protected release transaction is not implemented yet." >&2
+        echo "Refusing update apply: the installed Alpha layout still uses fixed source paths; no approved, backup-protected release has been staged." >&2
+        echo "Run 'spectra update inventory' and 'spectra update plan'; live apply remains gated." >&2
         exit 3
         ;;
       rollback)
-        echo "Refusing rollback: no verified release snapshot/restore transaction is configured yet." >&2
+        echo "Refusing live rollback: the current Alpha installation does not yet run from the staged release pointer." >&2
+        echo "The isolated transaction proof is available with 'spectra update verify-rollback'; no live files or services were changed." >&2
         exit 3
         ;;
       legacy)
@@ -169,13 +190,13 @@ PLAN
         "$updater"
         ;;
       *)
-        echo "Usage: spectra update {check|plan|apply|rollback}" >&2
+        echo "Usage: spectra update {check|inventory|plan|verify-rollback|apply|rollback}" >&2
         exit 2
         ;;
     esac
     ;;
   *)
-    echo "Usage: spectra {start|stop|restart|core-restart|status|logs|doctor|backup|update [check|plan|apply|rollback]}"
+    echo "Usage: spectra {start|stop|restart|core-restart|status|logs|doctor|backup|restore <archive> --confirm|update [check|inventory|plan|verify-rollback|apply|rollback]}"
     exit 2
     ;;
 esac
