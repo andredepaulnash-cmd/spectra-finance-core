@@ -502,7 +502,7 @@ class TickEngine:
         # live bot must be taken over rather than orphaned and redeployed.
         await self._adopt_running_bots(client)
 
-        # 2. Run core data providers (executors only -- agent uses MCP for market data)
+        # 2. Run core state providers and optional read-only market intelligence.
         skill_results = await self.provider_registry.run_core_providers(
             client,
             self.config,
