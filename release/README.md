@@ -14,7 +14,7 @@ version, and no mutable `latest` tag is a release pin.
 Run:
 
 ```bash
-spectra update check
+python3 scripts/check_upstream_releases.py
 ```
 
 The discovery command is read-only. It does not edit the manifest, update a
@@ -31,7 +31,7 @@ container runtime.
 Run on the actual installed machine:
 
 ```bash
-spectra update inventory
+python3 scripts/spectra_release_inventory.py --install-root "$HOME/SpectraFinance-Alpha"
 ```
 
 The command records source commits/branches/dirty flags, Compose file hash,
@@ -63,15 +63,15 @@ symlink to a staged release and can restore the previous pointer. CI exercises
 an isolated apply/rollback cycle:
 
 ```bash
-spectra update verify-rollback
+python3 scripts/spectra_release_transaction.py self-test
 ```
 
 This proof runs entirely in a temporary directory and confirms that the prior
 release remains intact. It does **not** touch the live Alpha installation.
-The current Alpha installer still uses fixed source directories, so
-`spectra update apply` and live release rollback remain intentionally blocked
-until the install layout is migrated to the pointer model and the local
-inventory/image IDs are measured and approved.
+The staged-release transaction is currently a tested primitive, not a live
+installer integration. It is intentionally not wired into the updater or the
+fixed-path Alpha installation. Live release switching remains out of scope
+until a separately reviewed deployment design exists.
 
 ## Approval gates
 
