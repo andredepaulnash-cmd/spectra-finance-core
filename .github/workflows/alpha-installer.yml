@@ -60,7 +60,6 @@ on:
       - routines/market_scanner.py
       - tests/test_market_discovery.py
       - tests/test_spectra_core.py
-      - .github/workflows/alpha-installer.yml
   pull_request:
     paths:
       - install-alpha.sh
@@ -81,7 +80,6 @@ on:
       - tests/test_model_readiness.py
       - tests/test_session_options_readiness.py
       - tests/test_llm_picker_readiness.py
-      - tests/test_market_intelligence_provider.py
       - tests/test_agent_start_model_check.py
       - tests/test_vcap_tranches.py
       - tests/test_vcap_execution_loop.py
