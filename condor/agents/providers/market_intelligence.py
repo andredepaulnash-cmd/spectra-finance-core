@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 # agent ticks. Cache keys are scoped to the event loop, API server and market
 # configuration; callers receive independent copies.
 _MARKET_CACHE: dict[tuple[Any, ...], tuple[float, ProviderResult]] = {}
-_MARKET_CACHE_LOCKS: dict[tuple[Any, ...], asyncio.Lock] = {}
+_MARKET_CACHE_LOCKS: weakref.WeakValueDictionary[tuple[Any, ...], asyncio.Lock] = weakref.WeakValueDictionary()
 _MARKET_CACHE_GUARD = threading.Lock()
 
 
@@ -49,7 +49,7 @@ def _summary(data: dict[str, Any]) -> str:
     errors = data.get("errors") or {}
     if errors:
         lines.append("Errors: " + "; ".join(f"{key}={value}" for key, value in errors.items()))
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 def _refresh_cached_result(result: ProviderResult) -> ProviderResult:
@@ -132,11 +132,11 @@ async def _shared_snapshot(key: tuple[Any, ...], requested_ttl: float, loader) -
                 expired = [cache_key for cache_key, value in _MARKET_CACHE.items() if value[0] <= time.monotonic()]
                 for cache_key in expired:
                     _MARKET_CACHE.pop(cache_key, None)
-                    _MARKET_CACHE_LOCKS.pop(cache_key, None)
+                    # Active waiters keep their lock alive through the weak-value registry.
                 while len(_MARKET_CACHE) > 256:
                     oldest = next(iter(_MARKET_CACHE))
                     _MARKET_CACHE.pop(oldest, None)
-                    _MARKET_CACHE_LOCKS.pop(oldest, None)
+                    # Inactive locks disappear automatically; active waiters retain theirs.
         return result
 
 
