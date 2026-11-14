@@ -25,14 +25,16 @@ The surviving rotating-fleet research protocol documents the following starting 
 | Parameter | Recovered baseline |
 |---|---:|
 | Candidate universe | 83 assets |
-| Simultaneous fleet target | 50 unique asset positions |
+| Simultaneous fleet target | Up to 83 unique asset positions; target is to keep all 83 slots occupied |
+| Initial position entry | $20 per position |
+| Paper account starting equity | $25,000 USD-equivalent |
 | Portfolio reserve | 25% |
 | Maximum equity basis per asset | 5% |
 | Selection | Causal momentum / opportunity ranking |
 | Portfolio model | Shared account balance and shared capital constraints |
 | Lifecycle | Replace eligible exited assets from the candidate universe |
 
-These are recovered baseline values, not immutable constants. Preserve them as configurable policy defaults and expose the effective values in the UI and runtime state. Do not silently change the candidate universe, fleet size, reserve, or per-asset cap.
+These are the user's confirmed working baseline for the reconstructed engine. Preserve them as explicit configurable policy defaults and expose the effective values in the UI and runtime state. The paper account starts with $25,000 USD-equivalent simulated equity. Each newly opened position starts with a $20 initial entry allocation; this is the initial tranche, not a hard cap on the total position. Additional DCA/VCAP tranches and lifecycle capital must be planned separately by the Capital Governor against the shared account ledger, reserve, and risk limits. The fleet target is 83 simultaneous unique positions, with an immediate governed replacement cycle whenever a position closes or a slot becomes vacant. Never silently change these parameters.
 
 The fleet must not allocate the same asset twice through competing controllers unless the portfolio policy explicitly permits strategy-level aggregation. Position sizing must use the shared account ledger, not independent per-controller copies of the same balance.
 
@@ -73,13 +75,13 @@ The engine runs as a persistent, restart-safe orchestration loop:
 4. **Asset fingerprinting:** compute the configured asset features and fingerprint from reproducible, timestamped inputs.
 5. **Opportunity ranking:** score and rank eligible assets using the recovered causal ranking/trading logic. Preserve score components and reasons for rejection.
 6. **Strategy selection:** evaluate the applicable strategy families, including EMA trend selection and adaptive grid strategies. Strategy choice must be explainable and constrained by market regime and connector support.
-7. **Portfolio construction:** select up to the configured fleet target, subject to unique-asset rules, shared balance, reserve, exposure, concentration, and existing-position constraints.
+7. **Portfolio construction:** select up to 83 unique eligible assets, targeting 83 simultaneously active positions, subject to shared balance, reserve, exposure, concentration, and existing-position constraints. Each new position begins with a $20 initial entry tranche; DCA/VCAP additions are separate governed allocations.
 8. **Capital admission:** request a governed allocation from the Capital Governor. No controller may reserve or spend capital outside this admission process.
 9. **Controller deployment:** start the selected Hummingbot controller with an unambiguous account, connector, pair, strategy, configuration, and Core-owned controller identity.
 10. **Execution supervision:** track executor/order state, fills, fees, realized and unrealized PnL, stop/target behavior, and strategy health.
 11. **Lifecycle management:** evaluate exits, protected-profit continuation, recovery/re-entry, partial exits, capital recycling, and replacement candidates through the appropriate VCAP lifecycle components and policy gates.
 12. **Reconciliation:** reconcile balances, orders, fills, and positions after each material event and on a periodic schedule. Detect and quarantine discrepancies.
-13. **Fleet rotation:** when a position exits or a slot becomes eligible, rescore the candidate universe and admit the next eligible asset without violating portfolio limits.
+13. **Fleet rotation:** maintain a target of 83 simultaneous active positions. When a position closes or a slot becomes vacant, immediately rescore the candidate universe and start the next eligible replacement through the Governor, without waiting for a manual chat instruction and without violating portfolio limits. If no candidate is eligible or market/account data is unavailable, keep the slot visibly vacant, report the exact blocker, and retry on the next scheduled/event-driven scan; never force a bad trade merely to fill a slot.
 14. **Persistence and restart recovery:** persist loop checkpoints and controller/position mappings. On restart, reconstruct state from durable records and exchange/runtime truth before deploying or modifying anything.
 
 The scheduler must support configurable scan, refresh, reconciliation, and strategy-specific intervals. It must prevent overlapping runs from double-allocating capital or deploying duplicate controllers.
@@ -110,8 +112,8 @@ The Capital Governor is the single admission and capital-authority boundary.
 
 It must:
 - Maintain one authoritative account-level view of total equity, free balances, reserved balances, open exposure, and pending commitments.
-- Enforce the configured reserve (recovered baseline: 25%) before new allocations.
-- Enforce the configured per-asset equity cap (recovered baseline: 5%) across all strategies/controllers.
+- Enforce the configured reserve (baseline: 25%) before new allocations; the paper account begins with $25,000 USD-equivalent simulated equity.
+- Enforce the configured per-asset equity cap (baseline: 5%) across all strategies/controllers. A $20 initial entry is the starting tranche only; subsequent DCA/VCAP tranches require fresh governed sizing and must remain within aggregate exposure limits.
 - Prevent double-spending, duplicate reservations, and oversubscription from concurrent controller requests.
 - Account for fees, slippage, partial fills, pending orders, and unsettled proceeds.
 - Apply strategy-specific and portfolio-wide risk limits.
@@ -138,7 +140,7 @@ Each lifecycle transition must be explicit, persisted, idempotent, and auditable
 ## 8. Execution modes and authorization
 
 - Paper mode is the default development and verification mode.
-- Paper mode must use an explicitly identified isolated simulated connector (for example, the exact configured Kraken paper-trade connector), not a live connector name that merely looks similar.
+- Paper mode must use an isolated simulated execution runtime/account. The user does not require a particular exchange/connector brand or display name (the connector may be called anything); what matters is that the actual dispatch, balances, fills, and ledger are genuinely simulated and technically isolated from live capital. Resolve aliases to a verified paper backend identity at the dispatch boundary; never infer paper safety from a label.
 - Connector identity, account identity, and mode must be validated at every dispatch boundary.
 - Live mode remains a supported product mode; it must not be removed or permanently hard-disabled as a shortcut.
 - Live execution requires a separate, explicit user authorization and the existing governance checks. Paper authorization never grants live authority.
@@ -149,7 +151,7 @@ Each lifecycle transition must be explicit, persisted, idempotent, and auditable
 
 The application must expose:
 - Candidate universe: all 83 configured candidates, eligibility, market-data freshness, and ranking.
-- Fleet: target of 50, active assets, vacant slots, strategy/controller per asset, and replacement queue.
+- Fleet: target of 83 simultaneous active positions, 83-asset candidate universe, active assets, vacant slots, strategy/controller per asset, initial $20 entries, DCA/VCAP tranche exposure, and immediate replacement queue.
 - Portfolio: balances, equity, reserve, available capital, committed capital, exposure, fees, and PnL.
 - Intelligence: asset fingerprints, ranking scores, strategy selection, and decision rationale.
 - Controllers: deployed/running/stopped/error states, configuration, connector/account, heartbeat, and last action.
@@ -178,16 +180,16 @@ The interface must distinguish **configured**, **available**, **authorized**, **
 
 The automated portfolio engine is not complete until all of the following pass in isolated paper mode:
 
-1. Reads and reconciles account balances and positions from the selected paper connector.
+1. Starts with a $25,000 USD-equivalent simulated paper-account balance and reads/reconciles balances and positions from the selected isolated paper runtime.
 2. Loads the configured 83-asset candidate universe and reports the actual market-data coverage/freshness.
 3. Computes and displays reproducible asset fingerprints and opportunity rankings.
-4. Selects a fleet of up to 50 unique eligible assets subject to policy and available capital.
+4. Selects and maintains a target fleet of 83 simultaneous unique eligible positions from the 83-asset candidate universe, subject to policy and available capital; each position begins with a $20 initial entry tranche.
 5. Applies the shared reserve and per-asset exposure limits across concurrent strategies.
 6. Selects and deploys the appropriate EMA/adaptive-grid controller through Hummingbot's actual runtime.
 7. Keeps controllers running and evaluating without requiring a chat message for each order.
 8. Creates, manages, and closes paper orders/positions through Hummingbot.
 9. Reconciles every confirmed fill, fee, balance, position, and lifecycle transition into the shared ledger.
-10. Performs governed exits, recovery/recycling, and fleet replacement.
+10. Performs governed exits, DCA/VCAP tranche management, recovery/recycling, and immediate replacement of closed positions to restore the 83-position target whenever eligible candidates and safe account conditions permit.
 11. Survives service restart without duplicate orders, lost positions, or double allocation.
 12. Shows accurate controller, automation, portfolio, and execution state in the UI.
 13. Demonstrates that paper dispatch cannot reach a live connector.
@@ -199,7 +201,7 @@ A single successful market order does not satisfy these criteria. A passing unit
 
 The following are investigation leads, not claims that the current runtime has been re-tested by this document:
 
-- The Intelligence tool proposal shown in the local UI used connector name `kraken`, while the UI banner requires an isolated simulated connector. Resolve the connector/account naming contract end to end.
+- The Intelligence tool proposal shown in the local UI used connector name `kraken`, while the UI banner requires an isolated simulated connector. The display name is not important; verify that aliases resolve to a truly isolated simulated backend and that no live connector can be reached.
 - Prior source review found a mismatch between registered executor tools and Core's governed executor dispatch allowlist. Verify all supported executor types against the actual Hummingbot API.
 - Prior source review found executor controller identity being overwritten with a generic `spectra` value. Preserve a stable, Core-owned mapping between conversation/strategy, controller, executor, account, and asset.
 - Controller templates/configuration must be distinguished from deployed, running Hummingbot controllers.
