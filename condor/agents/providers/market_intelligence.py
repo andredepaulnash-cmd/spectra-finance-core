@@ -211,15 +211,21 @@ def _levels(rows: Any) -> list[tuple[float, float]]:
 
 
 def _rsi(closes: list[float], period: int = 14) -> float | None:
-    if len(closes) <= period:
-        return None
     changes = [right - left for left, right in zip(closes[:-1], closes[1:])]
-    window = changes[-period:]
-    gains = sum(max(change, 0.0) for change in window) / period
-    losses = sum(max(-change, 0.0) for change in window) / period
-    if losses == 0:
-        return 100.0 if gains > 0 else 50.0
-    return 100.0 - (100.0 / (1.0 + gains / losses))
+    if len(changes) < period:
+        return None
+
+    initial = changes[:period]
+    average_gain = sum(max(change, 0.0) for change in initial) / period
+    average_loss = sum(max(-change, 0.0) for change in initial) / period
+    for change in changes[period:]:
+        average_gain = (average_gain * (period - 1) + max(change, 0.0)) / period
+        average_loss = (average_loss * (period - 1) + max(-change, 0.0)) / period
+
+    if average_loss == 0:
+        return 100.0 if average_gain > 0 else 50.0
+    relative_strength = average_gain / average_loss
+    return 100.0 - (100.0 / (1.0 + relative_strength))
 
 
 class MarketIntelligenceProvider(BaseProvider):
@@ -370,7 +376,7 @@ class MarketIntelligenceProvider(BaseProvider):
             errors["order_book"] = str(exc)[:180]
 
         normalized_candles = candles[-records:] if candles else []
-        closes = [float(row["close"]) for row in normalized_candles if _number(row.get("close")) is not None]
+        closes = [float(row["close"]) for row in normalized_candles if (_number(row.get("close")) or 0.0) > 0]
         candle_timestamp = _epoch_seconds(normalized_candles[-1].get("timestamp")) if normalized_candles else None
         candle_age = max(0.0, now - candle_timestamp) if candle_timestamp else None
         ticker_age = max(0.0, now - ticker_updated) if ticker_updated else None
