@@ -18,6 +18,7 @@ Set these values in the agent/strategy configuration:
 | `market_candle_records` | Requested candle count (20–500) | `120` |
 | `market_data_max_age_seconds` | Maximum acceptable age for source timestamps | `180` |
 | `market_order_book_depth` | Order-book levels per side (1–100) | `20` |
+| `market_data_cache_ttl_seconds` | Shared snapshot cache lifetime (clamped to 1–30 seconds and source-freshness headroom) | `10` |
 
 No market is inferred when the connector or pair is missing. The provider then
 reports `NOT_CONFIGURED` without making API calls.
