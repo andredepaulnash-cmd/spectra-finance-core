@@ -362,7 +362,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
   ["spectra_core/capital_governor.py"]="a34f6b5bb0551e00b7bf209e34135723f0cc3207"
   ["spectra_core/vcap_entry.py"]="0e3b2bff874cb8a55803dac91b2ec061df5d25b8"
-  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="cfe54b7d11775263abf409077c877b364ac520e3"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="5ac6111aa0fc192a7e0324e6dc8761e090316aa7"
 )
