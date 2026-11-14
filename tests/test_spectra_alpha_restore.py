@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import sqlite3
 import tarfile
 from pathlib import Path
@@ -63,7 +64,7 @@ def test_restore_swaps_only_paper_state_and_retains_previous_directory(tmp_path)
         "state/journal.json": b'{"version":"restored"}',
     })
 
-    previous = restore_paper_state(archive, install_root=install, core_dir=core)
+    previous = restore_paper_state(Path('backups') / archive.name, install_root=install, core_dir=core)
 
     assert (paper / "journal.json").read_text(encoding="utf-8") == '{"version":"restored"}'
     assert (previous / "journal.json").read_text(encoding="utf-8") == '{"version":"old"}'
@@ -131,3 +132,33 @@ def test_restore_checks_sqlite_integrity_before_swap(tmp_path):
     with pytest.raises(sqlite3.DatabaseError):
         restore_paper_state(archive, install_root=install, core_dir=core)
     assert (paper / "journal.json").read_text(encoding="utf-8") == '{"version":"old"}'
+
+def test_restore_rejects_oversized_archive_member_before_extracting(tmp_path):
+    install, core, paper, live, backup = make_install(tmp_path)
+    archive = backup / "oversized.tar.gz"
+    with tarfile.open(archive, "w:gz") as bundle:
+        info = tarfile.TarInfo("state/large.bin")
+        info.size = _RESTORE.MAX_MEMBER_BYTES + 1
+        bundle.addfile(info, io.BytesIO(b"x"))
+    with pytest.raises(ValueError, match="member exceeds"):
+        restore_paper_state(archive, install_root=install, core_dir=core)
+    assert (paper / "journal.json").exists()
+
+
+def test_restore_rejects_environment_variants(tmp_path):
+    install, core, paper, live, backup = make_install(tmp_path)
+    archive = backup / "env-variant.tar.gz"
+    make_archive(archive, {
+        "state/": None,
+        "state/.env.production": b"API_KEY=not-for-restore",
+    })
+    with pytest.raises(ValueError, match="environment files"):
+        restore_paper_state(archive, install_root=install, core_dir=core)
+    assert (paper / "journal.json").exists()
+
+
+def test_restore_wrapper_backs_up_before_invoking_restore():
+    wrapper = Path(__file__).resolve().parents[1] / "scripts" / "spectra-alpha-restore.sh"
+    source = wrapper.read_text(encoding="utf-8")
+    assert source.index('"$LOCAL_BIN/spectra-alpha-backup"') < source.index("spectra-alpha-restore.py")
+
