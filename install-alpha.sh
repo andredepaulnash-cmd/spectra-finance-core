@@ -393,6 +393,12 @@ set_env_value .env CONDOR_AGENT_SLUG spectra
 set_env_value .env HUMMINGBOT_MCP_CONFIG_DIR "$INSTALL_ROOT/hummingbot-mcp"
 set_env_default .env SPECTRA_PAPER_ONLY "$(env_value SPECTRA_PAPER_ONLY)"
 set_env_default .env SPECTRA_ALLOW_LIVE_EXECUTION "$(env_value SPECTRA_ALLOW_LIVE_EXECUTION)"
+set_env_default .env SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED true
+set_env_default .env SPECTRA_PORTFOLIO_AUTORUN true
+set_env_default .env SPECTRA_LIVE_AUTORUN false
+set_env_default .env SPECTRA_AUTO_ASSET_SELECTION true
+set_env_default .env SPECTRA_TARGET_ACTIVE_POSITIONS 83
+set_env_default .env SPECTRA_MAX_NEW_ENTRIES_PER_TICK 3
 set_env_value .env SPECTRA_DISPATCH_POLICY_VERSION spectra-policy-v1
 
 "$CORE_DIR/.venv/bin/python" - "$API_DIR/.env" "$CORE_DIR/.env" <<'PYMODE'
