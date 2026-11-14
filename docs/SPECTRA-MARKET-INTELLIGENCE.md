@@ -50,3 +50,10 @@ This provider is read-only. It does not create orders, executors, reservations,
 or exchange credentials. Configure the connector and pair deliberately for
 each strategy. Do not enable live execution to test market data; use the
 existing paper-only connector and paper-only flags.
+
+
+## Spectra core Kraken baseline
+
+The Spectra Intelligence strategy `kraken_spot_market_intelligence` is configured to read the Kraken paper connector's BTC-USD market feed. It requests 120 one-minute candles, an order-book depth of 20 levels per side, and a maximum decision-grade data age of 180 seconds. The strategy is read-only: dry-run mode, zero quote budget, zero position-size limit, and zero executor limit. It must never create or manage orders, executors, reservations, or capital proposals. A snapshot is decision-grade only when the provider reports `FRESH` and `decision_grade=true`; otherwise the strategy must HOLD.
+
+This Kraken feed is the core Spectra research baseline, not a universal venue assignment. Specialized agents retain their own market domains and connector configurations; Derive, Solana DEX, Meteora, and XRPL strategies are not redirected to Kraken.
