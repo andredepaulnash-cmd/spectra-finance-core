@@ -46,6 +46,7 @@ class FakeMarketData:
         self.stamp = stamp
         self.fail_book = fail_book
         self.omit_book_timestamp = omit_book_timestamp
+        self.invalid_candles = invalid_candles
         self.calls = {"tickers": 0, "candles": 0, "order_book": 0}
 
     async def get_tickers(self):
@@ -60,7 +61,7 @@ class FakeMarketData:
                 98 + index * 0.1,
                 101 + index * 0.1,
                 97 + index * 0.1,
-                0 if invalid_candles else 99 + index * 0.1,
+                0 if self.invalid_candles else 99 + index * 0.1,
                 10 + index,
             ]
             for index in range(20)
