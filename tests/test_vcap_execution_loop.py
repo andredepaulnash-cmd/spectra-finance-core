@@ -30,7 +30,7 @@ from spectra_core.vcap_execution import (
     carve_next_vcap_tranche,
     replan_vcap_sequence,
 )
-from spectra_core.vcap_tranches import VCAPTranche
+from spectra_core.vcap_tranches import VCAPDrawdownZone, VCAPTranche
 
 D = Decimal
 
@@ -138,6 +138,11 @@ def test_replan_executes_only_one_currently_justified_tranche():
     assert decision.next_tranche is not None
     assert decision.next_proposal.proposal_id == "vcap-envelope-1:vcap:0001"
     assert decision.next_proposal.amount_quote == decision.next_tranche.quote_amount
+    assert decision.tranche_plan is not None
+    assert decision.tranche_plan.zone == VCAPDrawdownZone.EARLY_FAT
+    assert decision.tranche_plan.drawdown_bps == D("909.0909090909090909090909091")
+    assert decision.tranche_plan.tranches[0].quote_amount > decision.tranche_plan.tranches[-1].quote_amount
+    assert "fat_zone_front_loaded_fracture" in decision.tranche_plan.reasons
     assert "next_tranche_revalidated" in decision.reasons
 
 
@@ -454,3 +459,61 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
     assert replay["idempotent_replay"] is True
     assert replay["executor_id"] == "vcap-exec-1"
     assert len(client.executors.calls) == 1
+
+
+
+def test_replan_uses_skinny_zone_equal_parcels():
+    fp = reversal_fingerprint()
+    decision = replan_vcap_sequence(
+        envelope_proposal_id="vcap-envelope-1",
+        sequence=1,
+        pair="BTC-USD",
+        seed_quote=D("20"),
+        remaining_authorized_quote=D("100"),
+        position=VCAPPositionState(
+            pair="BTC-USD",
+            position_base=D("10"),
+            cost_basis_quote=D("1150"),
+            current_price=D("100"),
+        ),
+        fingerprint=fp,
+        trading_rule=rule(),
+        current_price=D("100"),
+        now=fp.last_seen_at,
+    )
+
+    assert decision.action == VCAPLoopAction.EXECUTE
+    assert decision.tranche_plan is not None
+    assert decision.tranche_plan.zone == VCAPDrawdownZone.MIDDLE_SKINNY
+    assert decision.tranche_plan.actual_tranche_count == 5
+    amounts = [row.quote_amount for row in decision.tranche_plan.tranches]
+    assert len(amounts) == 5
+    assert len(set(amounts)) == 1
+    assert "skinny_zone_equal_fracture" in decision.tranche_plan.reasons
+
+
+def test_replan_stops_vcap_patching_beyond_24_percent_drawdown():
+    fp = reversal_fingerprint()
+    decision = replan_vcap_sequence(
+        envelope_proposal_id="vcap-envelope-1",
+        sequence=1,
+        pair="BTC-USD",
+        seed_quote=D("20"),
+        remaining_authorized_quote=D("100"),
+        position=VCAPPositionState(
+            pair="BTC-USD",
+            position_base=D("10"),
+            cost_basis_quote=D("1400"),
+            current_price=D("100"),
+        ),
+        fingerprint=fp,
+        trading_rule=rule(),
+        current_price=D("100"),
+        now=fp.last_seen_at,
+    )
+
+    assert decision.action == VCAPLoopAction.STOP
+    assert decision.next_proposal is None
+    assert decision.tranche_plan is not None
+    assert decision.tranche_plan.zone == VCAPDrawdownZone.OUTSIDE
+    assert "vcap_drawdown_limit_reached" in decision.reasons
