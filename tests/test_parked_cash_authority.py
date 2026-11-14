@@ -13,6 +13,8 @@ from threading import Barrier
 
 import pytest
 
+from tests.spectra_test_support import configure_spectra_paper_dispatch
+
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.fill_reconciliation import (
@@ -41,9 +43,17 @@ from tests.test_protected_whole_exit import whole_case
 
 D = Decimal
 SCOPE = dict(account_name="master_account", connector_name="kraken", quote_asset="USD")
+PAPER_CONNECTOR = "kraken_paper_trade"
 
 
-def make_governor(tmp_path, *, reserve_floor="0"):
+@pytest.fixture(autouse=True)
+def _spectra_paper_dispatch(monkeypatch):
+    configure_spectra_paper_dispatch(monkeypatch, partial_evidence.partial_tool.settings)
+    configure_spectra_paper_dispatch(monkeypatch, whole_evidence.exit_tool.settings)
+    monkeypatch.setattr(partial_evidence.partial_tool, "wall_time", lambda: 2_000.0)
+
+
+def make_governor(tmp_path, *, reserve_floor="0", clock=None):
     return CapitalGovernor(
         tmp_path / "park-authority.sqlite3",
         CapitalPolicy(
@@ -54,6 +64,7 @@ def make_governor(tmp_path, *, reserve_floor="0"):
             max_recovery_quote=D("5000"),
             reservation_ttl_seconds=120,
         ),
+        clock=clock,
     )
 
 
@@ -287,17 +298,13 @@ def test_release_of_reserved_claim_does_not_mint_productive_cash(tmp_path):
     )
 
 
-def test_expired_claim_restores_only_the_reservation_not_new_cash(
-    tmp_path, monkeypatch
-):
-    import spectra_core.capital_governor as governor_module
-
-    g = make_governor(tmp_path)
+def test_expired_claim_restores_only_the_reservation_not_new_cash(tmp_path):
+    clock = [3_000.0]
+    g = make_governor(tmp_path, clock=lambda: clock[0])
     activate(g)
-    monkeypatch.setattr(governor_module.time, "time", lambda: 3000)
     pending = proposal("expires-before-commit", "80")
     assert g.reserve(pending, venue_snapshot("100")).status == DecisionStatus.RESERVED
-    monkeypatch.setattr(governor_module.time, "time", lambda: 3121)
+    clock[0] = 3_121.0
     assert not g.commit_if_matches(pending)
     assert g.get_decision(pending.proposal_id).status == DecisionStatus.EXPIRED
     assert cash(g)["productive_quote"] == D("100")
@@ -800,7 +807,7 @@ def test_recovery_sale_ack_without_fill_does_not_park_or_release_cash(
     monkeypatch,
 ):
     g, book, decision = protected_case
-    activate(g, productive="1000")
+    activate(g, productive="1000", connector_name=PAPER_CONNECTOR)
     client = partial_evidence.EvidenceClient(decision.manifest)
     partial_evidence.install_evidence(monkeypatch, decision.manifest)
     result = partial_evidence.execute(protected_case, client)
