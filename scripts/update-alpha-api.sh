@@ -229,8 +229,10 @@ grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
 grep -q "_start_paper_trade_clock" "${API_SOURCES[0]}" \
   || die "The managed PaperTradeExchange clock was not applied locally."
-grep -q "spectra_dispatch_receipt" "${API_SOURCES[3]}" \
-  || die "The Core-signed paper dispatch path was not applied locally."
+grep -q "SpectraDispatchReceiptMiddleware" "$API_DIR/main.py" \
+  || die "The Core-signed dispatch middleware is not wired into the API application."
+grep -q "verify_and_consume_receipt" "${API_SOURCES[4]}" \
+  || die "The signed dispatch receipt verifier was not applied locally."
 grep -q "A read request must be able to initialize its own feed" "${API_SOURCES[1]}" \
   || die "The lazy order-book initialization fix was not applied locally."
 grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[2]}" \
