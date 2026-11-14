@@ -452,3 +452,16 @@ def test_available_models_reports_login_state(monkeypatch):
         "groq",
         "google",
     }
+
+
+
+@pytest.mark.parametrize("status_code", [429, 500, 503])
+def test_probe_openrouter_rate_limit_and_server_errors_remain_unverified(monkeypatch, status_code):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    _fake_openrouter_client(monkeypatch, status_code=status_code)
+    result = asyncio.run(
+        readiness.probe("openrouter", {"OPENROUTER_API_KEY": "sk-transient-test"})
+    )
+    assert result.state == UNVERIFIED
+    assert result.usable is True
+    assert "sk-transient-test" not in result.detail
