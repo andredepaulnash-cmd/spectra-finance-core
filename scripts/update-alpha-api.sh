@@ -101,8 +101,8 @@ done
 # Verify the exact reviewed API source blobs. This is deterministic and avoids
 # shell text-search, pager, locale, and pipefail behavior entirely.
 declare -A EXPECTED_UPSTREAM_BLOBS=(
-  ["services/unified_connector_service.py"]="185f03c85f00d7ccb95817551f0990ccda4a2fb4"
-  ["services/market_data_service.py"]="9236689f87dc32aae2478100419b9a2e6e645f73"
+  ["services/unified_connector_service.py"]="a35c432e74d829b02c8c153b334e20abcd10dd2b"
+  ["services/market_data_service.py"]="95e8e31c5e9be5bb2945b80038419b88b35ba41f"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
 )
 
