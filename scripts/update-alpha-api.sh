@@ -73,15 +73,16 @@ for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
     if "=" in line and not line.lstrip().startswith("#"):
         key, value = line.split("=", 1)
         values[key.strip()] = value.strip().strip("\\\"").strip("'")
-required = {
-    "SPECTRA_PAPER_ONLY": "true",
-    "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
-    "SPECTRA_PAPER_CONNECTORS": "kraken_paper_trade",
-}
-wrong = [key for key, expected in required.items() if values.get(key, "").lower() != expected]
-if wrong:
-    raise SystemExit("Paper-safety preflight failed for: " + ", ".join(wrong))
-print("Paper-only configuration verified; live execution remains disabled.")
+paper = values.get("SPECTRA_PAPER_ONLY", "").lower()
+live = values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "").lower()
+if paper not in {"true", "false"} or live not in {"true", "false"}:
+    raise SystemExit("Execution mode flags must be explicit true/false values.")
+if (paper == "true" and live != "false") or (paper == "false" and live != "true"):
+    raise SystemExit("Live mode requires separate explicit authorization in SPECTRA_ALLOW_LIVE_EXECUTION.")
+connectors = [name.strip() for name in values.get("SPECTRA_PAPER_CONNECTORS", "").split(",") if name.strip()]
+if paper == "true" and (not connectors or any(not name.endswith("_paper_trade") for name in connectors)):
+    raise SystemExit("Paper mode requires an explicit paper-connector-only allowlist.")
+print("Execution mode verified: " + ("PAPER_ONLY" if paper == "true" else "LIVE_AUTHORIZED"))
 PY
 
 cd "$API_DIR"
