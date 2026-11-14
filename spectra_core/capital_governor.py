@@ -1333,7 +1333,7 @@ class CapitalGovernor:
                     stage="CAPITAL_RESERVATION",
                     disposition=status.value,
                     reasons=(reason,),
-                    observed_at=now,
+                    observed_at=current_time,
                     facts={
                         "pair": pair,
                         "intent": proposal.intent.value,
