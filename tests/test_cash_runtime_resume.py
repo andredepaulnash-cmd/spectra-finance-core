@@ -5,6 +5,8 @@ from decimal import Decimal
 
 import pytest
 
+from tests.spectra_test_support import configure_spectra_paper_dispatch
+
 import mcp_servers.hummingbot_api.tools.accounting_health as health_tool
 import mcp_servers.hummingbot_api.tools.partial_recycle as partial_tool
 import mcp_servers.hummingbot_api.tools.vcap_runtime as runtime_tool
@@ -33,6 +35,12 @@ from tests.test_protected_recovery_exit import protected_case
 D = Decimal
 
 
+@pytest.fixture(autouse=True)
+def _spectra_paper_dispatch(monkeypatch):
+    configure_spectra_paper_dispatch(monkeypatch, partial_tool.settings)
+    monkeypatch.setattr(partial_tool, "wall_time", lambda: 2_000.0)
+
+
 @pytest.mark.parametrize(
     "crash_stage", ["before_inventory", "after_manifest_completed"]
 )
@@ -43,7 +51,7 @@ def test_pending_sale_cash_survives_crash_and_runtime_finishes_same_sale(
     manifest = decision.manifest
     assert governor.activate_cash_authority(
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         quote_asset="USD",
         opening_productive_quote=D("100"),
         activation_id="reconciled-runtime-opening",
