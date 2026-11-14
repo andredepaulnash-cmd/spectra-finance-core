@@ -439,6 +439,7 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/vcap_entry.py"
   "spectra_core/module_registry.py"
   "spectra_core/portfolio_supervisor.py"
+  "main.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
   "routines/mean_reversion_scanner.py"
   "condor/web/routes/market.py"
@@ -448,6 +449,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/kraken_authorization.py"]="afd89f24f346b0e4a90cb3cd6ac7dc03429e47f5"
   ["spectra_core/module_registry.py"]="ff3bbd5310420915530dec48fe13dfc96179783c"
   ["spectra_core/portfolio_supervisor.py"]="d13ee5182a92af724474c433873302b65ae10659"
+  ["main.py"]="3dcdc5cdec093214dac9eda0b3cc8fe2c9b4b82d"
   ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
   ["spectra_core/capital_governor.py"]="a34f6b5bb0551e00b7bf209e34135723f0cc3207"
   ["spectra_core/vcap_entry.py"]="79bebf049f0c9cb9465bdde61947869ee0933b47"
@@ -460,6 +462,7 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050|a6f2b56b24f27c953afe2391405d63dc3318b1d2|8b2bea839be8eab5614236b08cf57968a247dbdc"
   ["spectra_core/module_registry.py"]="1c1ccc2d0e14f4c5760dbbd9aa6d9f00f6de093b|45d5d8e22346e6e5becad1372499cc775093843f|7bd2e5c3bf00477a8a9381b8e0ac828ba2ad296e"
   ["spectra_core/vcap_entry.py"]="0e3b2bff874cb8a55803dac91b2ec061df5d25b8"
+  ["main.py"]="0b2d3b1f8c5f227899c8be4e282185ebf395a193"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a|14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
   ["spectra_core/capital_governor.py"]="3fac868f19d71b817f66d7cecf9a06ed209f7c00"
@@ -498,6 +501,7 @@ done
   "$CORE_DIR/spectra_core/vcap_entry.py" \
   "$CORE_DIR/spectra_core/module_registry.py" \
   "$CORE_DIR/spectra_core/portfolio_supervisor.py" \
+  "$CORE_DIR/main.py" \
   "$CORE_DIR/scripts/configure_alpha_paper_connector.py" \
   "$CORE_DIR/scripts/configure_alpha_paper_state.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
