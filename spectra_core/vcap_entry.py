@@ -67,14 +67,21 @@ async def reserve_vcap_candidate_entry(
     both the explicit live-mode flags; the live Governor policy and breaker
     remain independent gates.
     """
-    paper_only = spectra_paper_only_enabled()
+    configured_mode = (os.getenv("SPECTRA_PAPER_ONLY") or "").strip().lower()
     live_authorized = (
-        (os.getenv("SPECTRA_PAPER_ONLY") or "").strip().lower() in {"0", "false", "no"}
+        configured_mode in {"0", "false", "no"}
         and (os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION") or "").strip().lower()
         in LIVE_TRUE_VALUES
     )
+    if configured_mode in {"0", "false", "no"} and not live_authorized:
+        raise ValueError(
+            "live VCAP candidate admission requires SPECTRA_ALLOW_LIVE_EXECUTION=true"
+        )
+    paper_only = spectra_paper_only_enabled()
     if not paper_only and not live_authorized:
-        raise ValueError("live VCAP candidate admission requires separate explicit authorization")
+        raise ValueError(
+            "live VCAP candidate admission requires separate explicit authorization"
+        )
 
     if not isinstance(scan_result, Mapping):
         raise ValueError("market discovery result must be a mapping")
@@ -125,7 +132,7 @@ async def reserve_vcap_candidate_entry(
         asset_policy = load_approved_kraken_assets()
         if not asset_policy.configured or pair not in asset_policy.pairs:
             raise ValueError(
-                f"{pair} is not in the Governor-approved paper asset list"
+                f"{pair} is not in the Governor-approved Kraken asset list"
             )
 
     authorization = await reserve_kraken_capital(
