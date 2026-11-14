@@ -9,8 +9,6 @@ on:
       - install-alpha.sh
       - scripts/**
       - patches/**
-      - patches/**
-      - scripts/update-alpha-api.sh
       - scripts/spectra-alpha-doctor.sh
       - scripts/spectra-alpha-start-api.sh
       - scripts/spectra
@@ -37,6 +35,7 @@ on:
       - tests/test_spectra_runtime_fail_closed.py
       - tests/test_spectra_runtime.py
       - tests/test_spectra_kraken_execution_flow.py
+      - tests/test_ambiguous_executor_dispatch.py
       - tests/test_alpha_backup.py
       - tests/test_asset_authority.py
       - tests/test_kraken_authorization.py
@@ -78,6 +77,14 @@ on:
       - tests/spectra_test_support.py
       - tests/fixtures/**
       - tests/test_spectra_kraken_execution_flow.py
+      - tests/test_ambiguous_executor_dispatch.py
+      - tests/test_model_readiness.py
+      - tests/test_session_options_readiness.py
+      - tests/test_llm_picker_readiness.py
+      - tests/test_market_intelligence_provider.py
+      - tests/test_agent_start_model_check.py
+      - tests/test_vcap_tranches.py
+      - tests/test_vcap_execution_loop.py
       - ALPHA-TEST.md
       - README.md
       - pyproject.toml
@@ -137,7 +144,7 @@ jobs:
       - name: Install locked Core dependencies
         run: uv sync --locked --dev --python 3.12
       - name: Test alpha runtime safety and paper configuration
-        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py tests/test_market_discovery.py tests/test_hummingbot_paper_trade_compat.py
+        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_ambiguous_executor_dispatch.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py tests/test_market_discovery.py tests/test_hummingbot_paper_trade_compat.py
       - name: Test agent model inheritance and start preflight
         run: uv run --python 3.12 pytest -q tests/test_agent_start_model_check.py
       - name: Test persistent module lifecycle and registry
