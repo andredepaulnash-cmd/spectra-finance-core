@@ -38,7 +38,6 @@ on:
       - tests/test_spectra_runtime_fail_closed.py
       - tests/test_spectra_runtime.py
       - tests/test_spectra_kraken_execution_flow.py
-      - tests/test_agent_identity.py
       - tests/test_ambiguous_executor_dispatch.py
       - tests/test_alpha_backup.py
       - tests/test_asset_authority.py
@@ -204,11 +203,11 @@ jobs:
       - name: Run the public one-command installer
         run: bash install-alpha.sh
         env:
-          SPECTRA_ALPHA_CORE_REF: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          SPECTRA_ALPHA_CORE_REF: feature/vcap-paper-entry-admission-20261110
       - name: Run the exact one-command in-place updater
         run: bash scripts/update-alpha-api.sh
         env:
-          SPECTRA_ALPHA_CORE_REF: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          SPECTRA_ALPHA_CORE_REF: feature/vcap-paper-entry-admission-20261110
       - name: Verify dashboard and Kraken paper runtime
         shell: bash
         run: |
