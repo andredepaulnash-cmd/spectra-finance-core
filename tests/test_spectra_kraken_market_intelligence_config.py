@@ -16,6 +16,7 @@ def test_spectra_kraken_market_intelligence_strategy_is_read_only():
 
     assert config.market_connector_name == "kraken_paper_trade"
     assert config.market_trading_pair == "BTC-USD"
+    assert config.market_data_cache_ttl_seconds == 10
     assert config.execution_mode == "dry_run"
     assert config.total_amount_quote == 0
     assert config.risk_limits.max_position_size_quote == 0
