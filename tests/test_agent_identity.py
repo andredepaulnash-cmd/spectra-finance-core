@@ -110,7 +110,7 @@ def test_identity_header_falls_back_to_the_slug():
 def test_every_agent_identity_carries_the_systemwide_doctrine(slug, name):
     header = identity_header(slug, name)
     assert "[SPECTRA SYSTEMWIDE OPERATING DOCTRINE]" in header
-    assert "preserve continuity and source provenance" in header
+    assert "preserve continuity and source provenance" in header.lower()
     assert "CapitalGovernor alone authorizes capital" in header
     assert "human operator retains final authority" in header
     assert "future-dated, or degraded evidence means HOLD" in header
