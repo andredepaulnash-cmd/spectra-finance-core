@@ -646,6 +646,40 @@ async def _bounded_protected_buy(
         raise ValueError(
             f"protected BUY trading rules are invalid: {rejected.get(pair, 'unknown')}"
         )
+    # PaperTradeExchange matches simulated orders against its shared public
+    # order-book tracker. The direct Kraken REST read below proves a fresh
+    # bounded execution price, but does not start Hummingbot's WebSocket feed.
+    # Initialize and wait for that feed before reserving/dispatching capital.
+    market_data = getattr(client, "market_data", None)
+    get_order_book = getattr(market_data, "get_order_book", None)
+    if not callable(get_order_book):
+        raise ValueError("protected BUY cannot initialize Hummingbot market-data tracker")
+    try:
+        tracker_book = await get_order_book(
+            connector_name=expected_connector,
+            trading_pair=pair,
+            depth=10,
+        )
+    except Exception as exc:
+        raise ValueError("protected BUY could not initialize Hummingbot market-data tracker") from exc
+    tracker_pair = (
+        tracker_book.get("trading_pair")
+        if isinstance(tracker_book, dict)
+        else getattr(tracker_book, "trading_pair", None)
+    )
+    tracker_bids = (
+        tracker_book.get("bids")
+        if isinstance(tracker_book, dict)
+        else getattr(tracker_book, "bids", None)
+    )
+    tracker_asks = (
+        tracker_book.get("asks")
+        if isinstance(tracker_book, dict)
+        else getattr(tracker_book, "asks", None)
+    )
+    if tracker_pair != pair or not tracker_bids or not tracker_asks:
+        raise ValueError("protected BUY Hummingbot market-data tracker is not ready for the exact pair")
+
     book = await fetch_protected_kraken_book(rule)
     if book.pair != pair:
         raise ValueError("protected BUY venue book pair differs from authorized pair")
