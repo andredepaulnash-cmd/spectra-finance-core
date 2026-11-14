@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Foreground one-command updater for Spectra Finance Alpha on Bazzite.
+# Foreground updater for Spectra Finance on Bazzite.
 # It updates exact reviewed API, Core Python, dashboard, and operator files,
 # preserves all state, and never removes containers, networks, or named volumes.
 set -Eeuo pipefail
@@ -61,6 +61,8 @@ command -v git >/dev/null 2>&1 || die "Git is not installed."
 command -v curl >/dev/null 2>&1 || die "curl is not installed."
 [[ -d "$API_DIR/.git" ]] || die "API Git checkout not found at $API_DIR."
 [[ -f "$API_DIR/.env" ]] || die "API .env is missing; refusing to generate or replace credentials."
+[[ -f "$CORE_DIR/.env" ]] || die "Core .env is missing; refusing to update a partially configured install."
+[[ -f "$API_DIR/bots/credentials/master_account/conf_client.yml" ]] || die "Paper account config is missing; refusing to reset or synthesize account state."
 [[ -f "$COMPOSE_FILE" ]] || die "Alpha Compose file is missing: $COMPOSE_FILE"
 [[ -f "$API_DIR/Dockerfile.alpha" ]] || die "Alpha Dockerfile is missing: $API_DIR/Dockerfile.alpha"
 
@@ -84,6 +86,23 @@ if paper == "true" and (not connectors or any(not name.endswith("_paper_trade") 
     raise SystemExit("Paper mode requires an explicit paper-connector-only allowlist.")
 print("Execution mode verified: " + ("PAPER_ONLY" if paper == "true" else "LIVE_AUTHORIZED"))
 PY
+python3 - "$API_DIR/.env" "$CORE_DIR/.env" <<'PYMODECHECK'
+from pathlib import Path
+import sys
+
+def read(path):
+    values = {}
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        if "=" in raw and not raw.lstrip().startswith("#"):
+            key, value = raw.split("=", 1)
+            values[key.strip()] = value.strip().strip('"').strip("'").lower()
+    return values
+
+api, core = map(read, sys.argv[1:])
+for key in ("SPECTRA_PAPER_ONLY", "SPECTRA_ALLOW_LIVE_EXECUTION"):
+    if api.get(key) != core.get(key):
+        raise SystemExit("API/Core execution-mode mismatch for " + key)
+PYMODECHECK
 EXECUTION_MODE="$("$CORE_DIR/.venv/bin/python" - "$API_DIR/.env" <<'PYMODE'
 from pathlib import Path
 import sys
@@ -390,6 +409,12 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
   git -C "$CORE_DIR" show "$CORE_UPSTREAM_COMMIT:$source" > "$target" || die "Could not write reviewed operator file $target."
 done
 
+say "Applying safe paper-account and mode-specific capital-policy migrations."
+"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/configure_alpha_paper_state.py" --core-root "$CORE_DIR"
+"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/configure_alpha_paper_connector.py" \
+  --config "$API_DIR/bots/credentials/master_account/conf_client.yml" \
+  --core-root "$CORE_DIR" --upgrade-legacy-default
+
 # Update only the reviewed Python files that implement the paper asset authority
 # and strategy-discovery path. Exact old/new blob checks preserve local edits.
 CORE_PYTHON_SOURCES=(
@@ -454,6 +479,8 @@ done
   "$CORE_DIR/spectra_core/capital_governor.py" \
   "$CORE_DIR/spectra_core/vcap_entry.py" \
   "$CORE_DIR/spectra_core/module_registry.py" \
+  "$CORE_DIR/scripts/configure_alpha_paper_connector.py" \
+  "$CORE_DIR/scripts/configure_alpha_paper_state.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
   "$CORE_DIR/routines/mean_reversion_scanner.py" \
   "$CORE_DIR/condor/web/routes/market.py"
