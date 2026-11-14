@@ -14,7 +14,7 @@ from decimal import Decimal
 from math import isfinite
 from typing import Any, Mapping
 
-from .asset_authority import canonical_kraken_usd_pair, load_approved_kraken_assets
+from .asset_authority import canonical_kraken_usd_pair, require_approved_kraken_pair
 from .kraken_authorization import reserve_kraken_capital
 from .models import DecisionStatus, IntentKind
 from .runtime import spectra_paper_only_enabled
@@ -60,16 +60,21 @@ async def reserve_vcap_candidate_entry(
     governor=None,
     now: float | None = None,
 ) -> VCAPPaperEntryAdmission:
-    """Reserve one $20 ENTRY for a fresh, explicitly approved scanner candidate.
+    """Reserve one $20 ENTRY for a fresh scanner candidate.
 
-    No executor is created and no order is sent. The returned proposal and
-    canonical prefill position ID are the exact inputs for the separately
-    guarded Kraken paper executor submission path.
+    No executor is created and no order is sent. Paper entries require the
+    manual or fresh auto-discovery allowlist. Live entries additionally require
+    both the explicit live-mode flags; the live Governor policy and breaker
+    remain independent gates.
     """
-    if not spectra_paper_only_enabled():
-        raise ValueError("VCAP candidate admission is paper-only")
-    if (os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION") or "false").strip().lower() in LIVE_TRUE_VALUES:
-        raise ValueError("VCAP candidate admission requires live execution to remain disabled")
+    paper_only = spectra_paper_only_enabled()
+    live_authorized = (
+        (os.getenv("SPECTRA_PAPER_ONLY") or "").strip().lower() in {"0", "false", "no"}
+        and (os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION") or "").strip().lower()
+        in LIVE_TRUE_VALUES
+    )
+    if not paper_only and not live_authorized:
+        raise ValueError("live VCAP candidate admission requires separate explicit authorization")
 
     if not isinstance(scan_result, Mapping):
         raise ValueError("market discovery result must be a mapping")
@@ -113,10 +118,14 @@ async def reserve_vcap_candidate_entry(
     if str(candidate.get("quote_asset") or "USD").strip().upper() != "USD":
         raise ValueError("VCAP paper entries are restricted to Kraken USD spot pairs")
 
-    asset_policy = load_approved_kraken_assets()
-    if not asset_policy.configured or pair not in asset_policy.pairs:
+    connector_name = "kraken_paper_trade" if paper_only else "kraken"
+    asset_policy = require_approved_kraken_pair(
+        pair,
+        connector_name=connector_name,
+    )
+    if paper_only and (not asset_policy.configured or pair not in asset_policy.pairs):
         raise ValueError(
-            f"{pair} is not in the explicit Governor-approved paper asset list"
+            f"{pair} is not in the Governor-approved paper asset list"
         )
 
     authorization = await reserve_kraken_capital(
