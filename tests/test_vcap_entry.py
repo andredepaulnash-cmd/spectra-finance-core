@@ -164,7 +164,7 @@ async def test_candidate_requires_explicit_governor_asset_approval(monkeypatch):
 
     monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
 
-    with pytest.raises(ValueError, match="explicit Governor-approved"):
+    with pytest.raises(ValueError, match="Governor-approved Kraken asset list"):
         await vcap_entry.reserve_vcap_candidate_entry(
             object(),
             scan_result=scan_result(),
@@ -175,16 +175,17 @@ async def test_candidate_requires_explicit_governor_asset_approval(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_live_execution_flag_blocks_vcap_candidate_admission(monkeypatch):
+async def test_live_vcap_entry_requires_both_explicit_mode_flags(monkeypatch):
     configure(monkeypatch)
-    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
 
     async def reserve(*args, **kwargs):
-        raise AssertionError("Governor must not be called when live execution is enabled")
+        raise AssertionError("Governor must not be called without explicit live authorization")
 
     monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
 
-    with pytest.raises(ValueError, match="live execution"):
+    with pytest.raises(ValueError, match="SPECTRA_ALLOW_LIVE_EXECUTION|live"):
         await vcap_entry.reserve_vcap_candidate_entry(
             object(),
             scan_result=scan_result(),
@@ -192,6 +193,33 @@ async def test_live_execution_flag_blocks_vcap_candidate_admission(monkeypatch):
             account_name="master_account",
             now=1_000.0,
         )
+
+
+@pytest.mark.asyncio
+async def test_live_vcap_entry_is_available_after_separate_authorization(monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
+    calls = []
+
+    async def reserve(*args, **kwargs):
+        calls.append(kwargs)
+        return authorization()
+
+    monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
+
+    result = await vcap_entry.reserve_vcap_candidate_entry(
+        object(),
+        scan_result=scan_result(),
+        trading_pair="BTC-USD",
+        account_name="master_account",
+        now=1_000.0,
+    )
+
+    assert result.paper_only is False
+    assert result.decision_status == DecisionStatus.RESERVED
+    assert result.position_slot_opened is True
+    assert len(calls) == 1
 
 
 @pytest.mark.asyncio
