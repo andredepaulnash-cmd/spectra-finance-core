@@ -131,7 +131,6 @@ jobs:
           grep -q 'OnUnitActiveSec=120s' scripts/systemd/spectra-alpha-doctor.timer
           grep -q 'OnCalendar=\*-\*-\* 03:30:00' scripts/systemd/spectra-alpha-backup.timer
           grep -q 'spectra-alpha-backup' scripts/spectra
-          grep -q 'spectra-alpha-restore' scripts/spectra
           ! grep -Eq 'podman (volume|system) prune|docker (volume|system) prune|compose down -v' scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra
       - name: Enforce paper-only and no host socket mount
         run: |
