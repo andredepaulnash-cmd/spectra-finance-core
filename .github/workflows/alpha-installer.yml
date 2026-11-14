@@ -37,6 +37,7 @@ on:
       - tests/test_spectra_kraken_execution_flow.py
       - tests/test_ambiguous_executor_dispatch.py
       - tests/test_alpha_backup.py
+      - tests/test_spectra_alpha_restore.py
       - tests/test_asset_authority.py
       - tests/test_kraken_authorization.py
       - tests/test_vcap_entry.py
@@ -121,7 +122,7 @@ jobs:
         run: |
           bash -n install-alpha.sh
           bash -n scripts/update-alpha-api.sh
-          for script in scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra-alpha-backup.sh scripts/spectra; do
+          for script in scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra-alpha-backup.sh scripts/spectra-alpha-restore.sh scripts/spectra; do
             bash -n "$script"
           done
           ! grep -q 'compose down' scripts/spectra
@@ -153,6 +154,7 @@ jobs:
         run: |
           uv run --python 3.12 pytest -q \
             tests/test_alpha_backup.py \
+            tests/test_spectra_alpha_restore.py \
             tests/test_asset_authority.py \
             tests/test_kraken_authorization.py \
             tests/test_vcap_entry.py \
