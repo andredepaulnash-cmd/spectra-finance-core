@@ -58,7 +58,8 @@ def authorization():
 
 
 def configure(monkeypatch, *, approved=True):
-    monkeypatch.setattr(vcap_entry, "spectra_paper_only_enabled", lambda: True)
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
     monkeypatch.setattr(
         vcap_entry,
