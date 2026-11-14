@@ -14,7 +14,7 @@ from decimal import Decimal
 from math import isfinite
 from typing import Any, Mapping
 
-from .asset_authority import canonical_kraken_usd_pair, require_approved_kraken_pair
+from .asset_authority import canonical_kraken_usd_pair, load_approved_kraken_assets
 from .kraken_authorization import reserve_kraken_capital
 from .models import DecisionStatus, IntentKind
 from .runtime import spectra_paper_only_enabled
@@ -118,15 +118,15 @@ async def reserve_vcap_candidate_entry(
     if str(candidate.get("quote_asset") or "USD").strip().upper() != "USD":
         raise ValueError("VCAP entries are restricted to Kraken USD spot pairs")
 
-    connector_name = "kraken_paper_trade" if paper_only else "kraken"
-    asset_policy = require_approved_kraken_pair(
-        pair,
-        connector_name=connector_name,
-    )
-    if paper_only and (not asset_policy.configured or pair not in asset_policy.pairs):
-        raise ValueError(
-            f"{pair} is not in the Governor-approved paper asset list"
-        )
+    if paper_only:
+        connector_name = "kraken_paper_trade"
+        if connector_name != "kraken_paper_trade":
+            raise ValueError("Spectra paper asset authority only permits kraken_paper_trade")
+        asset_policy = load_approved_kraken_assets()
+        if not asset_policy.configured or pair not in asset_policy.pairs:
+            raise ValueError(
+                f"{pair} is not in the Governor-approved paper asset list"
+            )
 
     authorization = await reserve_kraken_capital(
         client,
