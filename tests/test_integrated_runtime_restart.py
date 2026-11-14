@@ -8,6 +8,15 @@ from types import SimpleNamespace
 
 import pytest
 
+from mcp_servers.hummingbot_api.settings import settings as spectra_settings
+from tests.spectra_test_support import configure_spectra_live_dispatch
+
+
+@pytest.fixture(autouse=True)
+def _spectra_live_dispatch(monkeypatch):
+    configure_spectra_live_dispatch(monkeypatch, spectra_settings)
+
+
 import mcp_servers.hummingbot_api.tools.accounting_health as health_tool
 import mcp_servers.hummingbot_api.tools.economic_exit as exit_tool
 import mcp_servers.hummingbot_api.tools.execution_book as book_tool
