@@ -16,12 +16,9 @@ LOCK_FILE="$LOG_DIR/api-update.lock"
 COMPOSE_FILE="$API_DIR/docker-compose.alpha.yml"
 API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py")
 PAPER_TRADE_SOURCE="services/trading_service.py"
-PAPER_TRADE_EXPECTED_BLOB="4620157fbf39ba94eed2d50a77757b10e4fefd47"
+PAPER_TRADE_EXPECTED_BLOB="11041d61a683ce60a06714405403a79453a8fa6c"
 PAPER_TRADE_PATCH="$REPO_ROOT/patches/hummingbot-api/trading-service-paper-trade.patch"
 UNIFIED_PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_paper_trade_compat.py"
-PAPER_TRADE_SOURCE="services/trading_service.py"
-PAPER_TRADE_EXPECTED_BLOB="4620157fbf39ba94eed2d50a77757b10e4fefd47"
-PAPER_TRADE_PATCH="$REPO_ROOT/patches/hummingbot-api/trading-service-paper-trade.patch"
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
@@ -161,11 +158,11 @@ for source in "${API_SOURCES[@]}"; do
 done
 
 # Apply the narrow PaperTradeExchange adapter only to the exact reviewed
-# upstream trading_service.py. Unknown upstream/local versions fail closed.
+# fork-main trading_service.py. Unknown upstream/local versions fail closed.
 [[ -f "$PAPER_TRADE_PATCH" ]] || die "Reviewed paper-trade compatibility patch is missing: $PAPER_TRADE_PATCH"
 paper_trade_upstream_blob="$(git rev-parse "$API_UPSTREAM_COMMIT:$PAPER_TRADE_SOURCE")"
 [[ "$paper_trade_upstream_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
-  || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed upstream version (expected $PAPER_TRADE_EXPECTED_BLOB, got $paper_trade_upstream_blob)."
+  || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed fork-main version (expected $PAPER_TRADE_EXPECTED_BLOB, got $paper_trade_upstream_blob)."
 paper_trade_worktree_blob="$(git hash-object "$PAPER_TRADE_SOURCE")"
 if [[ "$paper_trade_worktree_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]]; then
   git apply --check "$PAPER_TRADE_PATCH" \
