@@ -133,13 +133,14 @@ def test_restore_checks_sqlite_integrity_before_swap(tmp_path):
         restore_paper_state(archive, install_root=install, core_dir=core)
     assert (paper / "journal.json").read_text(encoding="utf-8") == '{"version":"old"}'
 
-def test_restore_rejects_oversized_archive_member_before_extracting(tmp_path):
+def test_restore_rejects_oversized_archive_member_before_extracting(tmp_path, monkeypatch):
     install, core, paper, live, backup = make_install(tmp_path)
     archive = backup / "oversized.tar.gz"
+    monkeypatch.setattr(_RESTORE, "MAX_MEMBER_BYTES", 1)
     with tarfile.open(archive, "w:gz") as bundle:
         info = tarfile.TarInfo("state/large.bin")
-        info.size = _RESTORE.MAX_MEMBER_BYTES + 1
-        bundle.addfile(info, io.BytesIO(b"x"))
+        info.size = 2
+        bundle.addfile(info, io.BytesIO(b"xx"))
     with pytest.raises(ValueError, match="member exceeds"):
         restore_paper_state(archive, install_root=install, core_dir=core)
     assert (paper / "journal.json").exists()
