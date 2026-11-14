@@ -28,7 +28,7 @@ SPECTRA_PAPER_ONLY=false
 SPECTRA_ALLOW_LIVE_EXECUTION=true
 ```
 
-The live state directory is separate from paper state. Its initial capital policy has zero allocation limits and its breaker starts HALTED. Live operation therefore also requires an independently configured live capital policy and a deliberate breaker release. Broad engineering permission or a paper-mode setting does not authorize live orders.
+The live state directory is separate from paper state. Its initial capital policy has zero allocation limits and its breaker starts HALTED. Live operation therefore also requires an independently configured live capital policy and a deliberate breaker release. To run the autonomous live portfolio loop, Core additionally requires `SPECTRA_PORTFOLIO_AUTORUN=true` and `SPECTRA_LIVE_AUTORUN=true`; the installer defaults the latter to false. Broad engineering permission or a paper-mode setting does not authorize live orders.
 
 ## Install
 
@@ -57,19 +57,19 @@ The Hummingbot API integration PR has passed CI and is merged. Its tests cover:
 - Rejection of live connectors on the paper-only path.
 - Dispatch receipt validation and replay/body-tampering protections.
 
-The Core repository contains the recovered market-discovery scanner, multi-horizon asset fingerprinting, Capital Governor, protected executor dispatch, economic position ledger, VCAP tranche/lifecycle modules, and multi-position VCAP servicing scheduler. The paper entry limit is now 83 positions, with regression tests for the 83rd and 84th slots.
+The Core repository contains the recovered market-discovery scanner, multi-horizon asset fingerprinting, Capital Governor, protected executor dispatch, economic position ledger, VCAP tranche/lifecycle modules, multi-position VCAP servicing scheduler, and the new autonomous portfolio supervisor. The supervisor refreshes market discovery, maintains the 83-position target, reserves 20 USD initial entries through the Governor, creates protected Hummingbot grid executors, and automatically services VCAP. Its CI and full end-to-end paper-cycle certification are still pending.
 
 ## Not yet certified — current engineering work
 
 The following are still required before calling the full automated portfolio operational:
 
-1. A persistent autonomous portfolio admission controller that discovers eligible assets, selects them using the recovered intelligence/strategy logic, obtains Governor authorization, creates the initial position, and automatically replenishes vacancies.
-2. End-to-end connection of the Core-managed executor path to the API's managed paper clock, with confirmed fills, fee/balance accounting and durable reconciliation.
-3. A complete restart test proving paper balances, orders, position ownership, VCAP/DCS state and the 83-position fleet recover without double-spending or losing state.
-4. A complete VCAP/DCS lifecycle test from entry through repair/patch tranches, profit-floor exit and automatic fleet rotation.
+1. CI and end-to-end certification of the new autonomous portfolio supervisor, including real simulated fills and vacancy replenishment.
+2. A complete restart test proving paper balances, orders, position ownership, VCAP state and the 83-position fleet recover without double-spending or losing state.
+3. A complete VCAP lifecycle test from entry through repair/patch tranches, profit-floor exit and automatic fleet rotation.
+4. Recovery and integration of the original DCS definition/source, which has not yet been located in the current repositories or retrieved prior project context.
 5. Local verification on the target Bazzite machine.
 
-The existing multi-position VCAP scheduler services positions already admitted to the lifecycle. It is not yet the autonomous portfolio scheduler that creates and replenishes the fleet. The 83-position cap is implemented; the autonomous replenishment loop is the next major integration task.
+The existing multi-position VCAP scheduler services admitted positions. The new portfolio supervisor now connects discovery, Governor reservations, protected executor creation, VCAP servicing and automatic vacancy replenishment. It is code-complete enough to begin integration testing, but must not be called operational until CI proves the full cycle and restart recovery.
 
 ## Operator controls
 
