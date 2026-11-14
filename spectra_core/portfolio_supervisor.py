@@ -13,9 +13,8 @@ import logging
 import os
 import tempfile
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .asset_authority import (
@@ -23,6 +22,7 @@ from .asset_authority import (
     load_approved_kraken_assets,
     write_discovered_kraken_assets,
 )
+from .models import BreakerMode
 from .runtime import (
     get_accounting_health_supervisor,
     get_breaker_mode,
@@ -203,8 +203,10 @@ def _mode_name(paper_only: bool) -> str:
     return "PAPER_ONLY" if paper_only else "LIVE_AUTHORIZED"
 
 
-def _breaker_name(value: Any) -> str:
-    return str(getattr(value, "value", value)).strip().upper()
+def _breaker_enum(value: Any) -> BreakerMode:
+    if isinstance(value, BreakerMode):
+        return value
+    return BreakerMode(str(getattr(value, "value", value)).strip().upper())
 
 
 def _snapshot_pair(ledger: Any, position_id: str) -> str | None:
@@ -268,7 +270,8 @@ async def run_portfolio_cycle(
     timestamp = deps.clock() if now is None else float(now)
     paper_only = bool(deps.is_paper())
     mode = _mode_name(paper_only)
-    breaker_mode = _breaker_name(deps.get_breaker_mode())
+    breaker = _breaker_enum(deps.get_breaker_mode())
+    breaker_mode = breaker.value
     governor = deps.get_governor()
     ledger = deps.get_ledger()
 
@@ -287,7 +290,7 @@ async def run_portfolio_cycle(
             expected_exit_fee_bps=cfg.expected_exit_fee_bps,
             slippage_allowance_bps=cfg.slippage_allowance_bps,
             now=timestamp,
-            breaker_mode=breaker_mode,
+            breaker_mode=breaker,
             scheduler_policy=deps.scheduler_policy(),
             account_name=cfg.account_name,
             controller_id=cfg.controller_id,
@@ -297,6 +300,18 @@ async def run_portfolio_cycle(
     except Exception as exc:
         vcap_error = f"{type(exc).__name__}: {exc}"
         logger.exception("VCAP lifecycle tick failed; new portfolio exposure is paused")
+    if (
+        vcap_error is None
+        and breaker == BreakerMode.NORMAL
+        and isinstance(vcap_result, Mapping)
+    ):
+        tick_results = vcap_result.get("results", [])
+        if isinstance(tick_results, list) and any(
+            isinstance(item, Mapping) and item.get("serviced") is False
+            for item in tick_results
+        ):
+            vcap_error = "VCAP scheduler reported an unserviced active position"
+            logger.error("%s; new portfolio exposure is paused", vcap_error)
 
     active_ids = list(ledger.list_active_position_ids())
     active_pairs: set[str] = set()
@@ -444,6 +459,7 @@ async def run_portfolio_cycle(
         # uncertain. Never retry the same pair blindly after a possible send.
         active_pairs.add(pair)
         entry_capacity -= 1
+        status["new_entries_this_cycle"] += 1
         entry_record = {
             "pair": pair,
             "proposal_id": str(proposal_id),
@@ -495,7 +511,6 @@ async def run_portfolio_cycle(
             entry_record["status"] = "submitted"
             entry_record["executor_id"] = str(executor_id)
             entries.append(entry_record)
-            status["new_entries_this_cycle"] += 1
             logger.info(
                 "Spectra admitted %s via Governor proposal %s and executor %s",
                 pair,
