@@ -19,6 +19,7 @@ PAPER_TRADE_SOURCE="services/trading_service.py"
 PAPER_TRADE_EXPECTED_BLOB="11041d61a683ce60a06714405403a79453a8fa6c"
 PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_trading_service_compat.py"
 UNIFIED_PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_paper_trade_compat.py"
+MARKET_DATA_PAPER_GUARD_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_market_data_paper_guard.py"
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
@@ -175,6 +176,16 @@ grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE" \
   || die "Reviewed unified PaperTradeExchange patcher is missing: $UNIFIED_PAPER_TRADE_PATCHER"
 python3 "$UNIFIED_PAPER_TRADE_PATCHER" "$UNIFIED_SOURCE" \
   || die "Could not apply the reviewed unified PaperTradeExchange compatibility adapter."
+
+# REST fallback order books are research-only evidence. PaperTradeExchange fills
+# require the shared public WebSocket tracker to be ready for the exact pair.
+MARKET_DATA_SOURCE="services/market_data_service.py"
+[[ -f "$MARKET_DATA_PAPER_GUARD_PATCHER" ]] \
+  || die "Reviewed paper market-data tracker guard is missing: $MARKET_DATA_PAPER_GUARD_PATCHER"
+python3 "$MARKET_DATA_PAPER_GUARD_PATCHER" "$MARKET_DATA_SOURCE" \
+  || die "Could not apply the reviewed paper market-data tracker guard."
+grep -q "SPECTRA_PAPER_ORDER_BOOK_TRACKER_REQUIRED" "$MARKET_DATA_SOURCE" \
+  || die "Paper market-data tracker guard marker is missing after application."
 
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
