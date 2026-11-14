@@ -38,6 +38,7 @@ from condor.acp.pydantic_ai_client import DEFAULT_BASE_URLS
 READY, UNVERIFIED, MISSING, INVALID = "ready", "unverified", "missing", "invalid"
 OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/key"
 _OPENROUTER_KEY_TTL = 60.0
+_OPENROUTER_KEY_CACHE_MAX = 256
 
 # Cloud providers Condor can address as "<prefix>:<model>", mapped to the env
 # var holding each key. Presence of the key = the provider is usable. Sourced
@@ -331,6 +332,16 @@ async def _openrouter_key_readiness(api_key: str) -> Readiness:
         )
 
     _openrouter_key_cache[fingerprint] = (time.monotonic(), result)
+    expired = [
+        cached_fingerprint
+        for cached_fingerprint, (cached_at, _) in _openrouter_key_cache.items()
+        if time.monotonic() - cached_at >= _OPENROUTER_KEY_TTL
+    ]
+    for cached_fingerprint in expired:
+        _openrouter_key_cache.pop(cached_fingerprint, None)
+    while len(_openrouter_key_cache) > _OPENROUTER_KEY_CACHE_MAX:
+        oldest = min(_openrouter_key_cache, key=lambda item: _openrouter_key_cache[item][0])
+        _openrouter_key_cache.pop(oldest, None)
     return result
 
 
