@@ -129,14 +129,6 @@ case "${1:-status}" in
   backup)
     "$LOCAL_BIN/spectra-alpha-backup"
     ;;
-  restore)
-    archive="${2:-}"
-    if [[ "$#" -ne 3 || "$3" != "--confirm" || -z "$archive" ]]; then
-      echo "Usage: spectra restore <archive-under-backups/> --confirm" >&2
-      exit 2
-    fi
-    "$LOCAL_BIN/spectra-alpha-restore" "$archive" --confirm
-    ;;
   update)
     subcommand="${2:-legacy}"
     case "$subcommand" in
@@ -183,7 +175,7 @@ PLAN
     esac
     ;;
   *)
-    echo "Usage: spectra {start|stop|restart|core-restart|status|logs|doctor|backup|restore <archive> --confirm|update [check|plan|apply|rollback]}"
+    echo "Usage: spectra {start|stop|restart|core-restart|status|logs|doctor|backup|update [check|plan|apply|rollback]}"
     exit 2
     ;;
 esac
