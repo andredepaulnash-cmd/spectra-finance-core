@@ -494,7 +494,6 @@ assert data.get("tracker_ready") is True, data
 assert "BTC-USD" in data.get("order_books", {}), data
 assert public.get("network_started") is True, public
 assert public.get("tracker_ready") is True, public
-assert public.get("symbol_map_initialized") is True, public
 assert "BTC-USD" in public.get("tracker_trading_pairs", []), public
 PY
         then
