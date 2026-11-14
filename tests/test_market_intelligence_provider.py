@@ -269,3 +269,21 @@ def test_cached_market_snapshot_recomputes_age_and_rejects_future_timestamps():
     assert refreshed.data["status"] == "DEGRADED"
     assert refreshed.data["decision_grade"] is False
     assert set(refreshed.data["future_sources"]) == {"ticker", "candles", "order_book"}
+
+
+@pytest.mark.asyncio
+async def test_cached_market_snapshot_summary_uses_real_line_breaks():
+    provider = MarketIntelligenceProvider()
+    client = FakeClient()
+    config = {
+        "market_connector_name": "kraken_paper_trade",
+        "market_trading_pair": "BTC-USD",
+        "market_data_max_age_seconds": 180,
+        "market_data_cache_ttl_seconds": 10,
+    }
+
+    await provider.execute(client, config)
+    cached = await provider.execute(client, config)
+
+    assert "\n" in cached.summary
+    assert "\\n" not in cached.summary
