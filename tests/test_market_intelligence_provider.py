@@ -26,6 +26,7 @@ class FakeMarketData:
         fail_book: bool = False,
         omit_book_timestamp: bool = False,
         future: bool = False,
+        invalid_candles: bool = False,
     ):
         now = time.time()
         stamp = now - 600 if stale else now + 3600 if future else now
@@ -59,7 +60,7 @@ class FakeMarketData:
                 98 + index * 0.1,
                 101 + index * 0.1,
                 97 + index * 0.1,
-                99 + index * 0.1,
+                0 if invalid_candles else 99 + index * 0.1,
                 10 + index,
             ]
             for index in range(20)
@@ -338,3 +339,21 @@ async def test_cache_pruning_keeps_lock_registered_for_waiting_requests():
     await asyncio.gather(first, second, third)
 
     assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_nonpositive_candle_closes_degrade_market_snapshot():
+    provider = MarketIntelligenceProvider()
+    result = await provider.execute(
+        FakeClient(invalid_candles=True),
+        {
+            "market_connector_name": "kraken_paper_trade",
+            "market_trading_pair": "BTC-USD",
+            "market_data_max_age_seconds": 180,
+        },
+    )
+
+    assert result.data["status"] == "DEGRADED"
+    assert result.data["decision_grade"] is False
+    assert result.data["sma20"] is None
+    assert "NO-TRADE DATA GUARD" in result.summary
