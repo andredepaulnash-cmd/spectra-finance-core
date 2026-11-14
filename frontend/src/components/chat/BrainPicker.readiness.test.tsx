@@ -31,6 +31,13 @@ const AGENTS: ChatAgentOption[] = [
     detail:
       "not reachable at http://localhost:11434/v1 — start it with `ollama serve`",
   },
+  {
+    key: "openrouter:",
+    label: "OpenRouter — Pick Model",
+    picker: true,
+    ready: false,
+    detail: "OpenRouter rejected OPENROUTER_API_KEY (HTTP 401); replace it in .env.",
+  },
   // No readiness at all: the backend could not probe, so it must still be
   // offered rather than silently withheld.
   { key: "codex", label: "ChatGPT Codex" },
@@ -91,6 +98,18 @@ describe("BrainPicker readiness", () => {
     expect(row).toBeTruthy();
     expect((row as HTMLButtonElement).disabled).toBe(true);
     expect(row!.textContent).toContain("ollama serve");
+
+    await click(row!);
+    expect(picked).toEqual([]);
+  });
+
+  it("blocks OpenRouter model selection when its API key is rejected", async () => {
+    await openMenu();
+
+    const row = rowFor("OpenRouter — Pick Model");
+    expect(row).toBeTruthy();
+    expect((row as HTMLButtonElement).disabled).toBe(true);
+    expect(row!.textContent).toContain("rejected OPENROUTER_API_KEY");
 
     await click(row!);
     expect(picked).toEqual([]);

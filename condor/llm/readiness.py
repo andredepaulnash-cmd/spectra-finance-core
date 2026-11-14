@@ -21,10 +21,12 @@ local server is a normal state (the user simply isn't running it), reported as
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -34,7 +36,10 @@ import httpx
 from condor.acp import ACP_COMMANDS
 from condor.acp.pydantic_ai_client import DEFAULT_BASE_URLS
 
-READY, UNVERIFIED, MISSING = "ready", "unverified", "missing"
+READY, UNVERIFIED, MISSING, INVALID = "ready", "unverified", "missing", "invalid"
+OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/key"
+_OPENROUTER_KEY_TTL = 60.0
+_OPENROUTER_KEY_CACHE_MAX = 256
 
 # Cloud providers Condor can address as "<prefix>:<model>", mapped to the env
 # var holding each key. Presence of the key = the provider is usable. Sourced
@@ -98,7 +103,11 @@ class Readiness:
     @property
     def usable(self) -> bool:
         """False only for MISSING — an unproven login must never block a pick."""
-        return self.state != MISSING
+        return self.state not in (MISSING, INVALID)
+
+
+# Fingerprint-keyed cache; raw OpenRouter credentials are never retained as keys.
+_openrouter_key_cache: dict[str, tuple[float, Readiness]] = {}
 
 
 def npx_packages_installed() -> set[str]:
@@ -272,8 +281,69 @@ def _key_readiness(base: str, env: dict[str, str]) -> Readiness:
     if env.get(var) or os.environ.get(var):
         return Readiness(READY, f"{var} is set")
     if base == "openrouter":
-        return Readiness(MISSING, "needs an API key (you can enter one here)")
+        return Readiness(MISSING, "needs an API key in .env or the local secret store")
     return Readiness(MISSING, f"needs {var} in .env")
+
+
+async def _openrouter_key_readiness(api_key: str) -> Readiness:
+    """Verify an OpenRouter key without exposing it or spending inference credits.
+
+    GET /api/v1/key is the provider's authenticated key-inspection endpoint.
+    Cache by a one-way fingerprint for one minute so opening several pickers
+    does not repeatedly validate the same credential.
+    """
+    key = api_key.strip()
+    if not key:
+        return Readiness(MISSING, "needs OPENROUTER_API_KEY in .env or the local secret store")
+
+    fingerprint = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    now = time.monotonic()
+    cached = _openrouter_key_cache.get(fingerprint)
+    if cached is not None and now - cached[0] < _OPENROUTER_KEY_TTL:
+        return cached[1]
+
+    timeout = httpx.Timeout(connect=2.0, read=4.0, write=2.0, pool=2.0)
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.get(
+                OPENROUTER_KEY_URL,
+                headers={"Authorization": f"Bearer {key}"},
+            )
+        if response.status_code == 200:
+            result = Readiness(READY, "OpenRouter API key verified")
+        elif response.status_code in (401, 403):
+            result = Readiness(
+                INVALID,
+                f"OpenRouter rejected OPENROUTER_API_KEY (HTTP {response.status_code}); replace it in .env or the local secret store",
+            )
+        elif response.status_code == 429:
+            result = Readiness(
+                UNVERIFIED,
+                "OpenRouter temporarily rate-limited key validation; retry shortly",
+            )
+        else:
+            result = Readiness(
+                UNVERIFIED,
+                f"OpenRouter key validation is temporarily unavailable (HTTP {response.status_code}); retry shortly",
+            )
+    except (httpx.HTTPError, OSError):
+        result = Readiness(
+            UNVERIFIED,
+            "Could not reach OpenRouter to verify the API key; retry when connectivity returns",
+        )
+
+    _openrouter_key_cache[fingerprint] = (time.monotonic(), result)
+    expired = [
+        cached_fingerprint
+        for cached_fingerprint, (cached_at, _) in _openrouter_key_cache.items()
+        if time.monotonic() - cached_at >= _OPENROUTER_KEY_TTL
+    ]
+    for cached_fingerprint in expired:
+        _openrouter_key_cache.pop(cached_fingerprint, None)
+    while len(_openrouter_key_cache) > _OPENROUTER_KEY_CACHE_MAX:
+        oldest = min(_openrouter_key_cache, key=lambda item: _openrouter_key_cache[item][0])
+        _openrouter_key_cache.pop(oldest, None)
+    return result
 
 
 async def probe_all(
@@ -300,6 +370,9 @@ async def probe_all(
             out[base] = _bridge_readiness(bridges[base])
         elif base in servers:
             out[base] = _local_readiness(base, servers[base])
+        elif base == "openrouter":
+            key = (env.get("OPENROUTER_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or "").strip()
+            out[base] = await _openrouter_key_readiness(key) if key else _key_readiness(base, env)
         elif base in CLOUD_KEY_ENVS:
             out[base] = _key_readiness(base, env)
         else:
