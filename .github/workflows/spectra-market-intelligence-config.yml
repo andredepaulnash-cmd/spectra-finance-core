@@ -5,6 +5,8 @@ on:
     paths:
       - agents/spectra/strategies/kraken_spot_market_intelligence/strategy.md
       - condor/agents/config.py
+      - condor/agents/engine.py
+      - condor/agents/providers/**
       - tests/test_spectra_kraken_market_intelligence_config.py
       - tests/test_market_intelligence_provider.py
       - .github/workflows/spectra-market-intelligence-config.yml
