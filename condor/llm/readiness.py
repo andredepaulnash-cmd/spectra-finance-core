@@ -94,9 +94,6 @@ def base_of(agent_key: str) -> str:
 class Readiness:
     """What a menu row needs: a state, a sentence, and any models behind it."""
 
-# Fingerprint-keyed cache; raw OpenRouter credentials are never retained as keys.
-_openrouter_key_cache: dict[str, tuple[float, Readiness]] = {}
-
     state: str  # READY | UNVERIFIED | MISSING
     detail: str  # human sentence; when not READY it names the fix
     models: list[str] = field(default_factory=list)  # local server models; [] elsewhere
@@ -105,6 +102,10 @@ _openrouter_key_cache: dict[str, tuple[float, Readiness]] = {}
     def usable(self) -> bool:
         """False only for MISSING — an unproven login must never block a pick."""
         return self.state not in (MISSING, INVALID)
+
+
+# Fingerprint-keyed cache; raw OpenRouter credentials are never retained as keys.
+_openrouter_key_cache: dict[str, tuple[float, Readiness]] = {}
 
 
 def npx_packages_installed() -> set[str]:
