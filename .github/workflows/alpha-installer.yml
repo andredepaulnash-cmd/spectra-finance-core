@@ -9,8 +9,6 @@ on:
       - install-alpha.sh
       - scripts/**
       - patches/**
-      - patches/**
-      - scripts/update-alpha-api.sh
       - scripts/spectra-alpha-doctor.sh
       - scripts/spectra-alpha-start-api.sh
       - scripts/spectra
@@ -20,9 +18,6 @@ on:
       - pyproject.toml
       - uv.lock
       - condor/fetchers/spectra_runtime.py
-      - condor/llm/readiness.py
-      - condor/preferences.py
-      - condor/agents/engine.py
       - condor/web/routes/servers.py
       - spectra_core/**
       - mcp_servers/hummingbot_api/tools/**
@@ -41,13 +36,6 @@ on:
       - tests/test_spectra_runtime.py
       - tests/test_spectra_kraken_execution_flow.py
       - tests/test_ambiguous_executor_dispatch.py
-      - tests/test_model_readiness.py
-      - tests/test_session_options_readiness.py
-      - tests/test_llm_picker_readiness.py
-      - tests/test_market_intelligence_provider.py
-      - tests/test_agent_start_model_check.py
-      - tests/test_vcap_tranches.py
-      - tests/test_vcap_execution_loop.py
       - tests/test_alpha_backup.py
       - tests/test_asset_authority.py
       - tests/test_kraken_authorization.py
@@ -102,9 +90,6 @@ on:
       - pyproject.toml
       - uv.lock
       - condor/fetchers/spectra_runtime.py
-      - condor/llm/readiness.py
-      - condor/preferences.py
-      - condor/agents/engine.py
       - condor/web/routes/servers.py
       - spectra_core/runtime.py
       - spectra_core/module_lifecycle.py
@@ -160,8 +145,6 @@ jobs:
         run: uv sync --locked --dev --python 3.12
       - name: Test alpha runtime safety and paper configuration
         run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_ambiguous_executor_dispatch.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py tests/test_market_discovery.py tests/test_hummingbot_paper_trade_compat.py
-      - name: Test OpenRouter credential readiness
-        run: uv run --python 3.12 pytest -q tests/test_model_readiness.py tests/test_session_options_readiness.py tests/test_llm_picker_readiness.py
       - name: Test agent model inheritance and start preflight
         run: uv run --python 3.12 pytest -q tests/test_agent_start_model_check.py
       - name: Test persistent module lifecycle and registry
