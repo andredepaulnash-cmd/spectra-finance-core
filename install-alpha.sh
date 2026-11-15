@@ -162,7 +162,7 @@ else
 fi
 
 # Persist the selected runtime so the updater never inspects a different engine.
-printf '%s\\n' "$COMPOSE_KIND" > "$INSTALL_ROOT/.container-runtime"
+printf '%s\n' "$COMPOSE_KIND" > "$INSTALL_ROOT/.container-runtime"
 chmod 600 "$INSTALL_ROOT/.container-runtime"
 
 say "Cloning the pinned Spectra Core alpha branch"
