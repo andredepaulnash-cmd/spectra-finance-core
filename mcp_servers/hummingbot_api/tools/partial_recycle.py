@@ -281,15 +281,6 @@ async def execute_partial_recycle(
     if manifest is None:
         raise ValueError("RECYCLE decision is missing immutable manifest")
 
-    session_controller_id = (controller_id or "").strip()
-    if not session_controller_id:
-        return {
-            "action": "PARTIAL_RECYCLE",
-            "executed": False,
-            "manifest_id": manifest.manifest_id,
-            "error": "Partial recycle requires Condor's exact session controller_id",
-        }
-
     authorized_connector = resolve_kraken_connector_name()
 
     if get_breaker_mode() == BreakerMode.HALTED:
@@ -370,6 +361,15 @@ async def execute_partial_recycle(
         existing = None
 
     if existing is None:
+        session_controller_id = (controller_id or "").strip()
+        if not session_controller_id:
+            return {
+                "action": "PARTIAL_RECYCLE",
+                "executed": False,
+                "manifest_id": manifest.manifest_id,
+                "sell_executor_id": manifest.sell_executor_id,
+                "error": "Partial recycle requires Condor's exact session controller_id",
+            }
         result = await client.executors.create_executor(
             executor_config={
                 "id": manifest.sell_executor_id,
