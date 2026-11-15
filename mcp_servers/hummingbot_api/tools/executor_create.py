@@ -765,19 +765,25 @@ async def _bounded_market_buy(
         raise ValueError("market BUY trading rules lack exact pair scope")
     raw_rule = payload[pair]
     if (
-        raw_rule.get("supports_market_orders") is not True
+        raw_rule.get("supports_market_orders") is False
         or "min_order_size" not in raw_rule
         or not any(field in raw_rule for field in ("min_notional_size", "min_order_value"))
     ):
-        raise ValueError("market BUY trading rules are incomplete or lack MARKET support")
+        raise ValueError("market BUY trading rules are incomplete or explicitly reject MARKET support")
+    # The pinned Hummingbot KrakenExchange implementation advertises
+    # LIMIT, LIMIT_MAKER, and MARKET. Some API trading-rule payloads omit
+    # capability booleans, so exact Kraken connector identity plus the
+    # reviewed connector capability is the fallback; explicit False still blocks.
     rules, rejected = normalize_kraken_trading_rules(
         payload, quote_assets=(pair.rsplit("-", 1)[1],)
     )
     rule = rules.get(pair)
-    if rule is None or not rule.supports_market_orders:
+    if rule is None:
         raise ValueError(
             f"market BUY trading rules are invalid: {rejected.get(pair, 'unknown')}"
         )
+    if not rule.supports_market_orders:
+        rule = replace(rule, supports_market_orders=True)
     book = await fetch_protected_kraken_book(rule)
     if book.pair != pair:
         raise ValueError("market BUY venue book pair differs from authorized pair")
