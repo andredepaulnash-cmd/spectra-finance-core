@@ -122,15 +122,29 @@ grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCE
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
 say "Checking existing Postgres and EMQX services before starting anything."
+# Resolve containers by their published service ports as well as the expected
+# Compose names. Older Alpha Compose revisions used a different EMQX container
+# name, so name-only inspection can miss a healthy broker and attempt a duplicate
+# listener on 127.0.0.1:1883.
+declare -A SUPPORT_IDS=()
 services_to_start=()
-for entry in "spectra-alpha-hummingbot-postgres:postgres" "spectra-alpha-hummingbot-broker:emqx"; do
-  container="${entry%%:*}"
-  service="${entry##*:}"
-  state="$(podman inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
-  if [[ "$state" == "running" ]]; then
-    say "$container is already running; leaving it untouched."
+for entry in "postgres:5432:spectra-alpha-hummingbot-postgres" "emqx:1883:spectra-alpha-hummingbot-broker"; do
+  service="${entry%%:*}"
+  remainder="${entry#*:}"
+  port="${remainder%%:*}"
+  expected_name="${remainder#*:}"
+  container_id="$(podman ps -q --filter "publish=$port" | head -n 1)"
+  if [[ -z "$container_id" ]]; then
+    state="$(podman inspect --format '{{.State.Status}}' "$expected_name" 2>/dev/null || true)"
+    if [[ "$state" == "running" ]]; then
+      container_id="$expected_name"
+    fi
+  fi
+  if [[ -n "$container_id" ]]; then
+    SUPPORT_IDS["$service"]="$container_id"
+    say "Found existing $service service on port $port ($container_id); leaving it untouched."
   else
-    say "$container is $([[ -n "$state" ]] && printf '%s' "$state" || printf 'absent'); it will be started."
+    say "No running $service service found on port $port; it will be started."
     services_to_start+=("$service")
   fi
 done
@@ -140,24 +154,33 @@ else
   say "Both supporting services are already running; no duplicate start requested."
 fi
 
-for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-broker; do
-  say "Waiting for $container health."
+for entry in "postgres:5432:spectra-alpha-hummingbot-postgres" "emqx:1883:spectra-alpha-hummingbot-broker"; do
+  service="${entry%%:*}"
+  remainder="${entry#*:}"
+  port="${remainder%%:*}"
+  expected_name="${remainder#*:}"
+  container_id="${SUPPORT_IDS[$service]:-}"
+  if [[ -z "$container_id" ]]; then
+    container_id="$(podman ps -q --filter "publish=$port" | head -n 1)"
+  fi
+  [[ -n "$container_id" ]] || container_id="$expected_name"
+  say "Waiting for $service health ($container_id)."
   healthy=false
   for _ in $(seq 1 90); do
-    status="$(podman inspect --format '{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
+    status="$(podman inspect --format '{{.State.Health.Status}}' "$container_id" 2>/dev/null || true)"
     if [[ "$status" == "healthy" ]]; then
       healthy=true
       break
     fi
     if [[ "$status" == "unhealthy" ]]; then
-      podman logs --tail 80 "$container" || true
-      die "$container reported unhealthy."
+      podman logs --tail 80 "$container_id" || true
+      die "$service reported unhealthy."
     fi
     sleep 2
   done
   [[ "$healthy" == true ]] || {
-    podman logs --tail 80 "$container" || true
-    die "$container did not become healthy within 180 seconds."
+    podman logs --tail 80 "$container_id" || true
+    die "$service did not become healthy within 180 seconds."
   }
 done
 
