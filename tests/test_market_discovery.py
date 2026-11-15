@@ -556,8 +556,19 @@ async def test_kraken_scan_persists_fingerprints_for_the_full_eligible_universe(
             self.saved.append((fingerprint.trading_pair, now))
 
     store = FingerprintStore()
+    candles = [
+        {
+            "timestamp": int(now // 86_400) * 86_400 - (90 - index) * 86_400,
+            "open": 100,
+            "high": 102,
+            "low": 98,
+            "close": 100 + index * 0.1,
+            "volume": 1_000,
+        }
+        for index in range(90)
+    ]
     client = type("Client", (), {
-        "market_data": FakeKrakenMarketData(),
+        "market_data": FakeKrakenMarketData(candles),
         "connectors": FakeKrakenConnectors(),
     })()
 
