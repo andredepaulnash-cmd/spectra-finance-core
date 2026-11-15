@@ -536,3 +536,43 @@ async def test_kraken_scan_excludes_pairs_that_cannot_take_the_20_usd_limit_seed
         ("kraken", "BTC-USD", "1h", 27),
         ("kraken", "BTC-USD", "1d", 92),
     ]
+
+
+
+@pytest.mark.asyncio
+async def test_kraken_scan_persists_fingerprints_for_the_full_eligible_universe():
+    now = 1_800_000_000.0
+
+    class FingerprintStore:
+        def __init__(self):
+            self.fingerprints = {}
+            self.saved = []
+
+        def load_fingerprint(self, trading_pair):
+            return self.fingerprints.get(trading_pair)
+
+        def save_fingerprint(self, fingerprint, *, now):
+            self.fingerprints[fingerprint.trading_pair] = fingerprint
+            self.saved.append((fingerprint.trading_pair, now))
+
+    store = FingerprintStore()
+    client = type("Client", (), {
+        "market_data": FakeKrakenMarketData(),
+        "connectors": FakeKrakenConnectors(),
+    })()
+
+    result = await scan_kraken_universe(
+        client,
+        top_n=10,
+        show_n=10,
+        min_volume_usd=1_000,
+        min_history_days=90,
+        min_median_daily_quote_volume_usd=0,
+        approved_pairs=(),
+        now=now,
+        fingerprint_store=store,
+    )
+
+    assert result["fingerprint_observations"] == 1
+    assert [pair for pair, _ in store.saved] == ["BTC-USD"]
+    assert store.fingerprints["BTC-USD"].last_seen_at == now
