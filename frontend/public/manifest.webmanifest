@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Condor",
-  "short_name": "Condor",
+  "name": "Spectra Finance",
+  "short_name": "Spectra",
   "description": "Portfolio, bots, agents and trading for Hummingbot.",
   "start_url": "/",
   "scope": "/",
