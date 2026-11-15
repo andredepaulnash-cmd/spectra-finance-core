@@ -119,9 +119,19 @@ if ! has node || ! has npm; then
 fi
 has node && has npm || die "Node.js/npm are required to build the Spectra dashboard."
 
-# Prefer Podman on Bazzite/Atomic hosts; Docker Compose is also supported.
+# Use one container runtime consistently for install, update, health checks and logs.
+# Bazzite/Atomic hosts prefer rootless Podman; conventional Linux may use Docker.
 COMPOSE_KIND=""
-if has docker && docker compose version >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+if [[ -e /run/ostree-booted ]] && has podman; then
+  podman info >/dev/null 2>&1 || die "Podman is installed but unavailable to this user. Enable the user's rootless Podman environment and rerun."
+  if ! has podman-compose; then
+    say "Installing the user-local Podman Compose provider"
+    uv tool install podman-compose
+    export PATH="$LOCAL_BIN:$PATH"
+  fi
+  has podman-compose || die "Could not install podman-compose."
+  COMPOSE_KIND="podman"
+elif has docker && docker compose version >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   COMPOSE_KIND="docker"
 elif has podman; then
   podman info >/dev/null 2>&1 || die "Podman is installed but unavailable to this user. Enable the user's rootless Podman environment and rerun."
@@ -150,6 +160,10 @@ else
   uv tool install podman-compose
   COMPOSE_KIND="podman"
 fi
+
+# Persist the selected runtime so the updater never inspects a different engine.
+printf '%s\\n' "$COMPOSE_KIND" > "$INSTALL_ROOT/.container-runtime"
+chmod 600 "$INSTALL_ROOT/.container-runtime"
 
 say "Cloning the pinned Spectra Core alpha branch"
 clone_or_reuse "$CORE_REPO" "$CORE_REF" "$CORE_DIR"
