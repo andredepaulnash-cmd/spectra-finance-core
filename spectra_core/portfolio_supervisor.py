@@ -361,6 +361,11 @@ async def run_portfolio_cycle(
         "accounting_state": accounting.get("state") if isinstance(accounting, Mapping) else "UNKNOWN",
         "allows_new_exposure": accounting_allows,
         "scan_as_of": scan_result.get("as_of") if isinstance(scan_result, Mapping) else None,
+        "fingerprint_observations": (
+            int(scan_result.get("fingerprint_observations", 0))
+            if isinstance(scan_result, Mapping)
+            else 0
+        ),
         "scan_candidate_count": 0,
         "new_entries_this_cycle": 0,
         "entries": [],
