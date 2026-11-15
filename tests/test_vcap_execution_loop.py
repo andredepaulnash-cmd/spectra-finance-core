@@ -381,7 +381,6 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
             client,
             decision=decision,
             governor=g,
-            controller_id="spectra.strategy_7",
         )
     )
 
