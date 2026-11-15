@@ -29,7 +29,7 @@
     "approved_for_live": false,
     "blockers": [
       "The Hummingbot package is pinned to 20260922, but its exact upstream source commit/build metadata is not recorded.",
-      "The API compose runtime still references hummingbot/hummingbot-api:latest rather than an immutable Spectra image digest.",
+      "The API compose runtime uses the mutable local tag localhost/spectra-finance/hummingbot-api:local rather than an immutable image digest.",
       "The merged GitHub revisions have not yet been rebuilt and semantically proven on the Bazzite runtime."
     ]
   }
