@@ -251,14 +251,9 @@ jobs:
                   env.write(f"{key}={value}\n")
           PY
       - name: Run the exact one-command in-place updater
-        id: alpha_updater
-        continue-on-error: true
         run: bash scripts/update-alpha-api.sh
         env:
           SPECTRA_ALPHA_CORE_REF: ${{ github.head_ref || github.ref_name }}
-      - name: Report updater outcome without blocking application acceptance
-        if: steps.alpha_updater.outcome == 'failure'
-        run: echo "::warning::The in-place updater failed; the clean install remains available for independent paper acceptance."
       - name: Wait for Hummingbot API after updater restart
         shell: bash
         run: |
