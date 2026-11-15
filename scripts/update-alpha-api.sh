@@ -126,33 +126,59 @@ say "Checking existing Postgres and EMQX services before starting anything."
 # human-readable Ports column is presentation-dependent and can omit/truncate
 # mappings; relying on it caused the updater to miss the already-running EMQX.
 find_running_container_for_port() {
-  local port="$1" expected_name="$2" state container_id ids id published
-  # Resolve deterministic Compose names from Podman's running-container list.
-  # This avoids relying on optional subcommands and version-specific inspect JSON.
-  ids="$(podman ps --filter "name=^/${expected_name}$" --format '{{.ID}}' 2>/dev/null || true)"
-  if [[ -n "$ids" ]]; then
-    id="$(head -n 1 <<<"$ids")"
-    state="$(podman inspect --format '{{.State.Status}}' "$id" 2>/dev/null || true)"
-    if [[ "$state" == "running" ]]; then
-      printf '%s\n' "$id"
-      return 0
-    fi
+  local port="$1" expected_name="$2" state ids id line name published
+  # Inspect the deterministic Compose name directly. Podman name-filter regexes
+  # differ across releases; the anchored /name/ filter missed live containers.
+  state="$(podman inspect --type container --format '{{.State.Status}}' "$expected_name" 2>/dev/null || true)"
+  if [[ "$state" == "running" ]]; then
+    printf '%s\\n' "$expected_name"
+    return 0
   fi
 
-  # Fallback: identify a differently named container by its published host port.
-  ids="$(podman ps -q)"
-  [[ -n "$ids" ]] || return 0
+  # Portable fallback: enumerate structured names/IDs and compare exact names.
+  ids="$(podman ps --format '{{.Names}}|{{.ID}}' 2>/dev/null || true)"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    name="${line%%|*}"
+    id="${line#*|}"
+    if [[ "$name" == "$expected_name" ]]; then
+      state="$(podman inspect --type container --format '{{.State.Status}}' "$id" 2>/dev/null || true)"
+      if [[ "$state" == "running" ]]; then
+        printf '%s\\n' "$id"
+        return 0
+      fi
+    fi
+  done <<<"$ids"
+
+  # Last fallback: inspect published port bindings as JSON, not human-readable
+  # 'podman port' output whose formatting varies by Podman version.
+  ids="$(podman ps -q 2>/dev/null || true)"
   while IFS= read -r id; do
     [[ -n "$id" ]] || continue
-    published="$(podman port "$id" 2>/dev/null || true)"
-    if grep -Eq -- "->[[:space:]]*(127[.]0[.]0[.]1|0[.]0[.]0[.]0):${port}([[:space:]]|$)" <<<"$published"; then
-      printf '%s\n' "$id"
+    published="$(podman inspect --type container --format '{{json .NetworkSettings.Ports}}' "$id" 2>/dev/null || true)"
+    if python3 - "$published" "$port" <<'PYPORT'
+import json
+import sys
+try:
+    bindings = json.loads(sys.argv[1] or "{}")
+except json.JSONDecodeError:
+    raise SystemExit(1)
+port = sys.argv[2]
+for entries in bindings.values():
+    for entry in entries or []:
+        if entry.get("HostPort") == port and entry.get("HostIp") in ("127.0.0.1", "0.0.0.0", "::", "::1"):
+            raise SystemExit(0)
+raise SystemExit(1)
+PYPORT
+    then
+      printf '%s\\n' "$id"
       return 0
     fi
   done <<<"$ids"
 
   # Fail closed if a host listener exists but no Podman container was identified.
   if command -v ss >/dev/null 2>&1 && ss -H -ltn "sport = :$port" 2>/dev/null | grep -q .; then
+    say "Podman running containers during failed lookup: ${ids:-<none>}" >&2
     die "Host port $port is already listening, but no running Podman container could be identified. Refusing to start a duplicate; inspect the existing service."
   fi
 }
