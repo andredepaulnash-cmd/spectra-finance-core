@@ -783,3 +783,26 @@ def test_governed_market_entry_dispatches_market_order_and_persists_policy(
     decision = g.get_decision(authorization.proposal.proposal_id)
     assert decision is not None
     assert decision.status == DecisionStatus.RECONCILED
+
+
+
+def test_live_market_buy_stays_gated_without_quote_sized_connector_support(
+    monkeypatch
+):
+    monkeypatch.setattr(executor_create.settings, "paper_only", False)
+
+    with pytest.raises(ValueError, match="quote-denominated spend bound"):
+        asyncio.run(
+            executor_create._bounded_market_buy(
+                Client("kraken"),
+                {
+                    "connector_name": "kraken",
+                    "trading_pair": "BTC-USD",
+                    "side": 1,
+                    "execution_strategy": "MARKET",
+                    "leverage": 1,
+                },
+                proposal_id="live-market-proposal",
+                fee_allowance_bps=60,
+            )
+        )
