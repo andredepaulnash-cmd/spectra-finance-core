@@ -115,12 +115,20 @@ import tempfile
 
 path = Path(sys.argv[1])
 lines = path.read_text(encoding="utf-8").splitlines()
-present = {
-    line.split("=", 1)[0].strip()
-    for line in lines
-    if "=" in line and not line.lstrip().startswith("#")
-}
+values = {}
+for line in lines:
+    if "=" in line and not line.lstrip().startswith("#"):
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'").lower()
+true_values = {"1", "true", "yes", "on"}
+if values.get("SPECTRA_PAPER_ONLY", "true") not in true_values:
+    raise SystemExit("STOP: Core .env is not configured for paper-only execution.")
+if values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "false") in true_values:
+    raise SystemExit("STOP: Core .env explicitly enables live execution.")
+present = set(values)
 defaults = (
+    ("SPECTRA_PAPER_ONLY", "true"),
+    ("SPECTRA_ALLOW_LIVE_EXECUTION", "false"),
     ("SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED", "true"),
     ("SPECTRA_PORTFOLIO_AUTORUN", "true"),
     ("SPECTRA_LIVE_AUTORUN", "false"),
