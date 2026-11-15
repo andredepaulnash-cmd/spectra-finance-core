@@ -521,11 +521,11 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
     die "Refusing to replace symlinked local Python source $source."
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-    old_blob="${CORE_PYTHON_OLD_BLOBS[$source]}"
+    old_blob="${CORE_PYTHON_OLD_BLOBS[$source]-}"
     if [[ "$worktree_blob" != "$expected_blob" && "|$old_blob|" != *"|$worktree_blob|"* ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
-  elif [[ -n "${CORE_PYTHON_OLD_BLOBS[$source]}" ]]; then
+  elif [[ -n "${CORE_PYTHON_OLD_BLOBS[$source]-}" ]]; then
     die "Expected existing Core source $source is missing; refusing an incomplete update."
   fi
 done
