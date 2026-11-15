@@ -212,6 +212,7 @@ export function SpectraOverview() {
   const krakenPaperActivity = (paperExecutors.data ?? []).filter(
     (executor) => executor.connector === "kraken_paper_trade",
   );
+  const portfolioSupervisor = runtime.data?.portfolio_supervisor;
   const accountingHealth = runtime.data?.accounting_health;
   const accountingTotals = accountingHealth?.totals;
   const accountingHealthy =
@@ -313,6 +314,52 @@ export function SpectraOverview() {
             Connected paper venues: {runtime.data.paper_connectors.map(() => "Kraken paper").join(", ")}
           </p>
         ) : null}
+      </section>
+
+      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 md:p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Autonomous portfolio supervisor</h2>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              Live status from the governed 83-position portfolio lifecycle
+            </p>
+          </div>
+          <span className={"rounded-full border px-2.5 py-1 text-[11px] font-medium " + statusTone(
+            portfolioSupervisor?.supervisor_state === "RUNNING"
+              ? "implemented"
+              : portfolioSupervisor?.supervisor_state === "BLOCKED"
+                ? "integration-in-progress"
+                : "unverified",
+          )}>
+            {portfolioSupervisor?.supervisor_state?.replaceAll("_", " ") ?? "Not verified"}
+          </span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border border-[var(--color-border)] p-3">
+            <p className="text-xs text-[var(--color-text-muted)]">Fleet target</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">{portfolioSupervisor?.target_active_positions ?? "—"}</p>
+          </div>
+          <div className="rounded-lg border border-[var(--color-border)] p-3">
+            <p className="text-xs text-[var(--color-text-muted)]">Active positions</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">{portfolioSupervisor?.active_positions ?? "—"}</p>
+          </div>
+          <div className="rounded-lg border border-[var(--color-border)] p-3">
+            <p className="text-xs text-[var(--color-text-muted)]">Open vacancies</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">{portfolioSupervisor?.vacancies ?? "—"}</p>
+          </div>
+          <div className="rounded-lg border border-[var(--color-border)] p-3">
+            <p className="text-xs text-[var(--color-text-muted)]">New entries this cycle</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">{portfolioSupervisor?.new_entries_this_cycle ?? "—"}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-[var(--color-text-muted)]">
+          {portfolioSupervisor?.blocked_reason ??
+            portfolioSupervisor?.last_error ??
+            portfolioSupervisor?.error ??
+            (portfolioSupervisor?.supervisor_state === "RUNNING"
+              ? "Supervisor is publishing portfolio state. Capital admission remains subject to the Governor and accounting gates."
+              : "No verified portfolio-supervisor cycle has been reported yet.")}
+        </p>
       </section>
 
       <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 md:p-5">
