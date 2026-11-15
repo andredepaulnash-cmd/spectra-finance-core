@@ -17,6 +17,7 @@ def scan_result(*, as_of=1_000.0, pair="BTC-USD", **candidate_changes):
         "trading_pair": pair,
         "quote_asset": "USD",
         "current_price": 100.0,
+        "minimum_order_quote": 1.0,
         "volume_24h_usd": 25_000_000.0,
         "selection_score": 87.5,
         "eligible": True,
