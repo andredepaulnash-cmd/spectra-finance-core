@@ -50,7 +50,7 @@ PAPER_CONNECTOR = "kraken_paper_trade"
 def _spectra_paper_dispatch(monkeypatch):
     configure_spectra_paper_dispatch(monkeypatch, partial_evidence.partial_tool.settings)
     configure_spectra_paper_dispatch(monkeypatch, whole_evidence.exit_tool.settings)
-    monkeypatch.setattr(partial_evidence.partial_tool, "wall_time", lambda: 2_000.0)
+    monkeypatch.setattr("spectra_core.partial_recycle.wall_time", lambda: 2_000.0)
 
 
 def make_governor(tmp_path, *, reserve_floor="0", clock=None):
