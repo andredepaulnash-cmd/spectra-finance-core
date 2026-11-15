@@ -178,8 +178,15 @@ def default_dependencies() -> PortfolioSupervisorDependencies:
     from spectra_core.market_discovery import scan_kraken_universe
     from spectra_core.runtime_scheduler import RuntimeSchedulerPolicy
 
+    async def scan_with_asset_memory(client: Any, **kwargs: Any) -> dict[str, Any]:
+        return await scan_kraken_universe(
+            client,
+            fingerprint_store=get_vcap_runtime_store(),
+            **kwargs,
+        )
+
     return PortfolioSupervisorDependencies(
-        scan=scan_kraken_universe,
+        scan=scan_with_asset_memory,
         write_discovery=write_discovered_kraken_assets,
         load_assets=load_approved_kraken_assets,
         run_vcap_tick=run_vcap_scheduler_tick,
