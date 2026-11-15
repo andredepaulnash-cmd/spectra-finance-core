@@ -1,9 +1,10 @@
-"""Governor-gated admission from the live Kraken mean-reversion shortlist.
+"""Governor-gated admission from the fresh Kraken mean-reversion shortlist.
 
-This is an explicit operator-triggered paper-entry reservation, not an order
-dispatcher. It accepts only a fresh candidate from the scanner's own
-mean_reversion_candidates list, requires the separate paper asset allowlist,
-and reserves exactly the configured $20 seed through CapitalGovernor.
+The autonomous portfolio supervisor calls this for each eligible fleet
+vacancy. This function reserves exactly one $20 seed through CapitalGovernor;
+it never creates an executor or dispatches an order. It accepts only a fresh
+candidate from the scanner's own mean_reversion_candidates list and requires
+the separate paper asset allowlist before reserving capital.
 """
 from __future__ import annotations
 
