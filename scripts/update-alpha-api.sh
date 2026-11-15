@@ -133,7 +133,7 @@ for entry in "postgres:5432:spectra-alpha-hummingbot-postgres" "emqx:1883:spectr
   remainder="${entry#*:}"
   port="${remainder%%:*}"
   expected_name="${remainder#*:}"
-  container_id="$(podman ps -q --filter "publish=$port" | head -n 1)"
+  container_id="$(podman ps --format '{{.ID}} {{.Ports}}' | awk -v port="$port" 'index($0, ":" port "->") {print $1; exit}')"
   if [[ -z "$container_id" ]]; then
     state="$(podman inspect --format '{{.State.Status}}' "$expected_name" 2>/dev/null || true)"
     if [[ "$state" == "running" ]]; then
@@ -161,7 +161,7 @@ for entry in "postgres:5432:spectra-alpha-hummingbot-postgres" "emqx:1883:spectr
   expected_name="${remainder#*:}"
   container_id="${SUPPORT_IDS[$service]:-}"
   if [[ -z "$container_id" ]]; then
-    container_id="$(podman ps -q --filter "publish=$port" | head -n 1)"
+    container_id="$(podman ps --format '{{.ID}} {{.Ports}}' | awk -v port="$port" 'index($0, ":" port "->") {print $1; exit}')"
   fi
   [[ -n "$container_id" ]] || container_id="$expected_name"
   say "Waiting for $service health ($container_id)."
