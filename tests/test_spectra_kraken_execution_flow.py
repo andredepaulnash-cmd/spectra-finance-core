@@ -619,3 +619,83 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
         )
     finally:
         await client.close()
+
+
+
+def test_market_buy_sizes_from_fresh_ask_depth_without_price_cap():
+    from spectra_core.execution_policy import build_protected_buy_market_config
+    from spectra_core.kraken_market_fabric import KrakenTradingRule
+
+    rule = KrakenTradingRule(
+        trading_pair="BTC-USD",
+        min_order_size=D("0.00001"),
+        min_notional_size=D("1"),
+        min_order_value=D("1"),
+        min_price_increment=D("0.01"),
+        min_base_amount_increment=D("0.00001"),
+        min_quote_amount_increment=D("0.01"),
+        supports_limit_orders=True,
+        supports_market_orders=True,
+    )
+    result = build_protected_buy_market_config(
+        {
+            "type": "order_executor",
+            "connector_name": "kraken_paper_trade",
+            "trading_pair": "BTC-USD",
+            "side": 1,
+            "execution_strategy": "MARKET",
+            "leverage": 1,
+        },
+        trading_rule=rule,
+        asks=((D("94"), D("0.1")), (D("95"), D("0.5"))),
+        best_ask=D("94"),
+        market_observed_at=1000,
+        now=1001,
+        authorized_quote_budget=D("50"),
+        fee_allowance_bps=D("10"),
+        connector_name="kraken_paper_trade",
+    )
+
+    assert result.executor_config["execution_strategy"] == "MARKET"
+    assert "price" not in result.executor_config
+    assert D(result.executor_config["amount"]) == result.amount_base
+    assert result.amount_base > D("0.1")
+    assert result.estimated_total_quote <= D("50")
+    assert result.estimated_principal_quote > D("0")
+    assert result.authorized_quote_budget == D("50")
+
+
+def test_market_buy_refuses_venues_without_market_support():
+    from spectra_core.execution_policy import build_protected_buy_market_config
+    from spectra_core.kraken_market_fabric import KrakenTradingRule
+
+    rule = KrakenTradingRule(
+        trading_pair="BTC-USD",
+        min_order_size=D("0.00001"),
+        min_notional_size=D("1"),
+        min_order_value=D("1"),
+        min_price_increment=D("0.01"),
+        min_base_amount_increment=D("0.00001"),
+        min_quote_amount_increment=D("0.01"),
+        supports_limit_orders=True,
+        supports_market_orders=False,
+    )
+    with pytest.raises(ValueError, match="does not support MARKET"):
+        build_protected_buy_market_config(
+            {
+                "type": "order_executor",
+                "connector_name": "kraken_paper_trade",
+                "trading_pair": "BTC-USD",
+                "side": 1,
+                "execution_strategy": "MARKET",
+                "leverage": 1,
+            },
+            trading_rule=rule,
+            asks=((D("94"), D("1")),),
+            best_ask=D("94"),
+            market_observed_at=1000,
+            now=1001,
+            authorized_quote_budget=D("50"),
+            fee_allowance_bps=D("10"),
+            connector_name="kraken_paper_trade",
+        )
