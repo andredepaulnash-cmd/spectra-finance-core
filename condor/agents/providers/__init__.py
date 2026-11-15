@@ -17,6 +17,7 @@ def _auto_register() -> None:
     """Import built-in provider modules."""
     from . import drift  # noqa: F401
     from . import executors  # noqa: F401
+    from . import market_intelligence  # noqa: F401
     from . import positions  # noqa: F401
 
 
