@@ -263,6 +263,43 @@ def persist_portfolio_status(status: Mapping[str, Any]) -> Path:
     return path
 
 
+def get_portfolio_supervisor_status() -> dict[str, Any]:
+    """Return the latest persisted supervisor status for the read-only dashboard."""
+    path = spectra_state_dir() / "portfolio_supervisor_state.json"
+    if path.is_symlink():
+        return {
+            "supervisor_state": "UNAVAILABLE",
+            "error": "portfolio supervisor status path must not be a symlink",
+        }
+    if not path.is_file():
+        return {
+            "supervisor_state": "NOT_STARTED",
+            "updated_at": None,
+            "error": "portfolio supervisor has not published a status yet",
+        }
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("Could not read persisted portfolio supervisor status")
+        return {
+            "supervisor_state": "UNAVAILABLE",
+            "error": "persisted portfolio supervisor status is unreadable",
+        }
+    if not isinstance(raw, dict):
+        return {
+            "supervisor_state": "UNAVAILABLE",
+            "error": "persisted portfolio supervisor status has an invalid shape",
+        }
+    result = dict(raw)
+    if result.get("blocked_reason"):
+        result["supervisor_state"] = "BLOCKED"
+    elif result.get("last_error"):
+        result["supervisor_state"] = "ERROR"
+    else:
+        result["supervisor_state"] = "RUNNING"
+    return result
+
+
 async def run_portfolio_cycle(
     client: Any,
     *,
