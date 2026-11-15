@@ -34,7 +34,7 @@ def _write_agent(root, slug, *, body="Body.", **frontmatter):
 def registry(tmp_path, monkeypatch):
     """A registry containing Condor and one specialist, like the real one."""
     monkeypatch.setenv("CONDOR_AGENTS_ROOT", str(tmp_path))
-    _write_agent(tmp_path, CHAT_SLUG, name="Condor", agent_key="claude-acp:sonnet")
+    _write_agent(tmp_path, CHAT_SLUG, name="Spectra Finance", agent_key="claude-acp:sonnet")
     _write_agent(
         tmp_path, "brigado", name="Brigado", when_to_consult="BRL market making"
     )
@@ -93,18 +93,18 @@ def test_chat_instructions_are_the_coordinator_text(registry, monkeypatch, slug)
 
     The chat's subprocess now carries its own slug (it needs it to scope memory
     and skills), so keying the branch on the raw slug would hand Condor the
-    specialist framing — with ``identity_header``'s "You are NOT Condor" in it.
+    specialist framing — with ``identity_header``'s "You are NOT Spectra Finance" in it.
     """
     text = _instructions(monkeypatch, slug)
-    assert text.startswith("Condor exposes reusable **skills**")
-    assert "You are NOT Condor" not in text
+    assert text.startswith("Spectra Finance exposes reusable **skills**")
+    assert "You are NOT Spectra Finance" not in text
     assert "[AGENTS — delegate domain work to one of these]" in text
 
 
 def test_specialist_instructions_still_assert_their_own_identity(registry, monkeypatch):
     text = _instructions(monkeypatch, "brigado")
-    assert "You are NOT Condor" in text
-    assert not text.startswith("Condor exposes reusable **skills**")
+    assert "You are NOT Spectra Finance" in text
+    assert not text.startswith("Spectra Finance exposes reusable **skills**")
 
 
 def test_settings_specialist_slug_only_names_specialists():
@@ -138,7 +138,7 @@ def test_condor_is_a_real_record_in_the_agent_store(monkeypatch):
 
     agent = AgentStore().get(CHAT_SLUG)
     assert agent is not None
-    assert agent.name == "Condor"
+    assert agent.name == "Spectra Finance"
     assert agent.source == _REPO_ROOT / "agents" / CHAT_SLUG / "AGENT.md"
     assert agent.instructions, "AGENT.md body is the chat's system prompt"
     # Not a routing target for specialists: it is the coordinator, not a domain
@@ -247,7 +247,7 @@ def test_excluding_by_string_still_drops_exactly_that_slug(registry):
 def test_the_reserved_slug_cannot_be_created_or_deleted(registry):
     store = AgentStore()
     with pytest.raises(ValueError, match="reserved"):
-        store.create(name="Condor")
+        store.create(name="Spectra Finance")
     with pytest.raises(ValueError, match="cannot be deleted"):
         store.delete(CHAT_SLUG)
     # Still there afterwards.
@@ -257,9 +257,9 @@ def test_the_reserved_slug_cannot_be_created_or_deleted(registry):
 def test_identity_header_does_not_contradict_itself_for_condor():
     from condor.agents.agent import identity_header
 
-    header = identity_header(CHAT_SLUG, "Condor")
-    assert "You ARE Condor" in header
-    assert "You are NOT Condor" not in header
+    header = identity_header(CHAT_SLUG, "Spectra Finance")
+    assert "You ARE Spectra Finance" in header
+    assert "You are NOT Spectra Finance" not in header
     assert "coordinator" in header
 
 
