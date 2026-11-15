@@ -467,9 +467,19 @@ say "Creating the initial consistent paper-state backup."
 if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   # shellcheck disable=SC1091
   . "$HOME/.nvm/nvm.sh"
-  nvm use 22 >/dev/null
+  current_node="$(node --version 2>/dev/null || true)"
+  if [[ "$current_node" =~ ^v22\. ]]; then
+    : # CI/setup-node or the user's PATH already provides the reviewed Node 22 runtime.
+  elif nvm ls 22 >/dev/null 2>&1; then
+    nvm use 22 >/dev/null
+  else
+    nvm install 22 >/dev/null
+    nvm use 22 >/dev/null
+  fi
 fi
 command -v npm >/dev/null 2>&1 || die "npm is required to rebuild the Spectra dashboard."
+node_major="$(node --version 2>/dev/null || true)"
+[[ "$node_major" =~ ^v22\. ]] || die "Node.js 22 is required for the Spectra dashboard build; found ${node_major:-unavailable}."
 cd "$CORE_DIR/frontend"
 if [[ ! -f node_modules/.package-lock.json || package-lock.json -nt node_modules/.package-lock.json ]]; then
   say "Synchronizing the existing frontend dependencies."
