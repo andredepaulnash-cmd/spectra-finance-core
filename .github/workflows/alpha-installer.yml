@@ -179,7 +179,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
       - name: Run the public one-command installer
         run: bash install-alpha.sh
         env:
@@ -253,6 +253,25 @@ jobs:
       - name: Report updater outcome without blocking application acceptance
         if: steps.alpha_updater.outcome == 'failure'
         run: echo "::warning::The in-place updater failed; the clean install remains available for independent paper acceptance."
+      - name: Wait for Hummingbot API after updater restart
+        shell: bash
+        run: |
+          API_ENV="$HOME/SpectraFinance-Alpha/spectra-hummingbot-api/.env"
+          API_USER="$(sed -n 's/^USERNAME=//p' "$API_ENV" | head -n 1)"
+          API_PASS="$(sed -n 's/^PASSWORD=//p' "$API_ENV" | head -n 1)"
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail --max-time 3 -u "$API_USER:$API_PASS" http://127.0.0.1:8000/accounts/ >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          [[ "$ready" == true ]] || {
+            "$HOME/.local/bin/spectra" status || true
+            exit 1
+          }
+          echo "Hummingbot API authenticated readiness confirmed after updater restart."
       - name: Verify governed Kraken paper order, fill, accounting, and restart recovery
         env:
           SPECTRA_CI_PAPER_EXECUTION: "1"
