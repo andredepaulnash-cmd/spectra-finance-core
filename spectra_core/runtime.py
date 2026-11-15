@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
@@ -10,17 +11,63 @@ from .accounting_health import AccountingHealthSupervisor
 from .capital_governor import CapitalGovernor, validate_capital_policy
 from .economic_position import EconomicPositionLedger
 from .models import BreakerMode, CapitalPolicy
+from .module_lifecycle import ModuleLifecycleStore
 from .runtime_scheduler import RuntimeSchedulerStore
 from .vcap_runtime import VCAPRuntimeStore
 from .vcap_state import VCAPStateStore
 
 
-def spectra_state_dir() -> Path:
+def spectra_paper_only_enabled() -> bool:
+    """Resolve the paper-only boundary, defaulting Spectra agents to paper.
+
+    An explicit operator setting always wins. When the setting is absent,
+    a process bound to the Spectra agent is paper-only by default; unrelated
+    Condor processes retain their legacy behavior. Invalid explicit values
+    fail closed rather than silently selecting either mode.
+    """
+    configured = os.getenv("SPECTRA_PAPER_ONLY")
+    agent_slug = os.getenv("CONDOR_AGENT_SLUG", "").strip().lower()
+    if configured is None:
+        return agent_slug == "spectra"
+
+    value = configured.strip().lower()
+    if value not in {"1", "true", "yes", "0", "false", "no"}:
+        raise RuntimeError("SPECTRA_PAPER_ONLY must be an explicit boolean")
+    enabled = value in {"1", "true", "yes"}
+    if agent_slug == "spectra" and not enabled:
+        allow_live = os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false").strip().lower()
+        if allow_live not in {"1", "true", "yes"}:
+            raise RuntimeError(
+                "Spectra live execution is disabled in this build; "
+                "SPECTRA_ALLOW_LIVE_EXECUTION requires separate explicit authorization"
+            )
+    return enabled
+
+
+def spectra_live_state_dir() -> Path:
+    """Resolve the live state directory without ever reusing it for paper data."""
     override = (os.getenv("SPECTRA_STATE_DIR") or "").strip()
     if override:
         return Path(override).expanduser()
-
     return Path(__file__).resolve().parent.parent / "data" / "spectra"
+
+
+def spectra_state_dir() -> Path:
+    """Resolve an isolated state directory for the currently selected mode."""
+    if not spectra_paper_only_enabled():
+        return spectra_live_state_dir()
+
+    override = (os.getenv("SPECTRA_PAPER_STATE_DIR") or "").strip()
+    paper_dir = (
+        Path(override).expanduser()
+        if override
+        else Path(__file__).resolve().parent.parent / "data" / "spectra-paper"
+    )
+    if paper_dir.resolve() == spectra_live_state_dir().resolve():
+        raise RuntimeError(
+            "Spectra paper state directory must be separate from live state"
+        )
+    return paper_dir
 
 
 def get_breaker_mode() -> BreakerMode:
@@ -33,6 +80,11 @@ def get_breaker_mode() -> BreakerMode:
     Missing, malformed, or unknown state fails closed as HALTED.
     """
     path = spectra_state_dir() / "breaker_state.json"
+
+    if not path.is_file() and spectra_paper_only_enabled():
+        # Reuse the operator's current breaker setting as a read-only fallback;
+        # any paper-specific breaker file takes precedence and stays isolated.
+        path = spectra_live_state_dir() / "breaker_state.json"
 
     if not path.is_file():
         return BreakerMode.HALTED
@@ -57,6 +109,12 @@ def load_capital_policy() -> CapitalPolicy:
     """Load and validate Spectra's capital policy without mutating state."""
     state_dir = spectra_state_dir()
     policy_path = state_dir / "capital_policy.json"
+
+    if not policy_path.is_file() and spectra_paper_only_enabled():
+        # Policy limits are configuration, not portfolio state. Reuse the
+        # operator's existing validated policy read-only when no paper override
+        # exists; every paper ledger/database remains in the paper state dir.
+        policy_path = spectra_live_state_dir() / "capital_policy.json"
 
     if not policy_path.is_file():
         raise RuntimeError(
@@ -142,6 +200,84 @@ def get_accounting_health_supervisor() -> AccountingHealthSupervisor:
     )
 
 
+def get_spectra_accounting_health_snapshot(*, now: float | None = None) -> dict:
+    """Return a read-only aggregate of durable active-position reconciliation health.
+
+    This is an observability surface only. It never refreshes exchange data or
+    grants capital authority; stale/missing/conflicted watermarks remain blocked.
+    """
+    timestamp = time.time() if now is None else float(now)
+    ledger = get_economic_position_ledger()
+    supervisor = get_accounting_health_supervisor()
+    position_ids = ledger.list_active_position_ids()
+
+    if not position_ids:
+        return {
+            "state": "NO_ACTIVE_POSITIONS",
+            "active_positions": 0,
+            "allows_new_exposure": True,
+            "checked_at": timestamp,
+            "positions": [],
+        }
+
+    decisions = [
+        supervisor.assess(position_id=position_id, now=timestamp)
+        for position_id in position_ids
+    ]
+    states = {decision.state.value for decision in decisions}
+    if "CONFLICT" in states:
+        aggregate_state = "CONFLICT"
+    elif "HOLD" in states:
+        aggregate_state = "HOLD"
+    elif "STALE" in states:
+        aggregate_state = "STALE"
+    else:
+        aggregate_state = "HEALTHY"
+
+    return {
+        "state": aggregate_state,
+        "active_positions": len(decisions),
+        "allows_new_exposure": all(
+            decision.allows_live_mutation(now=timestamp)
+            for decision in decisions
+        ),
+        "checked_at": timestamp,
+        "totals": {
+            "known_orders": sum(item.known_orders for item in decisions),
+            "bound_orders": sum(item.bound_orders for item in decisions),
+            "confirmed_fills": sum(item.confirmed_fills for item in decisions),
+            "ledgered_fills": sum(item.ledgered_fills for item in decisions),
+            "unresolved_orders": sum(
+                len(item.unresolved_order_ids) for item in decisions
+            ),
+            "unresolved_trades": sum(
+                len(item.unresolved_trade_ids) for item in decisions
+            ),
+        },
+        "positions": [
+            {
+                "state": item.state.value,
+                "fully_reconciled": item.fully_reconciled,
+                "age_seconds": item.age_seconds,
+                "last_success_at": item.last_success_at,
+                "proposal_count": item.proposal_count,
+                "known_orders": item.known_orders,
+                "bound_orders": item.bound_orders,
+                "confirmed_fills": item.confirmed_fills,
+                "ledgered_fills": item.ledgered_fills,
+                "unresolved_orders": len(item.unresolved_order_ids),
+                "unresolved_trades": len(item.unresolved_trade_ids),
+            }
+            for item in decisions
+        ],
+    }
+
+
+@lru_cache(maxsize=1)
+def get_spectra_module_lifecycle_store() -> ModuleLifecycleStore:
+    return ModuleLifecycleStore(spectra_state_dir() / "module_lifecycle.sqlite3")
+
+
 @lru_cache(maxsize=1)
 def get_vcap_state_store() -> VCAPStateStore:
     return VCAPStateStore(spectra_state_dir() / "vcap_state.sqlite3")
@@ -168,10 +304,23 @@ def get_capital_governor() -> CapitalGovernor:
     return CapitalGovernor(db_path, policy)
 
 
+def get_dust_lifecycle(*, governor=None):
+    """Read the rollout gate on each admission; never enable it implicitly."""
+    from .dust_lifecycle import DustLifecycle
+
+    enabled = (os.getenv("SPECTRA_DUST_LIFECYCLE_ENABLED") or "").strip() == "1"
+    return DustLifecycle(
+        ledger=get_economic_position_ledger(),
+        governor=governor or get_capital_governor(),
+        enabled=enabled,
+    )
+
+
 def reset_runtime_cache() -> None:
     get_capital_governor.cache_clear()
     get_economic_position_ledger.cache_clear()
     get_accounting_health_supervisor.cache_clear()
+    get_spectra_module_lifecycle_store.cache_clear()
     get_vcap_state_store.cache_clear()
     get_vcap_runtime_store.cache_clear()
     get_runtime_scheduler_store.cache_clear()

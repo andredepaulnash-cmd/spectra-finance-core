@@ -37,7 +37,7 @@ interface ChatInputProps {
   onAbort?: () => void;
   /** Take the caret on mount — the workspace lands the user in a composer. */
   autoFocus?: boolean;
-  /** Who the user is writing to. Defaults to Condor, the chat assistant. */
+  /** Who the user is writing to. Defaults to Spectra Intelligence. */
   placeholder?: string;
   /**
    * Controls for *this* conversation, at the left edge of the box, before the
@@ -72,7 +72,7 @@ export function ChatInput({
   isStreaming,
   onAbort,
   autoFocus,
-  placeholder = "Ask Condor...",
+  placeholder = "Ask Spectra Intelligence...",
   leading,
   draftKey,
 }: ChatInputProps) {

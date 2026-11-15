@@ -2,6 +2,7 @@ import {
   Bot,
   Brain,
   Droplets,
+  Gauge,
   Settings,
   Swords,
   Wallet,
@@ -36,12 +37,13 @@ import {
  * redirects to `/bots`.
  */
 export const NAV_ITEMS = [
-  { to: "/", icon: Brain, label: "Agents" },
+  { to: "/", icon: Brain, label: "Intelligence" },
+  { to: "/overview", icon: Gauge, label: "Overview" },
   { to: "/portfolio", icon: Wallet, label: "Portfolio" },
   { to: "/trade", icon: Swords, label: "Trade" },
   { to: "/dex", icon: Droplets, label: "DEX" },
-  { to: "/bots", icon: Bot, label: "Bots" },
-  { to: "/routines", icon: Zap, label: "Routines" },
+  { to: "/bots", icon: Bot, label: "Strategies" },
+  { to: "/routines", icon: Zap, label: "Workflows" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 
@@ -64,4 +66,4 @@ export const NAV_ITEMS = [
  * route with a body any more (FEAT-116): a layout rule for it would be a rule
  * about a redirect. What it used to draw is `/bots`, which is on this list.
  */
-export const FULL_BLEED_ROUTES = ["/", "/bots", "/routines"];
+export const FULL_BLEED_ROUTES = ["/", "/overview", "/bots", "/routines"];

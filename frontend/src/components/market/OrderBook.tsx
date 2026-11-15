@@ -30,10 +30,14 @@ function priceDecimals(levels: OrderBookLevel[]): number {
 
 export function OrderBook({ server, connector, pair }: OrderBookProps) {
   // REST initial fetch
-  const { data } = useQuery<OrderBookResponse>({
+  const { data, error, isError, isLoading, refetch } = useQuery<OrderBookResponse>({
     queryKey: ["order-book", server, connector, pair],
     queryFn: () => api.getOrderBook(server, connector, pair, LEVELS),
     enabled: !!server && !!connector && !!pair,
+    staleTime: 3_000,
+    refetchInterval: 5_000,
+    retry: 1,
+    retryDelay: 0,
   });
 
   // WS live updates — writes to the same ["order-book", ...] query key
@@ -106,6 +110,24 @@ export function OrderBook({ server, connector, pair }: OrderBookProps) {
     );
   }
 
+  if (isError && !data) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
+        <p className="text-sm font-semibold text-[var(--color-text)]">Market feed unavailable</p>
+        <p role="alert" className="max-w-sm text-xs text-[var(--color-text-muted)]">
+          {error instanceof Error ? error.message : `Could not load ${connector} ${pair} order book.`}
+        </p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-1 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--color-surface-hover)]"
+        >
+          Retry market feed
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col">
       {/* Header */}
@@ -124,7 +146,7 @@ export function OrderBook({ server, connector, pair }: OrderBookProps) {
 
       {!data ? (
         <div className="flex flex-1 items-center justify-center text-xs text-[var(--color-text-muted)]">
-          Loading...
+          {isLoading ? "Connecting to market feed…" : "Waiting for market data…"}
         </div>
       ) : (
         <div className="flex flex-col overflow-hidden">

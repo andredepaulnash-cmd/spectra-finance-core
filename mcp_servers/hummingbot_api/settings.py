@@ -7,12 +7,16 @@ from pathlib import Path
 
 import aiohttp
 import yaml
+from dotenv import find_dotenv, load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
 from mcp_servers._profiles import parse_profile_flags
 from mcp_servers.hummingbot_api.exceptions import ConfigurationError
+from spectra_core.runtime import spectra_paper_only_enabled
 
-CONFIG_DIR = Path.home() / ".hummingbot_mcp"
+load_dotenv(find_dotenv())
+
+CONFIG_DIR = Path(os.getenv("HUMMINGBOT_MCP_CONFIG_DIR", str(Path.home() / ".hummingbot_mcp"))).expanduser()
 SERVER_CONFIG_PATH = CONFIG_DIR / "server.yml"
 
 #: Default tool profile (FEAT-066). ``full`` on purpose: this server is also run
@@ -70,6 +74,7 @@ class Settings(BaseModel):
     api_password: str = Field(default="admin")
     server_name: str = Field(default="default")
     default_account: str = Field(default="master_account")
+    paper_only: bool = Field(default=False)
 
     # Host-generated Condor agent identity for this MCP seat.
     # Empty means this process was not spawned for a bound specialist.
@@ -134,6 +139,7 @@ def get_settings() -> Settings:
             api_username=server_config.username,
             api_password=server_config.password,
             server_name=server_config.name,
+            paper_only=spectra_paper_only_enabled(),
             agent_slug=os.getenv("CONDOR_AGENT_SLUG", ""),
             connection_timeout=float(os.getenv("HUMMINGBOT_TIMEOUT", "30.0")),
             max_retries=int(os.getenv("HUMMINGBOT_MAX_RETRIES", "3")),

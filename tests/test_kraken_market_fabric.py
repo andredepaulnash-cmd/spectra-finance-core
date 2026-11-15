@@ -233,3 +233,45 @@ async def test_collect_kraken_universe_rejects_nonpositive_depth():
 
     with pytest.raises(ValueError, match="order_book_depth"):
         await collect_kraken_universe(client, order_book_depth=0)
+
+
+def test_kraken_xbt_ticker_and_rule_symbols_normalize_to_btc_pair():
+    from spectra_core.kraken_market_fabric import (
+        normalize_kraken_tickers,
+        normalize_kraken_trading_rules,
+    )
+
+    tickers, ticker_rejected, _ = normalize_kraken_tickers(
+        {
+            "tickers": {
+                "kraken": {
+                    "XBT-USD": {
+                        "price": "65000",
+                        "base_volume": "10",
+                        "quote_volume": "650000",
+                        "timestamp": 1_800_000_000,
+                    }
+                }
+            }
+        }
+    )
+    rules, rule_rejected = normalize_kraken_trading_rules(
+        {
+            "XBT-USD": {
+                "min_order_size": "0.0001",
+                "min_notional_size": "1",
+                "min_order_value": "1",
+                "min_price_increment": "0.01",
+                "min_base_amount_increment": "0.0001",
+                "min_quote_amount_increment": "0.01",
+                "supports_limit_orders": True,
+                "supports_market_orders": True,
+            }
+        }
+    )
+
+    assert ticker_rejected == {}
+    assert rule_rejected == {}
+    assert set(tickers) == {"BTC-USD"}
+    assert set(rules) == {"BTC-USD"}
+    assert tickers["BTC-USD"].price == Decimal("65000")

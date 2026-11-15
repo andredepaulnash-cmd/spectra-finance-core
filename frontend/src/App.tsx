@@ -22,6 +22,7 @@ import { Login } from "@/pages/Login";
 import { Portfolio } from "@/pages/Portfolio";
 import { Routines } from "@/pages/Routines";
 import { Settings } from "@/pages/Settings";
+import { SpectraOverview } from "@/pages/SpectraOverview";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -81,6 +82,7 @@ export default function App() {
                 }
               >
                 <Route path="/" element={<Agents />} />
+                <Route path="/overview" element={<SpectraOverview />} />
                 {/* What every agent is doing is the conversation's Execution
                     panel now, read owner first (FEAT-114) — so this address is
                     a redirect into it rather than a page. Kept rather than

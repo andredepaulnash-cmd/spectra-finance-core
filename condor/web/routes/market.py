@@ -582,3 +582,90 @@ async def get_token_symbol(
         raise HTTPException(status_code=400, detail="Invalid token address")
 
     return {"mint": mint, "symbol": await fetch_token_symbol(mint, network)}
+
+
+# Public market discovery is independent of the selected paper account. It reads
+# public exchange market data only and never creates or authorizes orders.
+_discovery_cache: dict[str, tuple[float, dict]] = {}
+_DISCOVERY_CACHE_TTL = 300.0
+
+
+@router.get("/servers/{name}/market/discovery")
+async def get_server_market_discovery(
+    name: str,
+    top_n: int = Query(default=80, ge=1, le=150),
+    show_n: int = Query(default=25, ge=1, le=100),
+    min_volume_usd: float = Query(default=10_000_000, gt=0, le=1_000_000_000_000),
+    min_history_days: int = Query(default=90, ge=90, le=365),
+    user: WebUser = Depends(require_server_access),
+):
+    """Rank Kraken USD spot markets using this user's configured Hummingbot API.
+
+    Discovery is research-only. The paper asset allowlist annotates candidates,
+    while the independent capital and dispatch gates remain authoritative.
+    """
+    from spectra_core.market_discovery import scan_kraken_universe
+
+    key = f"kraken:{name}:{top_n}:{show_n}:{min_volume_usd}:{min_history_days}"
+    cached = _discovery_cache.get(key)
+    now = time.monotonic()
+    if cached and now - cached[0] < _DISCOVERY_CACHE_TTL:
+        return cached[1]
+
+    try:
+        client = await get_config_manager().get_client(name)
+        result = await scan_kraken_universe(
+            client,
+            top_n=top_n,
+            show_n=show_n,
+            min_volume_usd=min_volume_usd,
+            min_history_days=min_history_days,
+            quote_assets=("USD",),
+        )
+    except Exception as exc:
+        logger.exception("Kraken market discovery failed for server %s", name)
+        raise upstream_error("Kraken spot market discovery unavailable", exc)
+
+    _discovery_cache[key] = (time.monotonic(), result)
+    if len(_discovery_cache) > 8:
+        oldest = min(_discovery_cache, key=lambda item: _discovery_cache[item][0])
+        _discovery_cache.pop(oldest, None)
+    return result
+
+
+@router.get("/market/discovery")
+async def get_market_discovery(
+    top_n: int = Query(default=80, ge=1, le=150),
+    show_n: int = Query(default=25, ge=1, le=100),
+    min_volume_usd: float = Query(default=10_000_000, gt=0, le=1_000_000_000_000),
+    min_history_days: int = Query(default=90, ge=90, le=365),
+    user: WebUser = Depends(get_current_user),
+):
+    """Rank liquid USDT perpetuals for mean-reversion research.
+
+    This read-only endpoint uses public Binance USD-M data. It is deliberately
+    not connected to order placement or the capital authorization interface.
+    """
+    from spectra_core.market_discovery import scan_public_universe
+
+    key = f"{top_n}:{show_n}:{min_volume_usd}:{min_history_days}"
+    cached = _discovery_cache.get(key)
+    now = time.monotonic()
+    if cached and now - cached[0] < _DISCOVERY_CACHE_TTL:
+        return cached[1]
+    try:
+        result = await scan_public_universe(
+            top_n=top_n,
+            show_n=show_n,
+            min_volume_usd=min_volume_usd,
+            min_history_days=min_history_days,
+        )
+    except Exception as exc:
+        logger.exception("Public market discovery failed")
+        raise upstream_error("Public market discovery unavailable", exc)
+    _discovery_cache[key] = (time.monotonic(), result)
+    # Keep the process cache bounded when users vary the scan parameters.
+    if len(_discovery_cache) > 8:
+        oldest = min(_discovery_cache, key=lambda item: _discovery_cache[item][0])
+        _discovery_cache.pop(oldest, None)
+    return result

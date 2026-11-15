@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Condor",
-  "short_name": "Condor",
-  "description": "Portfolio, bots, agents and trading for Hummingbot.",
+  "name": "Spectra Finance",
+  "short_name": "Spectra",
+  "description": "Spectra Finance — governed capital, analysis, and execution.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

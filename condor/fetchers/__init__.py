@@ -123,6 +123,7 @@ from condor.fetchers.performance_history import (
 from condor.fetchers.portfolio import fetch_portfolio, fetch_portfolio_history
 from condor.fetchers.positions import fetch_positions
 from condor.fetchers.server_status import fetch_server_status
+from condor.fetchers.spectra_runtime import fetch_spectra_runtime
 from condor.fetchers.tracked_positions import fetch_tracked_positions
 from condor.fetchers.trading_rules import fetch_trading_rules
 
@@ -158,6 +159,7 @@ __all__ = [
     "fetch_ticker_pool",
     "fetch_tickers",
     "fetch_server_status",
+    "fetch_spectra_runtime",
     "fetch_performance_history",
     "probe_performance_history",
     "extract_performance_rows",

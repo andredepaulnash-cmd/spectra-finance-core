@@ -4,19 +4,31 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from condor.server_data_service import (
     ServerDataService,
     ServerDataType,
     get_server_data_service,
 )
-from condor.web.auth import get_current_user
+from condor.web.auth import get_current_user, require_owner
 from condor.web.models import ServerInfo, WebUser
 from config_manager import ServerPermission, get_config_manager
+from spectra_core.module_lifecycle import ModuleControlError
+from spectra_core.module_registry import get_spectra_module_registry
+from spectra_core.runtime import (
+    get_spectra_accounting_health_snapshot,
+    get_spectra_module_lifecycle_store,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["servers"])
+
+
+class ModuleTriggerRequest(BaseModel):
+    enabled: bool
+    reason: str = Field(default="operator", min_length=1, max_length=200)
 
 
 async def _resolve_online(sds: ServerDataService, name: str) -> bool:
@@ -84,6 +96,91 @@ async def server_rows(user: WebUser) -> list[ServerInfo]:
 @router.get("/servers", response_model=list[ServerInfo])
 async def list_servers(user: WebUser = Depends(get_current_user)):
     return await server_rows(user)
+
+
+@router.get("/servers/{name}/spectra/runtime")
+async def spectra_runtime_status(
+    name: str,
+    user: WebUser = Depends(get_current_user),
+):
+    """Return the server's authenticated Spectra paper/live execution boundary."""
+    cm = get_config_manager()
+    if not cm.has_server_access(user.id, name):
+        raise HTTPException(status_code=404, detail="Server not found")
+    sds = get_server_data_service()
+    try:
+        status = await sds.get_or_fetch(name, ServerDataType.SPECTRA_RUNTIME)
+    except Exception as e:
+        logger.warning("Spectra runtime status unavailable for %s: %s", name, e)
+        status = None
+
+    if isinstance(status, dict):
+        result = dict(status)
+    else:
+        result = {
+            "product": "Spectra Finance",
+            "mode": "UNAVAILABLE",
+            "paper_only": False,
+            "live_dispatch_available": False,
+            "paper_connector_count": 0,
+            "error": "Spectra runtime status could not be verified",
+        }
+
+    try:
+        result["accounting_health"] = get_spectra_accounting_health_snapshot()
+    except Exception as e:
+        logger.warning("Spectra accounting health unavailable: %s", e)
+        result["accounting_health"] = {
+            "state": "UNAVAILABLE",
+            "active_positions": 0,
+            "allows_new_exposure": False,
+            "error": "Core accounting health could not be verified",
+        }
+    return result
+
+
+@router.get("/servers/{name}/spectra/modules")
+async def spectra_module_registry(
+    name: str,
+    user: WebUser = Depends(get_current_user),
+):
+    """Return the source-backed Spectra module readiness map for this server."""
+    cm = get_config_manager()
+    if not cm.has_server_access(user.id, name):
+        raise HTTPException(status_code=404, detail="Server not found")
+    registry = get_spectra_module_registry()
+    registry["runtime_controls"] = get_spectra_module_lifecycle_store().snapshot()
+    registry["operator_controls_available"] = (
+        cm.get_server_permission(user.id, name) == ServerPermission.OWNER
+        or cm.is_admin(user.id)
+    )
+    return registry
+
+
+@router.put("/servers/{name}/spectra/modules/{module_id}/trigger")
+async def set_spectra_module_trigger(
+    name: str,
+    module_id: str,
+    request: ModuleTriggerRequest,
+    user: WebUser = Depends(get_current_user),
+):
+    """Persist an independent module trigger; never activates or dispatches orders."""
+    cm = get_config_manager()
+    if not cm.has_server_access(user.id, name):
+        raise HTTPException(status_code=404, detail="Server not found")
+    require_owner(cm, user.id, name)
+    try:
+        control = get_spectra_module_lifecycle_store().set_trigger(
+            module_id, request.enabled, reason=request.reason
+        )
+    except ModuleControlError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {
+        "control": control,
+        "live_trading_enabled": False,
+        "orders_created": 0,
+        "activation_performed": False,
+    }
 
 
 @router.get("/servers/{name}/status")

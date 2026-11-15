@@ -1,7 +1,11 @@
 import asyncio
+import time
+from dataclasses import replace
 from decimal import Decimal
 
 import pytest
+
+from tests.spectra_test_support import FakeSession, configure_spectra_paper_dispatch
 
 from mcp_servers.hummingbot_api.tools import executor_create
 from mcp_servers.hummingbot_api.tools.vcap_execution import (
@@ -9,6 +13,7 @@ from mcp_servers.hummingbot_api.tools.vcap_execution import (
 )
 from spectra_core.asset_fingerprint import AssetFingerprint, AssetObservation
 from spectra_core.capital_governor import CapitalGovernor
+from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.kraken_market_fabric import KrakenTradingRule
 from spectra_core.models import (
     BreakerMode,
@@ -27,9 +32,13 @@ from spectra_core.vcap_execution import (
 )
 from spectra_core.vcap_tranches import VCAPTranche
 
-
 D = Decimal
 
+
+
+@pytest.fixture(autouse=True)
+def _spectra_paper_dispatch(monkeypatch):
+    configure_spectra_paper_dispatch(monkeypatch, executor_create.settings)
 
 def governor(tmp_path):
     return CapitalGovernor(
@@ -283,12 +292,16 @@ def test_conflicting_child_replay_fails_closed(tmp_path):
 
 class Connectors:
     async def get_trading_rules(self, *, connector_name, trading_pairs):
-        assert connector_name == "kraken"
+        assert connector_name == "kraken_paper_trade"
         assert trading_pairs == ["BTC-USD"]
         return {
             "BTC-USD": {
                 "min_order_size": "0.01",
                 "min_notional_size": "10",
+                "min_price_increment": "0.01",
+                "min_base_amount_increment": "0.01",
+                "min_quote_amount_increment": "0.01",
+                "supports_limit_orders": True,
             }
         }
 
@@ -305,6 +318,7 @@ class Executors:
 class Client:
     def __init__(self):
         self.connectors = Connectors()
+        self._session = FakeSession()
         self.executors = Executors()
 
 
@@ -335,9 +349,15 @@ def executable_decision():
     )
 
 
+@pytest.mark.parametrize(
+    "native_quote,reference_price",
+    [("20", "100"), ("20.1234567890123456789", "100.1234567890123456789")],
+)
 def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
     monkeypatch,
     tmp_path,
+    native_quote,
+    reference_price,
 ):
     g = governor(tmp_path)
     reserve_envelope(g, "100")
@@ -351,26 +371,82 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
         lambda: BreakerMode.NORMAL,
     )
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: g)
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    ledger.open_position(position_id="position", pair="BTC-USD", created_at=1000)
+    monkeypatch.setattr(executor_create, "get_economic_position_ledger", lambda: ledger)
+    from mcp_servers.hummingbot_api.tools import execution_book
 
+    async def fresh_book(rule):
+        observed = time.time()
+        return execution_book.FreshVenueBook(
+            rule.trading_pair,
+            "XBTUSD",
+            D("99.99"),
+            D("100"),
+            ((D("99.99"), D("10")),),
+            ((D("100"), D("10")),),
+            observed - 0.01,
+            observed,
+            "test-fresh-Kraken-Depth",
+            "c" * 64,
+            venue_min_order_size=D("0.01"),
+            venue_min_cost_quote=D("10"),
+            venue_base_asset="BTC",
+            venue_quote_asset="USD",
+            venue_rules_observed_at=observed,
+            venue_rules_sha256="e" * 64,
+        )
+
+    monkeypatch.setattr(execution_book, "fetch_protected_kraken_book", fresh_book)
     decision = executable_decision()
+    decision = replace(
+        decision,
+        current_price=D(reference_price),
+        next_proposal=replace(decision.next_proposal, amount_quote=D(native_quote)),
+        next_tranche=replace(
+            decision.next_tranche,
+            quote_amount=D(native_quote),
+            base_amount=D(native_quote) / D(reference_price),
+        ),
+    )
     first = asyncio.run(
         execute_vcap_decision(
             client,
             decision=decision,
             governor=g,
+            position_id="position",
+            buy_max_price_slippage_bps=D("0"),
+            buy_fee_allowance_bps=D("0"),
         )
     )
 
     assert first["executed"] is True
     assert len(client.executors.calls) == 1
+    config = client.executors.calls[0][0]
+    assert config["type"] == "order_executor"
+    assert config["execution_strategy"] == "LIMIT"
+    assert D(str(config["price"])) == D("100")
+    protected = g.get_protected_buy_submission(decision.next_proposal.proposal_id)
+    assert D(protected["policy"]["reference_price"]) == D(reference_price)
+    assert D(str(config["amount"])) == D("0.2")
+    assert D(
+        g.get_protected_buy_submission(decision.next_proposal.proposal_id)[
+            "authorized_quote_budget"
+        ]
+    ) == D(native_quote)
     assert g.get_execution_receipt(decision.next_proposal.proposal_id) == "vcap-exec-1"
-    assert g.get_decision("vcap-envelope-1").reserved_quote == D("80")
+    assert g.get_decision("vcap-envelope-1").reserved_quote == D("100") - D(
+        native_quote
+    )
 
     replay = asyncio.run(
         execute_vcap_decision(
             client,
             decision=decision,
             governor=g,
+            position_id="position",
+            buy_max_price_slippage_bps=D("0"),
+            buy_fee_allowance_bps=D("0"),
         )
     )
 

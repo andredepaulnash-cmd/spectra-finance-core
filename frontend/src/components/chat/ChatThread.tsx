@@ -3,6 +3,7 @@ import { AlertTriangle, Bot, Brain, Loader2, MessageSquare, X } from "lucide-rea
 
 import type { ChatSlot, PermissionRequest } from "@/hooks/useChatSocket";
 import { CHAT_SLUG, type AgentSummary, type ChatAgentOption } from "@/lib/api";
+import { brandedAgentName, publicBrandText } from "@/lib/brandIdentity";
 import { speakerNames } from "@/lib/agentColor";
 import { ApprovalPrompt } from "./ApprovalPrompt";
 import { ChatInput } from "./ChatInput";
@@ -116,10 +117,10 @@ export function ChatThread({
   const resolveSpeaker = useCallback(
     (slug: string) => {
       const match = roster?.find((a) => a.slug === (slug || CHAT_SLUG));
-      if (match) return match.name;
-      if (!slug) return "Condor";
+      if (match) return brandedAgentName(match);
+      if (!slug) return "Spectra Intelligence";
       if (slug === slot?.info.agent_slug)
-        return boundAgent?.name || slot?.info.label || slug;
+        return publicBrandText(boundAgent?.name || slot?.info.label || slug);
       return slug;
     },
     [roster, slot?.info.agent_slug, slot?.info.label, boundAgent?.name],
@@ -338,7 +339,7 @@ export function ChatThread({
               placeholder={
                 permissionRequest
                   ? "Allow or deny the call above first — a message here cancels it"
-                  : `Ask ${(slot.info.agent_slug && slot.info.label) || "Condor"}...`
+                  : `Ask ${slot.info.agent_slug ? brandedAgentName({ slug: slot.info.agent_slug, name: slot.info.label || slot.info.agent_slug }) : "Spectra Intelligence"}...`
               }
               leading={composerLeading}
               // Half-written words survive leaving the page, per conversation.

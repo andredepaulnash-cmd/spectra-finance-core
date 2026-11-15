@@ -9,6 +9,9 @@ on:
   pull_request:
     branches:
       - spectra-core-phase2
+      - integration/protected-recovery-composition-20261107
+      - integration/spectra-recovery-dust-runtime-20261107
+      - integration/spectra-governed-paper-execution-20261107b
   workflow_dispatch:
 
 permissions:
@@ -24,7 +27,7 @@ jobs:
   capital-core:
     name: Capital Core / Execution Safety
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     env:
       UV_PYTHON: "3.13"
 
@@ -45,6 +48,8 @@ jobs:
       - name: Install locked dependencies
         run: uv sync --dev --frozen
 
+      - name: Compile Spectra module registry API route
+        run: python -m py_compile condor/web/routes/servers.py
       - name: Run Spectra Phase 1 focused tests
         run: |
           uv run pytest -q \
@@ -71,9 +76,62 @@ jobs:
             tests/test_unified_economic_exit.py \
             tests/test_multi_position_runtime_scheduler.py \
             tests/test_partial_recovery_recycling.py \
+            tests/test_protected_recovery_exit.py \
+            tests/test_protected_whole_exit.py \
+            tests/test_parked_cash_authority.py \
+            tests/test_cash_scope_adapters.py \
+            tests/test_cash_runtime_resume.py \
             tests/test_strategy_laboratory.py \
             tests/test_strategy_replay.py \
             tests/test_strategy_replay_vcap.py \
             tests/test_kraken_tardis_import.py \
             tests/test_binance_kline_import.py \
-            tests/test_rotating_fleet.py
+            tests/test_rotating_fleet.py \
+            tests/test_entry_identity_submission.py \
+            tests/test_residual_position_lifecycle.py \
+            tests/test_dust_lifecycle.py \
+            tests/test_dispatch_receipt.py \
+            tests/test_module_registry.py \
+            tests/test_terminal_retirement_runtime.py \
+            tests/test_terminal_retirement_scheduler.py \
+            tests/test_partial_recycle_dispatch_guards.py \
+            tests/test_partial_residual_runtime.py \
+            tests/test_executor_trading_rule_preflight.py \
+            tests/test_typed_executor_tools.py \
+            tests/test_integrated_entry_cash_authority.py \
+            tests/test_integrated_partial_exit.py \
+            tests/test_integrated_retirement_exit.py \
+            tests/test_integrated_runtime_restart.py \
+            tests/test_execution_price_policy.py \
+            tests/test_protected_buy_reconciliation.py \
+            tests/test_decision_trace.py \
+            tests/test_position_mutation.py \
+            tests/test_cycle_reconciliation.py \
+            tests/test_partial_attempt_assessment.py \
+            tests/test_selected_recovery.py \
+            tests/test_selected_recovery_runtime.py \
+            tests/test_spectra_runtime.py \
+
+  frontend-build:
+    name: Spectra Finance Frontend Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install locked frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build Spectra Finance frontend
+        run: npm run build
+        working-directory: frontend

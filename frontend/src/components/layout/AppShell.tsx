@@ -1,16 +1,16 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Bug, Eye, Moon, Sun } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import spectraLogo from "@/assets/spectra-finance-logo.svg";
 import { ChatBubble } from "@/components/chat/ChatBubble";
-import { ConnectKeysOverlay } from "@/components/ConnectKeysOverlay";
+import { api } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RelaunchBanner } from "@/components/RelaunchBanner";
 import { ReportIssueDialog } from "@/components/ReportIssueDialog";
 import { TelemetryConsentBanner } from "@/components/TelemetryConsentBanner";
 import { ChatProvider } from "@/hooks/useChat";
-import { useCredentials } from "@/hooks/useCredentials";
 import { usePrefetchData } from "@/hooks/usePrefetchData";
 import { useServer } from "@/hooks/useServer";
 import { useTheme } from "@/hooks/useTheme";
@@ -18,30 +18,11 @@ import { NAV_ITEMS, FULL_BLEED_ROUTES } from "@/lib/nav";
 import { routeFacts } from "@/lib/pageFacts";
 import { useViewFacts } from "@/lib/viewFacts";
 import { CurrencySelector } from "./CurrencySelector";
-import { NotificationBell } from "./NotificationBell";
 import { ServerSelector } from "./ServerSelector";
+import { NotificationBell } from "./NotificationBell";
 
-/**
- * Full-bleed routes that carry a parameter, so an exact match cannot find them.
- *
- * The Lab (`/agents/:slug/runs`, FEAT-099) was the first: a rail, a tick spine
- * and a body, all screen-tall, under a slug the shell cannot enumerate. The
- * agent workspace absorbed it (FEAT-103) and is the same shape in every view —
- * a header, a loop bar, a spine and a body, each scrolling on its own — so the
- * Lab's pattern is replaced by an exact match on the one route. Kept as a
- * separate pattern list rather than turned into a `startsWith` over the array
- * above, because `/` is in that array and prefixes everything.
- */
 const FULL_BLEED_PATTERNS = [/^\/agents\/[^/]+$/];
 
-/**
- * The shell owns the chat state.
- *
- * There used to be two surfaces rendering a conversation — an overlay panel
- * docked to the right of every page, and the workspace at `/` — which meant
- * two doors to one thing. The panel is gone; the provider stays here so the
- * socket outlives navigation between pages and the workspace.
- */
 export function AppShell() {
   return (
     <ChatProvider>
@@ -53,32 +34,49 @@ export function AppShell() {
 function AppShellBody() {
   const { server } = useServer();
   const { pathname, search } = useLocation();
+  const {
+    data: spectraRuntime,
+    isLoading: spectraRuntimeLoading,
+    isError: spectraRuntimeError,
+  } = useQuery({
+    queryKey: ["spectra-runtime", server],
+    queryFn: () => api.getSpectraRuntime(server!),
+    enabled: Boolean(server),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    retry: 1,
+  });
+  const paperModeConfirmed = Boolean(
+    !spectraRuntimeError &&
+      spectraRuntime?.mode === "PAPER_ONLY" &&
+      spectraRuntime.paper_only === true &&
+      spectraRuntime.live_dispatch_available === false,
+  );
+  const paperConnectorReady = Boolean(
+    paperModeConfirmed && (spectraRuntime?.paper_connector_count ?? 0) > 0,
+  );
+  const visibleNavItems = paperModeConfirmed
+    ? NAV_ITEMS.filter(
+        ({ to }) =>
+          to === "/" ||
+          to === "/overview" ||
+          to === "/settings" ||
+          (to === "/portfolio" && paperConnectorReady),
+      )
+    : NAV_ITEMS.filter(({ to }) => to === "/");
+  const isSpectraSafeRoute =
+    pathname === "/" ||
+    pathname.startsWith("/agents/") ||
+    (paperModeConfirmed && pathname.startsWith("/overview")) ||
+    (paperModeConfirmed && pathname.startsWith("/settings")) ||
+    (paperConnectorReady && pathname.startsWith("/portfolio"));
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const { hasKeys, isLoading: keysLoading } = useCredentials();
   const [reportOpen, setReportOpen] = useState(false);
-
-  // A pathname is enough: every full-bleed screen is its own route.
-  // `/agents/:slug` is an ordinary padded page, deliberately not matched here.
   const isFullBleed =
     FULL_BLEED_ROUTES.includes(pathname) ||
     FULL_BLEED_PATTERNS.some((re) => re.test(pathname));
 
-  // The home is exempt because it is the chat: the one surface that can talk a
-  // new user through connecting keys, and so the last one that should be
-  // hidden behind a block telling them to. `/fleet` is exempt for the weaker
-  // but sufficient reason that it needs no keys either — it reads agents,
-  // loops and journals, none of which is an exchange — so blocking it would
-  // teach nobody anything. Matched exactly rather than by prefix, because `/`
-  // prefixes every route in the app.
-  const exemptRoutes = ["/routines", "/settings"];
-  const showKeysOverlay =
-    server && !keysLoading && !hasKeys && pathname !== "/" &&
-    !exemptRoutes.some((r) => pathname.startsWith(r));
-
-  // ⌘K used to toggle the overlay panel. It now goes to the chat, so the
-  // reflex still lands somewhere sensible instead of silently doing nothing.
-  // The keystroke means a *conversation*, and the home is one again.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -90,39 +88,27 @@ function AppShellBody() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [navigate]);
 
-  // Prefetch core data (executors, bots) and subscribe to WS channels early
   usePrefetchData();
-
-  // The route baseline for the chat's page context (FEAT-059): every page
-  // gets a label and a URL-derived subject through the same seam richer
-  // contributors use, so the chat never has to know about the router.
-  // The client is handed over so the table can also read what each page is
-  // rendering (FEAT-060) — at send time, out of the cache the page fetched
-  // through, rather than from eight components each pushing their state here.
   const queryClient = useQueryClient();
   useViewFacts(() => routeFacts(pathname, search, queryClient));
 
   return (
     <div className="flex h-screen flex-col">
-      {/* Top bar */}
-      <header className="flex h-12 shrink-0 items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4">
-        {/* Left: logo + nav */}
-        <div className="flex items-center gap-6">
-          <NavLink to="/" className="flex items-center gap-2 font-bold tracking-tight">
-            <img src="/condor_old.jpeg" alt="Condor" className="h-6 w-6 rounded-full" />
-            <span className="text-sm">Condor</span>
+      <header className="spectra-topbar flex h-14 shrink-0 items-center border-b border-[var(--color-border)] px-5">
+        <div className="flex items-center gap-7">
+          <NavLink to="/" aria-label="Spectra Finance home" className="spectra-brand flex items-center">
+            <img src={spectraLogo} alt="Spectra Finance" className="h-9 w-auto max-w-[210px]" />
           </NavLink>
-
-          <nav className="flex items-center">
-            {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+          <nav className="spectra-nav flex items-center">
+            {visibleNavItems.map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={to === "/"}
                 className={({ isActive }) =>
-                  `flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  `spectra-nav-link flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
                     isActive
-                      ? "bg-[var(--color-primary)]/15 text-[var(--color-primary)]"
+                      ? "is-active bg-[var(--color-primary)]/15 text-[var(--color-primary)]"
                       : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
                   }`
                 }
@@ -133,20 +119,31 @@ function AppShellBody() {
             ))}
           </nav>
         </div>
-
-        {/* Right: server selector + controls */}
         <div className="ml-auto flex items-center gap-3">
+          <span
+            aria-live="polite"
+            title={
+              paperConnectorReady
+                ? "Spectra paper-only runtime confirmed; only simulated connectors are available."
+                : paperModeConfirmed
+                  ? "Paper-only mode is confirmed, but no paper connector is initialized yet."
+                  : "Execution locked: this server has not confirmed Spectra paper-only mode."
+            }
+            className="spectra-runtime-pill rounded-full border border-[var(--color-border)] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
+          >
+            <span aria-hidden="true" className={`spectra-runtime-dot ${paperConnectorReady ? "is-ready" : paperModeConfirmed ? "is-pending" : "is-locked"}`} />
+            {paperConnectorReady
+              ? "Paper only"
+              : paperModeConfirmed
+                ? "Paper setup"
+                : spectraRuntimeLoading
+                  ? "Checking"
+                  : "Execution locked"}
+          </span>
           <ServerSelector />
           <CurrencySelector />
-
           <div className="flex items-center gap-1">
-            {/* Inside the ChatProvider on purpose: the bell reads the same
-                react-query cache the chat socket pushes live notifications
-                into, and the provider opens that socket on every route — not
-                only on the chat workspace — which is what makes the bell
-                update without a reload wherever the user is (FEAT-048). */}
             <NotificationBell />
-
             <button
               onClick={() => setReportOpen(true)}
               className="rounded p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-accent)]"
@@ -154,7 +151,6 @@ function AppShellBody() {
             >
               <Bug className="h-4 w-4" />
             </button>
-
             <button
               onClick={toggleTheme}
               className="rounded p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-accent)]"
@@ -168,40 +164,55 @@ function AppShellBody() {
                theme === "light" ? <Eye className="h-4 w-4" /> :
                <Moon className="h-4 w-4" />}
             </button>
-
           </div>
         </div>
       </header>
-
-      {/* An update landed but this process is still the old one, so the bundle
-          in the browser is ahead of the API answering it. Above `main` for the
-          same reason the consent strip is: every page needs it, and the chat
-          workspace owns its own scrolling. Renders nothing the rest of the
-          time, which is nearly always. */}
+      {server && (
+        <div className="spectra-safety-banner shrink-0 border-b border-[var(--color-border)] px-5 py-2 text-xs text-[var(--color-text-muted)]">
+          {paperConnectorReady
+            ? "Spectra paper-only runtime verified. Orders must use the isolated simulated connector; live trading controls remain hidden."
+            : paperModeConfirmed
+              ? "Paper-only runtime verified. Add a dedicated *_paper_trade connector to enable paper portfolio views."
+              : "Execution locked. This server has not verified Spectra paper-only mode, so trading, DEX, bot deployment, and routine controls are hidden."}
+        </div>
+      )}
       <RelaunchBanner />
-
-      {/* Asks once, for an install that has never answered (FEAT-023). Renders
-          nothing for everyone else, including on the chat workspace, which owns
-          its own scrolling — hence outside `main` rather than inside it. */}
       <TelemetryConsentBanner />
-
-      {/* Main content */}
       <main
-        className={`relative flex-1 ${
-          isFullBleed ? "overflow-hidden" : "overflow-auto p-6"
+        className={`spectra-main relative flex-1 ${
+          isFullBleed && isSpectraSafeRoute ? "overflow-hidden" : "overflow-auto p-6"
         }`}
       >
         <ErrorBoundary resetKey={pathname + server}>
-          <Outlet key={server} />
+          {isSpectraSafeRoute ? (
+            <Outlet key={server} />
+          ) : (
+            <section
+              role="alert"
+              className="mx-auto flex min-h-[50vh] max-w-2xl flex-col items-center justify-center gap-4 text-center"
+            >
+              <div className="rounded-full border border-[var(--color-border)] p-4 text-[var(--color-text-muted)]">
+                <img src={spectraLogo} alt="Spectra Finance" className="h-10 w-auto" />
+              </div>
+              <h1 className="text-xl font-semibold">Spectra execution locked</h1>
+              <p className="max-w-xl text-sm leading-6 text-[var(--color-text-muted)]">
+                {!paperModeConfirmed
+                  ? "This server has not confirmed Spectra paper-only mode. Trading and account controls stay unavailable until the authenticated runtime reports PAPER_ONLY."
+                  : pathname.startsWith("/portfolio") && !paperConnectorReady
+                    ? "Paper-only mode is confirmed, but no paper connector is initialized. Set up a paper-trading connection in Spectra Settings first."
+                    : "This control remains unavailable until Spectra authorizes it. Direct exchange access, wallet-gateway controls, bot deployment, and routine execution are not exposed."}
+              </p>
+              <button
+                onClick={() => navigate(paperModeConfirmed ? "/settings" : "/")}
+                className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-hover)]"
+              >
+                {paperModeConfirmed ? "Open Spectra settings" : "Return to Spectra"}
+              </button>
+            </section>
+          )}
         </ErrorBoundary>
-        {showKeysOverlay && <ConnectKeysOverlay />}
       </main>
-
       <ReportIssueDialog open={reportOpen} onClose={() => setReportOpen(false)} />
-
-      {/* The quick chat on every page but `/` (FEAT-059). Inside the
-          provider, outside `main`, so it neither scrolls with the page nor
-          unmounts on navigation. */}
       <ChatBubble />
     </div>
   );

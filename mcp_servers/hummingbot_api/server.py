@@ -854,6 +854,9 @@ async def create_grid_executor(
     save_as_default: bool = False,
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
+    spectra_position_id: str | None = None,
+    spectra_max_price_slippage_bps: float | None = None,
+    spectra_fee_allowance_bps: float | None = None,
 ) -> str:
     """Run a grid of limit orders across a price range. Spends real funds.
 
@@ -957,6 +960,9 @@ async def create_grid_executor(
         save_as_default=save_as_default,
         spectra_proposal_id=spectra_proposal_id,
         spectra_intent=spectra_intent,
+        spectra_position_id=spectra_position_id,
+        spectra_max_price_slippage_bps=spectra_max_price_slippage_bps,
+        spectra_fee_allowance_bps=spectra_fee_allowance_bps,
     )
     return result.get("formatted_output", str(result))
 
@@ -981,6 +987,9 @@ async def create_dca_executor(
     save_as_default: bool = False,
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
+    spectra_position_id: str | None = None,
+    spectra_max_price_slippage_bps: float | None = None,
+    spectra_fee_allowance_bps: float | None = None,
 ) -> str:
     """Average into a position over a ladder of price levels. Spends real funds.
 
@@ -1047,6 +1056,9 @@ async def create_dca_executor(
         save_as_default=save_as_default,
         spectra_proposal_id=spectra_proposal_id,
         spectra_intent=spectra_intent,
+        spectra_position_id=spectra_position_id,
+        spectra_max_price_slippage_bps=spectra_max_price_slippage_bps,
+        spectra_fee_allowance_bps=spectra_fee_allowance_bps,
     )
     return result.get("formatted_output", str(result))
 

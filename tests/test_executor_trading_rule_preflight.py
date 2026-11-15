@@ -27,6 +27,7 @@ from mcp_servers.hummingbot_api.hummingbot_client import (
     trading_rules_cache,
 )
 from mcp_servers.hummingbot_api.tools import executor_create
+from tests.spectra_test_support import configure_spectra_live_dispatch
 
 BINANCE_RULES = {
     "BTC-USDT": {
@@ -77,6 +78,12 @@ class _Client:
         self.executors = _Executors()
         self.connectors = _Connectors()
         self.market_data = _MarketData()
+
+
+@pytest.fixture(autouse=True)
+def _offline_fake_client_dispatch(monkeypatch):
+    # These tests exercise venue preflight with an in-process fake backend.
+    configure_spectra_live_dispatch(monkeypatch, executor_create.settings)
 
 
 @pytest.fixture(autouse=True)

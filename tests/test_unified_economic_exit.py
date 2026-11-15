@@ -4,6 +4,9 @@ from decimal import Decimal
 
 import pytest
 
+from tests.spectra_test_support import FakeSession, configure_spectra_paper_dispatch
+
+import mcp_servers.hummingbot_api.tools.economic_exit as exit_tool
 from mcp_servers.hummingbot_api.tools.economic_exit import (
     execute_economic_position_exit,
 )
@@ -17,6 +20,10 @@ from spectra_core.economic_exit import (
     validate_manifest_against_ledger,
 )
 from spectra_core.economic_position import EconomicPositionLedger
+from spectra_core.executor_provenance_bridge import (
+    ExecutorOrderSnapshot,
+    ExecutorTradeSnapshot,
+)
 from spectra_core.fill_reconciliation import (
     EconomicFillRole,
     LiveFillLedgerReconciler,
@@ -35,9 +42,13 @@ from spectra_core.vcap_profit_exit import (
     VCAPProfitState,
 )
 
-
 D = Decimal
 
+
+
+@pytest.fixture(autouse=True)
+def _spectra_paper_dispatch(monkeypatch):
+    configure_spectra_paper_dispatch(monkeypatch, exit_tool.settings)
 
 def governor(tmp_path):
     return CapitalGovernor(
@@ -85,7 +96,7 @@ def prepare_execution(
         proposal_id=proposal_id,
         executor_id=executor_id,
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         controller_id="spectra",
     )
     return proposal
@@ -206,6 +217,8 @@ def exit_decision():
         ),
         suggested_trailing_delta_bps=D("35"),
         reasons=("runtime_test_profit_exit",),
+        target_net_profit_bps=D("174"),
+        expected_exit_cost_bps=D("45"),
     )
 
 
@@ -393,11 +406,16 @@ class FakeExecutors:
 
     async def get_executor(self, executor_id):
         self.get_calls.append(executor_id)
-        filled = {
+        fills = {
             "exec-entry-1": "10",
             "exec-recovery-1": "4",
             "exec-recovery-2": "4",
-        }[executor_id]
+        }
+        if executor_id not in fills:
+            error = RuntimeError("executor not found")
+            error.status = 404
+            raise error
+        filled = fills[executor_id]
         return {
             "id": executor_id,
             "executor_type": "dca_executor",
@@ -412,14 +430,29 @@ class FakeExecutors:
 
 class FakeClient:
     def __init__(self):
+        self._session = FakeSession()
         self.executors = FakeExecutors()
 
 
 def test_exit_requests_every_active_owner_and_never_targets_retained_lot(
     tmp_path,
+    monkeypatch,
 ):
+    monkeypatch.setattr(exit_tool.time, "time", lambda: 2000)
     g, ledger = build_owned_position(tmp_path)
     client = FakeClient()
+    monkeypatch.setattr(
+        exit_tool, "get_breaker_mode", lambda: exit_tool.BreakerMode.NORMAL
+    )
+
+    async def order_snapshot(client, *, executor_id):
+        return ExecutorOrderSnapshot(executor_id=executor_id, orders=())
+
+    async def trade_snapshot(client, *, executor_id):
+        return ExecutorTradeSnapshot(executor_id=executor_id, trades=())
+
+    monkeypatch.setattr(exit_tool, "fetch_executor_order_snapshot", order_snapshot)
+    monkeypatch.setattr(exit_tool, "fetch_executor_trade_snapshot", trade_snapshot)
 
     result = asyncio.run(
         execute_economic_position_exit(
@@ -430,6 +463,8 @@ def test_exit_requests_every_active_owner_and_never_targets_retained_lot(
             position_id="xrp-position-1",
             trading_rule=trading_rule(),
             now=2_000,
+            best_bid=D("0.50"),
+            market_observed_at=2000,
         )
     )
 
@@ -441,14 +476,12 @@ def test_exit_requests_every_active_owner_and_never_targets_retained_lot(
     assert result["economic_exit_state"] == EconomicExitProgressState.PENDING.value
     assert result["capital_recycling_state"] == "PENDING_RECONCILIATION"
     assert set(client.executors.stop_calls) == {
-        ("exec-entry-1", False),
-        ("exec-recovery-1", False),
-        ("exec-recovery-2", False),
+        ("exec-entry-1", True),
+        ("exec-recovery-1", True),
+        ("exec-recovery-2", True),
     }
     assert "retained-43" not in {
-        lot_id
-        for owner in result["owners"]
-        for lot_id in owner["active_lot_ids"]
+        lot_id for owner in result["owners"] for lot_id in owner["active_lot_ids"]
     }
 
 
@@ -470,7 +503,7 @@ def bind_and_apply_sell(
         role=EconomicFillRole.POSITION_EXIT,
         proposal_id=proposal_id,
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         created_at=occurred_at - 1,
     )
@@ -479,7 +512,7 @@ def bind_and_apply_sell(
             "trade_id": trade_id,
             "order_id": order_id,
             "account_name": "master_account",
-            "connector_name": "kraken",
+            "connector_name": "kraken_paper_trade",
             "trading_pair": "XRP-USD",
             "trade_type": "SELL",
             "amount": amount,
@@ -562,7 +595,7 @@ def test_confirmed_sell_fills_flat_manifest_compute_realized_pnl_and_keep_43(
         role=EconomicFillRole.POSITION_EXIT,
         proposal_id="entry-1",
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         created_at=2_009,
     )

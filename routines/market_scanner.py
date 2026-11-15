@@ -1,22 +1,20 @@
-"""Scan top perpetual markets by volume, analyze volatility and volume patterns."""
+"""Scan Kraken USD spot markets by volume, volatility and volume patterns."""
 
 CATEGORY = "Market Data"
 
 import asyncio
 import logging
-import time
 from typing import Any
 
-import aiohttp
 import numpy as np
 from pydantic import BaseModel, Field
 from telegram.ext import ContextTypes
 
 from config_manager import get_client
+from spectra_core.kraken_market_fabric import collect_kraken_universe
 
 logger = logging.getLogger(__name__)
 
-BINANCE_FUTURES_TICKER = "https://fapi.binance.com/fapi/v1/ticker/24hr"
 MAX_CONCURRENT = 30  # concurrent candle fetches
 
 
@@ -24,7 +22,7 @@ class Config(BaseModel):
     """Scan top perpetual markets for volume/volatility profiles and classify as mature or degen."""
 
     connector: str = Field(
-        default="binance_perpetual", description="Exchange connector"
+        default="kraken", description="Exchange connector; Kraken USD spot only"
     )
     top_n: int = Field(default=100, description="Number of top pairs by 24h volume")
     lookback_hours: int = Field(default=4, description="Hours of 1m candle data")
@@ -36,40 +34,29 @@ class Config(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Step 1: Get top pairs by 24h volume from Binance directly
+# Step 1: Get top Kraken USD spot pairs by 24h quote volume
 # ---------------------------------------------------------------------------
 
 
-async def fetch_top_pairs(top_n: int, min_volume: float) -> list[dict]:
-    """Fetch 24h tickers from Binance Futures and return top N by quote volume."""
-    async with aiohttp.ClientSession() as session:
-        async with session.get(BINANCE_FUTURES_TICKER) as resp:
-            resp.raise_for_status()
-            tickers = await resp.json()
-
-    # Filter USDT pairs, sort by quote volume
-    usdt_tickers = []
-    for t in tickers:
-        symbol = t.get("symbol", "")
-        if not symbol.endswith("USDT"):
+async def fetch_top_pairs(client, top_n: int, min_volume: float) -> list[dict]:
+    """Fetch the configured Kraken USD spot universe through Spectra's API."""
+    snapshot = await collect_kraken_universe(client, quote_assets=("USD",))
+    pairs = []
+    for pair in snapshot.eligible_pairs:
+        ticker = snapshot.tickers[pair]
+        quote_volume = float(ticker.quote_volume_24h)
+        if quote_volume < min_volume:
             continue
-        quote_vol = float(t.get("quoteVolume", 0))
-        if quote_vol < min_volume:
-            continue
-        # Convert symbol format: BTCUSDT -> BTC-USDT
-        base = symbol.replace("USDT", "")
-        usdt_tickers.append(
-            {
-                "trading_pair": f"{base}-USDT",
-                "symbol": symbol,
-                "volume_24h_usd": quote_vol,
-                "price": float(t.get("lastPrice", 0)),
-                "price_change_pct": float(t.get("priceChangePercent", 0)),
-            }
-        )
-
-    usdt_tickers.sort(key=lambda x: x["volume_24h_usd"], reverse=True)
-    return usdt_tickers[:top_n]
+        pairs.append({
+            "trading_pair": pair,
+            "symbol": pair,
+            "volume_24h_usd": quote_volume,
+            "price": float(ticker.price),
+            # The Kraken bulk ticker adapter does not expose a normalized
+            # 24h percentage-change field; do not fabricate one.
+        })
+    pairs.sort(key=lambda item: item["volume_24h_usd"], reverse=True)
+    return pairs[:top_n]
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +188,7 @@ def analyze_pair(candles: list[dict], pair_info: dict) -> dict[str, Any] | None:
     return {
         "trading_pair": pair_info["trading_pair"],
         "price": pair_info["price"],
-        "price_change_24h": pair_info["price_change_pct"],
+        "price_change_24h": pair_info.get("price_change_pct"),
         "volume_24h_usd": pair_info["volume_24h_usd"],
         "candle_count": len(candles),
         # Volume metrics
@@ -300,7 +287,7 @@ def format_results(result: dict, lookback_hours: int) -> str:
     lines.append("─" * 40)
     for i, m in enumerate(result["mature"], 1):
         chg = m["price_change_24h"]
-        chg_str = f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%"
+        chg_str = (f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%") if chg is not None else "n/a"
         lines.append(
             f"{i}. {m['trading_pair']}"
             f"  vol: {format_volume(m['volume_24h_usd'])}"
@@ -318,7 +305,7 @@ def format_results(result: dict, lookback_hours: int) -> str:
     lines.append("─" * 40)
     for i, d in enumerate(result["degen"], 1):
         chg = d["price_change_24h"]
-        chg_str = f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%"
+        chg_str = (f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%") if chg is not None else "n/a"
         lines.append(
             f"{i}. {d['trading_pair']}"
             f"  vol: {format_volume(d['volume_24h_usd'])}"
@@ -355,9 +342,12 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     max_records = config.lookback_hours * 60  # 1m candles
 
-    # Step 1: Get top pairs by 24h volume
+    if config.connector.strip().lower() != "kraken":
+        return "Spectra market scanner is pinned to Kraken market data."
+
+    # Step 1: Get top Kraken USD spot pairs by 24h quote volume
     try:
-        top_pairs = await fetch_top_pairs(config.top_n, config.min_volume_usd)
+        top_pairs = await fetch_top_pairs(client, config.top_n, config.min_volume_usd)
     except Exception as e:
         return f"Failed to fetch tickers: {e}"
 
@@ -398,7 +388,7 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
             {
                 "Pair": m["trading_pair"],
                 "Volume 24h": format_volume(m["volume_24h_usd"]),
-                "24h Chg": f"{m['price_change_24h']:+.1f}%",
+                "24h Chg": (f"{m['price_change_24h']:+.1f}%" if m["price_change_24h"] is not None else "n/a"),
                 "NATR": f"{m['natr_mean']:.3f}%",
                 "NATR-CV": f"{m['natr_cv']:.2f}",
                 "Vol-CV": f"{m['bucket_cv']:.2f}",
@@ -431,7 +421,7 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
                     size=max(6, 20 - a["bucket_cv"] * 10),
                     line=dict(width=1, color="#0d1117"),
                 ),
-                text=[pair.replace("-USDT", "")],
+                text=[pair.replace("-USD", "")],
                 textposition="top center",
                 textfont=dict(size=8, color="#8b949e"),
                 name=name,

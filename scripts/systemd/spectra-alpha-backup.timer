@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Spectra Finance Alpha paper-state backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=10m
+Persistent=true
+Unit=spectra-alpha-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,3 +1,4 @@
+import { brandedAgentName } from "@/lib/brandIdentity";
 import type {
   AgentActionRow,
   DeedIndex,
@@ -81,6 +82,158 @@ export interface NotificationsResponse {
 export interface ServerMember {
   user_id: number;
   display_name: string;
+}
+
+export interface SpectraAccountingHealth {
+  state:
+    | "HEALTHY"
+    | "STALE"
+    | "HOLD"
+    | "CONFLICT"
+    | "NO_ACTIVE_POSITIONS"
+    | "UNAVAILABLE"
+    | string;
+  active_positions: number;
+  allows_new_exposure: boolean;
+  checked_at?: number;
+  totals?: {
+    known_orders: number;
+    bound_orders: number;
+    confirmed_fills: number;
+    ledgered_fills: number;
+    unresolved_orders: number;
+    unresolved_trades: number;
+  };
+  positions?: Array<{
+    state: string;
+    fully_reconciled: boolean;
+    age_seconds: number | null;
+    last_success_at: number | null;
+    proposal_count: number;
+    known_orders: number;
+    bound_orders: number;
+    confirmed_fills: number;
+    ledgered_fills: number;
+    unresolved_orders: number;
+    unresolved_trades: number;
+  }>;
+  error?: string;
+}
+
+export interface SpectraRuntimeStatus {
+  product?: string;
+  mode: "PAPER_ONLY" | "LEGACY" | "UNSUPPORTED" | "UNAVAILABLE" | string;
+  paper_only: boolean;
+  live_dispatch_available: boolean;
+  paper_connector_count: number;
+  paper_connectors?: string[];
+  accounting_health?: SpectraAccountingHealth;
+  error?: string;
+}
+
+export interface SpectraModuleStatus {
+  id: string;
+  name: string;
+  status: string;
+  readiness: string;
+  description: string;
+}
+
+export interface SpectraModuleControl {
+  module_id: string;
+  state: "RUNNING" | "MONITORING" | "ARMED" | "ACTIVE" | "BLOCKED" | string;
+  trigger_enabled: boolean;
+  reason: string;
+  updated_at: number;
+}
+
+export interface SpectraModuleRegistry {
+  product: string;
+  release_stage: string;
+  live_trading_enabled: boolean;
+  paper_only_target: boolean;
+  status_note: string;
+  system_flow: Array<{
+    id: string;
+    name: string;
+    role: string;
+    authority: string;
+  }>;
+  modules: SpectraModuleStatus[];
+  runtime_controls?: SpectraModuleControl[];
+  operator_controls_available?: boolean;
+}
+
+
+export interface MarketDiscoveryCandidate {
+  symbol: string;
+  base_asset: string;
+  quote_asset: string;
+  trading_pair: string;
+  current_price: number;
+  volume_24h_usd: number;
+  change_24h_pct: number | null;
+  volume_rank_24h: number;
+  history_days: number;
+  high_90d: number;
+  low_90d: number;
+  vwap_90d: number;
+  discount_to_vwap_pct: number;
+  drawdown_from_high_pct: number;
+  distance_from_low_pct: number;
+  range_position_pct: number;
+  sma_20d: number;
+  return_7d_pct: number;
+  return_30d_pct: number;
+  rsi_14d: number;
+  median_daily_range_30d_pct: number;
+  active_range_days_30d: number;
+  active_day_ratio_30d: number;
+  median_daily_quote_volume_30d_usd: number;
+  max_daily_range_30d_pct: number;
+  current_move_from_last_close_pct: number;
+  volatility_consistency_score: number;
+  mean_reversion_score: number;
+  selection_score: number;
+  eligible: boolean;
+  rejection_reasons: string[];
+  selection_reasons: string[];
+  governor_approved: boolean;
+  capital_authorized: false;
+}
+
+export interface MarketDiscoveryResponse {
+  source: string;
+  as_of: number;
+  kraken_ticker_snapshot_at: number;
+  universe: string;
+  criteria: {
+    top_by_24h_quote_volume: number;
+    minimum_24h_volume_quote: number;
+    minimum_completed_history_days: number;
+    minimum_median_daily_quote_volume_usd: number;
+    minimum_active_day_ratio_30d: number;
+    minimum_median_daily_range_30d_pct: number;
+    maximum_current_move_from_last_close_pct: number;
+    quote_assets: string[];
+    ranking: string;
+  };
+  counts: {
+    eligible_kraken_markets: number;
+    liquid_markets_found: number;
+    markets_selected_for_history: number;
+    analyzed: number;
+    eligible: number;
+    rejected_by_guardrails: number;
+    history_or_data_rejected: number;
+    governor_approved: number;
+  };
+  candidates: MarketDiscoveryCandidate[];
+  rejected_data: Array<{ trading_pair: string; reason: string }>;
+  governor_approved_list_loaded: boolean;
+  approved_asset_list_source: string | null;
+  paper_only: true;
+  orders_created: 0;
 }
 
 export interface ServerInfo {
@@ -2320,6 +2473,22 @@ export interface PendingConfirmation {
 export const api = {
   getServers: () => apiFetch<ServerInfo[]>("/api/v1/servers"),
 
+  getSpectraRuntime: (server: string) =>
+    apiFetch<SpectraRuntimeStatus>(
+      `/api/v1/servers/${encodeURIComponent(server)}/spectra/runtime`,
+    ),
+
+  getSpectraModules: (server: string) =>
+    apiFetch<SpectraModuleRegistry>(
+      `/api/v1/servers/${encodeURIComponent(server)}/spectra/modules`,
+    ),
+
+  setSpectraModuleTrigger: (server: string, moduleId: string, enabled: boolean) =>
+    apiFetch<{ control: SpectraModuleControl; live_trading_enabled: false; orders_created: 0; activation_performed: false }>(
+      `/api/v1/servers/${encodeURIComponent(server)}/spectra/modules/${encodeURIComponent(moduleId)}/trigger`,
+      { method: "PUT", body: JSON.stringify({ enabled, reason: "dashboard operator" }) },
+    ),
+
   /** Build identity — shown to the user when they file an issue. */
   getEnv: () => apiFetch<AppEnvResponse>("/api/v1/meta/env"),
 
@@ -2839,6 +3008,9 @@ export const api = {
       `/api/v1/servers/${encodeURIComponent(server)}/market/tickers?connector=${encodeURIComponent(connector)}`,
     ),
 
+  getMarketDiscovery: (server: string) =>
+    apiFetch<MarketDiscoveryResponse>(`/api/v1/servers/${encodeURIComponent(server)}/market/discovery?top_n=80&show_n=25&min_volume_usd=10000000&min_history_days=90`),
+
   getOrderBook: (server: string, connector: string, pair: string, depth = 20) =>
     apiFetch<OrderBookResponse>(
       `/api/v1/servers/${encodeURIComponent(server)}/market/order-book?connector=${encodeURIComponent(connector)}&trading_pair=${encodeURIComponent(pair)}&depth=${depth}`,
@@ -2872,7 +3044,7 @@ export const api = {
 
   // ── Agents (identity + brain) ──
 
-  getAgents: () => apiFetch<AgentSummary[]>("/api/v1/agents"),
+  getAgents: async () => (await apiFetch<AgentSummary[]>("/api/v1/agents")).map((agent) => ({ ...agent, name: brandedAgentName(agent) })),
 
   /**
    * Who owns which trading, and what their loop is doing (FEAT-096).
@@ -2915,8 +3087,10 @@ export const api = {
     return { owners, deeds };
   },
 
-  getAgent: (slug: string) =>
-    apiFetch<AgentDetail>(`/api/v1/agents/${encodeURIComponent(slug)}`),
+  getAgent: async (slug: string) => {
+    const agent = await apiFetch<AgentDetail>(`/api/v1/agents/${encodeURIComponent(slug)}`);
+    return { ...agent, name: brandedAgentName(agent) };
+  },
 
   /** Identity + the four libraries, for the panel behind a conversation. */
   getAgentBrain: (slug: string) =>

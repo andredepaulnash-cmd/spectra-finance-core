@@ -781,3 +781,34 @@ def test_executor_accounting_requires_spectra_provenance(tmp_path):
                 cum_fees_quote=D("0"),
             )
         )
+
+
+def test_reservation_ttl_uses_one_injected_lease_clock(tmp_path):
+    clock = [1_000.0]
+    policy = CapitalPolicy(
+        reserve_floor_quote=D("0"),
+        max_total_committed_quote=D("500"),
+        max_pair_quote=D("500"),
+        max_position_quote=D("500"),
+        max_recovery_quote=D("500"),
+        max_leverage=D("1"),
+        reservation_ttl_seconds=1,
+    )
+    g = CapitalGovernor(
+        tmp_path / "clock.sqlite3",
+        policy,
+        clock=lambda: clock[0],
+    )
+    expected = proposal("clock-expiry", "50")
+
+    assert g.reserve(expected, base_snapshot()).status == DecisionStatus.RESERVED
+    with sqlite3.connect(g.db_path) as conn:
+        created_at = conn.execute(
+            "SELECT created_at FROM capital_reservations WHERE proposal_id=?",
+            ("clock-expiry",),
+        ).fetchone()[0]
+    assert created_at == 1_000.0
+
+    clock[0] = 1_002.0
+    assert g.commit_if_matches(expected) is False
+    assert g.get_decision("clock-expiry").status == DecisionStatus.EXPIRED
