@@ -127,32 +127,31 @@ say "Checking existing Postgres and EMQX services before starting anything."
 # mappings; relying on it caused the updater to miss the already-running EMQX.
 find_running_container_for_port() {
   local port="$1" expected_name="$2" state container_id ids id published
-  # The Alpha Compose file assigns stable container_name values. Inspect that
-  # exact name first; this avoids depending on Podman's multi-object JSON shape.
-  if podman container exists "$expected_name" 2>/dev/null; then
-    state="$(podman inspect --format '{{.State.Status}}' "$expected_name" 2>/dev/null || true)"
+  # Resolve deterministic Compose names from Podman's running-container list.
+  # This avoids relying on optional subcommands and version-specific inspect JSON.
+  ids="$(podman ps --filter "name=^/${expected_name}$" --format '{{.ID}}' 2>/dev/null || true)"
+  if [[ -n "$ids" ]]; then
+    id="$(head -n 1 <<<"$ids")"
+    state="$(podman inspect --format '{{.State.Status}}' "$id" 2>/dev/null || true)"
     if [[ "$state" == "running" ]]; then
-      podman inspect --format '{{.Id}}' "$expected_name"
+      printf '%s\n' "$id"
       return 0
     fi
   fi
 
-  # Also recognize a differently named rootless Podman container publishing
-  # the requested host port. Inspect one ID at a time and use Podman's own
-  # port-forwarding view instead of parsing version-dependent inspect JSON.
+  # Fallback: identify a differently named container by its published host port.
   ids="$(podman ps -q)"
   [[ -n "$ids" ]] || return 0
   while IFS= read -r id; do
     [[ -n "$id" ]] || continue
     published="$(podman port "$id" 2>/dev/null || true)"
     if grep -Eq -- "->[[:space:]]*(127[.]0[.]0[.]1|0[.]0[.]0[.]0):${port}([[:space:]]|$)" <<<"$published"; then
-      printf '%s\\n' "$id"
+      printf '%s\n' "$id"
       return 0
     fi
   done <<<"$ids"
 
-  # If a process owns the port but is not a discoverable Podman container,
-  # fail closed rather than attempting a duplicate bind.
+  # Fail closed if a host listener exists but no Podman container was identified.
   if command -v ss >/dev/null 2>&1 && ss -H -ltn "sport = :$port" 2>/dev/null | grep -q .; then
     die "Host port $port is already listening, but no running Podman container could be identified. Refusing to start a duplicate; inspect the existing service."
   fi
