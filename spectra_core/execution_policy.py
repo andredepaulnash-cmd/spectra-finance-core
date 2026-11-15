@@ -351,6 +351,9 @@ def build_protected_buy_market_config(
     )
     if not isinstance(asks, (tuple, list)) or not asks:
         raise ValueError("market BUY requires fresh non-empty ask depth")
+    first_ask = _decimal(asks[0][0], "asks[0].price", positive=True)
+    if first_ask != ask:
+        raise ValueError("market BUY best ask differs from the first depth level")
 
     principal_budget = budget / (ONE + fees / BPS)
     remaining = principal_budget
