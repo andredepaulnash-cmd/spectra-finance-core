@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from math import isfinite
 from typing import Any, Mapping
 
