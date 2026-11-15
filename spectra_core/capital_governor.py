@@ -1859,80 +1859,114 @@ class CapitalGovernor:
         }
         if not isinstance(config, dict) or set(config) - allowed:
             raise ValueError("protected BUY configuration has unsupported fields")
+        execution_strategy = config.get("execution_strategy")
         if (
             config.get("type") != "order_executor"
             or type(config.get("side")) is not int
             or config["side"] != 1
-            or config.get("execution_strategy") != "LIMIT"
+            or execution_strategy not in {"LIMIT", "MARKET"}
             or config.get("connector_name") != scope[1]
             or config.get("trading_pair") != proposal.pair.strip().upper()
             or config.get("leverage") != 1
             or config.get("position_action", "OPEN") != "OPEN"
             or config.get("controller_id", scope[2]) != scope[2]
+            or (execution_strategy == "MARKET" and config.get("price") is not None)
         ):
             raise ValueError("protected BUY configuration conflicts with authorization")
-        amount, price = Decimal(str(config.get("amount"))), Decimal(
-            str(config.get("price"))
-        )
-        if not all(value.is_finite() and value > ZERO for value in (amount, price)):
-            raise ValueError(
-                "protected BUY amount and price must be finite and positive"
-            )
-        with localcontext() as context:
-            context.prec = max(
-                28, len(amount.as_tuple().digits) + len(price.as_tuple().digits) + 2
-            )
-            principal = amount * price
-        if principal > proposal.amount_quote:
-            raise ValueError(
-                "protected BUY price/quantity exceeds original quote budget"
-            )
+        amount = Decimal(str(config.get("amount")))
+        if not amount.is_finite() or amount <= ZERO:
+            raise ValueError("protected BUY amount must be finite and positive")
+        principal = None
+        if execution_strategy == "LIMIT":
+            price = Decimal(str(config.get("price")))
+            if not price.is_finite() or price <= ZERO:
+                raise ValueError("protected LIMIT BUY price must be finite and positive")
+            with localcontext() as context:
+                context.prec = max(
+                    28, len(amount.as_tuple().digits) + len(price.as_tuple().digits) + 2
+                )
+                principal = amount * price
+            if principal > proposal.amount_quote:
+                raise ValueError(
+                    "protected BUY price/quantity exceeds original quote budget"
+                )
         if policy is not None:
             if not isinstance(policy, dict):
                 raise ValueError("protected BUY policy must be an exact mapping")
             values = {}
-            for field in (
-                "fee_allowance_bps",
-                "max_price_slippage_bps",
-                "reference_price",
-                "price_cap",
-                "amount_base",
-                "max_principal_quote",
-                "max_fee_quote",
-                "max_total_quote",
-                "authorized_quote_budget",
-            ):
+            if execution_strategy == "MARKET":
+                fields = (
+                    "fee_allowance_bps",
+                    "reference_ask",
+                    "amount_base",
+                    "estimated_principal_quote",
+                    "estimated_fee_quote",
+                    "estimated_total_quote",
+                    "authorized_quote_budget",
+                )
+            else:
+                fields = (
+                    "fee_allowance_bps",
+                    "max_price_slippage_bps",
+                    "reference_price",
+                    "price_cap",
+                    "amount_base",
+                    "max_principal_quote",
+                    "max_fee_quote",
+                    "max_total_quote",
+                    "authorized_quote_budget",
+                )
+            for field in fields:
                 raw = policy.get(field)
                 if isinstance(raw, bool):
                     raise ValueError("protected BUY policy contains an invalid decimal")
                 values[field] = Decimal(str(raw))
                 if not values[field].is_finite() or values[field] < ZERO:
                     raise ValueError("protected BUY policy contains an invalid decimal")
-            with localcontext() as context:
-                context.prec = max(
-                    60, sum(len(v.as_tuple().digits) for v in values.values()) + 10
-                )
-                fee = principal * values["fee_allowance_bps"] / Decimal("10000")
-                total = principal + fee
-                admitted_cap = values["reference_price"] * (
-                    Decimal("1") + values["max_price_slippage_bps"] / Decimal("10000")
-                )
-            if (
-                values["fee_allowance_bps"] >= Decimal("10000")
-                or values["max_price_slippage_bps"] >= Decimal("10000")
-                or values["reference_price"] <= ZERO
-                or price > values["price_cap"]
-                or values["price_cap"] > admitted_cap
-                or amount != values["amount_base"]
-                or principal != values["max_principal_quote"]
-                or fee != values["max_fee_quote"]
-                or total != values["max_total_quote"]
-                or values["authorized_quote_budget"] != proposal.amount_quote
-                or total > proposal.amount_quote
-            ):
-                raise ValueError(
-                    "protected BUY policy conflicts with exact bounded geometry"
-                )
+            if execution_strategy == "MARKET":
+                with localcontext() as context:
+                    context.prec = max(
+                        60, sum(len(v.as_tuple().digits) for v in values.values()) + 10
+                    )
+                    fee = values["estimated_principal_quote"] * values["fee_allowance_bps"] / Decimal("10000")
+                    total = values["estimated_principal_quote"] + fee
+                if (
+                    values["fee_allowance_bps"] >= Decimal("10000")
+                    or values["reference_ask"] <= ZERO
+                    or amount != values["amount_base"]
+                    or fee != values["estimated_fee_quote"]
+                    or total != values["estimated_total_quote"]
+                    or values["authorized_quote_budget"] != proposal.amount_quote
+                    or total > proposal.amount_quote
+                ):
+                    raise ValueError("protected MARKET BUY policy conflicts with exact depth estimate")
+                principal = values["estimated_principal_quote"]
+            else:
+                with localcontext() as context:
+                    context.prec = max(
+                        60, sum(len(v.as_tuple().digits) for v in values.values()) + 10
+                    )
+                    fee = principal * values["fee_allowance_bps"] / Decimal("10000")
+                    total = principal + fee
+                    admitted_cap = values["reference_price"] * (
+                        Decimal("1") + values["max_price_slippage_bps"] / Decimal("10000")
+                    )
+                if (
+                    values["fee_allowance_bps"] >= Decimal("10000")
+                    or values["max_price_slippage_bps"] >= Decimal("10000")
+                    or values["reference_price"] <= ZERO
+                    or Decimal(str(config.get("price"))) > values["price_cap"]
+                    or values["price_cap"] > admitted_cap
+                    or amount != values["amount_base"]
+                    or principal != values["max_principal_quote"]
+                    or fee != values["max_fee_quote"]
+                    or total != values["max_total_quote"]
+                    or values["authorized_quote_budget"] != proposal.amount_quote
+                    or total > proposal.amount_quote
+                ):
+                    raise ValueError(
+                        "protected BUY policy conflicts with exact bounded geometry"
+                    )
             book = policy.get("venue_book")
             if (
                 not isinstance(book, dict)
