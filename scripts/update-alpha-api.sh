@@ -105,8 +105,8 @@ for key in ("SPECTRA_PAPER_ONLY", "SPECTRA_ALLOW_LIVE_EXECUTION"):
 PYMODECHECK
 
 # Enable the recovered autonomous portfolio supervisor for paper mode on
-# existing installations too. Defaults are additive: an operator's explicit
-# false/true values are preserved, and live automation remains disabled.
+# existing installations too. The user-authorized paper fleet settings are
+# migrated explicitly; paper-only is enforced and live automation stays disabled.
 "$CORE_DIR/.venv/bin/python" - "$CORE_DIR/.env" <<'PYPORTFOLIO'
 from pathlib import Path
 import os
@@ -125,21 +125,38 @@ if values.get("SPECTRA_PAPER_ONLY", "true") not in true_values:
     raise SystemExit("STOP: Core .env is not configured for paper-only execution.")
 if values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "false") in true_values:
     raise SystemExit("STOP: Core .env explicitly enables live execution.")
-present = set(values)
-defaults = (
-    ("SPECTRA_PAPER_ONLY", "true"),
-    ("SPECTRA_ALLOW_LIVE_EXECUTION", "false"),
-    ("SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED", "true"),
-    ("SPECTRA_PORTFOLIO_AUTORUN", "true"),
-    ("SPECTRA_LIVE_AUTORUN", "false"),
-    ("SPECTRA_AUTO_ASSET_SELECTION", "true"),
-    ("SPECTRA_TARGET_ACTIVE_POSITIONS", "83"),
-    ("SPECTRA_MAX_NEW_ENTRIES_PER_TICK", "3"),
-    ("SPECTRA_VCAP_SEED_QUOTE", "20"),
-)
-added = [f"{key}={value}" for key, value in defaults if key not in present]
-if added:
-    content = "\n".join(lines + added) + "\n"
+required = {
+    "SPECTRA_PAPER_ONLY": "true",
+    "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
+    "SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED": "true",
+    "SPECTRA_PORTFOLIO_AUTORUN": "true",
+    "SPECTRA_LIVE_AUTORUN": "false",
+    "SPECTRA_AUTO_ASSET_SELECTION": "true",
+    "SPECTRA_TARGET_ACTIVE_POSITIONS": "83",
+    "SPECTRA_VCAP_SEED_QUOTE": "20",
+}
+updated_lines = []
+seen = set()
+for line in lines:
+    if "=" in line and not line.lstrip().startswith("#"):
+        key = line.split("=", 1)[0].strip()
+        if key in required:
+            updated_lines.append(f"{key}={required[key]}")
+            seen.add(key)
+            continue
+    updated_lines.append(line)
+for key, value in required.items():
+    if key not in seen:
+        updated_lines.append(f"{key}={value}")
+present = {
+    line.split("=", 1)[0].strip()
+    for line in updated_lines
+    if "=" in line and not line.lstrip().startswith("#")
+}
+if "SPECTRA_MAX_NEW_ENTRIES_PER_TICK" not in present:
+    updated_lines.append("SPECTRA_MAX_NEW_ENTRIES_PER_TICK=3")
+if updated_lines != lines:
+    content = "\n".join(updated_lines) + "\n"
     with tempfile.NamedTemporaryFile(
         mode="w", encoding="utf-8", dir=path.parent,
         prefix=".spectra-env-", suffix=".tmp", delete=False
