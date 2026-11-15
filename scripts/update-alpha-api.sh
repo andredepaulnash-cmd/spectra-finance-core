@@ -324,12 +324,24 @@ declare -A CORE_SHELL_NEW_BLOBS=(
 for source in "${CORE_SHELL_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
   expected_blob="${CORE_SHELL_NEW_BLOBS[$source]}"
+  # AppShell has two explicitly reviewed versions: the current Alpha shell and
+  # the independently tested Overview-scroll fix. Accept either exact blob so
+  # the updater can safely move between the frozen snapshot and that release.
+  approved_alternate_blob=""
+  if [[ "$source" == "frontend/src/components/layout/AppShell.tsx" ]]; then
+    if [[ "$upstream_blob" == "95a825257934453963b1755f9c3bdfb2f52045f0" ]]; then
+      expected_blob="$upstream_blob"
+      approved_alternate_blob="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
+    elif [[ "$upstream_blob" == "776e421f5ab1312ab97a09756bc82df8e4da0fc5" ]]; then
+      approved_alternate_blob="95a825257934453963b1755f9c3bdfb2f52045f0"
+    fi
+  fi
   if [[ "$upstream_blob" != "$expected_blob" ]]; then
     die "Fetched $source is not the reviewed Command Center version."
   fi
   worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
   old_blob="${CORE_SHELL_OLD_BLOBS[$source]}"
-  if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
+  if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" && "$worktree_blob" != "$approved_alternate_blob" ]]; then
     die "Unrecognized local changes in $source. They were preserved; review them before updating."
   fi
 done
