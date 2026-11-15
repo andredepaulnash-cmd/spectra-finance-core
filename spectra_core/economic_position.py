@@ -306,11 +306,11 @@ def validate_protected_buy_terminal_evidence(
                 fee_quote += fee * trade.price
             elif fee > ZERO:
                 raise ValueError("market BUY fee currency cannot be valued in the authorized quote asset")
-        actual_total = Decimal(filled_quote.numerator) / Decimal(filled_quote.denominator) + fee_quote
         budget = _decimal(Decimal(str(policy.get("authorized_quote_budget"))), "authorized_quote_budget", positive=True)
-        if actual_total > budget:
+        actual_total = filled_quote + Fraction(fee_quote)
+        if actual_total > Fraction(budget):
             detail = (
-                f"confirmed MARKET BUY spend plus fees {actual_total} exceeds "
+                f"confirmed MARKET BUY spend plus fees {float(actual_total):.12g} exceeds "
                 f"authorized quote budget {budget}"
             )
             governor.record_protected_buy_conflict(proposal_id=proposal_id, reason=detail)
