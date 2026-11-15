@@ -335,6 +335,29 @@ def executable_decision():
     )
 
 
+
+def test_vcap_execution_without_session_controller_id_does_not_carve_or_dispatch(
+    tmp_path,
+):
+    g = governor(tmp_path)
+    reserve_envelope(g, "100")
+    client = Client()
+    decision = executable_decision()
+
+    result = asyncio.run(
+        execute_vcap_decision(
+            client,
+            decision=decision,
+            governor=g,
+        )
+    )
+
+    assert result["executed"] is False
+    assert "exact session controller_id" in result["error"]
+    assert client.executors.calls == []
+    assert g.get_decision(decision.next_proposal.proposal_id) is None
+
+
 def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
     monkeypatch,
     tmp_path,
