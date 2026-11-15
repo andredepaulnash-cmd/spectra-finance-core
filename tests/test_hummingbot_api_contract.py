@@ -13,7 +13,7 @@ def test_locked_hummingbot_api_exact_position_hold_contract():
     lock = json.loads(LOCK.read_text())
     api = lock["components"]["spectra_hummingbot_api"]
 
-    assert api["revision"] == "47936c8b94ebf2620acca8a7dce4ac727f407c10"
+    assert api["revision"] == "3797866eeb6badd751d087a216aa5b7cf9b47860"
     assert api["contracts"]["exact_position_hold_accounting"] == 1
     assert api["contracts"]["executor_order_provenance"] == 1
     assert api["contracts"]["executor_trade_provenance"] == 1
