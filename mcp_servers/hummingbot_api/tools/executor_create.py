@@ -527,11 +527,24 @@ async def create_executor(
     (``validate_executor_config``) existed only because the config was an opaque dict.
     """
     account = account_name or "master_account"
-    tag = (
-        "spectra"
-        if settings.agent_slug == "spectra"
-        else (controller_id or "main")
-    )
+    # Condor's autonomous risk gate attributes every executor to the exact
+    # TickEngine session ID. Never collapse Spectra sessions into one shared
+    # controller label: doing so breaks ownership, exposure and PnL attribution.
+    if settings.agent_slug == "spectra":
+        tag = (controller_id or "").strip()
+        if not tag:
+            error = (
+                "Spectra executor creation requires Condor's exact session "
+                "controller_id; refusing an unattributed executor."
+            )
+            return {
+                "action": "create",
+                "executor_type": executor_type,
+                "error": error,
+                "formatted_output": f"Error creating {executor_type}: {error}",
+            }
+    else:
+        tag = (controller_id or "main").strip()
 
     merged_config = executor_preferences.merge_with_defaults(executor_type, config)
     merged_config["type"] = executor_type
