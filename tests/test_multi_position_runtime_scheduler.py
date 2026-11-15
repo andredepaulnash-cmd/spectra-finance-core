@@ -352,6 +352,7 @@ def test_unbound_position_is_reported_truthfully_and_never_dispatched(tmp_path):
             expected_exit_fee_bps=D("20"),
             slippage_allowance_bps=D("10"),
             now=2_000,
+            controller_id="spectra.strategy_7",
             breaker_mode=BreakerMode.NORMAL,
             scheduler_policy=policy(1),
             cycle_runner=runner,
