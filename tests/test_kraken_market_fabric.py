@@ -139,10 +139,10 @@ class FakeMarketData:
         self.order_book_calls = []
 
     async def get_tickers(self, connector):
-        assert connector == "kraken"
+        assert connector == "kraken_paper_trade"
         return {
             "tickers": {
-                "kraken": {
+                "kraken_paper_trade": {
                     "BTC-USD": {
                         "price": 100,
                         "base_volume": 50,
@@ -163,7 +163,7 @@ class FakeMarketData:
                     },
                 }
             },
-            "updated_at": {"kraken": 501},
+            "updated_at": {"kraken_paper_trade": 501},
         }
 
     async def get_order_book(self, **kwargs):
@@ -178,7 +178,7 @@ class FakeMarketData:
 
 class FakeConnectors:
     async def get_trading_rules(self, connector):
-        assert connector == "kraken"
+        assert connector == "kraken_paper_trade"
         common = {
             "min_order_size": "1",
             "min_notional_size": "1",
@@ -197,7 +197,7 @@ class FakeConnectors:
 
 
 @pytest.mark.asyncio
-async def test_collect_kraken_universe_requires_live_ticker_and_rule():
+async def test_collect_kraken_universe_uses_paper_ticker_and_rule():
     market_data = FakeMarketData()
     client = SimpleNamespace(
         market_data=market_data,
@@ -217,7 +217,7 @@ async def test_collect_kraken_universe_requires_live_ticker_and_rule():
     assert set(snapshot.books) == {"BTC-USD"}
     assert market_data.order_book_calls == [
         {
-            "connector_name": "kraken",
+            "connector_name": "kraken_paper_trade",
             "trading_pair": "BTC-USD",
             "depth": 5,
         }
