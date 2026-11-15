@@ -2,7 +2,6 @@
 name: XRPL Market Maker
 description: On-ledger market making specialist for the XRPL CLOB — reference pricing,
   spread viability, reserve-aware sizing, and inventory management
-agent_key: claude-acp:sonnet
 tools:
 - get_prices
 - get_market_data

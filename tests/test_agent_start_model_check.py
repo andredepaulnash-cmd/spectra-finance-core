@@ -297,3 +297,63 @@ def test_notify_reaches_the_owner_of_a_dashboard_launch(tmp_path, monkeypatch):
     asyncio.run(engine_module.TickEngine._notify(engine, "hello"))
 
     assert sent == [{"chat_id": 42, "text": "hello"}]
+
+def test_unpinned_agent_inherits_the_users_active_model(client, monkeypatch):
+    """A stock Agent without a pin inherits the model selected by its owner."""
+    captured = {}
+
+    def active_model(user_id):
+        captured["user_id"] = user_id
+        return "openrouter:test-model"
+
+    monkeypatch.setattr("condor.preferences.get_active_agent_key", active_model)
+
+    async def accept_model(agent_key, **kwargs):
+        captured["agent_key"] = agent_key
+        captured["preflight_user_id"] = kwargs.get("user_id")
+        return None
+
+    monkeypatch.setattr("condor.runtime.llm_client.agent_key_error", accept_model)
+    resp = _start(client, {})
+
+    assert resp.status_code == 200, resp.text
+    assert captured["user_id"] == USER.id
+    assert captured["agent_key"] == "openrouter:test-model"
+    assert captured["preflight_user_id"] == USER.id
+
+def test_stock_agent_definitions_inherit_the_active_model_by_default():
+    """Stock agent identities must not override the user's active model."""
+    from pathlib import Path
+
+    expected_agents = {
+        "condor",
+        "spectra",
+        "adaptive_grid_trader",
+        "directional_trader",
+        "fundamental_analyst",
+        "market_making_expert",
+        "smart_money_flow",
+        "meteora_launch_lp",
+        "solana_dex_lp_expert",
+        "xrpl_market_maker",
+    }
+    for name in expected_agents:
+        path = Path("agents") / name / "AGENT.md"
+        frontmatter = path.read_text(encoding="utf-8").split("---", 2)[1]
+        assert not any(
+            line.strip().startswith("agent_key:")
+            for line in frontmatter.splitlines()
+        ), f"{name} pins a model instead of inheriting the user's active model"
+
+
+def test_stock_strategies_do_not_override_the_users_active_model():
+    """A strategy may leave model selection to the owning agent/user."""
+    from pathlib import Path
+
+    for path in Path("agents").glob("*/strategies/*/strategy.md"):
+        frontmatter = path.read_text(encoding="utf-8").split("---", 2)[1]
+        for line in frontmatter.splitlines():
+            if line.strip().startswith("agent_key:"):
+                assert line.split(":", 1)[1].strip() in {"", "null"}, (
+                    f"{path} pins a model instead of inheriting the user's active model"
+                )

@@ -1,7 +1,6 @@
 ---
 name: Spectra Intelligence
 description: Spectra Finance intelligence coordinator for market research, portfolio analysis and governed trading operations.
-agent_key: claude-acp:sonnet
 ---
 
 # Spectra Intelligence — Trading Assistant

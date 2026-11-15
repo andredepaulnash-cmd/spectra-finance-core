@@ -75,13 +75,26 @@ def _supervisor():
     return get_supervisor()
 
 
-def resolve_agent_key(config: dict[str, Any], strategy, agent) -> str:
-    """The model a run uses: run config override > strategy override > Agent.
+def resolve_agent_key(
+    config: dict[str, Any], strategy, agent, user_id: int | None = None
+) -> str:
+    """Resolve run > strategy > Agent > user's active model > deployment default.
 
-    Module-level so the start route can check the very key the engine will run
-    before building one — building an engine allocates a session on disk.
+    The start route and TickEngine both call this function so the preflight check
+    validates exactly the model the background tick will use.
     """
-    return config.get("agent_key") or strategy.agent_key or agent.agent_key
+    explicit_key = config.get("agent_key") or strategy.agent_key or agent.agent_key
+    if explicit_key:
+        return explicit_key
+    if user_id is not None:
+        try:
+            from condor.preferences import get_active_agent_key
+
+            return get_active_agent_key(user_id) or ""
+        except Exception:
+            # A preference-store outage preserves the existing empty-key default.
+            return ""
+    return ""
 
 
 def get_engine(agent_id: str) -> TickEngine | None:
@@ -1125,7 +1138,7 @@ class TickEngine:
 
     def _agent_key(self) -> str:
         """Resolve the model for this run (see :func:`resolve_agent_key`)."""
-        return resolve_agent_key(self.config, self.strategy, self.agent)
+        return resolve_agent_key(self.config, self.strategy, self.agent, self.user_id)
 
     def _resolve_server(self) -> tuple[str | None, dict | None]:
         """Resolve the server for this run, keyed on ``user_id`` (SEC-164).

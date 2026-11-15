@@ -2850,7 +2850,7 @@ async def _start(agent, strategy, req: StartStrategyRequest, user_id: int) -> di
     from condor.agents.engine import resolve_agent_key
     from condor.runtime.llm_client import agent_key_error
 
-    agent_key = resolve_agent_key(config_dict, strategy, agent)
+    agent_key = resolve_agent_key(config_dict, strategy, agent, user_id)
     problem = await agent_key_error(
         agent_key,
         user_id=user_id,

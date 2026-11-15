@@ -1,10 +1,6 @@
 ---
 name: Derive Flow Trader
 description: Directional perp trader on Derive (derive_perpetual). Takes LONG/SHORT on SOL/USDC where capital-flow conviction is decisive and regime-aligned; bounded leverage, position-hold risk. Tested on Derive mainnet only.
-# Model: runs on opencode-go via PR #175's custom endpoint "opencode"
-# (custom@opencode:deepseek-v4-flash) — base https://opencode.ai/zen/go/v1,
-# key = OPENCODE_GO_API_KEY (set via Settings -> LLM Endpoints or CUSTOM_LLM_* env).
-agent_key: custom@opencode:deepseek-v4-flash
 skills:
   - smart_money_flow:smart_money_playbook
 default_config:
