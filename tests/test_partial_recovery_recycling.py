@@ -40,7 +40,7 @@ D = Decimal
 def _spectra_paper_dispatch(monkeypatch):
     configure_spectra_paper_dispatch(monkeypatch, partial_tool.settings)
 
-def governor(tmp_path):
+def governor(tmp_path, *, clock=None):
     return CapitalGovernor(
         tmp_path / "partial-recycle-governor.sqlite3",
         CapitalPolicy(
@@ -52,6 +52,7 @@ def governor(tmp_path):
             max_leverage=D("1"),
             reservation_ttl_seconds=120,
         ),
+        clock=clock,
     )
 
 
@@ -63,6 +64,7 @@ def prepare_execution(
     intent,
     amount,
     pair="XRP-USD",
+    now=None,
 ):
     proposal = CapitalProposal(
         proposal_id=proposal_id,
@@ -80,15 +82,17 @@ def prepare_execution(
             position_exposure_quote=D("0"),
             recovery_exposure_quote=D("0"),
         ),
+        now=now,
     )
     assert decision.status == DecisionStatus.RESERVED
-    assert g.commit(proposal_id)
+    assert g.commit(proposal_id, now=now)
     assert g.reconcile_execution(
         proposal_id=proposal_id,
         executor_id=executor_id,
         account_name="master_account",
         connector_name="kraken_paper_trade",
         controller_id="spectra",
+        now=now,
     )
     return proposal
 

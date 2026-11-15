@@ -1,9 +1,26 @@
 """Test helpers shared across the suite."""
 
 import importlib.util
+import os
 import sys
 
 import pytest
+
+
+def pytest_configure():
+    # Default the suite to Spectra's isolated paper mode. Live-path tests opt
+    # in explicitly and use only this deterministic test signing key.
+    os.environ.setdefault("CONDOR_AGENT_SLUG", "spectra")
+    os.environ.setdefault("SPECTRA_PAPER_ONLY", "true")
+    os.environ.setdefault("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    os.environ.setdefault(
+        "SPECTRA_DISPATCH_PRIVATE_KEY",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    )
+    os.environ.setdefault(
+        "SPECTRA_DISPATCH_PUBLIC_KEY",
+        "O2onvM62pC1io6jQKm8Nc2UyFXcd4kOmOsBIoYtZ2ik",
+    )
 
 from condor.memory.paths import shared_routines_roots
 

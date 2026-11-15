@@ -3,6 +3,7 @@ import base64
 import json
 import time
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -220,6 +221,10 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
     monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv(
+        "SPECTRA_APPROVED_ASSETS_FILE",
+        str(Path(__file__).parent / "fixtures" / "approved_assets.json"),
+    )
     monkeypatch.setenv(
         "SPECTRA_DISPATCH_PRIVATE_KEY",
         base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="),
@@ -449,6 +454,17 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
         json.dumps({"mode": "NORMAL"}),
         encoding="utf-8",
     )
+    (paper_state / "approved_assets.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source": "isolated CI paper execution fixture",
+                "connector": "kraken_paper_trade",
+                "approved_pairs": ["BTC-USD"],
+            }
+        ),
+        encoding="utf-8",
+    )
     reset_runtime_cache()
 
     client = HummingbotAPIClient(
@@ -525,11 +541,51 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
                 and last_health.ledgered_fills == last_health.confirmed_fills
                 and snapshot.active_base > 0
             ):
+                # Prove the paper ledger and capital receipt survive a genuine
+                # Core runtime-cache restart, then replay the same venue evidence.
+                # The replay must be idempotent: no duplicate inventory, basis,
+                # fees, or fill rows may be created.
+                before_restart = ledger.snapshot(position_id)
+                proposal_id = authorization.proposal.proposal_id
+                assert governor.get_execution_receipt(proposal_id) == executor_id
+
+                reset_runtime_cache()
+                restored_governor = get_capital_governor()
+                restored_ledger = get_economic_position_ledger()
+                restored_supervisor = get_accounting_health_supervisor()
+                after_restart = restored_ledger.snapshot(position_id)
+
+                assert after_restart.active_base == before_restart.active_base
+                assert after_restart.active_cost_basis_quote == before_restart.active_cost_basis_quote
+                assert after_restart.active_entry_fees_quote == before_restart.active_entry_fees_quote
+                assert restored_governor.get_execution_receipt(proposal_id) == executor_id
+                restored_decision = restored_governor.get_decision(proposal_id)
+                assert restored_decision is not None
+                assert restored_decision.status == DecisionStatus.RECONCILED
+
+                replay_health = await synchronize_position_accounting_health(
+                    client,
+                    position_id=position_id,
+                    proposal_ids=(proposal_id,),
+                    governor=restored_governor,
+                    ledger=restored_ledger,
+                    supervisor=restored_supervisor,
+                    now=time.time(),
+                )
+                after_replay = restored_ledger.snapshot(position_id)
+                assert replay_health.state == AccountingHealthState.HEALTHY
+                assert replay_health.fully_reconciled
+                assert replay_health.confirmed_fills == last_health.confirmed_fills
+                assert replay_health.ledgered_fills == last_health.ledgered_fills
+                assert after_replay.active_base == before_restart.active_base
+                assert after_replay.active_cost_basis_quote == before_restart.active_cost_basis_quote
+                assert after_replay.active_entry_fees_quote == before_restart.active_entry_fees_quote
+
                 print(
-                    "PASS: Core-authorized Kraken paper execution produced and "
-                    "reconciled a confirmed fill "
-                    f"(executor={executor_id}, fills={last_health.ledgered_fills}, "
-                    f"base={snapshot.active_base})."
+                    "PASS: Core-authorized Kraken paper execution produced a confirmed fill; "
+                    "accounting survived restart and duplicate reconciliation was idempotent "
+                    f"(executor={executor_id}, fills={replay_health.ledgered_fills}, "
+                    f"base={after_replay.active_base})."
                 )
                 return
             await asyncio.sleep(2)

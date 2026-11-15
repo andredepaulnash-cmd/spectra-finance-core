@@ -7,6 +7,15 @@ from threading import Barrier
 
 import pytest
 
+from mcp_servers.hummingbot_api.settings import settings as spectra_settings
+from tests.spectra_test_support import configure_spectra_live_dispatch
+
+
+@pytest.fixture(autouse=True)
+def _spectra_live_dispatch(monkeypatch):
+    configure_spectra_live_dispatch(monkeypatch, spectra_settings)
+
+
 from mcp_servers.hummingbot_api.tools import execution_book, executor_create
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.economic_position import EconomicPositionLedger, normalized_base_asset

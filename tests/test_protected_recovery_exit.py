@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import pytest
 
 import mcp_servers.hummingbot_api.tools.partial_recycle as partial_tool
+from tests.spectra_test_support import configure_spectra_paper_dispatch
 from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.executor_provenance_bridge import (
     ExecutorOrderEvidence,
@@ -41,6 +42,12 @@ from tests.test_partial_recovery_recycling import (
 )
 
 D = Decimal
+
+
+@pytest.fixture(autouse=True)
+def _spectra_paper_dispatch(monkeypatch):
+    configure_spectra_paper_dispatch(monkeypatch, partial_tool.settings)
+    monkeypatch.setattr("spectra_core.partial_recycle.wall_time", lambda: 2_000.0)
 
 
 def protected_price(**overrides):
@@ -153,7 +160,7 @@ class EvidenceExecutors:
             config=dict(
                 id=executor_id,
                 type="order_executor",
-                connector_name="kraken",
+                connector_name="kraken_paper_trade",
                 trading_pair="XRP-USD",
                 side=2,
                 amount=str(self.manifest.target_base),

@@ -86,7 +86,7 @@ def test_state_dir_override_controls_governor_storage(
     )
 
     monkeypatch.setenv(
-        "SPECTRA_STATE_DIR",
+        "SPECTRA_PAPER_STATE_DIR",
         str(state_dir),
     )
     reset_runtime_cache()

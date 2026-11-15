@@ -240,3 +240,60 @@ def test_analyzer_rejects_low_activity_asset_with_one_isolated_pump():
     assert result["eligible"] is False
     assert any("sporadic_volatility" in reason for reason in result["rejection_reasons"])
     assert any("pump_dominated_history" in reason for reason in result["rejection_reasons"])
+
+
+@pytest.mark.asyncio
+async def test_paper_scan_loads_the_same_explicit_governor_allowlist_as_execution(monkeypatch, tmp_path):
+    import json
+
+    state = tmp_path / "paper-state"
+    state.mkdir()
+    (state / "approved_assets.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source": "test Governor allowlist",
+                "connector": "kraken_paper_trade",
+                "approved_pairs": ["BTC-USD"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+
+    now = 1_800_000_000.0
+    day_start = int(now // 86_400) * 86_400
+    history = [
+        {
+            "timestamp": day_start - (90 - index) * 86_400,
+            "open": 100,
+            "high": 102,
+            "low": 98,
+            "close": 100 + index * 0.1,
+            "volume": 1_000,
+        }
+        for index in range(90)
+    ]
+    market_data = FakeKrakenMarketData(history)
+    client = type("Client", (), {
+        "market_data": market_data,
+        "connectors": FakeKrakenConnectors(),
+    })()
+
+    result = await scan_kraken_universe(
+        client,
+        min_volume_usd=1_000,
+        min_history_days=90,
+        min_median_daily_quote_volume_usd=0,
+        now=now,
+    )
+
+    assert result["governor_approved_list_loaded"] is True
+    assert result["approved_asset_list_source"] == "test Governor allowlist"
+    assert result["counts"]["governor_approved"] == 1
+    assert result["candidates"][0]["governor_approved"] is True
+    assert result["candidates"][0]["capital_authorized"] is False
+    assert result["orders_created"] == 0

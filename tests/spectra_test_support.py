@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -11,6 +12,15 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 class FakeSession:
     def __init__(self):
         self.headers = {}
+
+
+def _attach_fake_session_headers(client):
+    """Give offline fake clients the same header surface as an authenticated session."""
+    session = getattr(client, "_session", None)
+    if session is None:
+        session = FakeSession()
+        setattr(client, "_session", session)
+    return session.headers
 
 
 def configure_spectra_paper_dispatch(monkeypatch, settings, *, agent_slug=True):
@@ -23,9 +33,29 @@ def configure_spectra_paper_dispatch(monkeypatch, settings, *, agent_slug=True):
     )
     encoded = base64.urlsafe_b64encode(private_raw).decode("ascii").rstrip("=")
     monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", encoded)
+    from mcp_servers.hummingbot_api.tools import dispatch_receipts
+    monkeypatch.setattr(dispatch_receipts, "_session_headers", _attach_fake_session_headers)
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
     monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv(
+        "SPECTRA_APPROVED_ASSETS_FILE",
+        str(Path(__file__).parent / "fixtures" / "approved_assets.json"),
+    )
     monkeypatch.setattr(settings, "paper_only", True)
     if agent_slug:
         monkeypatch.setattr(settings, "agent_slug", "spectra")
+
+
+
+def configure_spectra_live_dispatch(monkeypatch, settings):
+    """Opt a fake-client test into the explicitly authorized live code path."""
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv(
+        "SPECTRA_DISPATCH_PRIVATE_KEY",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    )
+    monkeypatch.setattr(settings, "paper_only", False)
+    monkeypatch.setattr(settings, "agent_slug", "spectra")

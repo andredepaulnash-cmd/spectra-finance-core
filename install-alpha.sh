@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 CORE_REPO="https://github.com/andredepaulnash-cmd/spectra-finance-core.git"
-CORE_REF="alpha/one-command-paper-demo-20261108"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
 API_REPO="https://github.com/andredepaulnash-cmd/spectra-hummingbot-api.git"
 API_REF="main"
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -573,91 +573,44 @@ for _ in $(seq 1 60); do
 done
 curl -fsS http://127.0.0.1:8088/ >/dev/null \
   || { tail -80 "$INSTALL_ROOT/condor.log" 2>/dev/null || true; die "Spectra Intelligence did not bring up the dashboard. Its startup log is $INSTALL_ROOT/condor.log"; }
-cat > "$LOCAL_BIN/spectra" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
-CORE_DIR="$INSTALL_ROOT/spectra-core"
-API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
-COMPOSE_KIND="$(cat "$INSTALL_ROOT/.compose-kind")"
-start_core() {
-  if [[ -f "$INSTALL_ROOT/condor.pid" ]] && kill -0 "$(cat "$INSTALL_ROOT/condor.pid")" 2>/dev/null; then
-    echo "Spectra Intelligence is already running."
-    return 0
-  fi
-  cd "$CORE_DIR"
-  nohup "$CORE_DIR/.venv/bin/python" "$CORE_DIR/main.py" > "$INSTALL_ROOT/condor.log" 2>&1 &
-  echo $! > "$INSTALL_ROOT/condor.pid"
-  for _ in $(seq 1 60); do
-    curl -fsS http://127.0.0.1:8088/ >/dev/null 2>&1 && return 0
-    sleep 2
-  done
-  tail -80 "$INSTALL_ROOT/condor.log" || true
-  return 1
-}
-stop_core() {
-  if [[ -f "$INSTALL_ROOT/condor.pid" ]]; then
-    pid="$(cat "$INSTALL_ROOT/condor.pid")"
-    if kill -0 "$pid" 2>/dev/null; then
-      kill -TERM "$pid"
-      for _ in $(seq 1 20); do
-        kill -0 "$pid" 2>/dev/null || break
-        sleep 0.5
-      done
-    fi
-    rm -f "$INSTALL_ROOT/condor.pid"
-  fi
-}
-compose() {
-  cd "$API_DIR"
-  if [[ "$COMPOSE_KIND" == docker ]]; then docker compose -p spectra-alpha -f docker-compose.alpha.yml "$@"; else podman-compose -p spectra-alpha -f docker-compose.alpha.yml "$@"; fi
-}
-case "${1:-status}" in
-  start)
-    compose up -d
-    api_user="$("$CORE_DIR/.venv/bin/python" -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("USERNAME=")), ""))')"
-    api_pass="$("$CORE_DIR/.venv/bin/python" -c 'from pathlib import Path; print(next((x.split("=",1)[1] for x in Path("'"$API_DIR"'/.env").read_text().splitlines() if x.startswith("PASSWORD=")), ""))')"
-    ready=false
-    for _ in $(seq 1 180); do
-      if curl -fsS -u "$api_user:$api_pass" http://127.0.0.1:8000/spectra/runtime >/dev/null 2>&1; then
-        ready=true
-        break
-      fi
-      sleep 2
-    done
-    [[ "$ready" == true ]] || { compose logs --tail=120; exit 1; }
-    start_core
-    xdg-open http://127.0.0.1:8088/overview >/dev/null 2>&1 || true
-    ;;
-  stop)
-    stop_core
-    compose down
-    ;;
-  restart)
-    "$0" stop
-    "$0" start
-    ;;
-  status)
-    if [[ -f "$INSTALL_ROOT/condor.pid" ]] && kill -0 "$(cat "$INSTALL_ROOT/condor.pid")" 2>/dev/null; then
-      echo "Spectra Intelligence process: running"
-    else
-      echo "Spectra Intelligence process: stopped"
-    fi
-    compose ps
-    ;;
-  logs)
-    tail -n 100 -f "$INSTALL_ROOT/condor.log"
-    ;;
-  update)
-    curl -fsSL "https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/one-command-paper-demo-20261108/install-alpha.sh" | bash
-    "$0" restart
-    ;;
-  *)
-    echo "Usage: spectra {start|stop|restart|status|logs|update}"
-    exit 2
-    ;;
-esac
-EOF
+install -m 700 "$CORE_DIR/scripts/spectra" "$LOCAL_BIN/spectra"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$LOCAL_BIN/spectra-alpha-doctor"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-start-api.sh" "$LOCAL_BIN/spectra-alpha-start-api"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-core-supervisor.sh" "$LOCAL_BIN/spectra-alpha-core-supervisor"
+install -m 700 "$CORE_DIR/scripts/spectra-alpha-backup.sh" "$LOCAL_BIN/spectra-alpha-backup"
+install -m 700 "$CORE_DIR/scripts/verify-alpha-paper-market-data.sh" "$LOCAL_BIN/spectra-verify-alpha-paper-market-data"
+
+SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+mkdir -p "$SYSTEMD_USER_DIR"
+"$CORE_DIR/.venv/bin/python" - "$CORE_DIR/scripts/systemd" "$SYSTEMD_USER_DIR" "$INSTALL_ROOT" "$LOCAL_BIN" <<'PYSYSTEMD'
+from pathlib import Path
+import sys
+source, target, install_root, local_bin = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], sys.argv[4]
+for name in (
+    "spectra-alpha-core.service",
+    "spectra-alpha-doctor.service",
+    "spectra-alpha-doctor.timer",
+    "spectra-alpha-backup.service",
+    "spectra-alpha-backup.timer",
+):
+    text = (source / name).read_text(encoding="utf-8")
+    text = text.replace("@INSTALL_ROOT@", install_root).replace("@LOCAL_BIN@", local_bin)
+    unit_path = target / name
+    if unit_path.exists() and unit_path.read_text(encoding="utf-8") != text:
+        raise SystemExit(f"Refusing to overwrite customized user unit {unit_path}; it was preserved.")
+    unit_path.write_text(text, encoding="utf-8")
+    unit_path.chmod(0o600)
+PYSYSTEMD
+if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+  systemctl --user daemon-reload
+  systemctl --user enable spectra-alpha-core.service >/dev/null
+  systemctl --user enable --now spectra-alpha-doctor.timer >/dev/null
+  systemctl --user enable --now spectra-alpha-backup.timer >/dev/null
+  say "Enabled safe Core restart-on-failure at user login and periodic read-only health checks."
+else
+  say "No active user systemd manager; CLI startup remains available and user services were not enabled."
+fi
+"$LOCAL_BIN/spectra-alpha-backup"
 chmod 700 "$LOCAL_BIN/spectra"
 for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
   if [[ -f "$shell_rc" ]] && ! grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "$shell_rc"; then
