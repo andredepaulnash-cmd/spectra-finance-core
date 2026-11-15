@@ -126,6 +126,22 @@ async def reserve_vcap_candidate_entry(
     if str(candidate.get("quote_asset") or "USD").strip().upper() != "USD":
         raise ValueError("VCAP entries are restricted to Kraken USD spot pairs")
 
+    try:
+        minimum_order_quote = Decimal(str(candidate.get("minimum_order_quote")))
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError("candidate is missing a valid Kraken minimum-order quote") from exc
+    maximum_minimum_quote = (
+        PAPER_VCAP_SEED_QUOTE * Decimal("10000") / Decimal("10070")
+    )
+    if (
+        not minimum_order_quote.is_finite()
+        or minimum_order_quote <= 0
+        or minimum_order_quote > maximum_minimum_quote
+    ):
+        raise ValueError(
+            "candidate venue minimum cannot fit inside the $20 entry after fee and slippage allowances"
+        )
+
     if paper_only:
         connector_name = "kraken_paper_trade"
         if connector_name != "kraken_paper_trade":
