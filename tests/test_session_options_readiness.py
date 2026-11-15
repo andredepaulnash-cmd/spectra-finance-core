@@ -12,7 +12,7 @@ import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
 
-from condor.llm.readiness import MISSING, READY, UNVERIFIED, Readiness
+from condor.llm.readiness import INVALID, MISSING, READY, UNVERIFIED, Readiness
 from condor.web.auth import get_current_user
 from condor.web.models import WebUser
 from condor.web.routes import sessions as routes
@@ -27,7 +27,7 @@ STATES = {
     "codex": Readiness(READY, "installed and logged in"),
     "ollama": Readiness(MISSING, "not reachable at http://localhost:11434/v1"),
     "lmstudio": Readiness(READY, "2 model(s) available"),
-    "openrouter": Readiness(MISSING, "needs an API key"),
+    "openrouter": Readiness(INVALID, "OpenRouter rejected OPENROUTER_API_KEY (HTTP 401)"),
     "custom": Readiness(UNVERIFIED, "cannot be checked from here"),
 }
 
@@ -79,6 +79,12 @@ def test_an_unproven_login_stays_pickable(client):
     rows = _rows(client)
     assert rows["gemini"]["ready"] is True
     assert rows["claude-acp:opus"]["ready"] is True, "the suffix probes as its base"
+
+
+def test_rejected_openrouter_key_is_marked_unrunnable(client):
+    rows = _rows(client)
+    assert rows["openrouter:"]["ready"] is False
+    assert "rejected" in rows["openrouter:"]["detail"].lower()
 
 
 def test_a_probe_that_fails_leaves_every_row_offered(client, monkeypatch):

@@ -1861,8 +1861,8 @@ export interface ChatAgentOption {
    *  shape doesn't tell you — "ollama:" also ends in a colon but IS startable. */
   picker?: boolean;
   /** Whether this machine can actually run it: no Ollama server and no
-   *  installed CLI bridge are both false. Absent when the backend could not
-   *  probe, which reads as "offer it" — never as "unavailable". */
+   *  installed CLI bridge, or rejected cloud API key are false. Absent when the
+   *  backend could not probe, which reads as "offer it" — never as "unavailable". */
   ready?: boolean;
   /** The sentence behind `ready`, naming the fix ("not installed — npm
    *  install -g @github/copilot"). Shown on the row that cannot be picked. */

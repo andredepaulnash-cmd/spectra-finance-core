@@ -8,7 +8,7 @@ local server is entitled to pick it first.
 
 import pytest
 
-from condor.llm.readiness import MISSING, READY, Readiness
+from condor.llm.readiness import INVALID, MISSING, READY, Readiness
 from handlers.agents.menu import _settings_keyboard
 
 
@@ -17,6 +17,7 @@ def states():
     return {
         "claude-acp": Readiness(READY, "installed and logged in"),
         "ollama": Readiness(MISSING, "not reachable — start it with `ollama serve`"),
+        "openrouter": Readiness(INVALID, "OpenRouter rejected OPENROUTER_API_KEY (HTTP 401)"),
     }
 
 
@@ -37,3 +38,11 @@ def test_a_provider_that_is_not_here_is_flagged_but_still_offered(states):
 def test_an_unprobed_menu_flags_nothing(states):
     """No probe is "we could not ask", never "nothing works"."""
     assert not any(lbl.startswith("⚠️") for lbl in _labels(_settings_keyboard("codex")))
+
+
+
+def test_rejected_openrouter_key_is_warned_in_telegram_picker(states):
+    labels = _labels(
+        _settings_keyboard("claude-acp:sonnet", True, states)
+    )
+    assert "⚠️ OpenRouter — Pick Model" in labels
