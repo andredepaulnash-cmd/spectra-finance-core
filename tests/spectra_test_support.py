@@ -14,6 +14,15 @@ class FakeSession:
         self.headers = {}
 
 
+def _attach_fake_session_headers(client):
+    """Give offline fake clients the same header surface as an authenticated session."""
+    session = getattr(client, "_session", None)
+    if session is None:
+        session = FakeSession()
+        setattr(client, "_session", session)
+    return session.headers
+
+
 def configure_spectra_paper_dispatch(monkeypatch, settings, *, agent_slug=True):
     """Provide a deterministic local signing key and enforce paper-only settings."""
     private = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
@@ -24,11 +33,10 @@ def configure_spectra_paper_dispatch(monkeypatch, settings, *, agent_slug=True):
     )
     encoded = base64.urlsafe_b64encode(private_raw).decode("ascii").rstrip("=")
     monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", encoded)
+    from mcp_servers.hummingbot_api.tools import dispatch_receipts
+    monkeypatch.setattr(dispatch_receipts, "_session_headers", _attach_fake_session_headers)
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
-    # These tests use in-process fake clients, not the authenticated API
-    # middleware. Receipt enforcement is exercised by dedicated transport tests.
-    monkeypatch.setenv("SPECTRA_REQUIRE_CORE_RECEIPTS", "false")
     monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
     monkeypatch.setenv(
         "SPECTRA_APPROVED_ASSETS_FILE",
@@ -44,8 +52,6 @@ def configure_spectra_live_dispatch(monkeypatch, settings):
     """Opt a fake-client test into the explicitly authorized live code path."""
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
-    # Fake-client unit tests do not carry the real API dispatch middleware.
-    monkeypatch.setenv("SPECTRA_REQUIRE_CORE_RECEIPTS", "false")
     monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
     monkeypatch.setenv(
         "SPECTRA_DISPATCH_PRIVATE_KEY",
