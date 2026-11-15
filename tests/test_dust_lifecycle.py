@@ -924,6 +924,10 @@ def configure_entry_runtime(env, monkeypatch):
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
     monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
     monkeypatch.setenv(
+        "SPECTRA_APPROVED_ASSETS_FILE",
+        str(Path(__file__).parent / "fixtures" / "approved_assets.json"),
+    )
+    monkeypatch.setenv(
         "SPECTRA_DISPATCH_PRIVATE_KEY",
         base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="),
     )
@@ -1611,7 +1615,15 @@ def test_crash_before_reservation_recovers_only_after_no_claim_lease(environment
     checkpoint(environment, orders)
     ledger, governor, _, lifecycle, clock = environment
     lifecycle.classify(checkpoint_id="checkpoint1", now=clock[0])
-    proposal = CapitalProposal("never-reserved", "XRP-USD", IntentKind.ENTRY, D("20"))
+    proposal = CapitalProposal(
+        "never-reserved",
+        "XRP-USD",
+        IntentKind.ENTRY,
+        D("20"),
+        account_name="owner-account",
+        connector_name="kraken_paper_trade",
+        quote_asset="USD",
+    )
     successor = lifecycle.prepare_entry(
         proposal=proposal, account_name="owner-account", now=clock[0]
     )
