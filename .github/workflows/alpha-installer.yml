@@ -127,6 +127,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Compile Spectra portfolio integration
+        run: python -m py_compile main.py spectra_core/portfolio_supervisor.py spectra_core/vcap_entry.py spectra_core/asset_authority.py
       - name: Install locked Core dependencies
         run: uv sync --locked --dev --python 3.12
       - name: Test alpha runtime safety and paper configuration
