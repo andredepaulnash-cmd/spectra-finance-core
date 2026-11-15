@@ -567,7 +567,7 @@ async def run_vcap_runtime_cycle(
     profit_policy: VCAPProfitExitPolicy | None = None,
     runtime_policy: VCAPRuntimePolicy | None = None,
     account_name: str = "master_account",
-    controller_id: str = "spectra",
+    controller_id: str | None = None,
 ) -> dict[str, Any]:
     """Run or resume exactly one closed-loop VCAP runtime cycle.
 
