@@ -360,9 +360,19 @@ async def scan_kraken_universe(
         # fit inside that budget must never reach Governor reservation.
         if not rule.supports_limit_orders:
             continue
+        minimum_base_size = max(
+            rule.min_order_size,
+            rule.min_base_amount_increment,
+        )
+        if rule.min_base_amount_increment > 0:
+            minimum_base_size = (
+                (minimum_base_size / rule.min_base_amount_increment)
+                .to_integral_value(rounding=ROUND_CEILING)
+                * rule.min_base_amount_increment
+            )
         minimum_order_quote = max(
             rule.effective_min_quote,
-            rule.min_order_size * ticker.price,
+            minimum_base_size * ticker.price,
         )
         if rule.min_quote_amount_increment > 0:
             minimum_order_quote = (
