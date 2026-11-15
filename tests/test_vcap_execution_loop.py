@@ -283,7 +283,7 @@ def test_conflicting_child_replay_fails_closed(tmp_path):
 
 class Connectors:
     async def get_trading_rules(self, *, connector_name, trading_pairs):
-        assert connector_name == "kraken"
+        assert connector_name == "kraken_paper_trade"
         assert trading_pairs == ["BTC-USD"]
         return {
             "BTC-USD": {
