@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Any
 
 from spectra_core.capital_governor import CapitalGovernor
+from spectra_core.execution_mode import resolve_kraken_connector_name
 from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.executor_accounting import (
     executor_accounting_observation_from_raw,
@@ -261,7 +262,7 @@ async def execute_partial_recycle(
     current_price: Decimal,
     now: float,
     account_name: str = "master_account",
-    controller_id: str = "spectra",
+    controller_id: str | None = None,
 ) -> dict[str, Any]:
     """Dispatch one exact partial-recycle SELL executor.
 
@@ -280,6 +281,17 @@ async def execute_partial_recycle(
     if manifest is None:
         raise ValueError("RECYCLE decision is missing immutable manifest")
 
+    session_controller_id = (controller_id or "").strip()
+    if not session_controller_id:
+        return {
+            "action": "PARTIAL_RECYCLE",
+            "executed": False,
+            "manifest_id": manifest.manifest_id,
+            "error": "Partial recycle requires Condor's exact session controller_id",
+        }
+
+    authorized_connector = resolve_kraken_connector_name()
+
     if get_breaker_mode() == BreakerMode.HALTED:
         return {
             "action": "PARTIAL_RECYCLE",
@@ -294,7 +306,7 @@ async def execute_partial_recycle(
         governor=governor,
     )
     owner_account, owner_connector = _owner_scope(manifest, governor)
-    if account_name != owner_account or owner_connector != "kraken":
+    if account_name != owner_account or owner_connector != authorized_connector:
         raise ValueError(
             "partial recycle execution scope must match Kraken owner scope"
         )
@@ -362,7 +374,7 @@ async def execute_partial_recycle(
             executor_config={
                 "id": manifest.sell_executor_id,
                 "type": "order_executor",
-                "connector_name": "kraken",
+                "connector_name": authorized_connector,
                 "trading_pair": manifest.pair,
                 "side": 2,
                 "amount": str(remaining),
@@ -374,7 +386,7 @@ async def execute_partial_recycle(
                 ),
             },
             account_name=account_name,
-            controller_id=controller_id,
+            controller_id=session_controller_id,
         )
         executor_id = result.get("executor_id") or result.get("id")
         if executor_id != manifest.sell_executor_id:
