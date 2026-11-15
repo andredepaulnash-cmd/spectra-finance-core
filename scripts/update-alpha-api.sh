@@ -4,6 +4,9 @@
 # preserves all state, and never removes containers, networks, or named volumes.
 set -Eeuo pipefail
 
+# The installer places rootless Podman Compose in the user-local bin directory.
+export PATH="$HOME/.local/bin:$PATH"
+
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
 CORE_REF="${SPECTRA_ALPHA_CORE_REF:-fix/spectra-connectivity-and-agent-auth}"
