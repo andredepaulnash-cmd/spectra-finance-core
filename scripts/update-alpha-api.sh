@@ -386,9 +386,9 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/kraken_authorization.py"]="3e3d4e195422002f43818c936d9c88a740ff7c72"
   ["spectra_core/market_discovery.py"]="5222e752f46f56bc58e4acd8bdd80f940ae1ce36"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="74c1dd96756788512f1dfca0f122b509775cdae0"
-  ["spectra_core/execution_policy.py"]="930dbb5b99440697bdaf65cc33d455ec818dcb9f"
-  ["spectra_core/capital_governor.py"]="9baec6ab3c4000c49da52957f651495faba8ac82"
-  ["spectra_core/economic_position.py"]="1da65c9c0094bf226e401cba0942d33882bec23b"
+  ["spectra_core/execution_policy.py"]="d83b1ca2301b0a60ca10471d71e5a146fdc7b897"
+  ["spectra_core/capital_governor.py"]="102a8f94a4a0d20b6f0e07c34dda610a2495033e"
+  ["spectra_core/economic_position.py"]="e7fbbdf56cead43c186fa8be923795442fa0e289"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"
 )
