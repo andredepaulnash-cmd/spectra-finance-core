@@ -17,7 +17,7 @@ from .models import IntentKind
 
 
 SPECTRA_HUMMINGBOT_API_REVISION = (
-    "84426ffbf9ba09522b4444664f9770236205ae29"
+    "6218917e84b1c2bd13581a1dd3698c325e06c9bf"
 )
 
 
