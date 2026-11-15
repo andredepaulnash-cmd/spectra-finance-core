@@ -7,6 +7,9 @@ set -Eeuo pipefail
 # The installer places user-local runtime helpers in ~/.local/bin.
 export PATH="$HOME/.local/bin:$PATH"
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
 CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
@@ -138,6 +141,19 @@ for source in "${API_SOURCES[@]}"; do
 done
 
 git restore --source=FETCH_HEAD --worktree -- "${API_SOURCES[@]}"
+
+# PaperTradeExchange is a Cython wrapper and does not expose _trading_pairs.
+# Pin the exact API source before applying the reviewed, idempotent adapter.
+PAPER_TRADE_SOURCE="services/trading_service.py"
+PAPER_TRADE_EXPECTED_BLOB="975f3fe9907e47029c0f66904a01b8c741857416"
+PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_trading_service_paper_trade.py"
+[[ -f "$PAPER_TRADE_PATCHER" ]] || die "Reviewed PaperTradeExchange compatibility patcher is missing."
+actual_paper_trade_blob="$(git rev-parse "FETCH_HEAD:$PAPER_TRADE_SOURCE")"
+[[ "$actual_paper_trade_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \\
+  || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed source version (expected $PAPER_TRADE_EXPECTED_BLOB, got $actual_paper_trade_blob)."
+python3 "$PAPER_TRADE_PATCHER" "$API_DIR/$PAPER_TRADE_SOURCE"
+grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$API_DIR/$PAPER_TRADE_SOURCE" \\
+  || die "PaperTradeExchange pair-registration compatibility adapter was not applied."
 
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
