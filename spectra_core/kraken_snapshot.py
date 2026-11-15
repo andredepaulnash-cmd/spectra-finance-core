@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from .execution_mode import resolve_kraken_connector_name
 from .models import CapitalSnapshot
 
 
@@ -49,10 +50,11 @@ async def build_kraken_capital_snapshot(
     account_name: str,
     trading_pair: str,
     recovery_exposure_quote: Decimal,
+    connector_name: str | None = None,
     refresh: bool = True,
 ) -> CapitalSnapshot:
     """
-    Build a fail-closed capital snapshot from the real Kraken account.
+    Build a fail-closed snapshot from the mode-authorized Kraken connector.
 
     free_quote:
         Exchange-reported available units of the pair's quote asset.
@@ -76,9 +78,10 @@ async def build_kraken_capital_snapshot(
         "recovery_exposure_quote",
     )
 
+    connector = resolve_kraken_connector_name(connector_name)
     state = await client.portfolio.get_state(
         account_names=[account_name],
-        connector_names=["kraken"],
+        connector_names=[connector],
         refresh=refresh,
     )
 
@@ -91,10 +94,10 @@ async def build_kraken_capital_snapshot(
             f"Kraken account {account_name!r} is missing from portfolio state"
         )
 
-    balances = account.get("kraken")
+    balances = account.get(connector)
     if not isinstance(balances, list):
         raise RuntimeError(
-            f"Kraken balances are missing for account {account_name!r}"
+            f"Kraken balances are missing for {connector} account {account_name!r}"
         )
 
     free_quote = ZERO
