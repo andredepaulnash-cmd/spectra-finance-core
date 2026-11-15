@@ -109,8 +109,8 @@ function AppShellBody() {
         {/* Left: logo + nav */}
         <div className="flex items-center gap-6">
           <NavLink to="/" className="flex items-center gap-2 font-bold tracking-tight">
-            <img src="/condor_old.jpeg" alt="Condor" className="h-6 w-6 rounded-full" />
-            <span className="text-sm">Condor</span>
+            <img src="/favicon.svg" alt="Spectra Finance" className="h-6 w-6" />
+            <span className="text-sm">Spectra Finance</span>
           </NavLink>
 
           <nav className="flex items-center">
