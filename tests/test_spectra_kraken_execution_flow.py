@@ -503,12 +503,13 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             account_name="master_account",
             trading_pair="BTC-USD",
             intent="ENTRY",
-            amount_quote="25",
+            amount_quote="20",
             governor=governor,
             position_id=position_id,
             refresh=True,
         )
-        assert authorization.decision.status == DecisionStatus.RESERVED, (
+        assert authorization.decision.status == DecisionStatus.RESERVED
+        assert authorization.proposal.amount_quote == Decimal("20"), (
             "paper capital reservation rejected: "
             f"reason={authorization.decision.reason!r}; "
             f"free_quote={authorization.snapshot.free_quote}; "
@@ -546,7 +547,7 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             start_price=float(start_price),
             end_price=float(end_price),
             limit_price=float(limit_price),
-            total_amount_quote=25,
+            total_amount_quote=20,
             leverage=1,
             account_name="master_account",
             controller_id="spectra-ci",
@@ -555,7 +556,7 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             spectra_position_id=position_id,
             max_open_orders=1,
             max_orders_per_batch=1,
-            min_order_amount_quote=25,
+            min_order_amount_quote=20,
             spectra_max_price_slippage_bps=10,
             spectra_fee_allowance_bps=60,
         )
