@@ -43,7 +43,7 @@ fi
 if [[ "$CONTAINER_RUNTIME" != "docker" && "$CONTAINER_RUNTIME" != "podman" ]]; then
   if command -v docker >/dev/null 2>&1 && docker inspect --type container --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null | grep -qx running; then
     CONTAINER_RUNTIME="docker"
-  elif command -v podman >/dev/null 2>&1 && engine inspect --type container --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null | grep -qx running; then
+  elif command -v podman >/dev/null 2>&1 && podman inspect --type container --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null | grep -qx running; then
     CONTAINER_RUNTIME="podman"
   else
     die "Container runtime is not recorded and no running Spectra API container identifies it. Rerun the installer to record the runtime safely."
