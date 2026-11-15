@@ -541,6 +541,7 @@ async def scan_kraken_universe(
     return {
         "source": "Kraken spot market data via Hummingbot API",
         "as_of": timestamp,
+        "fingerprint_observations": fingerprint_observations,
         "kraken_ticker_snapshot_at": snapshot.updated_at,
         "universe": "Kraken spot markets in configured quote assets",
         "criteria": {
