@@ -1943,8 +1943,17 @@ class CapitalGovernor:
                     raise ValueError("protected MARKET BUY policy conflicts with exact depth estimate")
                 book_depth = policy.get("venue_book")
                 levels = book_depth.get("asks") if isinstance(book_depth, dict) else None
-                if not isinstance(levels, list) or not levels:
-                    raise ValueError("protected MARKET BUY lacks auditable ask depth")
+                if (
+                    not isinstance(book_depth, dict)
+                    or book_depth.get("pair") != proposal.pair.strip().upper()
+                    or Decimal(str(book_depth.get("best_ask"))) != values["reference_ask"]
+                    or not isinstance(levels, list)
+                    or not levels
+                    or not isinstance(levels[0], list)
+                    or len(levels[0]) != 2
+                    or Decimal(str(levels[0][0])) != values["reference_ask"]
+                ):
+                    raise ValueError("protected MARKET BUY lacks matching auditable best-ask depth")
                 remaining = amount
                 depth_cost = ZERO
                 previous_price = ZERO
