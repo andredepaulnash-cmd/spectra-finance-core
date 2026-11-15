@@ -652,14 +652,14 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
             limit_price=80,
             total_amount_quote=50,
             leverage=1,
-            controller_id="wrong-controller",
+            controller_id="spectra.strategy_7",
             spectra_proposal_id="bridge-1",
             spectra_intent="ENTRY",
         )
     )
 
     assert len(calls) == 1
-    assert calls[0]["controller_id"] == "spectra"
+    assert calls[0]["controller_id"] == "spectra.strategy_7"
     assert result["executor_id"] == "exec-spectra-1"
 
     # COMMITTED was already asserted inside the fake Hummingbot call.
@@ -669,6 +669,31 @@ def test_spectra_exact_claim_commits_before_hummingbot(monkeypatch, tmp_path):
         == DecisionStatus.RECONCILED
     )
     assert g.get_execution_receipt("bridge-1") == "exec-spectra-1"
+
+
+
+def test_spectra_missing_session_controller_id_fails_closed_before_commit(monkeypatch):
+    client = _RecordingClient()
+    monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+
+    result = asyncio.run(
+        executor_create.create_grid_executor(
+            client,
+            connector_name="kraken",
+            trading_pair="BTC-USD",
+            side=1,
+            start_price=90,
+            end_price=100,
+            limit_price=80,
+            total_amount_quote=50,
+            leverage=1,
+            spectra_proposal_id="missing-session-controller",
+            spectra_intent="ENTRY",
+        )
+    )
+
+    assert client.calls == []
+    assert "exact session controller_id" in result["error"]
 
 
 def test_non_spectra_executor_keeps_existing_behavior(monkeypatch):
