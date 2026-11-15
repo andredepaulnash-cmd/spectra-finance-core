@@ -47,13 +47,12 @@ case "$COMPOSE_KIND" in
     ;;
   podman)
     command -v podman >/dev/null 2>&1 || die "This installation uses Podman, but Podman is unavailable."
-    if command -v podman-compose >/dev/null 2>&1; then
-      compose() { podman-compose "$@"; }
-    elif podman compose version >/dev/null 2>&1; then
-      compose() { podman compose "$@"; }
-    else
-      die "Neither podman-compose nor the Podman Compose plugin is available."
+    if ! command -v podman-compose >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then
+      uv tool install --quiet --bin-dir "$HOME/.local/bin" podman-compose || true
+      export PATH="$HOME/.local/bin:$PATH"
     fi
+    command -v podman-compose >/dev/null 2>&1 || die "Rootless updates require podman-compose; install it with 'uv tool install --bin-dir \"$HOME/.local/bin\" podman-compose'."
+    compose() { podman-compose "$@"; }
     CONTAINER_CLI="podman"
     ;;
   *)
