@@ -929,6 +929,11 @@ async def create_executor(
                 and merged_config.get("side") == 1
                 and merged_config.get("execution_strategy") == "MARKET"
             )
+            if market_buy:
+                # Market quantity is derived from the fresh ask ladder and the
+                # exact Governor reservation, never from saved amount/price defaults.
+                merged_config.pop("amount", None)
+                merged_config.pop("price", None)
             if executor_type not in {"grid_executor", "dca_executor"} and not market_buy:
                 raise ValueError(
                     f"Spectra execution is not enabled for {executor_type}; "
