@@ -24,7 +24,7 @@ def test_stack_lock_is_explicitly_partial_until_runtime_is_pinned():
 
     blockers = " ".join(data["deployment"]["blockers"]).lower()
     assert "source commit" in blockers
-    assert "latest" in blockers
+    assert "mutable" in blockers
     assert "bazzite" in blockers
 
 
