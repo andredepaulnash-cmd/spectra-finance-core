@@ -40,15 +40,6 @@ async def execute_vcap_decision(
     if proposal is None or tranche is None:
         raise ValueError("EXECUTE decision is missing tranche execution data")
 
-    session_controller_id = (controller_id or "").strip()
-    if not session_controller_id:
-        return {
-            "action": "EXECUTE",
-            "executed": False,
-            "proposal_id": proposal.proposal_id,
-            "error": "VCAP execution requires Condor's exact session controller_id",
-        }
-
     existing_executor = governor.get_execution_receipt(proposal.proposal_id)
     if existing_executor is not None:
         return {
@@ -57,6 +48,15 @@ async def execute_vcap_decision(
             "idempotent_replay": True,
             "proposal_id": proposal.proposal_id,
             "executor_id": existing_executor,
+        }
+
+    session_controller_id = (controller_id or "").strip()
+    if not session_controller_id:
+        return {
+            "action": "EXECUTE",
+            "executed": False,
+            "proposal_id": proposal.proposal_id,
+            "error": "VCAP execution requires Condor's exact session controller_id",
         }
 
     carved = carve_next_vcap_tranche(governor, decision)
