@@ -114,6 +114,8 @@ import sys
 import tempfile
 
 path = Path(sys.argv[1])
+if path.is_symlink() or not path.is_file():
+    raise SystemExit("STOP: Core .env is missing or symlinked; refusing an unsafe mode migration.")
 lines = path.read_text(encoding="utf-8").splitlines()
 values = {}
 for line in lines:
