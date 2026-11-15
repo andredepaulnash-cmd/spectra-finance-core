@@ -437,10 +437,10 @@ def _authorize_spectra_execution(
             "fail-closed as HALTED"
         )
 
-    if executor_type not in {"grid_executor", "dca_executor"}:
+    if executor_type not in {"grid_executor", "dca_executor", "order_executor"}:
         return (
             f"Spectra execution is not enabled for {executor_type}; "
-            "only Kraken spot grid/DCA are authorized in this phase"
+            "only governed Kraken spot Grid, DCA, and ordinary MARKET BUY are authorized"
         )
 
     if not (proposal_id or "").strip():
@@ -485,11 +485,13 @@ def _authorize_spectra_execution(
     try:
         if executor_type == "grid_executor":
             amount_quote = Decimal(str(config["total_amount_quote"]))
-        else:
+        elif executor_type == "dca_executor":
             amounts = config.get("amounts_quote") or []
             amount_quote = exact_decimal_sum(
                 (Decimal(str(value)) for value in amounts),
             )
+        else:
+            amount_quote = Decimal(str(protected_buy_policy["authorized_quote_budget"]))
     except Exception:
         return "Spectra execution quote amount could not be determined"
 
@@ -727,6 +729,124 @@ async def _bounded_protected_buy(
     return order.executor_config, policy, raw_rule
 
 
+async def _bounded_market_buy(
+    client: Any,
+    config: dict[str, Any],
+    *,
+    proposal_id: str,
+    fee_allowance_bps: Any,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Build a depth-sized Kraken MARKET BUY with no immutable ask-price cap."""
+    from spectra_core.execution_policy import build_protected_buy_market_config
+    from spectra_core.kraken_market_fabric import normalize_kraken_trading_rules
+
+    from .execution_book import fetch_protected_kraken_book
+
+    if fee_allowance_bps is None or isinstance(fee_allowance_bps, bool):
+        raise ValueError("market BUY requires an explicit fee allowance")
+    connector = "kraken_paper_trade" if settings.paper_only else "kraken"
+    if str(config.get("connector_name") or "").strip().lower() != connector:
+        raise ValueError("market BUY connector does not match Spectra execution mode")
+    pair = str(config.get("trading_pair") or "").strip().upper()
+    if not pair or "-" not in pair:
+        raise ValueError("market BUY requires its exact base/quote pair")
+    decision = get_capital_governor().get_decision(proposal_id)
+    if decision is None or decision.status.value != "RESERVED":
+        raise ValueError("market BUY requires an existing RESERVED capital proposal")
+    budget = Decimal(str(decision.reserved_quote))
+    if budget <= 0:
+        raise ValueError("market BUY capital reservation is not positive")
+
+    payload = await client.connectors.get_trading_rules(
+        connector_name=connector,
+        trading_pairs=[pair],
+    )
+    if not isinstance(payload, dict) or not isinstance(payload.get(pair), dict):
+        raise ValueError("market BUY trading rules lack exact pair scope")
+    raw_rule = payload[pair]
+    if (
+        raw_rule.get("supports_market_orders") is not True
+        or "min_order_size" not in raw_rule
+        or not any(field in raw_rule for field in ("min_notional_size", "min_order_value"))
+    ):
+        raise ValueError("market BUY trading rules are incomplete or lack MARKET support")
+    rules, rejected = normalize_kraken_trading_rules(
+        payload, quote_assets=(pair.rsplit("-", 1)[1],)
+    )
+    rule = rules.get(pair)
+    if rule is None or not rule.supports_market_orders:
+        raise ValueError(
+            f"market BUY trading rules are invalid: {rejected.get(pair, 'unknown')}"
+        )
+    book = await fetch_protected_kraken_book(rule)
+    if book.pair != pair:
+        raise ValueError("market BUY venue book pair differs from authorized pair")
+    venue_base = getattr(book, "venue_min_order_size", None)
+    venue_quote = getattr(book, "venue_min_cost_quote", None)
+    rules_time = getattr(book, "venue_rules_observed_at", None)
+    rules_hash = getattr(book, "venue_rules_sha256", None)
+    if (
+        not isinstance(venue_base, Decimal) or not venue_base.is_finite() or venue_base <= 0
+        or not isinstance(venue_quote, Decimal) or not venue_quote.is_finite() or venue_quote <= 0
+        or getattr(book, "venue_base_asset", None) != pair.rsplit("-", 1)[0]
+        or getattr(book, "venue_quote_asset", None) != pair.rsplit("-", 1)[1]
+        or isinstance(rules_time, bool) or not isinstance(rules_time, (int, float))
+        or not isfinite(rules_time) or rules_time <= 0
+        or not isinstance(rules_hash, str) or len(rules_hash) != 64
+        or any(char not in "0123456789abcdef" for char in rules_hash)
+    ):
+        raise ValueError("market BUY lacks exact trusted venue minimum evidence")
+    now = time()
+    if rules_time > now or now - rules_time > 30:
+        raise ValueError("market BUY venue minimum evidence is stale or future")
+    rule = replace(
+        rule,
+        min_order_size=max(rule.min_order_size, venue_base),
+        min_notional_size=max(rule.min_notional_size, venue_quote),
+    )
+    order = build_protected_buy_market_config(
+        config,
+        trading_rule=rule,
+        asks=book.asks,
+        best_ask=book.best_ask,
+        market_observed_at=book.market_observed_at,
+        now=now,
+        authorized_quote_budget=budget,
+        fee_allowance_bps=Decimal(str(fee_allowance_bps)),
+        connector_name=connector,
+    )
+    policy = {
+        "execution_strategy": "MARKET",
+        "authorized_quote_budget": str(order.authorized_quote_budget),
+        "reference_ask": str(order.reference_ask),
+        "amount_base": str(order.amount_base),
+        "estimated_principal_quote": str(order.estimated_principal_quote),
+        "estimated_fee_quote": str(order.estimated_fee_quote),
+        "estimated_total_quote": str(order.estimated_total_quote),
+        "fee_allowance_bps": str(Decimal(str(fee_allowance_bps))),
+        "venue_book": {
+            "pair": book.pair,
+            "exchange_pair": book.exchange_pair,
+            "best_bid": str(book.best_bid),
+            "best_ask": str(book.best_ask),
+            "asks": [[str(price), str(amount)] for price, amount in book.asks],
+            "requested_at": book.requested_at,
+            "received_at": book.received_at,
+            "source": book.source,
+            "response_sha256": book.response_sha256,
+            "venue_min_order_size": str(venue_base),
+            "venue_min_cost_quote": str(venue_quote),
+            "venue_base_asset": book.venue_base_asset,
+            "venue_quote_asset": book.venue_quote_asset,
+            "venue_rules_observed_at": rules_time,
+            "venue_rules_sha256": rules_hash,
+            "effective_min_order_size": str(rule.min_order_size),
+            "effective_min_quote": str(rule.effective_min_quote),
+        },
+    }
+    return order.executor_config, policy, raw_rule
+
+
 async def create_executor(
     client: Any,
     executor_type: str,
@@ -804,9 +924,15 @@ async def create_executor(
                 raise ValueError(
                     "Spectra breaker returned an unknown state; fail-closed as HALTED"
                 )
-            if executor_type not in {"grid_executor", "dca_executor"}:
+            market_buy = (
+                executor_type == "order_executor"
+                and merged_config.get("side") == 1
+                and merged_config.get("execution_strategy") == "MARKET"
+            )
+            if executor_type not in {"grid_executor", "dca_executor"} and not market_buy:
                 raise ValueError(
-                    f"Spectra execution is not enabled for {executor_type}"
+                    f"Spectra execution is not enabled for {executor_type}; "
+                    "ordinary governed order entries must use MARKET BUY"
                 )
             if not (spectra_proposal_id or "").strip():
                 raise ValueError("Spectra execution requires a capital proposal_id")
@@ -823,13 +949,21 @@ async def create_executor(
                 raise ValueError(
                     f"protected BUY cash authority is blocked: {cash_state.reason}"
                 )
-            backend_config, protected_buy_policy, dust_venue_rules = await _bounded_protected_buy(
-                client,
-                executor_type,
-                merged_config,
-                max_price_slippage_bps=spectra_max_price_slippage_bps,
-                fee_allowance_bps=spectra_fee_allowance_bps,
-            )
+            if market_buy:
+                backend_config, protected_buy_policy, dust_venue_rules = await _bounded_market_buy(
+                    client,
+                    merged_config,
+                    proposal_id=str(spectra_proposal_id),
+                    fee_allowance_bps=spectra_fee_allowance_bps,
+                )
+            else:
+                backend_config, protected_buy_policy, dust_venue_rules = await _bounded_protected_buy(
+                    client,
+                    executor_type,
+                    merged_config,
+                    max_price_slippage_bps=spectra_max_price_slippage_bps,
+                    fee_allowance_bps=spectra_fee_allowance_bps,
+                )
         except Exception as exc:
             error = f"Spectra protected BUY refused before capital commit: {exc}"
             return {
@@ -1313,6 +1447,10 @@ async def create_order_executor(
     account_name: str | None = None,
     controller_id: str | None = None,
     save_as_default: bool = False,
+    spectra_proposal_id: str | None = None,
+    spectra_intent: str | None = None,
+    spectra_position_id: str | None = None,
+    spectra_fee_allowance_bps: str | float | Decimal | None = None,
 ) -> dict[str, Any]:
     """Place one order with a chosen execution strategy.
 
@@ -1330,6 +1468,11 @@ async def create_order_executor(
             "chaser_refresh_threshold"
         )
 
+    if execution_strategy == "MARKET" and side == 1 and settings.agent_slug == "spectra":
+        if not spectra_proposal_id or not spectra_intent or not spectra_position_id:
+            raise ValueError("Spectra MARKET BUY requires proposal, intent, and position identity")
+        if amount is not None:
+            raise ValueError("Spectra MARKET BUY amount is derived from its authorized quote budget")
     config = _compact(
         {
             "connector_name": connector_name,
@@ -1356,6 +1499,10 @@ async def create_order_executor(
         account_name=account_name,
         controller_id=controller_id,
         save_as_default=save_as_default,
+        spectra_proposal_id=spectra_proposal_id,
+        spectra_intent=spectra_intent,
+        spectra_position_id=spectra_position_id,
+        spectra_fee_allowance_bps=spectra_fee_allowance_bps,
     )
 
 
