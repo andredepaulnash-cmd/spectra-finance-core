@@ -175,6 +175,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
             total_amount_quote=50,
             leverage=1,
             account_name="master_account",
+            controller_id="spectra.strategy_7",
             spectra_proposal_id=proposal.proposal_id,
             spectra_intent="ENTRY",
         )
@@ -210,4 +211,4 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
     assert provenance is not None
     assert provenance.account_name == "master_account"
     assert provenance.connector_name == "kraken"
-    assert provenance.controller_id == "spectra"
+    assert provenance.controller_id == "spectra.strategy_7"
