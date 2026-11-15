@@ -145,7 +145,7 @@ find_running_container_for_port() {
   while IFS= read -r id; do
     [[ -n "$id" ]] || continue
     published="$(podman port "$id" 2>/dev/null || true)"
-    if grep -Eq ":[[:space:]]*(127[.]0[.]0[.]1|0[.]0[.]0[.]0|\\[::\\]|::):${port}([[:space:]]|$)" <<<"$published"; then
+    if grep -Eq -- "->[[:space:]]*(127[.]0[.]0[.]1|0[.]0[.]0[.]0):${port}([[:space:]]|$)" <<<"$published"; then
       printf '%s\\n' "$id"
       return 0
     fi
