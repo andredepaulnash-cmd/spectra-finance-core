@@ -495,7 +495,7 @@ class CapitalGovernor:
                     )
                     conn.commit()
                     return False
-                self._expire_stale(conn, now=current_time)
+                self._expire_stale(conn, now=at)
                 if self._protected(conn) > ZERO:
                     raise RuntimeError(
                         "cash activation requires no unresolved RESERVED/COMMITTED claims"
@@ -1128,7 +1128,7 @@ class CapitalGovernor:
             conn.execute("BEGIN IMMEDIATE")
 
             try:
-                self._expire_stale(conn)
+                self._expire_stale(conn, now=current_time)
 
                 bound = cash.binding(conn)
                 if bound is not None:
@@ -1680,7 +1680,7 @@ class CapitalGovernor:
                     (
                         DecisionStatus.COMMITTED.value,
                         reason,
-                        self._now(),
+                        current_time,
                         proposal_id,
                         DecisionStatus.RESERVED.value,
                     ),
@@ -2741,6 +2741,8 @@ class CapitalGovernor:
         self,
         proposal_id: str,
         reason: str = "committed",
+        *,
+        now: float | None = None,
     ) -> bool:
         """
         Durably claim a RESERVED proposal for external execution.
@@ -2753,6 +2755,7 @@ class CapitalGovernor:
             proposal_id=proposal_id,
             target=DecisionStatus.COMMITTED,
             reason=reason,
+            now=now,
         )
 
     def _transition(
@@ -2761,11 +2764,23 @@ class CapitalGovernor:
         proposal_id: str,
         target: DecisionStatus,
         reason: str,
+        now: float | None = None,
     ) -> bool:
         proposal_id = proposal_id.strip()
 
         if not proposal_id:
             raise ValueError("proposal_id is required")
+        if now is None:
+            current_time = self._now()
+        else:
+            if isinstance(now, bool):
+                raise ValueError("CapitalGovernor clock must return a finite timestamp")
+            try:
+                current_time = float(now)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("CapitalGovernor clock must return a finite timestamp") from exc
+            if not math.isfinite(current_time) or current_time < 0:
+                raise ValueError("CapitalGovernor clock must return a finite timestamp")
 
         if target not in {
             DecisionStatus.COMMITTED,
@@ -2793,7 +2808,7 @@ class CapitalGovernor:
                     target == DecisionStatus.COMMITTED
                     and cash.binding(conn) is not None
                 ):
-                    self._expire_stale(conn)
+                    self._expire_stale(conn, now=current_time)
                     row = conn.execute(
                         "SELECT * FROM capital_reservations WHERE proposal_id=?",
                         (proposal_id,),
