@@ -310,6 +310,7 @@ async def scan_kraken_universe(
     quote_assets: Iterable[str] = ("USD",),
     approved_pairs: Iterable[str] | None = None,
     now: float | None = None,
+    fingerprint_store: Any | None = None,
 ) -> dict[str, Any]:
     """Rank Kraken USD spot markets using the configured Hummingbot API.
 
@@ -343,6 +344,23 @@ async def scan_kraken_universe(
     )
 
     snapshot = await collect_kraken_universe(client, quote_assets=quote_assets)
+    fingerprint_observations = 0
+    if fingerprint_store is not None:
+        # Preserve behavioral memory for every eligible market, not only the
+        # mean-reversion shortlist that may later receive a capital reservation.
+        from .asset_fingerprint import AssetFingerprint, observation_from_kraken_universe
+
+        for pair in snapshot.eligible_pairs:
+            observation = observation_from_kraken_universe(snapshot, pair)
+            existing = fingerprint_store.load_fingerprint(pair)
+            if existing is None:
+                updated = AssetFingerprint.cold_start(observation)
+            elif observation.timestamp > existing.last_seen_at:
+                updated = existing.update(observation)
+            else:
+                continue
+            fingerprint_store.save_fingerprint(updated, now=observation.timestamp)
+            fingerprint_observations += 1
     candidates = []
     usable_entry_quote = (
         PAPER_ENTRY_QUOTE_BUDGET * Decimal("10000")
