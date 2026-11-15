@@ -164,7 +164,7 @@ def snapshots(orders, trades):
 def test_bridge_is_pinned_to_exact_companion_api_revision():
     assert (
         SPECTRA_HUMMINGBOT_API_REVISION
-        == "47936c8b94ebf2620acca8a7dce4ac727f407c10"
+        == "3797866eeb6badd751d087a216aa5b7cf9b47860"
     )
 
 
