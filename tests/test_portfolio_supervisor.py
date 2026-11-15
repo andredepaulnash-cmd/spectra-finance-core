@@ -7,6 +7,8 @@ from spectra_core.models import BreakerMode
 from spectra_core.portfolio_supervisor import (
     PortfolioSupervisorConfig,
     PortfolioSupervisorDependencies,
+    get_portfolio_supervisor_status,
+    persist_portfolio_status,
     portfolio_autorun_enabled,
     run_portfolio_cycle,
 )
@@ -323,3 +325,55 @@ async def test_supervisor_fills_83_unique_slots_and_replenishes_a_closed_slot_au
     assert replacement["new_entries_this_cycle"] == 1
     assert replacement["vacancies"] == 0
     assert replacement["active_positions"] == 83
+
+
+
+def test_persisted_portfolio_status_is_available_to_dashboard(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        "spectra_core.portfolio_supervisor.spectra_state_dir",
+        lambda: tmp_path,
+    )
+    persist_portfolio_status({
+        "updated_at": 1000.0,
+        "mode": "PAPER_ONLY",
+        "target_active_positions": 83,
+        "active_positions": 12,
+        "vacancies": 71,
+        "blocked_reason": None,
+        "last_error": None,
+    })
+
+    status = get_portfolio_supervisor_status()
+
+    assert status["supervisor_state"] == "RUNNING"
+    assert status["mode"] == "PAPER_ONLY"
+    assert status["target_active_positions"] == 83
+    assert status["active_positions"] == 12
+    assert status["vacancies"] == 71
+
+
+def test_missing_portfolio_status_is_reported_as_not_started(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        "spectra_core.portfolio_supervisor.spectra_state_dir",
+        lambda: tmp_path,
+    )
+
+    status = get_portfolio_supervisor_status()
+
+    assert status["supervisor_state"] == "NOT_STARTED"
+    assert status["updated_at"] is None
+
+
+def test_symlinked_portfolio_status_fails_closed(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        "spectra_core.portfolio_supervisor.spectra_state_dir",
+        lambda: tmp_path,
+    )
+    target = tmp_path / "external.json"
+    target.write_text('{"mode":"PAPER_ONLY"}', encoding="utf-8")
+    (tmp_path / "portfolio_supervisor_state.json").symlink_to(target)
+
+    status = get_portfolio_supervisor_status()
+
+    assert status["supervisor_state"] == "UNAVAILABLE"
+    assert "symlink" in status["error"]
