@@ -487,7 +487,19 @@ def synchronize_executor_evidence(
     if protected is not None:
         config = protected["config"]
         authorized_amount = Fraction(Decimal(str(config["amount"])))
-        price_cap = Fraction(Decimal(str(config["price"])))
+        # Ordinary market entries deliberately have no immutable price field.
+        # Their quote-budget enforcement is performed by the terminal fill
+        # accounting validator using confirmed trade prices and converted fees.
+        # This bridge attests executor ownership/type/quantity; it must not
+        # reinterpret a market order's observed fill price as a limit ceiling.
+        market_buy = config.get("execution_strategy") == "MARKET"
+        if market_buy and config.get("price") is not None:
+            raise ValueError("protected MARKET BUY configuration must not contain a price")
+        price_cap = (
+            None
+            if market_buy
+            else Fraction(Decimal(str(config["price"])))
+        )
         protected_buy_orders = [
             order for order in order_snapshot.orders if order.side == "BUY"
         ]
@@ -496,9 +508,17 @@ def synchronize_executor_evidence(
         if any(order.side != "BUY" for order in order_snapshot.orders):
             breaches.append("protected_buy_executor_contains_unapproved_sell_order")
         for order in protected_buy_orders:
-            if order.order_type.upper() != "LIMIT":
-                breaches.append(f"protected_buy_order_is_not_limit:{order.order_id}")
-            if order.price is None or Fraction(order.price) > price_cap:
+            expected_type = "MARKET" if market_buy else "LIMIT"
+            if order.order_type.upper() != expected_type:
+                breaches.append(
+                    f"protected_buy_order_is_not_{expected_type.lower()}:{order.order_id}"
+                )
+            if market_buy:
+                if order.price is not None:
+                    breaches.append(
+                        f"protected_market_buy_order_has_limit_price:{order.order_id}"
+                    )
+            elif order.price is None or Fraction(order.price) > price_cap:
                 breaches.append(f"protected_buy_order_price_above_cap:{order.order_id}")
             if Fraction(order.amount) != authorized_amount:
                 breaches.append(f"protected_buy_order_amount_changed:{order.order_id}")
@@ -507,7 +527,8 @@ def synchronize_executor_evidence(
                     f"protected_buy_order_fills_above_authorized_amount:{order.order_id}"
                 )
             if (
-                order.average_fill_price is not None
+                not market_buy
+                and order.average_fill_price is not None
                 and Fraction(order.average_fill_price) > price_cap
             ):
                 breaches.append(
