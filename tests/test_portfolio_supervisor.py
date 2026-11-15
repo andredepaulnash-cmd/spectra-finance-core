@@ -29,6 +29,7 @@ def _candidate(pair, score=90.0):
         "trading_pair": pair,
         "quote_asset": "USD",
         "current_price": 100.0,
+        "minimum_order_quote": 1.0,
         "volume_24h_usd": 1_000_000.0,
         "selection_score": score,
         "eligible": True,
