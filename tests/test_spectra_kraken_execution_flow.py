@@ -22,12 +22,12 @@ class Portfolio:
         refresh,
     ):
         assert account_names == ["master_account"]
-        assert connector_names == ["kraken"]
+        assert connector_names == ["kraken_paper_trade"]
         assert refresh is True
 
         return {
             "master_account": {
-                "kraken": [
+                "kraken_paper_trade": [
                     {
                         "token": "USD",
                         "units": 500,
@@ -166,7 +166,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
     result = asyncio.run(
         executor_create.create_grid_executor(
             client,
-            connector_name="kraken",
+            connector_name="kraken_paper_trade",
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
@@ -194,7 +194,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
     call = client.executors.calls[0]
 
     assert call["account_name"] == "master_account"
-    assert call["executor_config"]["connector_name"] == "kraken"
+    assert call["executor_config"]["connector_name"] == "kraken_paper_trade"
     assert call["executor_config"]["trading_pair"] == "BTC-USD"
     assert call["executor_config"]["total_amount_quote"] == 50
 
@@ -210,5 +210,5 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
     provenance = g.get_execution_provenance(proposal.proposal_id)
     assert provenance is not None
     assert provenance.account_name == "master_account"
-    assert provenance.connector_name == "kraken"
+    assert provenance.connector_name == "kraken_paper_trade"
     assert provenance.controller_id == "spectra.strategy_7"
