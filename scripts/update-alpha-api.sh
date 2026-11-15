@@ -414,6 +414,12 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
     old_blob="${CORE_PYTHON_OLD_BLOBS[$source]}"
+    # Recognize both the immediately previous reviewed integration blob and
+    # the older Alpha-installed MCP source; never overwrite unknown edits.
+    if [[ "$source" == "mcp_servers/hummingbot_api/tools/executor_create.py" \
+      && "$worktree_blob" == "2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a" ]]; then
+      old_blob="$worktree_blob"
+    fi
     if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
