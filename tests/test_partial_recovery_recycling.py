@@ -79,8 +79,8 @@ def prepare_execution(
         proposal_id=proposal_id,
         executor_id=executor_id,
         account_name="master_account",
-        connector_name="kraken",
-        controller_id="spectra",
+        connector_name="kraken_paper_trade",
+        controller_id="spectra.strategy_7",
     )
     return proposal
 
@@ -430,7 +430,7 @@ def test_confirmed_partial_recycle_realizes_profit_releases_basis_and_keeps_posi
         trade_id="recycle-trade-1",
         order_id="recycle-sell-order",
         account_name="master_account",
-        connector_name="kraken",
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         side="SELL",
         amount_base=D("10"),
@@ -480,6 +480,7 @@ def test_confirmed_partial_recycle_realizes_profit_releases_basis_and_keeps_posi
             trading_rule=rule(),
             current_price=D("0.50"),
             now=2_010,
+            controller_id="spectra.strategy_7",
         )
     )
 
