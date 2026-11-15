@@ -80,6 +80,13 @@ class _Client:
 
 
 @pytest.fixture(autouse=True)
+def _offline_fake_client_dispatch(monkeypatch):
+    # These tests exercise preflight behavior with an in-process fake backend;
+    # authenticated dispatch receipts are covered by the dedicated API tests.
+    monkeypatch.setenv("SPECTRA_REQUIRE_CORE_RECEIPTS", "false")
+
+
+@pytest.fixture(autouse=True)
 def _fresh_cache():
     """The cache is process-level, so a test must not inherit another's answer."""
     trading_rules_cache.clear()
