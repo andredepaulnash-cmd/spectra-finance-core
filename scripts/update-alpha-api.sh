@@ -30,12 +30,8 @@ exec 9>"$LOCK_FILE"
 flock -n 9 || die "Another Spectra API update is already running. Check $LOG_FILE."
 
 command -v podman >/dev/null 2>&1 || die "Podman is not installed."
-if ! command -v podman-compose >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then
-  UV_TOOL_BIN_DIR="$HOME/.local/bin" uv tool install --quiet podman-compose || true
-  export PATH="$HOME/.local/bin:$PATH"
-fi
-command -v podman-compose >/dev/null 2>&1 || die "Rootless updates require podman-compose; install it with 'uv tool install --bin-dir \"$HOME/.local/bin\" podman-compose'."
-compose() { podman-compose "$@"; }
+command -v uv >/dev/null 2>&1 || die "uv is required to run the rootless Podman Compose provider."
+compose() { uv tool run --from podman-compose podman-compose "$@"; }
 command -v git >/dev/null 2>&1 || die "Git is not installed."
 command -v curl >/dev/null 2>&1 || die "curl is not installed."
 [[ -d "$API_DIR/.git" ]] || die "API Git checkout not found at $API_DIR."
