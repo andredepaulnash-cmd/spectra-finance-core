@@ -1,8 +1,8 @@
-# Condor
+# Spectra Finance
 
-A Telegram bot for monitoring and trading with Hummingbot via the **Hummingbot API**.
+Spectra Finance is an integrated trading intelligence and execution application. It uses Condor's agent runtime and Hummingbot's execution infrastructure under the hood; those framework names remain in internal packages and technical references, while the product identity is Spectra Finance.
 
-**Help shape Condor** — [take the 2-minute survey](https://forms.gle/7NpG3RtgfLrmpUNY8). Tell us what's working, what's confusing, and what you need next. Your answers go to the Hummingbot Foundation team and directly shape the roadmap.
+**Help shape Spectra Finance** — [take the 2-minute survey](https://forms.gle/7NpG3RtgfLrmpUNY8). Tell us what's working, what's confusing, and what you need next. Your answers go to the Hummingbot Foundation team and directly shape the roadmap.
 
 > **Why we recommend Tailscale for production**
 >
