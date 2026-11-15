@@ -231,10 +231,10 @@ class FakeMarketData:
         self.price = price
 
     async def get_tickers(self, connector):
-        assert connector == "kraken"
+        assert connector == "kraken_paper_trade"
         return {
             "tickers": {
-                "kraken": {
+                "kraken_paper_trade": {
                     "XRP-USD": {
                         "price": self.price,
                         "base_volume": "100000",
@@ -243,11 +243,11 @@ class FakeMarketData:
                     }
                 }
             },
-            "updated_at": {"kraken": self.timestamp},
+            "updated_at": {"kraken_paper_trade": self.timestamp},
         }
 
     async def get_order_book(self, **kwargs):
-        assert kwargs["connector_name"] == "kraken"
+        assert kwargs["connector_name"] == "kraken_paper_trade"
         return {
             "bids": [["0.4999", "1000"]],
             "asks": [["0.5001", "1000"]],
@@ -257,7 +257,7 @@ class FakeMarketData:
 
 class FakeConnectors:
     async def get_trading_rules(self, connector):
-        assert connector == "kraken"
+        assert connector == "kraken_paper_trade"
         return {
             "XRP-USD": {
                 "min_order_size": "1",
