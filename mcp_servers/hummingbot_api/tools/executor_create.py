@@ -742,6 +742,11 @@ async def _bounded_market_buy(
 
     from .execution_book import fetch_protected_kraken_book
 
+    if not settings.paper_only:
+        raise ValueError(
+            "Live MARKET BUY remains gated until the connector can enforce "
+            "a quote-denominated spend bound; paper MARKET execution is enabled"
+        )
     if fee_allowance_bps is None or isinstance(fee_allowance_bps, bool):
         raise ValueError("market BUY requires an explicit fee allowance")
     connector = "kraken_paper_trade" if settings.paper_only else "kraken"
