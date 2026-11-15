@@ -427,7 +427,7 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
     from mcp_servers.hummingbot_api.tools.accounting_health import (
         synchronize_position_accounting_health,
     )
-    from mcp_servers.hummingbot_api.tools.executor_create import create_grid_executor
+    from mcp_servers.hummingbot_api.tools.executor_create import create_order_executor
 
     paper_state = tmp_path / "paper-state"
     live_state = tmp_path / "live-state"
@@ -499,46 +499,23 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
         )
         assert authorization.decision.status == DecisionStatus.RESERVED
 
-        # Grid prices must be expressed in the live instrument's price scale.
-        # Fixed values such as 90/100 are stale for a real BTC-USD paper book
-        # and make a valid Grid look non-marketable before Hummingbot is called.
-        from spectra_core.kraken_market_fabric import normalize_kraken_trading_rules
-
-        raw_rules = await client.connectors.get_trading_rules(
-            connector_name="kraken_paper_trade",
-            trading_pairs=["BTC-USD"],
-        )
-        normalized_rules, rejected = normalize_kraken_trading_rules(
-            raw_rules,
-            quote_assets=("USD",),
-        )
-        trading_rule = normalized_rules.get("BTC-USD")
-        assert trading_rule is not None, rejected
-        fresh_book = await execution_book.fetch_protected_kraken_book(trading_rule)
-        ask = fresh_book.best_ask
-        start_price = ask * D("0.999")
-        end_price = ask * D("1.002")
-        limit_price = ask * D("0.998")
-
-        result = await create_grid_executor(
+        # The real API-backed acceptance path exercises the ordinary MARKET BUY.
+        # Grid's independent LIMIT policy remains covered by the deterministic unit test.
+        result = await create_order_executor(
             client,
             connector_name="kraken_paper_trade",
             trading_pair="BTC-USD",
             side=1,
-            start_price=float(start_price),
-            end_price=float(end_price),
-            limit_price=float(limit_price),
-            total_amount_quote=25,
+            execution_strategy="MARKET",
+            amount=None,
+            price=None,
             leverage=1,
+            position_action="OPEN",
             account_name="master_account",
             controller_id="spectra-ci",
             spectra_proposal_id=authorization.proposal.proposal_id,
             spectra_intent="ENTRY",
             spectra_position_id=position_id,
-            max_open_orders=1,
-            max_orders_per_batch=1,
-            min_order_amount_quote=25,
-            spectra_max_price_slippage_bps=10,
             spectra_fee_allowance_bps=60,
         )
         assert not result.get("error"), result
