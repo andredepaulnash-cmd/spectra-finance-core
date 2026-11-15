@@ -193,82 +193,67 @@ def validate_protected_buy_terminal_evidence(
     ledger_path,
     executor_config=None,
 ):
-    """Recognize only the exact funded BUY LIMIT adapter as a passive source."""
+    """Recognize exact durable BUY LIMIT or depth-sized MARKET authority."""
     accessor = getattr(governor, "get_protected_buy_submission", None)
     authority = None if accessor is None else accessor(proposal_id)
     if not isinstance(authority, dict):
-        raise ValueError(
-            "terminal BUY order executor lacks durable protected authority"
-        )
+        raise ValueError("terminal BUY order executor lacks durable protected authority")
     config = authority.get("config", authority.get("executor_config"))
     if not isinstance(config, dict):
         raise ValueError("terminal BUY order executor has no immutable config")
+    strategy = config.get("execution_strategy")
+    if strategy not in {"LIMIT", "MARKET"}:
+        raise ValueError("terminal BUY order executor has an unsupported execution strategy")
+    policy = authority.get("policy")
+    if strategy == "MARKET" and (
+        not isinstance(policy, dict)
+        or policy.get("execution_strategy") != "MARKET"
+        or config.get("price") is not None
+    ):
+        raise ValueError("terminal MARKET BUY lacks exact no-price policy evidence")
     provenance = governor.get_execution_provenance(proposal_id)
     if (
         provenance is None
         or authority.get("executor_id") != provenance.executor_id
         or governor.get_execution_receipt(proposal_id) != provenance.executor_id
         or authority.get("position_id") != position_id
-        or Path(authority.get("ledger_path", "")).resolve()
-        != Path(ledger_path).resolve()
+        or Path(authority.get("ledger_path", "")).resolve() != Path(ledger_path).resolve()
         or authority.get("pair") != provenance.pair
         or authority.get("account_name") != provenance.account_name
         or authority.get("connector_name") != provenance.connector_name
         or authority.get("submission_state", authority.get("state")) != "DISPATCHED"
         or config.get("type") != "order_executor"
         or config.get("side") != 1
-        or config.get("execution_strategy") != "LIMIT"
         or config.get("trading_pair") != provenance.pair
         or config.get("connector_name") != provenance.connector_name
         or observation.executor_id != provenance.executor_id
         or observation.executor_type != "order_executor"
         or observation.status != "TERMINATED"
-        or observation.close_type
-        not in {"COMPLETED", "FAILED", "EARLY_STOP", "POSITION_HOLD"}
+        or observation.close_type not in {"COMPLETED", "FAILED", "EARLY_STOP", "POSITION_HOLD"}
         or orders.executor_id != provenance.executor_id
         or trades.executor_id != provenance.executor_id
     ):
-        raise ValueError(
-            "terminal BUY order executor differs from exact protected receipt"
-        )
-    amount = _decimal(
-        Decimal(str(config.get("amount"))), "protected_buy_amount", positive=True
-    )
-    ceiling = _decimal(
-        Decimal(str(config.get("price"))), "protected_buy_price", positive=True
-    )
-    conflicts = getattr(governor, "get_protected_buy_conflicts", lambda _: ())(
-        proposal_id
-    )
+        raise ValueError("terminal BUY order executor differs from exact protected receipt")
+    amount = _decimal(Decimal(str(config.get("amount"))), "protected_buy_amount", positive=True)
+    ceiling = None
+    if strategy == "LIMIT":
+        ceiling = _decimal(Decimal(str(config.get("price"))), "protected_buy_price", positive=True)
+    conflicts = getattr(governor, "get_protected_buy_conflicts", lambda _: ())(proposal_id)
     if conflicts:
-        raise ValueError(
-            "terminal protected BUY has unresolved execution protection conflict"
-        )
+        raise ValueError("terminal protected BUY has unresolved execution protection conflict")
+    compare_fields = (
+        "id", "type", "side", "execution_strategy", "trading_pair",
+        "connector_name", "leverage",
+    )
     if (
         not isinstance(executor_config, dict)
-        or any(
-            executor_config.get(field) != config.get(field)
-            for field in (
-                "id",
-                "type",
-                "side",
-                "execution_strategy",
-                "trading_pair",
-                "connector_name",
-                "leverage",
-            )
+        or any(executor_config.get(field) != config.get(field) for field in compare_fields)
+        or _decimal(Decimal(str(executor_config.get("amount"))), "actual_buy_amount", positive=True) != amount
+        or (
+            strategy == "LIMIT"
+            and _decimal(Decimal(str(executor_config.get("price"))), "actual_buy_price", positive=True) != ceiling
         )
-        or any(
-            _decimal(
-                Decimal(str(executor_config.get(field))),
-                "actual_buy_" + field,
-                positive=True,
-            )
-            != _decimal(
-                Decimal(str(config.get(field))), "bound_buy_" + field, positive=True
-            )
-            for field in ("amount", "price")
-        )
+        or (strategy == "MARKET" and executor_config.get("price") is not None)
     ):
         raise ValueError("terminal BUY observed config differs from immutable receipt")
     if len({order.order_id for order in orders.orders}) != len(orders.orders) or len(
@@ -277,47 +262,59 @@ def validate_protected_buy_terminal_evidence(
         raise ValueError("terminal BUY evidence duplicates orders or trades")
     known = {order.order_id: order for order in orders.orders}
     terminal = {"FILLED", "CANCELED", "CANCELLED", "FAILED", "REJECTED", "EXPIRED"}
+    allowed_order_types = {"LIMIT"} if strategy == "LIMIT" else {"MARKET", "MARKET_ORDER"}
     for order in orders.orders:
         if (
             order.side != "BUY"
-            or order.order_type != "LIMIT"
+            or order.order_type not in allowed_order_types
             or order.status not in terminal
-            or order.price is None
-            or order.price > ceiling
+            or (strategy == "LIMIT" and (order.price is None or order.price > ceiling))
             or order.amount > amount
             or order.filled_amount < ZERO
             or order.filled_amount > order.amount
             or (order.status == "FILLED" and order.filled_amount != order.amount)
-            or order.filled_amount
-            != exact_decimal_sum(
-                trade.amount_base
-                for trade in trades.trades
-                if trade.order_id == order.order_id
+            or order.filled_amount != exact_decimal_sum(
+                trade.amount_base for trade in trades.trades if trade.order_id == order.order_id
             )
         ):
-            raise ValueError(
-                "terminal protected BUY source has unproven order coverage"
-            )
+            raise ValueError("terminal protected BUY source has unproven order coverage")
     if any(
-        trade.order_id not in known or trade.side != "BUY" or trade.price > ceiling
+        trade.order_id not in known
+        or trade.side != "BUY"
+        or (strategy == "LIMIT" and trade.price > ceiling)
         for trade in trades.trades
     ):
-        raise ValueError(
-            "terminal protected BUY source trade crosses immutable order scope"
-        )
+        raise ValueError("terminal protected BUY source trade crosses immutable order scope")
     if exact_decimal_sum(trade.amount_base for trade in trades.trades) > amount:
         raise ValueError("terminal protected BUY fills exceed funded amount")
     filled_quote = sum(
-        (
-            Fraction(trade.amount_base) * Fraction(trade.price)
-            for trade in trades.trades
-        ),
+        (Fraction(trade.amount_base) * Fraction(trade.price) for trade in trades.trades),
         Fraction(0),
     )
     if Fraction(observation.filled_amount_quote) != filled_quote:
-        raise ValueError(
-            "terminal protected BUY executor volume differs from exact trades"
-        )
+        raise ValueError("terminal protected BUY executor volume differs from exact trades")
+    if strategy == "MARKET":
+        quote_asset = provenance.pair.rsplit("-", 1)[-1]
+        base_asset = provenance.pair.rsplit("-", 1)[0]
+        fee_quote = ZERO
+        for trade in trades.trades:
+            fee = _decimal(Decimal(str(getattr(trade, "fee_paid", 0) or 0)), "market_buy_fee")
+            fee_currency = str(getattr(trade, "fee_currency", "") or "").upper()
+            if fee_currency == quote_asset:
+                fee_quote += fee
+            elif fee_currency == base_asset:
+                fee_quote += fee * trade.price
+            elif fee > ZERO:
+                raise ValueError("market BUY fee currency cannot be valued in the authorized quote asset")
+        actual_total = Decimal(filled_quote.numerator) / Decimal(filled_quote.denominator) + fee_quote
+        budget = _decimal(Decimal(str(policy.get("authorized_quote_budget"))), "authorized_quote_budget", positive=True)
+        if actual_total > budget:
+            detail = (
+                f"confirmed MARKET BUY spend plus fees {actual_total} exceeds "
+                f"authorized quote budget {budget}"
+            )
+            governor.record_protected_buy_conflict(proposal_id=proposal_id, reason=detail)
+            raise ValueError(detail)
     return authority
 
 
