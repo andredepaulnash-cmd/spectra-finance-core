@@ -377,6 +377,7 @@ CORE_PYTHON_SOURCES=(
   "mcp_servers/hummingbot_api/tools/executor_create.py"
   "spectra_core/execution_policy.py"
   "spectra_core/capital_governor.py"
+  "spectra_core/economic_position.py"
   "routines/mean_reversion_scanner.py"
   "condor/web/routes/market.py"
 )
@@ -387,6 +388,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="74c1dd96756788512f1dfca0f122b509775cdae0"
   ["spectra_core/execution_policy.py"]="930dbb5b99440697bdaf65cc33d455ec818dcb9f"
   ["spectra_core/capital_governor.py"]="9baec6ab3c4000c49da52957f651495faba8ac82"
+  ["spectra_core/economic_position.py"]="1da65c9c0094bf226e401cba0942d33882bec23b"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"
 )
@@ -397,6 +399,7 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["spectra_core/execution_policy.py"]="403f0e7d229d36231a1fdd88f21eb809aacae2e8"
   ["spectra_core/capital_governor.py"]="d100fc52c8bab80aebf49e1b7a51da21d4d1750e"
+  ["spectra_core/economic_position.py"]="3d63e76d57081c5a9b232d3966b7ef20f975ca8a"
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
@@ -429,6 +432,7 @@ done
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
   "$CORE_DIR/spectra_core/execution_policy.py" \
   "$CORE_DIR/spectra_core/capital_governor.py" \
+  "$CORE_DIR/spectra_core/economic_position.py" \
   "$CORE_DIR/routines/mean_reversion_scanner.py" \
   "$CORE_DIR/condor/web/routes/market.py"
 say "Installed and syntax-checked the reviewed paper asset authority and strategy-discovery code."
