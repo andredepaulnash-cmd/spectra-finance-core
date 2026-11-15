@@ -185,7 +185,7 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(monkeypatch, tmp_path):
 
     assert len(client.connectors.calls) == 1
     assert client.connectors.calls[0] == {
-        "connector_name": "kraken",
+        "connector_name": "kraken_paper_trade",
         "trading_pairs": ["BTC-USD"],
     }
 
