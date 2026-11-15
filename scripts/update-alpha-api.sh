@@ -324,12 +324,24 @@ declare -A CORE_SHELL_NEW_BLOBS=(
 for source in "${CORE_SHELL_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
   expected_blob="${CORE_SHELL_NEW_BLOBS[$source]}"
+  # AppShell has two explicitly reviewed versions: the current Alpha shell and
+  # the independently tested Overview-scroll fix. Accept either exact blob so
+  # the updater can safely move between the frozen snapshot and that release.
+  approved_alternate_blob=""
+  if [[ "$source" == "frontend/src/components/layout/AppShell.tsx" ]]; then
+    if [[ "$upstream_blob" == "95a825257934453963b1755f9c3bdfb2f52045f0" ]]; then
+      expected_blob="$upstream_blob"
+      approved_alternate_blob="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
+    elif [[ "$upstream_blob" == "776e421f5ab1312ab97a09756bc82df8e4da0fc5" ]]; then
+      approved_alternate_blob="95a825257934453963b1755f9c3bdfb2f52045f0"
+    fi
+  fi
   if [[ "$upstream_blob" != "$expected_blob" ]]; then
     die "Fetched $source is not the reviewed Command Center version."
   fi
   worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
   old_blob="${CORE_SHELL_OLD_BLOBS[$source]}"
-  if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
+  if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" && "$worktree_blob" != "$approved_alternate_blob" ]]; then
     die "Unrecognized local changes in $source. They were preserved; review them before updating."
   fi
 done
@@ -350,7 +362,7 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-backup.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="774ae8e7912896d7266fbb06c459b9f5a48a7dc3"
+  ["scripts/spectra"]="f716e1b6abccc775270fb9c5480d57091e2c202e"
   ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
@@ -371,7 +383,9 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
     die "Refusing to replace symlinked local path $source."
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-    if [[ "$worktree_blob" != "$expected_blob" ]]; then
+    if [[ "$source" == "scripts/spectra" && "$worktree_blob" == "774ae8e7912896d7266fbb06c459b9f5a48a7dc3" ]]; then
+      : # Exact previous CLI version; replace it with the aligned release-ref version below.
+    elif [[ "$worktree_blob" != "$expected_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
   fi
