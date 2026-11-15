@@ -288,10 +288,7 @@ jobs:
           else
             changed_files="$(git diff --name-only "$GITHUB_EVENT_BEFORE" "$GITHUB_SHA")"
           fi
-          if printf '%s\\n' "$changed_files" | grep -Eq '^(spectra_core/(asset_authority|capital_governor|economic_position|execution_policy|fill_reconciliation|kraken_authorization|kraken_market_fabric|kraken_snapshot|runtime)\\.py|mcp_servers/hummingbot_api/tools/(accounting_health|dispatch_receipts|execution_book|executor_create|executor_provenance)\\.py|tests/(test_spectra_kraken_execution_flow|test_spectra_executor_accounting_flow|test_accounting_health_gate)\\.py)      - name: Stop alpha services
-        if: always()
-        run: '$HOME/.local/bin/spectra stop || true'
-; then
+          if grep -Eq '^(spectra_core/(asset_authority|capital_governor|economic_position|execution_policy|fill_reconciliation|kraken_authorization|kraken_market_fabric|kraken_snapshot|runtime)\.py|mcp_servers/hummingbot_api/tools/(accounting_health|dispatch_receipts|execution_book|executor_create|executor_provenance)\.py|tests/(test_spectra_kraken_execution_flow|test_spectra_executor_accounting_flow|test_accounting_health_gate)\.py)$' <<< "$changed_files"; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           else
             echo "required=false" >> "$GITHUB_OUTPUT"
