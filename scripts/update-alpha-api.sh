@@ -375,6 +375,8 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/kraken_authorization.py"
   "spectra_core/market_discovery.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
+  "spectra_core/execution_policy.py"
+  "spectra_core/capital_governor.py"
   "routines/mean_reversion_scanner.py"
   "condor/web/routes/market.py"
 )
@@ -382,7 +384,9 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="26b65d413e9dffde2464e20945b3e7755c6491e6"
   ["spectra_core/kraken_authorization.py"]="3e3d4e195422002f43818c936d9c88a740ff7c72"
   ["spectra_core/market_discovery.py"]="5222e752f46f56bc58e4acd8bdd80f940ae1ce36"
-  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2a27e9f128c9f9d5cb3d714cb97c11843d751401"
+  ["spectra_core/execution_policy.py"]="930dbb5b99440697bdaf65cc33d455ec818dcb9f"
+  ["spectra_core/capital_governor.py"]="9baec6ab3c4000c49da52957f651495faba8ac82"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"
 )
@@ -390,7 +394,9 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/asset_authority.py"]=""
   ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050"
   ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
-  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["spectra_core/execution_policy.py"]="403f0e7d229d36231a1fdd88f21eb809aacae2e8"
+  ["spectra_core/capital_governor.py"]="d100fc52c8bab80aebf49e1b7a51da21d4d1750e"
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
@@ -421,6 +427,8 @@ done
   "$CORE_DIR/spectra_core/kraken_authorization.py" \
   "$CORE_DIR/spectra_core/market_discovery.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
+  "$CORE_DIR/spectra_core/execution_policy.py" \
+  "$CORE_DIR/spectra_core/capital_governor.py" \
   "$CORE_DIR/routines/mean_reversion_scanner.py" \
   "$CORE_DIR/condor/web/routes/market.py"
 say "Installed and syntax-checked the reviewed paper asset authority and strategy-discovery code."
