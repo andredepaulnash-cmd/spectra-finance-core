@@ -103,6 +103,44 @@ for key in ("SPECTRA_PAPER_ONLY", "SPECTRA_ALLOW_LIVE_EXECUTION"):
     if api.get(key) != core.get(key):
         raise SystemExit("API/Core execution-mode mismatch for " + key)
 PYMODECHECK
+
+# Enable the recovered autonomous portfolio supervisor for paper mode on
+# existing installations too. Defaults are additive: an operator's explicit
+# false/true values are preserved, and live automation remains disabled.
+"$CORE_DIR/.venv/bin/python" - "$CORE_DIR/.env" <<'PYPORTFOLIO'
+from pathlib import Path
+import os
+import sys
+import tempfile
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8").splitlines()
+present = {
+    line.split("=", 1)[0].strip()
+    for line in lines
+    if "=" in line and not line.lstrip().startswith("#")
+}
+defaults = (
+    ("SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED", "true"),
+    ("SPECTRA_PORTFOLIO_AUTORUN", "true"),
+    ("SPECTRA_LIVE_AUTORUN", "false"),
+    ("SPECTRA_AUTO_ASSET_SELECTION", "true"),
+    ("SPECTRA_TARGET_ACTIVE_POSITIONS", "83"),
+    ("SPECTRA_MAX_NEW_ENTRIES_PER_TICK", "3"),
+    ("SPECTRA_VCAP_SEED_QUOTE", "20"),
+)
+added = [f"{key}={value}" for key, value in defaults if key not in present]
+if added:
+    content = "\n".join(lines + added) + "\n"
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=path.parent,
+        prefix=".spectra-env-", suffix=".tmp", delete=False
+    ) as handle:
+        handle.write(content)
+        temporary = Path(handle.name)
+    temporary.chmod(0o600)
+    os.replace(temporary, path)
+PYPORTFOLIO
 EXECUTION_MODE="$("$CORE_DIR/.venv/bin/python" - "$API_DIR/.env" <<'PYMODE'
 from pathlib import Path
 import sys
