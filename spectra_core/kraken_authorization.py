@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import uuid4
 
+from .execution_mode import resolve_kraken_connector_name
 from .kraken_snapshot import build_kraken_capital_snapshot
 from .models import (
     CapitalDecision,
@@ -52,6 +53,7 @@ async def reserve_kraken_capital(
     intent: IntentKind | str,
     amount_quote: Decimal | str | int | float,
     governor=None,
+    connector_name: str | None = None,
     refresh: bool = True,
 ) -> KrakenCapitalAuthorization:
     """
@@ -75,11 +77,13 @@ async def reserve_kraken_capital(
     intent_kind = _intent(intent)
 
     capital_governor = governor or get_capital_governor()
+    connector = resolve_kraken_connector_name(connector_name)
 
     snapshot = await build_kraken_capital_snapshot(
         client,
         account_name=account,
         trading_pair=pair,
+        connector_name=connector,
         recovery_exposure_quote=(
             capital_governor.current_recovery_exposure_quote()
         ),
