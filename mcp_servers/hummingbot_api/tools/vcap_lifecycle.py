@@ -41,7 +41,7 @@ async def execute_vcap_lifecycle_decision(
     current_price: Decimal | None = None,
     accounting_health: AccountingHealthDecision | None = None,
     account_name: str = "master_account",
-    controller_id: str = "spectra",
+    controller_id: str | None = None,
 ) -> dict[str, Any]:
     """Dispatch one unified VCAP lifecycle decision.
 
