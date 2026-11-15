@@ -155,7 +155,7 @@ done
 ok "Kraken paper market data verified"
 
 BACKUP_DIR="$INSTALL_ROOT/backups"
-LATEST_BACKUP="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'spectra-paper-*.tar.gz' -printf '%T@ %p\\n' 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)"
+LATEST_BACKUP="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'spectra-paper-*.tar.gz' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)"
 [[ -n "$LATEST_BACKUP" ]] || fail "No paper-state backup exists; run spectra backup."
 tar -tzf "$LATEST_BACKUP" >/dev/null || fail "Latest paper-state backup archive is corrupt."
 BACKUP_AGE="$(($(date +%s) - $(stat -c %Y "$LATEST_BACKUP")))"
