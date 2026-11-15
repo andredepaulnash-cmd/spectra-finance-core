@@ -17,6 +17,7 @@ from .recovery_fingerprint import (
     plan_vcap_recovery,
 )
 from .vcap_tranches import (
+    VCAPDrawdownZone,
     VCAPTranche,
     VCAPTranchePlan,
     VCAPTranchePolicy,
@@ -192,19 +193,28 @@ def replan_vcap_sequence(
             reasons=tuple(recovery.reasons) + ("recovery_target_satisfied",),
         )
 
+    drawdown_bps = max(
+        ZERO,
+        (
+            (position.average_entry_price - current_price)
+            / position.average_entry_price
+        ) * Decimal("10000"),
+    )
     tranches = plan_vcap_tranches(
         recovery,
         authorized_quote=remaining,
         current_price=current_price,
         trading_rule=trading_rule,
         policy=tranche_policy,
+        drawdown_bps=drawdown_bps,
     )
 
     if not tranches.tranches:
+        outside_vcap_zone = tranches.zone == VCAPDrawdownZone.OUTSIDE
         return VCAPExecutionDecision(
             envelope_proposal_id=envelope,
             sequence=sequence,
-            action=VCAPLoopAction.HOLD,
+            action=VCAPLoopAction.STOP if outside_vcap_zone else VCAPLoopAction.HOLD,
             remaining_authorized_quote=remaining,
             current_price=current_price,
             recovery_plan=recovery,
@@ -213,7 +223,11 @@ def replan_vcap_sequence(
             next_proposal=None,
             reasons=tuple(recovery.reasons)
             + tuple(tranches.reasons)
-            + ("no_sellable_tranche_now",),
+            + (
+                ("vcap_drawdown_limit_reached",)
+                if outside_vcap_zone
+                else ("no_sellable_tranche_now",)
+            ),
         )
 
     next_tranche = tranches.tranches[0]
