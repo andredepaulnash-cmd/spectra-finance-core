@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from spectra_core.capital_governor import CapitalGovernor
+from spectra_core.execution_mode import resolve_kraken_connector_name
 from spectra_core.vcap_execution import (
     VCAPExecutionDecision,
     VCAPLoopAction,
@@ -18,7 +19,7 @@ async def execute_vcap_decision(
     decision: VCAPExecutionDecision,
     governor: CapitalGovernor,
     account_name: str = "master_account",
-    controller_id: str = "spectra",
+    controller_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute one prevalidated VCAP tranche through the Spectra DCA path.
 
@@ -38,6 +39,15 @@ async def execute_vcap_decision(
     tranche = decision.next_tranche
     if proposal is None or tranche is None:
         raise ValueError("EXECUTE decision is missing tranche execution data")
+
+    session_controller_id = (controller_id or "").strip()
+    if not session_controller_id:
+        return {
+            "action": "EXECUTE",
+            "executed": False,
+            "proposal_id": proposal.proposal_id,
+            "error": "VCAP execution requires Condor's exact session controller_id",
+        }
 
     existing_executor = governor.get_execution_receipt(proposal.proposal_id)
     if existing_executor is not None:
@@ -60,7 +70,7 @@ async def execute_vcap_decision(
 
     result = await create_dca_executor(
         client,
-        connector_name="kraken",
+        connector_name=resolve_kraken_connector_name(),
         trading_pair=proposal.pair,
         side=1,
         amounts_quote=[float(proposal.amount_quote)],
@@ -68,7 +78,7 @@ async def execute_vcap_decision(
         leverage=1,
         level_id=f"vcap-{decision.sequence:04d}",
         account_name=account_name,
-        controller_id=controller_id,
+        controller_id=session_controller_id,
         spectra_proposal_id=proposal.proposal_id,
         spectra_intent="RECOVERY",
     )
