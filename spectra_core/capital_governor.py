@@ -2912,6 +2912,7 @@ class CapitalGovernor:
         connector_name: str | None = None,
         controller_id: str | None = None,
         reason: str = "reconciled with Hummingbot executor receipt",
+        now: float | None = None,
     ) -> bool:
         """
         Atomically bind one Spectra proposal to one Hummingbot executor and
@@ -2920,6 +2921,18 @@ class CapitalGovernor:
         Exact replay of the same proposal/executor mapping is idempotent.
         Conflicting mappings fail closed.
         """
+        if now is None:
+            current_time = self._now()
+        else:
+            if isinstance(now, bool):
+                raise ValueError("CapitalGovernor clock must return a finite timestamp")
+            try:
+                current_time = float(now)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("CapitalGovernor clock must return a finite timestamp") from exc
+            if not math.isfinite(current_time) or current_time < 0:
+                raise ValueError("CapitalGovernor clock must return a finite timestamp")
+
         proposal_id = proposal_id.strip()
         executor_id = executor_id.strip()
 
@@ -3148,7 +3161,7 @@ class CapitalGovernor:
                     conn.rollback()
                     return False
 
-                now = self._now()
+                now = current_time
 
                 conn.execute(
                     """
