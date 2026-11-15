@@ -1670,6 +1670,7 @@ class CapitalGovernor:
                             ),
                         )
 
+                current_time = self._now()
                 cursor = conn.execute(
                     """
                     UPDATE capital_reservations
@@ -2843,7 +2844,7 @@ class CapitalGovernor:
                     (
                         target.value,
                         reason,
-                        self._now(),
+                        current_time,
                         proposal_id,
                         DecisionStatus.RESERVED.value,
                     ),
