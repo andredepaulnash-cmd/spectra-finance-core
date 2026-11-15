@@ -1931,7 +1931,8 @@ class CapitalGovernor:
                     fee = values["estimated_principal_quote"] * values["fee_allowance_bps"] / Decimal("10000")
                     total = values["estimated_principal_quote"] + fee
                 if (
-                    values["fee_allowance_bps"] >= Decimal("10000")
+                    policy.get("execution_strategy") != "MARKET"
+                    or values["fee_allowance_bps"] >= Decimal("10000")
                     or values["reference_ask"] <= ZERO
                     or amount != values["amount_base"]
                     or fee != values["estimated_fee_quote"]
@@ -1940,6 +1941,31 @@ class CapitalGovernor:
                     or total > proposal.amount_quote
                 ):
                     raise ValueError("protected MARKET BUY policy conflicts with exact depth estimate")
+                book_depth = policy.get("venue_book")
+                levels = book_depth.get("asks") if isinstance(book_depth, dict) else None
+                if not isinstance(levels, list) or not levels:
+                    raise ValueError("protected MARKET BUY lacks auditable ask depth")
+                remaining = amount
+                depth_cost = ZERO
+                previous_price = ZERO
+                for level in levels:
+                    if not isinstance(level, list) or len(level) != 2:
+                        raise ValueError("protected MARKET BUY ask depth is malformed")
+                    level_price, level_size = Decimal(str(level[0])), Decimal(str(level[1]))
+                    if (
+                        not level_price.is_finite() or level_price <= ZERO
+                        or not level_size.is_finite() or level_size <= ZERO
+                        or (previous_price and level_price < previous_price)
+                    ):
+                        raise ValueError("protected MARKET BUY ask depth is invalid or unsorted")
+                    previous_price = level_price
+                    take = min(remaining, level_size)
+                    depth_cost += take * level_price
+                    remaining -= take
+                    if remaining <= ZERO:
+                        break
+                if remaining > ZERO or depth_cost != values["estimated_principal_quote"]:
+                    raise ValueError("protected MARKET BUY depth estimate does not match submitted base amount")
                 principal = values["estimated_principal_quote"]
             else:
                 with localcontext() as context:
