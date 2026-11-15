@@ -90,6 +90,7 @@ def normalize_kraken_tickers(
     payload: Mapping[str, Any],
     *,
     quote_assets: Iterable[str] = ("USD",),
+    connector_name: str = "kraken",
 ) -> tuple[dict[str, KrakenTicker], dict[str, str], float | None]:
     """Normalize the Hummingbot API Kraken ticker payload.
 
@@ -102,9 +103,9 @@ def normalize_kraken_tickers(
     if not isinstance(tickers_root, Mapping):
         raise ValueError("ticker payload has no 'tickers' mapping")
 
-    raw = tickers_root.get("kraken")
+    raw = tickers_root.get(connector_name)
     if not isinstance(raw, Mapping):
-        raise ValueError("ticker payload has no Kraken ticker mapping")
+        raise ValueError(f"ticker payload has no {connector_name} ticker mapping")
 
     normalized: dict[str, KrakenTicker] = {}
     rejected: dict[str, str] = {}
@@ -142,9 +143,9 @@ def normalize_kraken_tickers(
 
     updated = payload.get("updated_at")
     updated_at: float | None = None
-    if isinstance(updated, Mapping) and updated.get("kraken") is not None:
+    if isinstance(updated, Mapping) and updated.get(connector_name) is not None:
         try:
-            updated_at = float(updated["kraken"])
+            updated_at = float(updated[connector_name])
         except (TypeError, ValueError):
             updated_at = None
 
@@ -313,8 +314,9 @@ async def collect_kraken_universe(
     if order_book_depth <= 0:
         raise ValueError("order_book_depth must be positive")
 
-    ticker_payload = await client.market_data.get_tickers("kraken")
-    rules_payload = await client.connectors.get_trading_rules("kraken")
+    connector_name = resolve_kraken_connector_name()
+    ticker_payload = await client.market_data.get_tickers(connector_name)
+    rules_payload = await client.connectors.get_trading_rules(connector_name)
 
     if not isinstance(ticker_payload, Mapping):
         raise RuntimeError("Kraken ticker response is not a mapping")
@@ -324,6 +326,7 @@ async def collect_kraken_universe(
     tickers, ticker_rejected, updated_at = normalize_kraken_tickers(
         ticker_payload,
         quote_assets=quote_assets,
+        connector_name=connector_name,
     )
     rules, rule_rejected = normalize_kraken_trading_rules(
         rules_payload,
@@ -353,7 +356,7 @@ async def collect_kraken_universe(
             continue
         try:
             payload = await client.market_data.get_order_book(
-                connector_name="kraken",
+                connector_name=connector_name,
                 trading_pair=pair,
                 depth=order_book_depth,
             )
