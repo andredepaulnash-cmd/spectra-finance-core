@@ -149,10 +149,10 @@ PAPER_TRADE_EXPECTED_BLOB="975f3fe9907e47029c0f66904a01b8c741857416"
 PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_trading_service_paper_trade.py"
 [[ -f "$PAPER_TRADE_PATCHER" ]] || die "Reviewed PaperTradeExchange compatibility patcher is missing."
 actual_paper_trade_blob="$(git rev-parse "FETCH_HEAD:$PAPER_TRADE_SOURCE")"
-[[ "$actual_paper_trade_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \\
+[[ "$actual_paper_trade_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
   || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed source version (expected $PAPER_TRADE_EXPECTED_BLOB, got $actual_paper_trade_blob)."
 python3 "$PAPER_TRADE_PATCHER" "$API_DIR/$PAPER_TRADE_SOURCE"
-grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$API_DIR/$PAPER_TRADE_SOURCE" \\
+grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$API_DIR/$PAPER_TRADE_SOURCE" \
   || die "PaperTradeExchange pair-registration compatibility adapter was not applied."
 
 grep -q "refusing registration" "${API_SOURCES[0]}" \
