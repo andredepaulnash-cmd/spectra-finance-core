@@ -98,6 +98,7 @@ def _dependencies(
 
     async def create(client, **kwargs):
         created.append(kwargs)
+        ledger._pairs.append(kwargs["trading_pair"])
         return {"executor_id": "executor-" + kwargs["trading_pair"]}
 
     assets = SimpleNamespace(
@@ -269,3 +270,55 @@ def test_paper_autorun_defaults_on_and_live_autorun_requires_a_second_flag(monke
 
     monkeypatch.setenv("SPECTRA_PORTFOLIO_AUTORUN", "false")
     assert portfolio_autorun_enabled() is False
+
+
+
+@pytest.mark.asyncio
+async def test_supervisor_fills_83_unique_slots_and_replenishes_a_closed_slot_automatically():
+    pairs = [f"ASSET{index:03d}-USD" for index in range(84)]
+    deps, reserved, created, _ = _dependencies(allowed_pairs=pairs)
+    config = _config(target_active_positions=83, max_new_entries_per_tick=3)
+    client = object()
+
+    # The persistent ledger is updated by each successful executor creation.
+    # The supervisor must fill the whole fleet over successive autonomous ticks.
+    for tick in range(28):
+        status = await run_portfolio_cycle(
+            client,
+            scan_result=_scan(*pairs[:83]),
+            config=config,
+            dependencies=deps,
+            now=1_000.0 + tick,
+        )
+
+    ledger = deps.get_ledger()
+    assert len(ledger._pairs) == 83
+    assert len(set(ledger._pairs)) == 83
+    assert len(reserved) == 83
+    assert len(created) == 83
+    assert status["active_positions"] == 83
+    assert status["unique_active_positions"] == 83
+    assert status["vacancies"] == 0
+
+    # Simulate one position reaching its terminal close. The next scan excludes
+    # that retired candidate and offers a different eligible asset. No operator
+    # prompt is involved: the next supervisor cycle reserves and dispatches it.
+    closed_pair = ledger._pairs.pop(0)
+    replacement_scan = _scan(*pairs[1:])
+    replacement = await run_portfolio_cycle(
+        client,
+        scan_result=replacement_scan,
+        config=config,
+        dependencies=deps,
+        now=1_100.0,
+    )
+
+    assert closed_pair not in ledger._pairs
+    assert pairs[83] in ledger._pairs
+    assert len(ledger._pairs) == 83
+    assert len(set(ledger._pairs)) == 83
+    assert reserved[-1] == pairs[83]
+    assert created[-1]["trading_pair"] == pairs[83]
+    assert replacement["new_entries_this_cycle"] == 1
+    assert replacement["vacancies"] == 0
+    assert replacement["active_positions"] == 83
