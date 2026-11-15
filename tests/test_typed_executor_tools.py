@@ -559,6 +559,7 @@ def test_spectra_without_claim_never_touches_hummingbot(monkeypatch):
         executor_create.create_grid_executor(
             client,
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
@@ -756,6 +757,7 @@ def test_spectra_missing_trading_rules_stops_before_capital_commit(monkeypatch):
         executor_create.create_grid_executor(
             client,
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
@@ -855,6 +857,7 @@ def test_spectra_backend_exception_leaves_capital_committed(
         executor_create.create_grid_executor(
             _Client(),
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
@@ -971,6 +974,7 @@ def test_spectra_missing_executor_id_leaves_capital_committed(
         executor_create.create_grid_executor(
             _Client(),
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
@@ -1088,6 +1092,7 @@ def _assert_spectra_breaker_refuses_before_commit(
         executor_create.create_grid_executor(
             client,
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
@@ -1242,6 +1247,7 @@ def test_spectra_grid_derives_legal_child_floor_and_safe_defaults(
         executor_create.create_grid_executor(
             _Client(),
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
@@ -1311,6 +1317,7 @@ def test_spectra_grid_rejects_child_floor_below_base_minimum(
         executor_create.create_grid_executor(
             client,
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
@@ -1366,6 +1373,7 @@ def test_spectra_dca_rejects_child_below_base_minimum(
         executor_create.create_dca_executor(
             client,
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             amounts_quote=[5, 5],
@@ -1417,6 +1425,7 @@ def test_spectra_incomplete_trading_rules_fail_closed(
         executor_create.create_grid_executor(
             client,
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             start_price=90,
@@ -1508,6 +1517,7 @@ def test_spectra_accepts_zero_notional_rule_and_uses_base_minimum(
         executor_create.create_grid_executor(
             _Client(),
             connector_name="kraken_paper_trade",
+            controller_id="spectra.strategy_7",
             trading_pair="BTC-USD",
             side=1,
             start_price=90000,
