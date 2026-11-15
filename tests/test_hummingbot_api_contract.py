@@ -13,7 +13,7 @@ def test_locked_hummingbot_api_exact_position_hold_contract():
     lock = json.loads(LOCK.read_text())
     api = lock["components"]["spectra_hummingbot_api"]
 
-    assert api["revision"] == "84426ffbf9ba09522b4444664f9770236205ae29"
+    assert api["revision"] == "6218917e84b1c2bd13581a1dd3698c325e06c9bf"
     assert api["contracts"]["exact_position_hold_accounting"] == 1
     assert api["contracts"]["executor_order_provenance"] == 1
     assert api["contracts"]["executor_trade_provenance"] == 1
@@ -23,9 +23,9 @@ def test_locked_hummingbot_api_exact_position_hold_contract():
     # exact-decimal, exact-scope contract without coercing through floats.
     raw = {
         "account_name": "master_account",
-        "connector_name": "kraken",
+        "connector_name": "kraken_paper_trade",
         "trading_pair": "BTC-USD",
-        "controller_id": "spectra",
+        "controller_id": "spectra.strategy_7",
         "status": "ACTIVE",
         "buy_amount_base": "0.001234567890123456",
         "buy_amount_quote": "190.000000000000000001",
@@ -40,9 +40,9 @@ def test_locked_hummingbot_api_exact_position_hold_contract():
     row = position_hold_accounting_from_raw(
         raw,
         expected_account_name="master_account",
-        expected_connector_name="kraken",
+        expected_connector_name="kraken_paper_trade",
         expected_trading_pair="BTC-USD",
-        expected_controller_id="spectra",
+        expected_controller_id="spectra.strategy_7",
     )
 
     assert row.buy_amount_quote == Decimal("190.000000000000000001")
