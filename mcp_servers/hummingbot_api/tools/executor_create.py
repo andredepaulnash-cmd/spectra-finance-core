@@ -29,6 +29,7 @@ from mcp_servers.hummingbot_api.executor_preferences import executor_preferences
 from mcp_servers.hummingbot_api.hummingbot_client import trading_rules_cache
 from mcp_servers.hummingbot_api.settings import settings
 from spectra_core import CapitalProposal, IntentKind
+from spectra_core.execution_mode import resolve_kraken_connector_name
 from spectra_core.models import BreakerMode
 from spectra_core.runtime import get_breaker_mode, get_capital_governor
 
@@ -439,9 +440,13 @@ def _authorize_spectra_execution(
         return "Spectra execution requires a capital intent"
 
     connector = str(config.get("connector_name") or "").strip().lower()
-    if connector != "kraken":
+    try:
+        authorized_connector = resolve_kraken_connector_name(connector)
+    except (RuntimeError, ValueError) as exc:
+        return f"Spectra execution refused: {exc}"
+    if connector != authorized_connector:
         return (
-            f"Spectra live execution is Kraken spot only; "
+            f"Spectra execution requires connector {authorized_connector!r}; "
             f"connector {connector!r} is not authorized"
         )
 
