@@ -153,6 +153,7 @@ def test_scheduler_services_multiple_positions_and_isolates_failure(tmp_path):
             expected_exit_fee_bps=D("20"),
             slippage_allowance_bps=D("10"),
             now=2_000,
+            controller_id="spectra.strategy_7",
             breaker_mode=BreakerMode.NORMAL,
             scheduler_policy=policy(2),
             position_envelopes=bindings,
@@ -194,6 +195,7 @@ def test_round_robin_fairness_prevents_starvation_across_ticks(tmp_path):
         breaker_mode=BreakerMode.NORMAL,
         scheduler_policy=policy(2),
         cycle_runner=runner,
+        controller_id="spectra.strategy_7",
     )
 
     first = asyncio.run(
