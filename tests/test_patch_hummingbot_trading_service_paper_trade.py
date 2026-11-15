@@ -35,4 +35,4 @@ def test_patch_is_idempotent():
 
 def test_patch_fails_closed_on_source_drift():
     with pytest.raises(RuntimeError, match="registration block"):
-        patch_source("        connector.register_pair(trading_pair)\\n")
+        patch_source("        connector.register_pair(trading_pair)\n")
