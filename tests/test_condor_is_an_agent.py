@@ -247,7 +247,7 @@ def test_excluding_by_string_still_drops_exactly_that_slug(registry):
 def test_the_reserved_slug_cannot_be_created_or_deleted(registry):
     store = AgentStore()
     with pytest.raises(ValueError, match="reserved"):
-        store.create(name="Spectra Finance")
+        store.create(name="Condor")
     with pytest.raises(ValueError, match="cannot be deleted"):
         store.delete(CHAT_SLUG)
     # Still there afterwards.
