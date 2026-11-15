@@ -76,7 +76,7 @@ def test_list_index_unknown_exclude_is_a_no_op(three_agents):
 
 @pytest.mark.parametrize(
     "slug,name",
-    [("backpack_mm", "Backpack MM"), ("condor", "Condor")],
+    [("backpack_mm", "Backpack MM"), ("condor", "Spectra Finance")],
 )
 def test_identity_header_does_not_forbid_delegating_to_yourself(slug, name):
     """Both seats read this line verbatim, so it must not contradict the routing.
@@ -98,7 +98,7 @@ def test_identity_header_does_not_forbid_delegating_to_yourself(slug, name):
 def test_identity_header_asserts_first_person_and_not_condor():
     header = identity_header("backpack_mm", "Backpack MM")
     assert "Backpack MM" in header and "backpack_mm" in header
-    assert "NOT Condor" in header
+    assert "NOT Spectra Finance" in header
     assert "first person" in header
 
 
@@ -131,7 +131,7 @@ def _instructions(monkeypatch, slug: str) -> str:
 
 def test_instructions_unbound_are_the_coordinator_text(three_agents, monkeypatch):
     text = _instructions(monkeypatch, "")
-    assert text.startswith("Condor exposes reusable **skills**")
+    assert text.startswith("Spectra Finance exposes reusable **skills**")
     assert "[AGENTS — delegate domain work to one of these]" in text
     # The full roster, self included — the coordinator has no self to exclude.
     for slug in ("backpack_mm", "brigado", "executor_manager"):
@@ -141,7 +141,7 @@ def test_instructions_unbound_are_the_coordinator_text(three_agents, monkeypatch
 def test_instructions_bound_assert_identity_and_drop_self(three_agents, monkeypatch):
     text = _instructions(monkeypatch, "backpack_mm")
     assert identity_header("backpack_mm", "Backpack MM") in text
-    assert "Condor exposes reusable **skills**" not in text
+    assert "Spectra Finance exposes reusable **skills**" not in text
     assert "- [backpack_mm]" not in text
     assert "[PEER AGENTS — delegate work outside your domain to one of these]" in text
     assert "- [brigado] BRL market making" in text
@@ -167,7 +167,7 @@ def test_chat_routes_authoring_to_a_background_condor(three_agents, monkeypatch)
 def test_unknown_slug_degrades_to_the_coordinator_text(three_agents, monkeypatch):
     """An agent that vanished from the store falls back to today's behavior."""
     text = _instructions(monkeypatch, "ghost")
-    assert text.startswith("Condor exposes reusable **skills**")
+    assert text.startswith("Spectra Finance exposes reusable **skills**")
     assert "[AGENTS — delegate domain work to one of these]" in text
 
 
