@@ -131,7 +131,7 @@ find_running_container_for_port() {
   # differ across releases; the anchored /name/ filter missed live containers.
   state="$(podman inspect --type container --format '{{.State.Status}}' "$expected_name" 2>/dev/null || true)"
   if [[ "$state" == "running" ]]; then
-    printf '%s\\n' "$expected_name"
+    printf '%s\n' "$expected_name"
     return 0
   fi
 
@@ -144,7 +144,7 @@ find_running_container_for_port() {
     if [[ "$name" == "$expected_name" ]]; then
       state="$(podman inspect --type container --format '{{.State.Status}}' "$id" 2>/dev/null || true)"
       if [[ "$state" == "running" ]]; then
-        printf '%s\\n' "$id"
+        printf '%s\n' "$id"
         return 0
       fi
     fi
@@ -171,7 +171,7 @@ for entries in bindings.values():
 raise SystemExit(1)
 PYPORT
     then
-      printf '%s\\n' "$id"
+      printf '%s\n' "$id"
       return 0
     fi
   done <<<"$ids"
