@@ -122,10 +122,31 @@ grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCE
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
 say "Checking existing Postgres and EMQX services before starting anything."
-# Resolve containers by their published service ports as well as the expected
-# Compose names. Older Alpha Compose revisions used a different EMQX container
-# name, so name-only inspection can miss a healthy broker and attempt a duplicate
-# listener on 127.0.0.1:1883.
+# Resolve running containers from Podman's structured inspect data. The
+# human-readable Ports column is presentation-dependent and can omit/truncate
+# mappings; relying on it caused the updater to miss the already-running EMQX.
+find_running_container_for_port() {
+  local port="$1" expected_name="$2" ids
+  ids="$(podman ps -q)"
+  [[ -n "$ids" ]] || return 0
+  podman inspect $ids | python3 -c '
+import json, sys
+port, expected = sys.argv[1], sys.argv[2]
+for container in json.load(sys.stdin):
+    name = (container.get("Name") or "").lstrip("/")
+    if name == expected:
+        print(container.get("Id", ""))
+        raise SystemExit
+    network_ports = (container.get("NetworkSettings") or {}).get("Ports") or {}
+    host_config_ports = (container.get("HostConfig") or {}).get("PortBindings") or {}
+    mappings = list(network_ports.values()) + list(host_config_ports.values())
+    if any(str(binding.get("HostPort", "")) == port
+           for group in mappings if isinstance(group, list)
+           for binding in group if isinstance(binding, dict)):
+        print(container.get("Id", ""))
+        raise SystemExit
+' "$port" "$expected_name"
+}
 declare -A SUPPORT_IDS=()
 services_to_start=()
 for entry in "postgres:5432:spectra-alpha-hummingbot-postgres" "emqx:1883:spectra-alpha-hummingbot-broker"; do
@@ -133,13 +154,7 @@ for entry in "postgres:5432:spectra-alpha-hummingbot-postgres" "emqx:1883:spectr
   remainder="${entry#*:}"
   port="${remainder%%:*}"
   expected_name="${remainder#*:}"
-  container_id="$(podman ps --format '{{.ID}} {{.Ports}}' | awk -v port="$port" 'index($0, ":" port "->") {print $1; exit}')"
-  if [[ -z "$container_id" ]]; then
-    state="$(podman inspect --format '{{.State.Status}}' "$expected_name" 2>/dev/null || true)"
-    if [[ "$state" == "running" ]]; then
-      container_id="$expected_name"
-    fi
-  fi
+  container_id="$(find_running_container_for_port "$port" "$expected_name")"
   if [[ -n "$container_id" ]]; then
     SUPPORT_IDS["$service"]="$container_id"
     say "Found existing $service service on port $port ($container_id); leaving it untouched."
@@ -161,7 +176,7 @@ for entry in "postgres:5432:spectra-alpha-hummingbot-postgres" "emqx:1883:spectr
   expected_name="${remainder#*:}"
   container_id="${SUPPORT_IDS[$service]:-}"
   if [[ -z "$container_id" ]]; then
-    container_id="$(podman ps --format '{{.ID}} {{.Ports}}' | awk -v port="$port" 'index($0, ":" port "->") {print $1; exit}')"
+    container_id="$(find_running_container_for_port "$port" "$expected_name")"
   fi
   [[ -n "$container_id" ]] || container_id="$expected_name"
   say "Waiting for $service health ($container_id)."
