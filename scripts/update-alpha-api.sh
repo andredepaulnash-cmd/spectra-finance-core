@@ -506,8 +506,6 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a|14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
   ["spectra_core/capital_governor.py"]="3fac868f19d71b817f66d7cecf9a06ed209f7c00"
-  ["spectra_core/vcap_entry.py"]=""
-  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a"
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
