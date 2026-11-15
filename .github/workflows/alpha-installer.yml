@@ -1,5 +1,11 @@
 name: Alpha installer and safety checks
 
+# Keep only the newest validation for a PR/branch. This prevents every small
+# source commit from leaving another expensive clean-install run consuming CI.
+concurrency:
+  group: alpha-installer-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
