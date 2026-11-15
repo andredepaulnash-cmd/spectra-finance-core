@@ -65,7 +65,7 @@ async def run_vcap_scheduler_tick(
     position_envelopes: Mapping[str, str] | None = None,
     cycle_runner: CycleRunner = run_vcap_runtime_cycle,
     account_name: str = "master_account",
-    controller_id: str = "spectra",
+    controller_id: str | None = None,
 ) -> dict[str, Any]:
     """Service a bounded fleet of active economic positions.
 
