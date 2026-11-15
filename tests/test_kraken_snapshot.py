@@ -27,7 +27,7 @@ class Client:
 def test_snapshot_uses_available_usd_and_values_holdings():
     client = Client({
         "master_account": {
-            "kraken": [
+            "kraken_paper_trade": [
                 {
                     "token": "USD",
                     "units": 600,
@@ -67,7 +67,7 @@ def test_snapshot_uses_available_usd_and_values_holdings():
 
     assert client.portfolio.calls == [{
         "account_names": ["master_account"],
-        "connector_names": ["kraken"],
+        "connector_names": ["kraken_paper_trade"],
         "refresh": True,
     }]
 
@@ -75,7 +75,7 @@ def test_snapshot_uses_available_usd_and_values_holdings():
 def test_snapshot_fails_without_quote_balance():
     client = Client({
         "master_account": {
-            "kraken": [{
+            "kraken_paper_trade": [{
                 "token": "BTC",
                 "units": 0.001,
                 "available_units": 0.001,
@@ -98,7 +98,7 @@ def test_snapshot_fails_without_quote_balance():
 def test_snapshot_fails_when_nonquote_value_is_unknown():
     client = Client({
         "master_account": {
-            "kraken": [
+            "kraken_paper_trade": [
                 {
                     "token": "USD",
                     "units": 500,
@@ -129,7 +129,7 @@ def test_snapshot_fails_when_nonquote_value_is_unknown():
 def test_snapshot_rejects_impossible_available_balance():
     client = Client({
         "master_account": {
-            "kraken": [{
+            "kraken_paper_trade": [{
                 "token": "USD",
                 "units": 500,
                 "available_units": 501,
@@ -152,7 +152,7 @@ def test_snapshot_rejects_impossible_available_balance():
 def test_recovery_attribution_does_not_inflate_economic_exposure():
     client = Client({
         "master_account": {
-            "kraken": [
+            "kraken_paper_trade": [
                 {
                     "token": "USD",
                     "units": 500,
