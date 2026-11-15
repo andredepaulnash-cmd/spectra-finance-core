@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "purpose": "Local runtime inventory targets; these values are measured on the installed host and are never inferred from upstream candidates.",
+  "components": [
+    {
+      "id": "host-os",
+      "kind": "host",
+      "version_source": "/etc/os-release and optional rpm-ostree status",
+      "approval_rule": "Record the exact booted image and deployment checksum before approving a host update."
+    },
+    {
+      "id": "spectra-core",
+      "kind": "source-repository",
+      "version_source": "git HEAD, branch, dirty state",
+      "approval_rule": "A clean, immutable source ref and matching release tests are required."
+    },
+    {
+      "id": "condor",
+      "kind": "python-runtime",
+      "version_source": "Installed package metadata and Core source ref",
+      "approval_rule": "Verify provider contracts, model inheritance, ACP auth, and restart recovery."
+    },
+    {
+      "id": "hummingbot-api",
+      "kind": "source-and-container",
+      "version_source": "API git HEAD plus container image ID/digest",
+      "approval_rule": "Source commit and built image are separate facts; both must be recorded."
+    },
+    {
+      "id": "hummingbot-client",
+      "kind": "embedded-runtime",
+      "version_source": "Package metadata inside the installed API image",
+      "approval_rule": "Do not assume the Client version from the API repository commit."
+    },
+    {
+      "id": "kraken-paper-connector",
+      "kind": "exchange-connector",
+      "version_source": "Installed Hummingbot Client/API image and connector metadata",
+      "approval_rule": "Paper tracker readiness, market rules, order submission, fills, and recovery must pass."
+    },
+    {
+      "id": "postgres",
+      "kind": "stateful-service",
+      "version_source": "Container image ID/digest and configured major version",
+      "approval_rule": "Persistent volume identity and a verified backup/restore are required."
+    },
+    {
+      "id": "emqx",
+      "kind": "stateful-service",
+      "version_source": "Container image ID/digest and configured major version",
+      "approval_rule": "Preserve broker data/configuration and verify authentication/ACL behavior."
+    },
+    {
+      "id": "gateway",
+      "kind": "optional-service",
+      "version_source": "Container image ID/digest if observed",
+      "approval_rule": "Optional for the Kraken CEX paper baseline; never assume deployed."
+    },
+    {
+      "id": "spectra-dashboard",
+      "kind": "frontend",
+      "version_source": "package.json, lockfile hash, and Node runtime",
+      "approval_rule": "Build and route/auth smoke tests must pass against the paired Core/API release."
+    },
+    {
+      "id": "python-runtime",
+      "kind": "runtime",
+      "version_source": "Core virtual-environment interpreter version",
+      "approval_rule": "Pin and test the exact Python runtime; do not conflate host Python with the project venv."
+    },
+    {
+      "id": "container-runtime",
+      "kind": "runtime",
+      "version_source": "Installed Docker/Podman engine and Compose provider",
+      "approval_rule": "Record the actual engine/provider and immutable image IDs before update."
+    }
+  ]
+}
