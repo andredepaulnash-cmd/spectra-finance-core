@@ -47,7 +47,7 @@ def governor(tmp_path, *, recovery="100"):
 def usd_client(available=500):
     return Client({
         "master_account": {
-            "kraken": [{
+            "kraken_paper_trade": [{
                 "token": "USD",
                 "units": available,
                 "available_units": available,
@@ -57,7 +57,7 @@ def usd_client(available=500):
     })
 
 
-def test_live_snapshot_can_create_reserved_entry_claim(tmp_path):
+def test_paper_snapshot_can_create_reserved_entry_claim(tmp_path):
     g = governor(tmp_path)
     client = usd_client(500)
 
@@ -83,7 +83,7 @@ def test_live_snapshot_can_create_reserved_entry_claim(tmp_path):
     assert g.get_decision(auth.proposal.proposal_id).status == DecisionStatus.RESERVED
 
 
-def test_live_snapshot_can_be_rejected_by_reserve_floor(tmp_path):
+def test_paper_snapshot_can_be_rejected_by_reserve_floor(tmp_path):
     g = governor(tmp_path)
     client = usd_client(120)
 
