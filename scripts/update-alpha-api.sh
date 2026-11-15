@@ -31,7 +31,7 @@ flock -n 9 || die "Another Spectra API update is already running. Check $LOG_FIL
 
 command -v podman >/dev/null 2>&1 || die "Podman is not installed."
 if ! command -v podman-compose >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then
-  uv tool install --quiet --bin-dir "$HOME/.local/bin" podman-compose || true
+  UV_TOOL_BIN_DIR="$HOME/.local/bin" uv tool install --quiet podman-compose || true
   export PATH="$HOME/.local/bin:$PATH"
 fi
 command -v podman-compose >/dev/null 2>&1 || die "Rootless updates require podman-compose; install it with 'uv tool install --bin-dir \"$HOME/.local/bin\" podman-compose'."
