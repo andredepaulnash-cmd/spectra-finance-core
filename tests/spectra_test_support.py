@@ -26,6 +26,9 @@ def configure_spectra_paper_dispatch(monkeypatch, settings, *, agent_slug=True):
     monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", encoded)
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    # These tests use in-process fake clients, not the authenticated API
+    # middleware. Receipt enforcement is exercised by dedicated transport tests.
+    monkeypatch.setenv("SPECTRA_REQUIRE_CORE_RECEIPTS", "false")
     monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
     monkeypatch.setenv(
         "SPECTRA_APPROVED_ASSETS_FILE",
@@ -41,6 +44,8 @@ def configure_spectra_live_dispatch(monkeypatch, settings):
     """Opt a fake-client test into the explicitly authorized live code path."""
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
+    # Fake-client unit tests do not carry the real API dispatch middleware.
+    monkeypatch.setenv("SPECTRA_REQUIRE_CORE_RECEIPTS", "false")
     monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
     monkeypatch.setenv(
         "SPECTRA_DISPATCH_PRIVATE_KEY",
