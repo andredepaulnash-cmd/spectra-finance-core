@@ -38,7 +38,7 @@ D = Decimal
 @pytest.fixture(autouse=True)
 def _spectra_paper_dispatch(monkeypatch):
     configure_spectra_paper_dispatch(monkeypatch, partial_tool.settings)
-    monkeypatch.setattr(partial_tool, "wall_time", lambda: 2_000.0)
+    monkeypatch.setattr("spectra_core.partial_recycle.wall_time", lambda: 2_000.0)
 
 
 @pytest.mark.parametrize(
