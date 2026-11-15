@@ -121,8 +121,24 @@ grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCE
   || die "The paper-only bot-status guard was not applied locally."
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
-say "Starting the existing Postgres and EMQX services (named volumes are preserved)."
-compose -p spectra-alpha -f "$COMPOSE_FILE" up -d postgres emqx 9>&-
+say "Checking existing Postgres and EMQX services before starting anything."
+services_to_start=()
+for entry in "spectra-alpha-hummingbot-postgres:postgres" "spectra-alpha-hummingbot-broker:emqx"; do
+  container="${entry%%:*}"
+  service="${entry##*:}"
+  state="$(podman inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
+  if [[ "$state" == "running" ]]; then
+    say "$container is already running; leaving it untouched."
+  else
+    say "$container is $([[ -n "$state" ]] && printf '%s' "$state" || printf 'absent'); it will be started."
+    services_to_start+=("$service")
+  fi
+done
+if (("${#services_to_start[@]}")); then
+  compose -p spectra-alpha -f "$COMPOSE_FILE" up -d "${services_to_start[@]}" 9>&-
+else
+  say "Both supporting services are already running; no duplicate start requested."
+fi
 
 for container in spectra-alpha-hummingbot-postgres spectra-alpha-hummingbot-broker; do
   say "Waiting for $container health."
