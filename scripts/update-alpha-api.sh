@@ -45,7 +45,7 @@ if [[ "$CONTAINER_RUNTIME" != "docker" && "$CONTAINER_RUNTIME" != "podman" ]]; t
   else
     die "Container runtime is not recorded and no running Spectra API container identifies it. Rerun the installer to record the runtime safely."
   fi
-  printf '%s\\n' "$CONTAINER_RUNTIME" > "$RUNTIME_FILE"
+  printf '%s\n' "$CONTAINER_RUNTIME" > "$RUNTIME_FILE"
   chmod 600 "$RUNTIME_FILE"
 fi
 
