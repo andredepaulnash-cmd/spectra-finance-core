@@ -4,7 +4,7 @@
 # preserves all state, and never removes containers, networks, or named volumes.
 set -Eeuo pipefail
 
-# The installer places the rootless Podman Compose provider in ~/.local/bin.
+# The installer places user-local runtime helpers in ~/.local/bin.
 export PATH="$HOME/.local/bin:$PATH"
 
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -29,9 +29,35 @@ fi
 exec 9>"$LOCK_FILE"
 flock -n 9 || die "Another Spectra API update is already running. Check $LOG_FILE."
 
-command -v podman >/dev/null 2>&1 || die "Podman is not installed."
-command -v uv >/dev/null 2>&1 || die "uv is required to run the rootless Podman Compose provider."
-compose() { uv tool run --from podman-compose podman-compose "$@"; }
+RUNTIME_FILE="$INSTALL_ROOT/.container-runtime"
+CONTAINER_RUNTIME=""
+if [[ -f "$RUNTIME_FILE" ]]; then
+  IFS= read -r CONTAINER_RUNTIME < "$RUNTIME_FILE"
+fi
+
+# Backward compatibility for pre-marker installations: identify which engine
+# actually owns the existing named API stack. Never guess from installed binaries.
+if [[ "$CONTAINER_RUNTIME" != "docker" && "$CONTAINER_RUNTIME" != "podman" ]]; then
+  if command -v docker >/dev/null 2>&1 && docker inspect --type container --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null | grep -qx running; then
+    CONTAINER_RUNTIME="docker"
+  elif command -v podman >/dev/null 2>&1 && engine inspect --type container --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null | grep -qx running; then
+    CONTAINER_RUNTIME="podman"
+  else
+    die "Container runtime is not recorded and no running Spectra API container identifies it. Rerun the installer to record the runtime safely."
+  fi
+  printf '%s\\n' "$CONTAINER_RUNTIME" > "$RUNTIME_FILE"
+  chmod 600 "$RUNTIME_FILE"
+fi
+
+command -v "$CONTAINER_RUNTIME" >/dev/null 2>&1 || die "Recorded container runtime '$CONTAINER_RUNTIME' is not installed."
+engine() { "$CONTAINER_RUNTIME" "$@"; }
+if [[ "$CONTAINER_RUNTIME" == "docker" ]]; then
+  compose() { docker compose "$@"; }
+else
+  command -v uv >/dev/null 2>&1 || die "uv is required to run the rootless Podman Compose provider."
+  compose() { uv tool run --from podman-compose podman-compose "$@"; }
+fi
+say "Using the installer's recorded container runtime: $CONTAINER_RUNTIME."
 command -v git >/dev/null 2>&1 || die "Git is not installed."
 command -v curl >/dev/null 2>&1 || die "curl is not installed."
 [[ -d "$API_DIR/.git" ]] || die "API Git checkout not found at $API_DIR."
@@ -129,20 +155,20 @@ find_running_container_for_port() {
   local port="$1" expected_name="$2" state ids id line name published
   # Inspect the deterministic Compose name directly. Podman name-filter regexes
   # differ across releases; the anchored /name/ filter missed live containers.
-  state="$(podman inspect --type container --format '{{.State.Status}}' "$expected_name" 2>/dev/null || true)"
+  state="$(engine inspect --type container --format '{{.State.Status}}' "$expected_name" 2>/dev/null || true)"
   if [[ "$state" == "running" ]]; then
     printf '%s\n' "$expected_name"
     return 0
   fi
 
   # Portable fallback: enumerate structured names/IDs and compare exact names.
-  ids="$(podman ps --format '{{.Names}}|{{.ID}}' 2>/dev/null || true)"
+  ids="$(engine ps --format '{{.Names}}|{{.ID}}' 2>/dev/null || true)"
   while IFS= read -r line; do
     [[ -n "$line" ]] || continue
     name="${line%%|*}"
     id="${line#*|}"
     if [[ "$name" == "$expected_name" ]]; then
-      state="$(podman inspect --type container --format '{{.State.Status}}' "$id" 2>/dev/null || true)"
+      state="$(engine inspect --type container --format '{{.State.Status}}' "$id" 2>/dev/null || true)"
       if [[ "$state" == "running" ]]; then
         printf '%s\n' "$id"
         return 0
@@ -152,10 +178,10 @@ find_running_container_for_port() {
 
   # Last fallback: inspect published port bindings as JSON, not human-readable
   # 'podman port' output whose formatting varies by Podman version.
-  ids="$(podman ps -q 2>/dev/null || true)"
+  ids="$(engine ps -q 2>/dev/null || true)"
   while IFS= read -r id; do
     [[ -n "$id" ]] || continue
-    published="$(podman inspect --type container --format '{{json .NetworkSettings.Ports}}' "$id" 2>/dev/null || true)"
+    published="$(engine inspect --type container --format '{{json .NetworkSettings.Ports}}' "$id" 2>/dev/null || true)"
     if python3 - "$published" "$port" <<'PYPORT'
 import json
 import sys
@@ -217,19 +243,19 @@ for entry in "postgres:5432:spectra-alpha-hummingbot-postgres" "emqx:1883:spectr
   say "Waiting for $service health ($container_id)."
   healthy=false
   for _ in $(seq 1 90); do
-    status="$(podman inspect --format '{{.State.Health.Status}}' "$container_id" 2>/dev/null || true)"
+    status="$(engine inspect --format '{{.State.Health.Status}}' "$container_id" 2>/dev/null || true)"
     if [[ "$status" == "healthy" ]]; then
       healthy=true
       break
     fi
     if [[ "$status" == "unhealthy" ]]; then
-      podman logs --tail 80 "$container_id" || true
+      engine logs --tail 80 "$container_id" || true
       die "$service reported unhealthy."
     fi
     sleep 2
   done
   [[ "$healthy" == true ]] || {
-    podman logs --tail 80 "$container_id" || true
+    engine logs --tail 80 "$container_id" || true
     die "$service did not become healthy within 180 seconds."
   }
 done
@@ -237,9 +263,9 @@ done
 say "Building and updating only the Hummingbot API container."
 compose -p spectra-alpha -f "$COMPOSE_FILE" up -d --build hummingbot-api 9>&-
 
-status="$(podman inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null || true)"
+status="$(engine inspect --format '{{.State.Status}}' spectra-alpha-hummingbot-api 2>/dev/null || true)"
 [[ "$status" == "running" ]] || {
-  podman logs --tail 160 spectra-alpha-hummingbot-api 2>/dev/null || true
+  engine logs --tail 160 spectra-alpha-hummingbot-api 2>/dev/null || true
   die "API container is not running after the update."
 }
 
