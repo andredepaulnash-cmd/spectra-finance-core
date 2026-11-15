@@ -111,7 +111,7 @@ def _worker_base() -> str:
 def _coordinator_base(routines_rule: str) -> str:
     """The coordinator routing text, parameterized on its ROUTINES branch."""
     return (
-        "Condor exposes reusable **skills** (playbooks, some linked to a runnable "
+        "Spectra Finance exposes reusable **skills** (playbooks, some linked to a runnable "
         "routine) and **domain agents** you can hand work to, on top of these "
         "tools.\n\n"
         "ROUTING RULE — before handling a request with raw tools (including tools "
