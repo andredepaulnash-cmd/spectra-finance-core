@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable, Mapping, Sequence
 
+from .execution_mode import resolve_kraken_connector_name
+
 
 ZERO = Decimal("0")
 TEN_THOUSAND = Decimal("10000")
