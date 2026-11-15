@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "lock_state": "PARTIAL",
-  "authority_invariant": "Condor may think. Hummingbot may execute. Only Spectra Core may authorize capital.",
+  "authority_invariant": "Spectra Finance orchestrates. Hummingbot executes. Only Spectra Core may authorize capital.",
   "components": {
     "spectra_core": {
       "repository": "andredepaulnash-cmd/spectra-finance-core",
@@ -21,14 +21,14 @@
     "hummingbot_core": {
       "source": "spectra-hummingbot-api/environment.yml",
       "package": "hummingbot",
-      "revision": null,
-      "locked": false
+      "revision": "20260922",
+      "locked": true
     }
   },
   "deployment": {
     "approved_for_live": false,
     "blockers": [
-      "Hummingbot core dependency is intentionally unpinned in the current API environment.",
+      "The Hummingbot package is pinned to 20260922, but its exact upstream source commit/build metadata is not recorded.",
       "The API compose runtime still references hummingbot/hummingbot-api:latest rather than an immutable Spectra image digest.",
       "The merged GitHub revisions have not yet been rebuilt and semantically proven on the Bazzite runtime."
     ]
