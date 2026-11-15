@@ -54,6 +54,8 @@ jobs:
             tests/test_kraken_snapshot.py \
             tests/test_kraken_authorization.py \
             tests/test_typed_executor_tools.py \
+            tests/test_condor_is_an_agent.py \
+            tests/test_agent_identity.py \
             tests/test_executor_session_ownership.py \
             tests/test_spectra_executor_accounting_flow.py \
             tests/test_position_hold_snapshot_ledger.py \
