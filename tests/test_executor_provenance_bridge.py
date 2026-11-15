@@ -73,8 +73,8 @@ def prepare_execution(
         proposal_id=proposal.proposal_id,
         executor_id=executor_id,
         account_name="master_account",
-        connector_name="kraken",
-        controller_id="spectra",
+        connector_name="kraken_paper_trade",
+        controller_id="spectra.strategy_7",
     )
     return proposal
 
@@ -129,7 +129,7 @@ def trade_row(
         "order_id": order_id,
         "trade_id": trade_id,
         "account_name": "master_account",
-        "connector_name": "kraken",
+        "connector_name": "kraken_paper_trade",
         "trading_pair": "XRP-USD",
         "trade_type": side,
         "amount": amount,
@@ -164,7 +164,7 @@ def snapshots(orders, trades):
 def test_bridge_is_pinned_to_exact_companion_api_revision():
     assert (
         SPECTRA_HUMMINGBOT_API_REVISION
-        == "84426ffbf9ba09522b4444664f9770236205ae29"
+        == "6218917e84b1c2bd13581a1dd3698c325e06c9bf"
     )
 
 
