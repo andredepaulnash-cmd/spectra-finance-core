@@ -126,26 +126,36 @@ say "Checking existing Postgres and EMQX services before starting anything."
 # human-readable Ports column is presentation-dependent and can omit/truncate
 # mappings; relying on it caused the updater to miss the already-running EMQX.
 find_running_container_for_port() {
-  local port="$1" expected_name="$2" ids
+  local port="$1" expected_name="$2" state container_id ids id published
+  # The Alpha Compose file assigns stable container_name values. Inspect that
+  # exact name first; this avoids depending on Podman's multi-object JSON shape.
+  if podman container exists "$expected_name" 2>/dev/null; then
+    state="$(podman inspect --format '{{.State.Status}}' "$expected_name" 2>/dev/null || true)"
+    if [[ "$state" == "running" ]]; then
+      podman inspect --format '{{.Id}}' "$expected_name"
+      return 0
+    fi
+  fi
+
+  # Also recognize a differently named rootless Podman container publishing
+  # the requested host port. Inspect one ID at a time and use Podman's own
+  # port-forwarding view instead of parsing version-dependent inspect JSON.
   ids="$(podman ps -q)"
   [[ -n "$ids" ]] || return 0
-  podman inspect $ids | python3 -c '
-import json, sys
-port, expected = sys.argv[1], sys.argv[2]
-for container in json.load(sys.stdin):
-    name = (container.get("Name") or "").lstrip("/")
-    if name == expected:
-        print(container.get("Id", ""))
-        raise SystemExit
-    network_ports = (container.get("NetworkSettings") or {}).get("Ports") or {}
-    host_config_ports = (container.get("HostConfig") or {}).get("PortBindings") or {}
-    mappings = list(network_ports.values()) + list(host_config_ports.values())
-    if any(str(binding.get("HostPort", "")) == port
-           for group in mappings if isinstance(group, list)
-           for binding in group if isinstance(binding, dict)):
-        print(container.get("Id", ""))
-        raise SystemExit
-' "$port" "$expected_name"
+  while IFS= read -r id; do
+    [[ -n "$id" ]] || continue
+    published="$(podman port "$id" 2>/dev/null || true)"
+    if grep -Eq ":[[:space:]]*(127[.]0[.]0[.]1|0[.]0[.]0[.]0|\\[::\\]|::):${port}([[:space:]]|$)" <<<"$published"; then
+      printf '%s\\n' "$id"
+      return 0
+    fi
+  done <<<"$ids"
+
+  # If a process owns the port but is not a discoverable Podman container,
+  # fail closed rather than attempting a duplicate bind.
+  if command -v ss >/dev/null 2>&1 && ss -H -ltn "sport = :$port" 2>/dev/null | grep -q .; then
+    die "Host port $port is already listening, but no running Podman container could be identified. Refusing to start a duplicate; inspect the existing service."
+  fi
 }
 declare -A SUPPORT_IDS=()
 services_to_start=()
