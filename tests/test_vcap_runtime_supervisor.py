@@ -391,6 +391,7 @@ def test_runtime_waits_for_confirmed_fill_and_restart_does_not_redispatch(
             expected_exit_fee_bps=D("20"),
             slippage_allowance_bps=D("10"),
             now=2_000,
+            controller_id="spectra.strategy_7",
         )
     )
 
@@ -414,6 +415,7 @@ def test_runtime_waits_for_confirmed_fill_and_restart_does_not_redispatch(
             expected_exit_fee_bps=D("20"),
             slippage_allowance_bps=D("10"),
             now=2_010,
+            controller_id="spectra.strategy_7",
         )
     )
 
@@ -475,6 +477,7 @@ def test_ambiguous_dispatch_never_starts_a_new_cycle_or_retries_mutation(
             expected_exit_fee_bps=D("20"),
             slippage_allowance_bps=D("10"),
             now=2_000,
+            controller_id="spectra.strategy_7",
         )
     )
     assert first["phase"] == VCAPRuntimePhase.AWAITING_RECONCILIATION.value
@@ -494,6 +497,7 @@ def test_ambiguous_dispatch_never_starts_a_new_cycle_or_retries_mutation(
             expected_exit_fee_bps=D("20"),
             slippage_allowance_bps=D("10"),
             now=2_010,
+            controller_id="spectra.strategy_7",
         )
     )
 
@@ -559,6 +563,7 @@ def test_unhealthy_accounting_stops_cycle_before_market_or_planning(
             expected_exit_fee_bps=D("20"),
             slippage_allowance_bps=D("10"),
             now=2_000,
+            controller_id="spectra.strategy_7",
         )
     )
 
