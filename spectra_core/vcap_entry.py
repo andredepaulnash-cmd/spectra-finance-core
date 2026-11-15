@@ -1,16 +1,17 @@
-"""Governor-gated admission from the live Kraken mean-reversion shortlist.
+"""Governor-gated admission from the fresh Kraken mean-reversion shortlist.
 
-This is an explicit operator-triggered paper-entry reservation, not an order
-dispatcher. It accepts only a fresh candidate from the scanner's own
-mean_reversion_candidates list, requires the separate paper asset allowlist,
-and reserves exactly the configured $20 seed through CapitalGovernor.
+The autonomous portfolio supervisor calls this for each eligible fleet
+vacancy. This function reserves exactly one $20 seed through CapitalGovernor;
+it never creates an executor or dispatches an order. It accepts only a fresh
+candidate from the scanner's own mean_reversion_candidates list and requires
+the separate paper asset allowlist before reserving capital.
 """
 from __future__ import annotations
 
 import os
 import time
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from math import isfinite
 from typing import Any, Mapping
 
@@ -60,16 +61,28 @@ async def reserve_vcap_candidate_entry(
     governor=None,
     now: float | None = None,
 ) -> VCAPPaperEntryAdmission:
-    """Reserve one $20 ENTRY for a fresh, explicitly approved scanner candidate.
+    """Reserve one $20 ENTRY for a fresh scanner candidate.
 
-    No executor is created and no order is sent. The returned proposal and
-    canonical prefill position ID are the exact inputs for the separately
-    guarded Kraken paper executor submission path.
+    No executor is created and no order is sent. Paper entries require the
+    manual or fresh auto-discovery allowlist. Live entries additionally require
+    both the explicit live-mode flags; the live Governor policy and breaker
+    remain independent gates.
     """
-    if not spectra_paper_only_enabled():
-        raise ValueError("VCAP candidate admission is paper-only")
-    if (os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION") or "false").strip().lower() in LIVE_TRUE_VALUES:
-        raise ValueError("VCAP candidate admission requires live execution to remain disabled")
+    configured_mode = (os.getenv("SPECTRA_PAPER_ONLY") or "").strip().lower()
+    live_authorized = (
+        configured_mode in {"0", "false", "no"}
+        and (os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION") or "").strip().lower()
+        in LIVE_TRUE_VALUES
+    )
+    if configured_mode in {"0", "false", "no"} and not live_authorized:
+        raise ValueError(
+            "live VCAP candidate admission requires SPECTRA_ALLOW_LIVE_EXECUTION=true"
+        )
+    paper_only = spectra_paper_only_enabled()
+    if not paper_only and not live_authorized:
+        raise ValueError(
+            "live VCAP candidate admission requires separate explicit authorization"
+        )
 
     if not isinstance(scan_result, Mapping):
         raise ValueError("market discovery result must be a mapping")
@@ -111,13 +124,33 @@ async def reserve_vcap_candidate_entry(
     if current_price <= 0 or volume <= 0:
         raise ValueError("candidate price and 24h USD volume must be positive")
     if str(candidate.get("quote_asset") or "USD").strip().upper() != "USD":
-        raise ValueError("VCAP paper entries are restricted to Kraken USD spot pairs")
+        raise ValueError("VCAP entries are restricted to Kraken USD spot pairs")
 
-    asset_policy = load_approved_kraken_assets()
-    if not asset_policy.configured or pair not in asset_policy.pairs:
+    try:
+        minimum_order_quote = Decimal(str(candidate.get("minimum_order_quote")))
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError("candidate is missing a valid Kraken minimum-order quote") from exc
+    maximum_minimum_quote = (
+        PAPER_VCAP_SEED_QUOTE * Decimal("10000") / Decimal("10070")
+    )
+    if (
+        not minimum_order_quote.is_finite()
+        or minimum_order_quote <= 0
+        or minimum_order_quote > maximum_minimum_quote
+    ):
         raise ValueError(
-            f"{pair} is not in the explicit Governor-approved paper asset list"
+            "candidate venue minimum cannot fit inside the $20 entry after fee and slippage allowances"
         )
+
+    if paper_only:
+        connector_name = "kraken_paper_trade"
+        if connector_name != "kraken_paper_trade":
+            raise ValueError("Spectra paper asset authority only permits kraken_paper_trade")
+        asset_policy = load_approved_kraken_assets()
+        if not asset_policy.configured or pair not in asset_policy.pairs:
+            raise ValueError(
+                f"{pair} is not in the Governor-approved Kraken asset list"
+            )
 
     authorization = await reserve_kraken_capital(
         client,
@@ -146,4 +179,5 @@ async def reserve_vcap_candidate_entry(
             authorization.decision.approved
             and authorization.economic_position_id is not None
         ),
+        paper_only=paper_only,
     )

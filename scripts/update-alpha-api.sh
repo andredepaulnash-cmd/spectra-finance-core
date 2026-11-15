@@ -1,18 +1,27 @@
 #!/usr/bin/env bash
-# Foreground one-command updater for Spectra Finance Alpha on Bazzite.
+# Foreground updater for Spectra Finance on Bazzite.
 # It updates exact reviewed API, Core Python, dashboard, and operator files,
 # preserves all state, and never removes containers, networks, or named volumes.
 set -Eeuo pipefail
 
+# The installer places rootless Podman Compose in the user-local bin directory.
+export PATH="$HOME/.local/bin:$PATH"
+
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
-CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-fix/spectra-connectivity-and-agent-auth}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
 LOG_DIR="$INSTALL_ROOT/logs"
 LOG_FILE="$LOG_DIR/api-update.log"
 LOCK_FILE="$LOG_DIR/api-update.lock"
 COMPOSE_FILE="$API_DIR/docker-compose.alpha.yml"
-API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py")
+API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py" "services/accounts_service.py" "utils/spectra_dispatch_receipt.py")
+PAPER_TRADE_SOURCE="services/trading_service.py"
+PAPER_TRADE_EXPECTED_BLOB="11041d61a683ce60a06714405403a79453a8fa6c"
+TRADING_PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_trading_service_paper_trade.py"
+UNIFIED_PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_paper_trade_compat.py"
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
@@ -38,13 +47,8 @@ case "$COMPOSE_KIND" in
     ;;
   podman)
     command -v podman >/dev/null 2>&1 || die "This installation uses Podman, but Podman is unavailable."
-    if command -v podman-compose >/dev/null 2>&1; then
-      compose() { podman-compose "$@"; }
-    elif podman compose version >/dev/null 2>&1; then
-      compose() { podman compose "$@"; }
-    else
-      die "Neither podman-compose nor the Podman Compose plugin is available."
-    fi
+    command -v uv >/dev/null 2>&1 || die "uv is required to run the rootless Podman Compose provider."
+    compose() { uv tool run --from podman-compose podman-compose "$@"; }
     CONTAINER_CLI="podman"
     ;;
   *)
@@ -55,6 +59,8 @@ command -v git >/dev/null 2>&1 || die "Git is not installed."
 command -v curl >/dev/null 2>&1 || die "curl is not installed."
 [[ -d "$API_DIR/.git" ]] || die "API Git checkout not found at $API_DIR."
 [[ -f "$API_DIR/.env" ]] || die "API .env is missing; refusing to generate or replace credentials."
+[[ -f "$CORE_DIR/.env" ]] || die "Core .env is missing; refusing to update a partially configured install."
+[[ -f "$API_DIR/bots/credentials/master_account/conf_client.yml" ]] || die "Paper account config is missing; refusing to reset or synthesize account state."
 [[ -f "$COMPOSE_FILE" ]] || die "Alpha Compose file is missing: $COMPOSE_FILE"
 [[ -f "$API_DIR/Dockerfile.alpha" ]] || die "Alpha Dockerfile is missing: $API_DIR/Dockerfile.alpha"
 
@@ -67,21 +73,121 @@ for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
     if "=" in line and not line.lstrip().startswith("#"):
         key, value = line.split("=", 1)
         values[key.strip()] = value.strip().strip("\\\"").strip("'")
+paper = values.get("SPECTRA_PAPER_ONLY", "").lower()
+live = values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "").lower()
+if paper not in {"true", "false"} or live not in {"true", "false"}:
+    raise SystemExit("Execution mode flags must be explicit true/false values.")
+if (paper == "true" and live != "false") or (paper == "false" and live != "true"):
+    raise SystemExit("Live mode requires separate explicit authorization in SPECTRA_ALLOW_LIVE_EXECUTION.")
+connectors = [name.strip() for name in values.get("SPECTRA_PAPER_CONNECTORS", "").split(",") if name.strip()]
+if paper == "true" and (not connectors or any(not name.endswith("_paper_trade") for name in connectors)):
+    raise SystemExit("Paper mode requires an explicit paper-connector-only allowlist.")
+print("Execution mode verified: " + ("PAPER_ONLY" if paper == "true" else "LIVE_AUTHORIZED"))
+PY
+python3 - "$API_DIR/.env" "$CORE_DIR/.env" <<'PYMODECHECK'
+from pathlib import Path
+import sys
+
+def read(path):
+    values = {}
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        if "=" in raw and not raw.lstrip().startswith("#"):
+            key, value = raw.split("=", 1)
+            values[key.strip()] = value.strip().strip('"').strip("'").lower()
+    return values
+
+api, core = map(read, sys.argv[1:])
+for key in ("SPECTRA_PAPER_ONLY", "SPECTRA_ALLOW_LIVE_EXECUTION"):
+    if api.get(key) != core.get(key):
+        raise SystemExit("API/Core execution-mode mismatch for " + key)
+PYMODECHECK
+
+# Enable the recovered autonomous portfolio supervisor for paper mode on
+# existing installations too. The user-authorized paper fleet settings are
+# migrated explicitly; paper-only is enforced and live automation stays disabled.
+"$CORE_DIR/.venv/bin/python" - "$CORE_DIR/.env" <<'PYPORTFOLIO'
+from pathlib import Path
+import os
+import sys
+import tempfile
+
+path = Path(sys.argv[1])
+if path.is_symlink() or not path.is_file():
+    raise SystemExit("STOP: Core .env is missing or symlinked; refusing an unsafe mode migration.")
+lines = path.read_text(encoding="utf-8").splitlines()
+values = {}
+for line in lines:
+    if "=" in line and not line.lstrip().startswith("#"):
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'").lower()
+true_values = {"1", "true", "yes", "on"}
+if values.get("SPECTRA_PAPER_ONLY", "true") not in true_values:
+    raise SystemExit("STOP: Core .env is not configured for paper-only execution.")
+if values.get("SPECTRA_ALLOW_LIVE_EXECUTION", "false") in true_values:
+    raise SystemExit("STOP: Core .env explicitly enables live execution.")
 required = {
     "SPECTRA_PAPER_ONLY": "true",
     "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
-    "SPECTRA_PAPER_CONNECTORS": "kraken_paper_trade",
+    "SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED": "true",
+    "SPECTRA_PORTFOLIO_AUTORUN": "true",
+    "SPECTRA_LIVE_AUTORUN": "false",
+    "SPECTRA_AUTO_ASSET_SELECTION": "true",
+    "SPECTRA_TARGET_ACTIVE_POSITIONS": "83",
+    "SPECTRA_VCAP_SEED_QUOTE": "20",
 }
-wrong = [key for key, expected in required.items() if values.get(key, "").lower() != expected]
-if wrong:
-    raise SystemExit("Paper-safety preflight failed for: " + ", ".join(wrong))
-print("Paper-only configuration verified; live execution remains disabled.")
-PY
+updated_lines = []
+seen = set()
+for line in lines:
+    if "=" in line and not line.lstrip().startswith("#"):
+        key = line.split("=", 1)[0].strip()
+        if key in required:
+            updated_lines.append(f"{key}={required[key]}")
+            seen.add(key)
+            continue
+    updated_lines.append(line)
+for key, value in required.items():
+    if key not in seen:
+        updated_lines.append(f"{key}={value}")
+present = {
+    line.split("=", 1)[0].strip()
+    for line in updated_lines
+    if "=" in line and not line.lstrip().startswith("#")
+}
+if "SPECTRA_MAX_NEW_ENTRIES_PER_TICK" not in present:
+    updated_lines.append("SPECTRA_MAX_NEW_ENTRIES_PER_TICK=3")
+if updated_lines != lines:
+    content = "\n".join(updated_lines) + "\n"
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=path.parent,
+        prefix=".spectra-env-", suffix=".tmp", delete=False
+    ) as handle:
+        handle.write(content)
+        temporary = Path(handle.name)
+    temporary.chmod(0o600)
+    os.replace(temporary, path)
+PYPORTFOLIO
+EXECUTION_MODE="$("$CORE_DIR/.venv/bin/python" - "$API_DIR/.env" <<'PYMODE'
+from pathlib import Path
+import sys
+values = {}
+for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if "=" in raw and not raw.lstrip().startswith("#"):
+        key, value = raw.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'").lower()
+print("PAPER_ONLY" if values.get("SPECTRA_PAPER_ONLY") == "true" else "LIVE_AUTHORIZED")
+PYMODE
+)"
 
 cd "$API_DIR"
-say "Fetching the merged API main branch."
-git fetch --depth 1 origin main
+# Pin the exact API source revision whose connector and market-data changes
+# were reviewed against the Spectra compatibility patchers. Never follow main
+# implicitly: an upstream source change must be reviewed before this pin moves.
+API_UPSTREAM_REF="2e4c621eec43faceac8a9258167ffea7ccb47e1f"
+say "Fetching the reviewed pinned API commit $API_UPSTREAM_REF."
+git fetch --depth 1 origin "$API_UPSTREAM_REF"
 API_UPSTREAM_COMMIT="$(git rev-parse FETCH_HEAD)"
+[[ "$API_UPSTREAM_COMMIT" == "$API_UPSTREAM_REF" ]] \
+  || die "Fetched API revision does not match the reviewed pin."
 
 # Reconcile known Alpha sources. Preserve local work using a three-way merge
 # against the last shared Alpha baseline; a conflict stops before any source is
@@ -89,11 +195,15 @@ API_UPSTREAM_COMMIT="$(git rev-parse FETCH_HEAD)"
 declare -A APPROVED_LEGACY_BLOBS=(
   ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
   ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
+  ["services/accounts_service.py"]="737292da2837a187a0495c112bf09cdaa1e4ad82"
+  ["utils/spectra_dispatch_receipt.py"]="50a536b9fc6f7a0ae7fc9718dda4e9715d0d2f86"
 )
 declare -A EXPECTED_UPSTREAM_BLOBS=(
-  ["services/unified_connector_service.py"]="185f03c85f00d7ccb95817551f0990ccda4a2fb4"
-  ["services/market_data_service.py"]="9236689f87dc32aae2478100419b9a2e6e645f73"
+  ["services/unified_connector_service.py"]="a35c432e74d829b02c8c153b334e20abcd10dd2b"
+  ["services/market_data_service.py"]="95e8e31c5e9be5bb2945b80038419b88b35ba41f"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
+  ["services/accounts_service.py"]="c53325a7b46e0091d9386bef8d11b65c6b8244a4"
+  ["utils/spectra_dispatch_receipt.py"]="eb76959c88e08793a4d34eebb8f9c7b13d853fe9"
 )
 
 MERGE_TMP="$(mktemp -d "$LOG_DIR/api-source-merge.XXXXXX")"
@@ -141,8 +251,8 @@ for source in "${API_SOURCES[@]}"; do
 done
 
 # Apply only after every source passed preflight. Local non-conflicting edits to
-# unified_connector_service.py survive; the other two files use exact approved
-# legacy versions or exact upstream versions.
+# unified_connector_service.py survive; all other files use exact approved
+# legacy versions or exact reviewed upstream versions.
 for source in "${API_SOURCES[@]}"; do
   if [[ "$source" == "$UNIFIED_SOURCE" && -f "$MERGE_TMP/unified.install" ]]; then
     cat "$MERGE_TMP/unified.install" > "$source"
@@ -151,8 +261,41 @@ for source in "${API_SOURCES[@]}"; do
   fi
 done
 
+# Apply the narrow PaperTradeExchange adapter only to the exact reviewed
+# fork-main trading_service.py. Unknown upstream/local versions fail closed.
+[[ -f "$TRADING_PAPER_TRADE_PATCHER" ]] \
+  || die "Reviewed trading-service PaperTradeExchange patcher is missing: $TRADING_PAPER_TRADE_PATCHER"
+paper_trade_upstream_blob="$(git rev-parse "$API_UPSTREAM_COMMIT:$PAPER_TRADE_SOURCE")"
+[[ "$paper_trade_upstream_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
+  || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed upstream version (expected $PAPER_TRADE_EXPECTED_BLOB, got $paper_trade_upstream_blob)."
+paper_trade_worktree_blob="$(git hash-object "$PAPER_TRADE_SOURCE")"
+if [[ "$paper_trade_worktree_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]]; then
+  python3 "$TRADING_PAPER_TRADE_PATCHER" "$PAPER_TRADE_SOURCE" \
+    || die "Could not apply the reviewed PaperTradeExchange compatibility adapter."
+elif grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE"; then
+  say "PaperTradeExchange compatibility adapter is already present."
+else
+  die "Unrecognized local changes in $PAPER_TRADE_SOURCE; preserving them and stopping."
+fi
+grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$PAPER_TRADE_SOURCE" \
+  || die "PaperTradeExchange compatibility marker is missing after application."
+
+# Patch the second PaperTradeExchange pair-registration path in the unified
+# connector service. The patcher changes only exact reviewed blocks and refuses
+# source drift; it is safe to run again on an already-patched checkout.
+[[ -f "$UNIFIED_PAPER_TRADE_PATCHER" ]] \
+  || die "Reviewed unified PaperTradeExchange patcher is missing: $UNIFIED_PAPER_TRADE_PATCHER"
+python3 "$UNIFIED_PAPER_TRADE_PATCHER" "$UNIFIED_SOURCE" \
+  || die "Could not apply the reviewed unified PaperTradeExchange compatibility adapter."
+
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
+grep -q "_start_paper_trade_clock" "${API_SOURCES[0]}" \
+  || die "The managed PaperTradeExchange clock was not applied locally."
+grep -q "SpectraDispatchReceiptMiddleware" "$API_DIR/main.py" \
+  || die "The Core-signed dispatch middleware is not wired into the API application."
+grep -q "verify_and_consume_receipt" "${API_SOURCES[4]}" \
+  || die "The signed dispatch receipt verifier was not applied locally."
 grep -q "A read request must be able to initialize its own feed" "${API_SOURCES[1]}" \
   || die "The lazy order-book initialization fix was not applied locally."
 grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[2]}" \
@@ -225,6 +368,20 @@ else
 fi
 CORE_UPSTREAM_COMMIT="$(git -C "$CORE_DIR" rev-parse FETCH_HEAD^{commit})"
 say "Verified Core source ref $CORE_REF at commit $CORE_UPSTREAM_COMMIT."
+
+ensure_env_default() {
+  local file="$1" key="$2" value="$3"
+  if ! grep -Eq "^${key}=" "$file"; then
+    printf '%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+ensure_env_default "$CORE_DIR/.env" SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED true
+ensure_env_default "$CORE_DIR/.env" SPECTRA_PORTFOLIO_AUTORUN true
+ensure_env_default "$CORE_DIR/.env" SPECTRA_LIVE_AUTORUN false
+ensure_env_default "$CORE_DIR/.env" SPECTRA_AUTO_ASSET_SELECTION true
+ensure_env_default "$CORE_DIR/.env" SPECTRA_TARGET_ACTIVE_POSITIONS 83
+ensure_env_default "$CORE_DIR/.env" SPECTRA_MAX_NEW_ENTRIES_PER_TICK 3
+ensure_env_default "$CORE_DIR/.env" SPECTRA_VCAP_SEED_QUOTE 20
 [[ -f "$CORE_DIR/frontend/package.json" ]] || die "Core frontend package.json is missing."
 say "Fetching the reviewed Spectra trade-screen market-feed status component."
 CORE_UPSTREAM_BLOB="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$CORE_FRONTEND_SOURCE")"
@@ -275,6 +432,8 @@ CORE_OPS_SOURCES=(
   "scripts/spectra-alpha-start-api.sh"
   "scripts/spectra-alpha-core-supervisor.sh"
   "scripts/spectra-alpha-backup.sh"
+  "scripts/configure_alpha_paper_connector.py"
+  "scripts/configure_alpha_paper_state.py"
   "scripts/systemd/spectra-alpha-core.service"
   "scripts/systemd/spectra-alpha-doctor.service"
   "scripts/systemd/spectra-alpha-doctor.timer"
@@ -282,16 +441,25 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-backup.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="774ae8e7912896d7266fbb06c459b9f5a48a7dc3"
-  ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
-  ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
+  ["scripts/spectra"]="44dc4f3d0dc8f056d424560d7627e6b7084dfa37"
+  ["scripts/spectra-alpha-doctor.sh"]="615fca24406c8589f39f93a6de88993a974a930a"
+  ["scripts/spectra-alpha-start-api.sh"]="e50a0829b1dbe14f00a94c13ab76d40e5ccdb574"
+  ["scripts/configure_alpha_paper_connector.py"]="f25cc6b6e6f4cf74f1909841ac33ee5cc94f50f0"
+  ["scripts/configure_alpha_paper_state.py"]="1bdf145fc56c7c1eddaac9762f6c8cf5b2890ef6"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
-  ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
+  ["scripts/systemd/spectra-alpha-core.service"]="03e063445ff6f44c87d857e847d6e1c2ddc0f103"
   ["scripts/systemd/spectra-alpha-doctor.service"]="054b22ea89cb8888419ec8000b5ffa0975f1b73d"
   ["scripts/systemd/spectra-alpha-doctor.timer"]="30af1b179bda4aec03105018e09b07dba1ee4b85"
   ["scripts/spectra-alpha-backup.sh"]="1320e0d1ccf552917105c85f17fb67d046d8a3fc"
   ["scripts/systemd/spectra-alpha-backup.service"]="e49bc3d235744a92d7c463e6a98d9b8b282ae08b"
   ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
+ )
+declare -A CORE_OPS_OLD_BLOBS=(
+  ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
+  ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
+  ["scripts/configure_alpha_paper_connector.py"]="c8c0312e412f942747087aacb62fc3a6f28d3d16"
+  ["scripts/configure_alpha_paper_state.py"]="64e9261c644421ee353e568f7475d47106fbb860"
+  ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
 )
 for source in "${CORE_OPS_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "$CORE_UPSTREAM_COMMIT:$source")"
@@ -303,7 +471,8 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
     die "Refusing to replace symlinked local path $source."
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-    if [[ "$worktree_blob" != "$expected_blob" ]]; then
+    old_blob="${CORE_OPS_OLD_BLOBS[$source]:-}"
+    if [[ "$worktree_blob" != "$expected_blob" && "|$old_blob|" != *"|$worktree_blob|"* ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
   fi
@@ -319,6 +488,12 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
   git -C "$CORE_DIR" show "$CORE_UPSTREAM_COMMIT:$source" > "$target" || die "Could not write reviewed operator file $target."
 done
 
+say "Applying safe paper-account and mode-specific capital-policy migrations."
+"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/configure_alpha_paper_state.py" --core-root "$CORE_DIR"
+"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/configure_alpha_paper_connector.py" \
+  --config "$API_DIR/bots/credentials/master_account/conf_client.yml" \
+  --core-root "$CORE_DIR" --upgrade-legacy-default
+
 # Update only the reviewed Python files that implement the paper asset authority
 # and strategy-discovery path. Exact old/new blob checks preserve local edits.
 CORE_PYTHON_SOURCES=(
@@ -327,27 +502,35 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/market_discovery.py"
   "spectra_core/capital_governor.py"
   "spectra_core/vcap_entry.py"
+  "spectra_core/module_registry.py"
+  "spectra_core/portfolio_supervisor.py"
+  "main.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
   "routines/mean_reversion_scanner.py"
   "condor/web/routes/market.py"
 )
 declare -A CORE_PYTHON_NEW_BLOBS=(
-  ["spectra_core/asset_authority.py"]="5644134509e604dc5ed0df9076130608b61fe975"
-  ["spectra_core/kraken_authorization.py"]="a6f2b56b24f27c953afe2391405d63dc3318b1d2"
-  ["spectra_core/market_discovery.py"]="896431e9d421c3c5533799ef56b250f23a031c5d"
+  ["spectra_core/asset_authority.py"]="26b65d413e9dffde2464e20945b3e7755c6491e6"
+  ["spectra_core/kraken_authorization.py"]="afd89f24f346b0e4a90cb3cd6ac7dc03429e47f5"
+  ["spectra_core/module_registry.py"]="ff3bbd5310420915530dec48fe13dfc96179783c"
+  ["spectra_core/portfolio_supervisor.py"]="ec762f545b736ad60017c7b41101fc3e26774979"
+  ["main.py"]="3dcdc5cdec093214dac9eda0b3cc8fe2c9b4b82d"
+  ["spectra_core/market_discovery.py"]="494989804bb3df1b82e0d8aaa6bdaf1cfb1c3fdb"
   ["spectra_core/capital_governor.py"]="a34f6b5bb0551e00b7bf209e34135723f0cc3207"
-  ["spectra_core/vcap_entry.py"]="0e3b2bff874cb8a55803dac91b2ec061df5d25b8"
-  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["spectra_core/vcap_entry.py"]="87545875fcd593abd39f1697c6efa50842586830"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="5a5c4c083076598548436fcb4ca385741cd3c986"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="5ac6111aa0fc192a7e0324e6dc8761e090316aa7"
 )
 declare -A CORE_PYTHON_OLD_BLOBS=(
-  ["spectra_core/asset_authority.py"]=""
-  ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050"
+  ["spectra_core/asset_authority.py"]="5644134509e604dc5ed0df9076130608b61fe975|7ab6435bac07dea5c260ce810b5daf6abbcfbfab"
+  ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050|a6f2b56b24f27c953afe2391405d63dc3318b1d2|8b2bea839be8eab5614236b08cf57968a247dbdc"
+  ["spectra_core/module_registry.py"]="1c1ccc2d0e14f4c5760dbbd9aa6d9f00f6de093b|45d5d8e22346e6e5becad1372499cc775093843f|7bd2e5c3bf00477a8a9381b8e0ac828ba2ad296e"
+  ["spectra_core/vcap_entry.py"]="0e3b2bff874cb8a55803dac91b2ec061df5d25b8"
+  ["main.py"]="0b2d3b1f8c5f227899c8be4e282185ebf395a193"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a|14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
   ["spectra_core/capital_governor.py"]="3fac868f19d71b817f66d7cecf9a06ed209f7c00"
-  ["spectra_core/vcap_entry.py"]=""
-  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a"
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
@@ -361,11 +544,11 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
     die "Refusing to replace symlinked local Python source $source."
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-    old_blob="${CORE_PYTHON_OLD_BLOBS[$source]}"
-    if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
+    old_blob="${CORE_PYTHON_OLD_BLOBS[$source]-}"
+    if [[ "$worktree_blob" != "$expected_blob" && "|$old_blob|" != *"|$worktree_blob|"* ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
-  elif [[ -n "${CORE_PYTHON_OLD_BLOBS[$source]}" ]]; then
+  elif [[ -n "${CORE_PYTHON_OLD_BLOBS[$source]-}" ]]; then
     die "Expected existing Core source $source is missing; refusing an incomplete update."
   fi
 done
@@ -379,10 +562,15 @@ done
   "$CORE_DIR/spectra_core/market_discovery.py" \
   "$CORE_DIR/spectra_core/capital_governor.py" \
   "$CORE_DIR/spectra_core/vcap_entry.py" \
+  "$CORE_DIR/spectra_core/module_registry.py" \
+  "$CORE_DIR/spectra_core/portfolio_supervisor.py" \
+  "$CORE_DIR/main.py" \
+  "$CORE_DIR/scripts/configure_alpha_paper_connector.py" \
+  "$CORE_DIR/scripts/configure_alpha_paper_state.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
   "$CORE_DIR/routines/mean_reversion_scanner.py" \
   "$CORE_DIR/condor/web/routes/market.py"
-say "Installed and syntax-checked the reviewed paper asset authority and strategy-discovery code."
+say "Installed and syntax-checked the reviewed autonomous portfolio, asset-authority, and governed execution code."
 
 install -m 700 "$CORE_DIR/scripts/spectra" "$HOME/.local/bin/spectra"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$HOME/.local/bin/spectra-alpha-doctor"
@@ -451,13 +639,17 @@ say "Restarting Spectra Core only so reviewed Python changes are loaded; Humming
 VERIFY_BIN="$HOME/.local/bin/spectra-verify-alpha-paper-market-data"
 VERIFY_URL="https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/$CORE_REF/scripts/verify-alpha-paper-market-data.sh"
 mkdir -p "$(dirname "$VERIFY_BIN")"
-say "Installing the read-only Kraken paper market-data verifier."
-curl -fsSL "$VERIFY_URL" -o "$VERIFY_BIN"
-chmod 700 "$VERIFY_BIN"
-bash -n "$VERIFY_BIN" || die "The downloaded paper market-data verifier failed shell syntax validation."
-say "Running authenticated, read-only Kraken paper market-data verification."
-if ! "$VERIFY_BIN"; then
-  say "API deployment succeeded, but Kraken paper market data is not yet verified. Review the diagnostics above."
+if [[ "$EXECUTION_MODE" == "PAPER_ONLY" ]]; then
+  say "Installing the read-only Kraken paper market-data verifier."
+  curl -fsSL "$VERIFY_URL" -o "$VERIFY_BIN"
+  chmod 700 "$VERIFY_BIN"
+  bash -n "$VERIFY_BIN" || die "The downloaded paper market-data verifier failed shell syntax validation."
+  say "Running authenticated, read-only Kraken paper market-data verification."
+  if ! "$VERIFY_BIN"; then
+    say "API deployment succeeded, but Kraken paper market data is not yet verified. Review the diagnostics above."
+  fi
+else
+  say "Skipping paper-only market-data verification in live mode; no live order or capital action was performed."
 fi
 say "Running read-only operational health checks."
 if ! "$HOME/.local/bin/spectra-alpha-doctor"; then

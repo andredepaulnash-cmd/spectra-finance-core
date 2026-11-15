@@ -449,3 +449,141 @@ async def test_24h_movers_remain_available_when_long_history_is_missing():
     assert result["lists"]["mean_reversion_candidates"] == []
     assert result["counts"]["history_or_data_rejected"] == 1
     assert result["orders_created"] == 0
+
+
+
+@pytest.mark.asyncio
+async def test_kraken_scan_excludes_pairs_that_cannot_take_the_20_usd_limit_seed():
+    now = 1_800_000_000.0
+    day_start = int(now // 86_400) * 86_400
+    history = [
+        {
+            "timestamp": day_start - (90 - index) * 86_400,
+            "open": 100,
+            "high": 102,
+            "low": 98,
+            "close": 100 + index * 0.1,
+            "volume": 1_000,
+        }
+        for index in range(90)
+    ]
+
+    class MultiTickerMarketData(FakeKrakenMarketData):
+        async def get_tickers(self, connector):
+            assert connector == "kraken"
+            return {
+                "tickers": {
+                    "kraken": {
+                        pair: {
+                            "price": 110,
+                            "base_volume": 200_000,
+                            "quote_volume": 20_000_000,
+                            "timestamp": now,
+                        }
+                        for pair in ("BTC-USD", "HIGHMIN-USD", "MARKETONLY-USD")
+                    }
+                },
+                "updated_at": {"kraken": now},
+            }
+
+    class MultiRuleConnectors:
+        async def get_trading_rules(self, connector):
+            assert connector == "kraken"
+            base = {
+                "min_order_size": "0.0001",
+                "min_notional_size": "1",
+                "min_order_value": "1",
+                "min_price_increment": "0.01",
+                "min_base_amount_increment": "0.0001",
+                "min_quote_amount_increment": "0.01",
+                "supports_limit_orders": True,
+                "supports_market_orders": True,
+            }
+            return {
+                "BTC-USD": dict(base),
+                "HIGHMIN-USD": {
+                    **base,
+                    "min_notional_size": "25",
+                    "min_order_value": "25",
+                },
+                "MARKETONLY-USD": {
+                    **base,
+                    "supports_limit_orders": False,
+                    "supports_market_orders": True,
+                },
+            }
+
+    market_data = MultiTickerMarketData(history)
+    client = type("Client", (), {
+        "market_data": market_data,
+        "connectors": MultiRuleConnectors(),
+    })()
+
+    result = await scan_kraken_universe(
+        client,
+        top_n=10,
+        show_n=10,
+        min_volume_usd=1_000,
+        min_history_days=90,
+        min_median_daily_quote_volume_usd=0,
+        approved_pairs=(),
+        now=now,
+    )
+
+    assert [row["trading_pair"] for row in result["candidates"]] == ["BTC-USD"]
+    assert result["candidates"][0]["minimum_order_quote"] <= 20
+    assert market_data.calls == [
+        ("kraken", "BTC-USD", "1h", 27),
+        ("kraken", "BTC-USD", "1d", 92),
+    ]
+
+
+
+@pytest.mark.asyncio
+async def test_kraken_scan_persists_fingerprints_for_the_full_eligible_universe():
+    now = 1_800_000_000.0
+
+    class FingerprintStore:
+        def __init__(self):
+            self.fingerprints = {}
+            self.saved = []
+
+        def load_fingerprint(self, trading_pair):
+            return self.fingerprints.get(trading_pair)
+
+        def save_fingerprint(self, fingerprint, *, now):
+            self.fingerprints[fingerprint.trading_pair] = fingerprint
+            self.saved.append((fingerprint.trading_pair, now))
+
+    store = FingerprintStore()
+    candles = [
+        {
+            "timestamp": int(now // 86_400) * 86_400 - (90 - index) * 86_400,
+            "open": 100,
+            "high": 102,
+            "low": 98,
+            "close": 100 + index * 0.1,
+            "volume": 1_000,
+        }
+        for index in range(90)
+    ]
+    client = type("Client", (), {
+        "market_data": FakeKrakenMarketData(candles),
+        "connectors": FakeKrakenConnectors(),
+    })()
+
+    result = await scan_kraken_universe(
+        client,
+        top_n=10,
+        show_n=10,
+        min_volume_usd=1_000,
+        min_history_days=90,
+        min_median_daily_quote_volume_usd=0,
+        approved_pairs=(),
+        now=now,
+        fingerprint_store=store,
+    )
+
+    assert result["fingerprint_observations"] == 1
+    assert [pair for pair, _ in store.saved] == ["BTC-USD"]
+    assert store.fingerprints["BTC-USD"].last_seen_at == now

@@ -1,0 +1,34 @@
+diff --git a/services/trading_service.py b/services/trading_service.py
+--- a/services/trading_service.py
++++ b/services/trading_service.py
+@@ -237,3 +237,27 @@
+-        if trading_pair not in connector._trading_pairs:
+-            connector._trading_pairs.append(trading_pair)
+-            logger.debug(f"Registered {trading_pair} with connector {type(connector).__name__}")
++        # SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT:
++        # PaperTradeExchange is a Cython extension. Its _trading_pairs member is
++        # a private cdef dict, not a Python-visible list, so the generic
++        # _trading_pairs.append() path raises AttributeError. Use its public
++        # trading_pair mapping and the connector's canonical TradingPair type.
++        if type(connector).__name__ == "PaperTradeExchange":
++            paper_pair_map = getattr(connector, "trading_pair", None)
++            if not isinstance(paper_pair_map, dict):
++                raise TypeError("PaperTradeExchange did not expose its trading_pair mapping")
++            if trading_pair not in paper_pair_map:
++                from hummingbot.connector.exchange.paper_trade.trading_pair import TradingPair
++                base_asset, quote_asset = connector.split_trading_pair(trading_pair)
++                paper_pair_map[trading_pair] = TradingPair(trading_pair, base_asset, quote_asset)
++            logger.debug(f"Registered {trading_pair} with paper connector {type(connector).__name__}")
++            return
++
++        trading_pairs = getattr(connector, "_trading_pairs", None)
++        if isinstance(trading_pairs, list):
++            if trading_pair not in trading_pairs:
++                trading_pairs.append(trading_pair)
++            logger.debug(f"Registered {trading_pair} with connector {type(connector).__name__}")
++            return
++
++        raise TypeError(
++            f"Connector {type(connector).__name__} does not expose a supported "
++            "trading-pair registration interface"
++        )

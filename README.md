@@ -1,15 +1,18 @@
-# Condor
+# Spectra Finance
 
+Spectra Finance integrates the Condor intelligence layer with the Hummingbot execution stack under Spectra Core's orchestration and Capital Governor authority.
 
-## Spectra Finance Alpha — Linux paper-trading demo
+## Local Linux/Bazzite installation
 
-A separate one-command Linux/Bazzite install track is under review. It installs the pinned Spectra Core and Hummingbot API candidates, configures Kraken paper trading, and keeps live execution disabled.
+The local install defaults to an isolated paper account. A fresh paper account is initialized with 25,000 USD-equivalent simulated capital, a target fleet of 83 unique active positions, and a 20 USD initial allocation per new position. VCAP/DCS additions are separately governed. The historical 25% reserve and 5% per-asset limits are configurable recovered defaults, not immutable strategy rules.
+
+Live execution remains part of the architecture. It is not enabled by default: the API and Core must both be explicitly configured with `SPECTRA_PAPER_ONLY=false` and `SPECTRA_ALLOW_LIVE_EXECUTION=true`. Automated live portfolio operation additionally requires `SPECTRA_LIVE_AUTORUN=true` in Core; the separate live capital policy starts at zero limits and the live breaker starts HALTED.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/one-command-paper-demo-20261108/install-alpha.sh | bash
+curl -fsSL https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/fix/spectra-connectivity-and-agent-auth/install-alpha.sh | bash
 ```
 
-Both source repositories are public, so no GitHub authentication is required. See [ALPHA-TEST.md](ALPHA-TEST.md) for prerequisites, paper-mode behavior, controls, and current validation limitations. This is a developer alpha, not a production multi-user deployment.
+Both source repositories are public, so no GitHub authentication is required. See [ALPHA-TEST.md](ALPHA-TEST.md) for deployment behavior and the exact integration milestones that are and are not yet certified. Local Bazzite deployment is not claimed until it has been verified on the target machine.
 
 
 A Telegram bot for monitoring and trading with Hummingbot via the **Hummingbot API**.

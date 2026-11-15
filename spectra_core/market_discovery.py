@@ -8,10 +8,18 @@ from __future__ import annotations
 
 import asyncio
 import time
+from decimal import Decimal, ROUND_CEILING
 from collections.abc import Iterable, Mapping
 from typing import Any
 
 from .kraken_market_fabric import collect_kraken_universe
+
+# A fleet seed must clear venue minima while leaving room for the configured
+# 0.6% fee allowance and 0.1% adverse-price allowance.
+PAPER_ENTRY_QUOTE_BUDGET = Decimal("20")
+PAPER_ENTRY_FEE_ALLOWANCE_BPS = Decimal("60")
+PAPER_ENTRY_SLIPPAGE_ALLOWANCE_BPS = Decimal("10")
+
 
 def _number(value: Any, field: str) -> float:
     result = float(value)
@@ -302,6 +310,7 @@ async def scan_kraken_universe(
     quote_assets: Iterable[str] = ("USD",),
     approved_pairs: Iterable[str] | None = None,
     now: float | None = None,
+    fingerprint_store: Any | None = None,
 ) -> dict[str, Any]:
     """Rank Kraken USD spot markets using the configured Hummingbot API.
 
@@ -335,9 +344,62 @@ async def scan_kraken_universe(
     )
 
     snapshot = await collect_kraken_universe(client, quote_assets=quote_assets)
+    fingerprint_observations = 0
+    if fingerprint_store is not None:
+        # Preserve behavioral memory for every eligible market, not only the
+        # mean-reversion shortlist that may later receive a capital reservation.
+        from .asset_fingerprint import AssetFingerprint, observation_from_kraken_universe
+
+        for pair in snapshot.eligible_pairs:
+            observation = observation_from_kraken_universe(snapshot, pair)
+            existing = fingerprint_store.load_fingerprint(pair)
+            if existing is None:
+                updated = AssetFingerprint.cold_start(observation)
+            elif observation.timestamp > existing.last_seen_at:
+                updated = existing.update(observation)
+            else:
+                continue
+            fingerprint_store.save_fingerprint(updated, now=observation.timestamp)
+            fingerprint_observations += 1
     candidates = []
+    usable_entry_quote = (
+        PAPER_ENTRY_QUOTE_BUDGET * Decimal("10000")
+        / (
+            Decimal("10000")
+            + PAPER_ENTRY_FEE_ALLOWANCE_BPS
+            + PAPER_ENTRY_SLIPPAGE_ALLOWANCE_BPS
+        )
+    )
     for pair in snapshot.eligible_pairs:
         ticker = snapshot.tickers[pair]
+        rule = snapshot.trading_rules[pair]
+        # The portfolio supervisor creates LIMIT executors with a $20 total
+        # quote budget. Market-only pairs or pairs whose venue minimum cannot
+        # fit inside that budget must never reach Governor reservation.
+        if not rule.supports_limit_orders:
+            continue
+        minimum_base_size = max(
+            rule.min_order_size,
+            rule.min_base_amount_increment,
+        )
+        if rule.min_base_amount_increment > 0:
+            minimum_base_size = (
+                (minimum_base_size / rule.min_base_amount_increment)
+                .to_integral_value(rounding=ROUND_CEILING)
+                * rule.min_base_amount_increment
+            )
+        minimum_order_quote = max(
+            rule.effective_min_quote,
+            minimum_base_size * ticker.price,
+        )
+        if rule.min_quote_amount_increment > 0:
+            minimum_order_quote = (
+                (minimum_order_quote / rule.min_quote_amount_increment)
+                .to_integral_value(rounding=ROUND_CEILING)
+                * rule.min_quote_amount_increment
+            )
+        if minimum_order_quote > usable_entry_quote:
+            continue
         volume = float(ticker.quote_volume_24h)
         if volume < min_volume_usd:
             continue
@@ -348,6 +410,7 @@ async def scan_kraken_universe(
             "quote_asset": pair.rsplit("-", 1)[1],
             "price": float(ticker.price),
             "volume": volume,
+            "minimum_order_quote": float(minimum_order_quote),
             "governor_approved": approved is not None and pair in approved,
         })
     candidates.sort(key=lambda item: item["volume"], reverse=True)
@@ -423,6 +486,7 @@ async def scan_kraken_universe(
                     max_current_move_pct=max_current_move_pct,
                 )
                 analysis["trading_pair"] = item["trading_pair"]
+                analysis["minimum_order_quote"] = item["minimum_order_quote"]
                 analysis["change_24h_window_seconds"] = hourly_window
                 analysis["change_24h_source"] = "hourly_candles" if hourly_change is not None else None
                 analysis["quote_asset"] = item["quote_asset"]
@@ -462,6 +526,7 @@ async def scan_kraken_universe(
             "quote_asset": item["quote_asset"],
             "current_price": item["price"],
             "volume_24h_usd": round(item["volume"], 2),
+            "minimum_order_quote": item["minimum_order_quote"],
             "volume_rank_24h": item["volume_rank_24h"],
             "change_24h_pct": item.get("change_24h_pct", analysis.get("change_24h_pct")),
             "change_24h_window_seconds": item.get("change_24h_window_seconds", analysis.get("change_24h_window_seconds")),
@@ -476,6 +541,7 @@ async def scan_kraken_universe(
     return {
         "source": "Kraken spot market data via Hummingbot API",
         "as_of": timestamp,
+        "fingerprint_observations": fingerprint_observations,
         "kraken_ticker_snapshot_at": snapshot.updated_at,
         "universe": "Kraken spot markets in configured quote assets",
         "criteria": {

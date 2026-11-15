@@ -1,0 +1,56 @@
+name: Spectra upstream release watch
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - release/spectra-release-manager-foundation-20261113
+    paths:
+      - "release/**"
+      - "scripts/check_upstream_releases.py"
+      - "tests/test_release_manifest.py"
+      - ".github/workflows/upstream-release-watch.yml"
+  pull_request:
+    paths:
+      - "release/**"
+      - "scripts/check_upstream_releases.py"
+      - "tests/test_release_manifest.py"
+      - ".github/workflows/upstream-release-watch.yml"
+  schedule:
+    - cron: "23 9 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spectra-upstream-release-watch
+  cancel-in-progress: false
+
+jobs:
+  discover-upstream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out Spectra manifest
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate release manifest tests
+        run: |
+          python -m json.tool release/components.json >/dev/null
+          python -m unittest discover -s tests -p "test_release_manifest.py" -v
+      - name: Discover upstream candidates
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/check_upstream_releases.py --output release-candidates.json
+      - name: Publish candidate report
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: spectra-upstream-release-candidates
+          path: release-candidates.json
+          if-no-files-found: error
+          retention-days: 30

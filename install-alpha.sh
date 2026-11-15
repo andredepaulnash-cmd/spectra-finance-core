@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Spectra Finance Alpha installer — Linux / Bazzite
-# Installs the pinned Spectra Core + Hummingbot API paper-only candidate.
+# Spectra Finance installer — Linux / Bazzite
+# Paper is the default; live mode remains available behind separate authorization.
 set -Eeuo pipefail
 
 CORE_REPO="https://github.com/andredepaulnash-cmd/spectra-finance-core.git"
-CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-fix/spectra-connectivity-and-agent-auth}"
 API_REPO="https://github.com/andredepaulnash-cmd/spectra-hummingbot-api.git"
 API_REF="main"
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -40,9 +40,26 @@ path.write_text("\n".join(updated) + "\n", encoding="utf-8")
 PYENV
 }
 
+set_env_default() {
+  local file="$1" key="$2" value="$3"
+  "$CORE_DIR/.venv/bin/python" - "$file" "$key" "$value" <<'PYENVDEFAULT'
+from pathlib import Path
+import sys
+path, key, value = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+if not any(line.startswith(key + "=") for line in lines):
+    lines.append(f"{key}={value}")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PYENVDEFAULT
+}
+
 [[ "$(uname -s)" == Linux ]] || die "This alpha installer currently supports Linux (including Bazzite)."
 [[ "$(uname -m)" =~ ^(x86_64|aarch64|arm64)$ ]] || die "Unsupported CPU architecture: $(uname -m)"
 mkdir -p "$INSTALL_ROOT"
+FRESH_INSTALL=true
+if [[ -f "$API_DIR/.env" || -f "$CORE_DIR/.env" || -d "$CORE_DIR/data/spectra-paper" ]]; then
+  FRESH_INSTALL=false
+fi
 
 clone_or_reuse() {
   local repo="$1" ref="$2" dest="$3"
@@ -177,7 +194,7 @@ say "Creating local-only API credentials and paper-only configuration"
 cd "$API_DIR"
 mkdir -p bots/conf bots/data bots/credentials/master_account/connectors .emqx
 env_value() {
-  "$CORE_DIR/.venv/bin/python" - "$1" .env <<'PYVALUE'
+  "$CORE_DIR/.venv/bin/python" - "$1" "$API_DIR/.env" <<'PYVALUE'
 from pathlib import Path
 import sys
 key, path = sys.argv[1], Path(sys.argv[2])
@@ -220,9 +237,9 @@ EOF
 fi
 set_env_value .env API_BIND 127.0.0.1
 set_env_value .env DB_BIND 127.0.0.1
-set_env_value .env SPECTRA_PAPER_ONLY true
-set_env_value .env SPECTRA_PAPER_CONNECTORS kraken_paper_trade
-set_env_value .env SPECTRA_ALLOW_LIVE_EXECUTION false
+set_env_default .env SPECTRA_PAPER_ONLY true
+set_env_default .env SPECTRA_PAPER_CONNECTORS kraken_paper_trade
+set_env_default .env SPECTRA_ALLOW_LIVE_EXECUTION false
 set_env_value .env SPECTRA_REQUIRE_CORE_RECEIPTS true
 set_env_value .env SPECTRA_DISPATCH_POLICY_VERSION spectra-policy-v1
 chmod 600 .env
@@ -241,8 +258,16 @@ chmod 700 .emqx
 chmod 644 .emqx/auth-bootstrap.csv
 
 # Update the repository's existing master-account config without discarding its other settings.
-"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/configure_alpha_paper_connector.py" \
+PAPER_ACCOUNT_ARGS=(
   --config "$API_DIR/bots/credentials/master_account/conf_client.yml"
+)
+if [[ "$FRESH_INSTALL" == true ]]; then
+  PAPER_ACCOUNT_ARGS+=(--reset-balances)
+else
+  PAPER_ACCOUNT_ARGS+=(--core-root "$CORE_DIR" --upgrade-legacy-default)
+fi
+"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/configure_alpha_paper_connector.py" \
+  "${PAPER_ACCOUNT_ARGS[@]}"
 
 # This alpha must not hand the API container the host Docker/Podman control socket.
 # Build a private Compose file with a deterministic Python transform; no sed program
@@ -355,8 +380,6 @@ ADMIN_USER_ID=1
 WEB_URL=http://127.0.0.1:8088
 WEB_HOST=127.0.0.1
 CONDOR_TELEMETRY=off
-SPECTRA_PAPER_ONLY=true
-SPECTRA_ALLOW_LIVE_EXECUTION=false
 SPECTRA_DISPATCH_POLICY_VERSION=spectra-policy-v1
 CONDOR_AGENT_SLUG=spectra
 EOF
@@ -368,9 +391,39 @@ set_env_value .env WEB_HOST 127.0.0.1
 set_env_value .env CONDOR_TELEMETRY off
 set_env_value .env CONDOR_AGENT_SLUG spectra
 set_env_value .env HUMMINGBOT_MCP_CONFIG_DIR "$INSTALL_ROOT/hummingbot-mcp"
-set_env_value .env SPECTRA_PAPER_ONLY true
-set_env_value .env SPECTRA_ALLOW_LIVE_EXECUTION false
+set_env_default .env SPECTRA_PAPER_ONLY "$(env_value SPECTRA_PAPER_ONLY)"
+set_env_default .env SPECTRA_ALLOW_LIVE_EXECUTION "$(env_value SPECTRA_ALLOW_LIVE_EXECUTION)"
+set_env_default .env SPECTRA_PORTFOLIO_SUPERVISOR_ENABLED true
+set_env_default .env SPECTRA_PORTFOLIO_AUTORUN true
+set_env_default .env SPECTRA_LIVE_AUTORUN false
+set_env_default .env SPECTRA_AUTO_ASSET_SELECTION true
+set_env_default .env SPECTRA_TARGET_ACTIVE_POSITIONS 83
+set_env_default .env SPECTRA_MAX_NEW_ENTRIES_PER_TICK 3
 set_env_value .env SPECTRA_DISPATCH_POLICY_VERSION spectra-policy-v1
+
+"$CORE_DIR/.venv/bin/python" - "$API_DIR/.env" "$CORE_DIR/.env" <<'PYMODE'
+from pathlib import Path
+import sys
+
+def read(path):
+    values = {}
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        if "=" in raw and not raw.lstrip().startswith("#"):
+            key, value = raw.split("=", 1)
+            values[key.strip()] = value.strip().strip('"').strip("'").lower()
+    return values
+
+api, core = map(read, sys.argv[1:3])
+for key in ("SPECTRA_PAPER_ONLY", "SPECTRA_ALLOW_LIVE_EXECUTION"):
+    if api.get(key) != core.get(key):
+        raise SystemExit("API/Core execution-mode mismatch for " + key + "; configure both files consistently.")
+paper = api.get("SPECTRA_PAPER_ONLY")
+live = api.get("SPECTRA_ALLOW_LIVE_EXECUTION")
+if paper not in {"true", "false"} or live not in {"true", "false"}:
+    raise SystemExit("Execution mode flags must be explicit true/false values.")
+if (paper == "true" and live != "false") or (paper == "false" and live != "true"):
+    raise SystemExit("Live mode requires SPECTRA_PAPER_ONLY=false and SPECTRA_ALLOW_LIVE_EXECUTION=true.")
+PYMODE
 # Keep the existing key pair across installer reruns; generate it only when either side is missing.
 if ! grep -q '^SPECTRA_DISPATCH_PRIVATE_KEY=' .env || ! grep -q '^SPECTRA_DISPATCH_PUBLIC_KEY=' "$API_DIR/.env"; then
   uv run --python 3.12 python scripts/generate_spectra_dispatch_keys.py \
@@ -588,10 +641,15 @@ for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
   fi
 done
 
-say "Spectra Finance Alpha installation completed"
+say "Spectra Finance installation completed"
 printf '\nDashboard: http://127.0.0.1:8088\n'
 printf 'Paper venue: Kraken (kraken_paper_trade) — simulated balances only\n'
-printf 'Live execution: DISABLED\n'
+if [[ "$(env_value SPECTRA_PAPER_ONLY)" == "true" ]]; then
+  printf 'Execution mode: PAPER_ONLY; live dispatch remains disabled.\n'
+else
+  printf 'Execution mode: LIVE explicitly authorized; no live orders were submitted by installation.\n'
+  printf 'Existing live capital policy and breaker state were preserved.\n'
+fi
 printf 'API credentials were generated locally and stored with mode 0600. They were not printed.\n'
 printf 'Control: spectra status | spectra stop | spectra start | spectra logs\n'
 if has xdg-open; then xdg-open http://127.0.0.1:8088/overview >/dev/null 2>&1 || true; fi

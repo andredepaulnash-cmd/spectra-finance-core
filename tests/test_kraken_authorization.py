@@ -287,14 +287,14 @@ def test_rejected_first_paper_entry_does_not_create_prefill_position(
 
 
 
-def test_paper_vcap_entry_governor_rejects_a_51st_reserved_or_committed_slot(
+def test_paper_vcap_entry_governor_rejects_an_84th_reserved_or_committed_slot(
     monkeypatch, tmp_path
 ):
     ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
     configure_paper_entry(monkeypatch, tmp_path, ledger)
     g = governor(tmp_path)
 
-    for index in range(50):
+    for index in range(83):
         proposal = CapitalProposal(
             proposal_id=f"reserved-vcap-slot-{index}",
             pair=f"ASSET{index}-USD",
@@ -313,7 +313,7 @@ def test_paper_vcap_entry_governor_rejects_a_51st_reserved_or_committed_slot(
                 connector_name="kraken_paper_trade",
                 quote_asset="USD",
             ),
-            max_active_positions=50,
+            max_active_positions=83,
             ledger_path=ledger.path,
         )
         assert decision.status == DecisionStatus.RESERVED
@@ -330,16 +330,16 @@ def test_paper_vcap_entry_governor_rejects_a_51st_reserved_or_committed_slot(
     )
 
     assert auth.decision.status == DecisionStatus.REJECTED
-    assert "VCAP active position limit reached: 50/50" in auth.decision.reason
+    assert "VCAP active position limit reached: 83/83" in auth.decision.reason
     assert auth.economic_position_id is None
     assert ledger.list_active_position_ids() == ()
 
 
-def test_paper_vcap_entry_counts_existing_active_positions_toward_fifty_slot_ceiling(
+def test_paper_vcap_entry_counts_existing_active_positions_toward_83_slot_ceiling(
     monkeypatch, tmp_path
 ):
     ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
-    for index in range(50):
+    for index in range(83):
         ledger.open_position(
             position_id=f"active-position-{index}",
             pair=f"ACTIVE{index}-USD",
@@ -360,9 +360,9 @@ def test_paper_vcap_entry_counts_existing_active_positions_toward_fifty_slot_cei
     )
 
     assert auth.decision.status == DecisionStatus.REJECTED
-    assert "VCAP active position limit reached: 50/50" in auth.decision.reason
+    assert "VCAP active position limit reached: 83/83" in auth.decision.reason
     assert auth.economic_position_id is None
-    assert len(ledger.list_active_position_ids()) == 50
+    assert len(ledger.list_active_position_ids()) == 83
 
 
 class DustSuccessorLifecycle:
@@ -382,11 +382,11 @@ class DustSuccessorLifecycle:
         return False
 
 
-def test_dust_successor_uses_one_of_the_fifty_vcap_slots_not_two(
+def test_dust_successor_uses_one_of_the_83_vcap_slots_not_two(
     monkeypatch, tmp_path
 ):
     ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
-    for index in range(49):
+    for index in range(82):
         ledger.open_position(
             position_id=f"existing-position-{index}",
             pair=f"ACTIVE{index}-USD",
@@ -413,7 +413,7 @@ def test_dust_successor_uses_one_of_the_fifty_vcap_slots_not_two(
 
     assert auth.decision.status == DecisionStatus.RESERVED
     assert auth.economic_position_id == f"successor-{auth.proposal.proposal_id}"
-    assert len(ledger.list_active_position_ids()) == 50
+    assert len(ledger.list_active_position_ids()) == 83
 
 
 def test_paper_vcap_entry_rejects_duplicate_reserved_asset(monkeypatch, tmp_path):

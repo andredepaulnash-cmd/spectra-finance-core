@@ -162,11 +162,12 @@ async def reserve_kraken_capital(
             )
         economic_position_id = supplied_position_id
 
-    vcap_slot_accounting = paper_only and intent_kind == IntentKind.ENTRY
+    SPECTRA_MAX_ACTIVE_POSITIONS = 83
+    vcap_slot_accounting = intent_kind == IntentKind.ENTRY
     decision = capital_governor.reserve(
         proposal,
         snapshot,
-        max_active_positions=50 if vcap_slot_accounting else None,
+        max_active_positions=SPECTRA_MAX_ACTIVE_POSITIONS if vcap_slot_accounting else None,
         ledger_path=(
             get_economic_position_ledger().path
             if vcap_slot_accounting

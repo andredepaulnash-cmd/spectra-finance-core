@@ -9,6 +9,7 @@ from spectra_core.asset_authority import (
     canonical_kraken_usd_pair,
     load_approved_kraken_assets,
     require_approved_kraken_pair,
+    write_discovered_kraken_assets,
 )
 
 
@@ -167,3 +168,139 @@ def test_symlinked_governor_allowlist_is_rejected(monkeypatch, tmp_path):
 
     with pytest.raises(AssetAuthorityError, match="must not be a symlink"):
         load_approved_kraken_assets()
+
+
+def _scan(as_of=1000.0):
+    return {
+        "paper_only": True,
+        "orders_created": 0,
+        "source": "Kraken spot market data via Hummingbot API",
+        "as_of": as_of,
+        "lists": {
+            "mean_reversion_candidates": [
+                {
+                    "trading_pair": "XBT-USD",
+                    "quote_asset": "USD",
+                    "eligible": True,
+                    "capital_authorized": False,
+                    "current_price": 100.0,
+                    "volume_24h_usd": 500000.0,
+                    "selection_score": 92.0,
+                },
+                {
+                    "trading_pair": "ETH-USD",
+                    "quote_asset": "USD",
+                    "eligible": True,
+                    "capital_authorized": False,
+                    "current_price": 2000.0,
+                    "volume_24h_usd": 400000.0,
+                    "selection_score": 87.0,
+                },
+                {
+                    "trading_pair": "SOL-USD",
+                    "quote_asset": "USD",
+                    "eligible": False,
+                    "capital_authorized": False,
+                    "current_price": 100.0,
+                    "volume_24h_usd": 300000.0,
+                    "selection_score": 80.0,
+                },
+                {
+                    "trading_pair": "BTC-USDT",
+                    "quote_asset": "USDT",
+                    "eligible": True,
+                    "capital_authorized": False,
+                    "current_price": 100.0,
+                    "volume_24h_usd": 300000.0,
+                    "selection_score": 79.0,
+                },
+            ]
+        },
+    }
+
+
+def test_fresh_discovery_shortlist_authorizes_only_eligible_usd_pairs(monkeypatch, tmp_path):
+    state = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+    monkeypatch.delenv("SPECTRA_APPROVED_ASSETS_FILE", raising=False)
+    monkeypatch.setenv("SPECTRA_AUTO_ASSET_SELECTION", "true")
+
+    written = write_discovered_kraken_assets(_scan(), now=1000.0)
+    loaded = load_approved_kraken_assets(now=1000.0)
+
+    assert written.automatic is True
+    assert loaded.configured is True
+    assert loaded.automatic is True
+    assert loaded.pairs == frozenset({"BTC-USD", "ETH-USD"})
+    monkeypatch.setattr("spectra_core.asset_authority.time.time", lambda: 1000.0)
+    assert require_approved_kraken_pair("BTC-USD").automatic is True
+    with pytest.raises(AssetAuthorityError, match="not in the Governor-approved"):
+        require_approved_kraken_pair("SOL-USD")
+
+
+def test_manual_allowlist_always_overrides_automatic_discovery(monkeypatch, tmp_path):
+    state = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+    monkeypatch.delenv("SPECTRA_APPROVED_ASSETS_FILE", raising=False)
+    write_discovered_kraken_assets(_scan(), now=1000.0)
+    write_policy(state / "approved_assets.json", ["BTC-USD"], source="Operator allowlist")
+
+    policy = load_approved_kraken_assets(now=1000.0)
+
+    assert policy.automatic is False
+    assert policy.source == "Operator allowlist"
+    assert policy.pairs == frozenset({"BTC-USD"})
+
+
+def test_stale_automatic_discovery_list_fails_closed(monkeypatch, tmp_path):
+    state = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+    monkeypatch.delenv("SPECTRA_APPROVED_ASSETS_FILE", raising=False)
+    write_discovered_kraken_assets(_scan(), now=1000.0)
+
+    policy = load_approved_kraken_assets(now=1301.0)
+
+    assert policy.configured is False
+    assert policy.reason == "automatic_asset_list_stale"
+    assert policy.pairs == frozenset()
+
+
+def test_auto_asset_selection_can_be_disabled(monkeypatch, tmp_path):
+    state = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+    monkeypatch.delenv("SPECTRA_APPROVED_ASSETS_FILE", raising=False)
+    write_discovered_kraken_assets(_scan(), now=1000.0)
+    monkeypatch.setenv("SPECTRA_AUTO_ASSET_SELECTION", "false")
+
+    policy = load_approved_kraken_assets(now=1000.0)
+
+    assert policy.configured is False
+    assert policy.reason == "automatic_asset_selection_disabled"
+
+
+def test_automatic_discovery_rejects_stale_or_mutating_scan(monkeypatch, tmp_path):
+    state = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+
+    with pytest.raises(AssetAuthorityError, match="stale"):
+        write_discovered_kraken_assets(_scan(as_of=600.0), now=1000.0)
+
+    unsafe = _scan()
+    unsafe["orders_created"] = 1
+    with pytest.raises(AssetAuthorityError, match="research-only"):
+        write_discovered_kraken_assets(unsafe, now=1000.0)

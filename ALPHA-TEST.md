@@ -1,39 +1,77 @@
-# Spectra Finance Alpha — Linux paper-trading demo
+# Spectra Finance — local deployment and validation
 
-This is the first installable alpha track for a local demonstration. It pins the Spectra Core candidate and the matching Spectra Hummingbot API candidate; it does not install from floating `main` branches.
+Spectra Finance combines the Condor intelligence layer, Spectra Core orchestration and Capital Governor, and the Hummingbot execution stack. This document distinguishes the implemented pieces from the remaining integration work.
+
+## Default operating configuration
+
+A fresh installation defaults to isolated paper execution:
+
+- Simulated starting equity: **25,000 USD**
+- Fleet target: **83 unique active positions**
+- Initial allocation per new position: **20 USD**
+- VCAP/DCS additions: separately planned and authorized by the Capital Governor
+- Paper venue in the current integration: Kraken's `kraken_paper_trade`
+- No exchange API key is required for the paper connector
+
+The recovered historical defaults use a 25% reserve floor and a 5% per-asset exposure ceiling. These are configurable starting policy values, not permanent strategy constants. The 20 USD amount is the initial entry allocation, not a lifetime position cap.
+
+The installer preserves customized account balances and capital policies. It initializes a fresh account at exactly 25,000 USD. It upgrades only the exact untouched legacy demo defaults, and only when the paper position ledger contains no position history. Existing traded or customized state is preserved.
+
+## Paper and live modes
+
+Paper mode is the default and remains isolated from live account state.
+
+Live capability is preserved, not removed. It requires both the API and Core environment files to be explicitly configured with:
+
+```text
+SPECTRA_PAPER_ONLY=false
+SPECTRA_ALLOW_LIVE_EXECUTION=true
+```
+
+The live state directory is separate from paper state. Its initial capital policy has zero allocation limits and its breaker starts HALTED. Live operation therefore also requires an independently configured live capital policy and a deliberate breaker release. To run the autonomous live portfolio loop, Core additionally requires `SPECTRA_PORTFOLIO_AUTORUN=true` and `SPECTRA_LIVE_AUTORUN=true`; the installer defaults the latter to false. Broad engineering permission or a paper-mode setting does not authorize live orders.
 
 ## Install
 
-On a Linux host with Git, curl, Node.js (or permission for a user-local install), and Docker Compose or rootless Podman:
+On Linux/Bazzite with Git, curl, Node.js (or permission for a user-local install), and Docker Compose or rootless Podman:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha/one-command-paper-demo-20261108/install-alpha.sh | bash
+curl -fsSL https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/fix/spectra-connectivity-and-agent-auth/install-alpha.sh | bash
 ```
 
-Both the Spectra Core and Spectra Hummingbot API repositories are public. No GitHub login is required to clone either repository.
-
 The installer:
-- Creates a new `~/SpectraFinance-Alpha` directory; it does not delete or modify another Spectra installation.
-- Uses a user-local uv Python 3.12 environment and a user-local Node install if needed.
-- Builds the React frontend and installs the pinned Condor/Core dependencies.
-- Builds the matching Hummingbot API image and starts its API, Postgres and EMQX services.
-- Removes the host container-engine socket mount from the alpha Compose file. Paper mode does not need host Docker/Podman control.
-- Generates the Ed25519 dispatch key pair on the machine. The private key stays in the Core `.env`; the API receives only the public key.
-- Configures both processes with `SPECTRA_PAPER_ONLY=true` and `SPECTRA_ALLOW_LIVE_EXECUTION=false`.
-- Updates the existing master-account Hummingbot configuration to enable only the Kraken paper connector, preserves unrelated account settings, assigns a $1,000 simulated USD balance, and registers the local API in Condor.
-- Creates isolated paper state with a $1,000 total committed-capital ceiling, a $100 reserve floor, 1x leverage, no recovery budget, and a paper-only `NORMAL` breaker; live state is untouched.
-- Creates the keyless `kraken_paper_trade` account config through Hummingbot's API, initializes the BTC-USD public market feed, verifies a non-empty bid/ask order book, and only then starts Condor.
-- Starts Condor and opens Spectra Overview at `http://127.0.0.1:8088/overview`.
+- Uses a user-local Python 3.12 environment and user-local Node install if needed.
+- Builds the React dashboard and installs the Core dependencies.
+- Builds the Hummingbot API image and starts the API, Postgres and EMQX services.
+- Removes the host container-engine socket mount from the API Compose file.
+- Generates the Core dispatch signing key locally; the API receives only the public key.
+- Keeps API and Core execution-mode flags consistent.
+- Creates separate paper and live state directories; the live breaker remains HALTED.
+- Starts Spectra Core and the local dashboard at `http://127.0.0.1:8088/overview`.
 
-## Paper trading scope
+## Verified components
 
-The selected venue is Kraken. The alpha initializes Hummingbot's `kraken_paper_trade` connector, public Kraken market data, and a simulated USD balance. **A Kraken private API key is not required and should not be entered into this alpha.** Tradable pairs are determined by the connector's current Kraken market metadata. The connector is paper-capable, but Core-governed executor submission is still being integrated; this release does not yet claim that paper orders or fills are operational.
+The Hummingbot API integration PR has passed CI and is merged. Its tests cover:
+- Explicit paper-pair initialization and the managed PaperTradeExchange clock.
+- A Core-signed paper order.
+- Simulated balance changes and order/trade history reconciliation.
+- Rejection of live connectors on the paper-only path.
+- Dispatch receipt validation and replay/body-tampering protections.
 
-The initial simulated balances are configured in `spectra-hummingbot-api/bots/credentials/master_account/conf_client.yml` and are not real funds. Any future paper fills will be simulated, not exchange executions.
+The Core repository contains the recovered market-discovery scanner, multi-horizon asset fingerprinting, Capital Governor, protected executor dispatch, economic position ledger, VCAP tranche/lifecycle modules, multi-position VCAP servicing scheduler, and the new autonomous portfolio supervisor. The supervisor refreshes market discovery, maintains the 83-position target, reserves 20 USD initial entries through the Governor, creates protected Hummingbot grid executors, and automatically services VCAP. Its CI and full end-to-end paper-cycle certification are still pending.
 
-## Control
+## Not yet certified — current engineering work
 
-After installation:
+The following are still required before calling the full automated portfolio operational:
+
+1. CI and end-to-end certification of the new autonomous portfolio supervisor, including real simulated fills and vacancy replenishment.
+2. A complete restart test proving paper balances, orders, position ownership, VCAP state and the 83-position fleet recover without double-spending or losing state.
+3. A complete VCAP lifecycle test from entry through repair/patch tranches, profit-floor exit and automatic fleet rotation.
+4. Recovery and integration of the original DCS definition/source, which has not yet been located in the current repositories or retrieved prior project context.
+5. Local verification on the target Bazzite machine.
+
+The existing multi-position VCAP scheduler services admitted positions. The new portfolio supervisor now connects discovery, Governor reservations, protected executor creation, VCAP servicing and automatic vacancy replenishment. It is code-complete enough to begin integration testing, but must not be called operational until CI proves the full cycle and restart recovery.
+
+## Operator controls
 
 ```bash
 spectra status
@@ -41,20 +79,7 @@ spectra stop
 spectra start
 spectra restart
 spectra logs
+spectra doctor
 ```
 
-The dashboard and API bind to loopback. This alpha is intended for a local demonstration, not a public multi-user service.
-
-## AI provider
-
-Condor is installed as the intelligence layer. Its model/provider selection remains configurable; an operator can select a supported provider/model and supply their own provider credential locally. No AI API key is bundled or transmitted by the installer.
-
-## Alpha limitations — stated plainly
-
-- This is a paper-only developer alpha, not a production SaaS release.
-- The two selected GitHub changes are still draft PR candidates. The installer pins their branch names but does not merge those PRs.
-- The Kraken paper connector and BTC-USD public market-data path are covered by the API container integration check. This confirms public market data and paper adapter initialization, not simulated order submission. The dashboard's manual Create/Stop routes still need to be verified end-to-end through the Spectra Capital Governor and Core-signed receipt path; the API correctly rejects direct unsigned mutations. Do not claim paper order entry, stop, fill, or PnL reconciliation is operational until that integration is completed and tested.
-- Both source repositories are public. Installation does not require GitHub authentication.
-- This script has not yet been exercised end-to-end on a clean Bazzite and a second Linux distribution. CI builds and starts the exact API image, verifies the paper-only runtime, loads public Kraken trading rules, and confirms a non-empty BTC-USD bid/ask book; it does not yet certify a full executor order/fill cycle or a clean Bazzite installation.
-
-Do not enable live execution or replace the paper connector with `kraken` in this alpha.
+The dashboard and API bind to loopback by default. The installer and updater preserve credentials, database volumes, paper history and customized local policy. No live order is submitted by installation, update, health checks or tests.
