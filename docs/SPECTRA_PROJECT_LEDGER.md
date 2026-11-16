@@ -231,7 +231,8 @@ Repositories:
 The first passing workflow (`43805192285`) exposed a separate updater defect:
 - `scripts/update-alpha-api.sh` defines `API_SOURCES` in this order: unified connector, market-data service, orders recorder, then `deps.py`.
 - Its final paper-only bot-status guard check incorrectly searched `${API_SOURCES[2]}`, which is `services/orders_recorder.py`, even though the guard text lives in `deps.py`. The updater therefore stopped with “paper-only bot-status guard was not applied locally” even though the fetched `deps.py` already matched reviewed upstream.
-- Corrected on PR #126 in [`98a9e37`](https://github.com/andredepaulnash-cmd/spectra-finance-core/commit/98a9e37d11a5ec764581dd51f6569761cd570fe3) to check `$API_DIR/deps.py` explicitly. A new CI run is required to verify the in-place updater now completes.
+- Corrected on PR #126 in [`98a9e37`](https://github.com/andredepaulnash-cmd/spectra-finance-core/commit/98a9e37d11a5ec764581dd51f6569761cd570fe3) to check `$API_DIR/deps.py` explicitly. - The correction triggered workflow [`43805709781`](https://github.com/andredepaulnash-cmd/spectra-finance-core/actions/runs/43805709781). Static/unit checks have passed; the clean-install job was still running its public installer at the last check. Final updater and paper-acceptance outcome remains pending.
+A new CI run is required to verify the in-place updater now completes.
 - This was a false-negative verification bug, not evidence that the API guard itself was absent. Keep the guard and fail-closed behavior; do not remove it.
 
 ### Exact current PR #126 blocker
