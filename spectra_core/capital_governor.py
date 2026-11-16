@@ -1400,6 +1400,8 @@ class CapitalGovernor:
         active_pair: Decimal,
         active_recovery: Decimal,
         reconciled_recovery: Decimal,
+        active_entry: Decimal,
+        reconciled_entry: Decimal,
         available_after: Decimal,
     ) -> str:
         p = self.policy
@@ -1418,6 +1420,8 @@ class CapitalGovernor:
             "active_pair": active_pair,
             "active_recovery": active_recovery,
             "reconciled_recovery": reconciled_recovery,
+            "active_entry": active_entry,
+            "reconciled_entry": reconciled_entry,
             "available_after": available_after,
         }
 
@@ -1487,7 +1491,9 @@ class CapitalGovernor:
                 f"{p.max_position_quote}"
             )
 
-        # Recovery capital is separately bounded.
+        # Recovery capital and non-recovery entry capital have separate
+        # ceilings. Reconciled BASE_ENTRY lots remain charged until sold;
+        # RESERVED/COMMITTED claims are charged until the ledger handoff.
         if proposal.intent == IntentKind.RECOVERY:
             recovery_after = reconciled_recovery + active_recovery + amount
 
@@ -1496,6 +1502,14 @@ class CapitalGovernor:
                     f"recovery budget exceeded: "
                     f"{recovery_after} > "
                     f"{p.max_recovery_quote}"
+                )
+        elif p.max_entry_quote is not None:
+            entry_after = reconciled_entry + active_entry + amount
+            if entry_after > p.max_entry_quote:
+                return (
+                    f"initial entry budget exceeded: "
+                    f"{entry_after} > "
+                    f"{p.max_entry_quote}"
                 )
 
         return ""
