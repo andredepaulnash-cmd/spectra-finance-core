@@ -136,6 +136,23 @@ def test_current_recovery_exposure_aggregates_latest_proven_state(tmp_path):
     assert g.current_recovery_exposure_quote() == D("37.50")
 
 
+def test_entry_and_recovery_budgets_cannot_exceed_total_capital(tmp_path):
+    with pytest.raises(ValueError, match="max_entry_quote plus max_recovery_quote"):
+        CapitalGovernor(
+            tmp_path / "invalid-capital.sqlite",
+            CapitalPolicy(
+                reserve_floor_quote=D("0"),
+                max_total_committed_quote=D("100"),
+                max_pair_quote=D("100"),
+                max_position_quote=D("100"),
+                max_recovery_quote=D("75"),
+                max_entry_quote=D("30"),
+                max_leverage=D("1"),
+                reservation_ttl_seconds=120,
+            ),
+        )
+
+
 def test_initial_entry_budget_is_separate_from_vcap_recovery_budget(tmp_path):
     g = governor(tmp_path, max_entry="100")
     bind_executor(
