@@ -10,7 +10,11 @@ from pathlib import Path
 from .accounting_health import AccountingHealthSupervisor
 from .capital_governor import CapitalGovernor, validate_capital_policy
 from .economic_position import EconomicPositionLedger
-from .models import BreakerMode, CapitalPolicy
+from .models import (
+    DEFAULT_PAPER_ENTRY_BUDGET_QUOTE,
+    BreakerMode,
+    CapitalPolicy,
+)
 from .module_lifecycle import ModuleLifecycleStore
 from .runtime_scheduler import RuntimeSchedulerStore
 from .vcap_runtime import VCAPRuntimeStore
@@ -171,6 +175,15 @@ def load_capital_policy() -> CapitalPolicy:
             max_pair_quote=Decimal(str(raw["max_pair_quote"])),
             max_position_quote=Decimal(str(raw["max_position_quote"])),
             max_recovery_quote=Decimal(str(raw["max_recovery_quote"])),
+            max_entry_quote=(
+                Decimal(str(raw["max_entry_quote"]))
+                if raw.get("max_entry_quote") is not None
+                else (
+                    DEFAULT_PAPER_ENTRY_BUDGET_QUOTE
+                    if spectra_paper_only_enabled()
+                    else None
+                )
+            ),
             max_leverage=Decimal(str(raw["max_leverage"])),
             reservation_ttl_seconds=ttl,
             position_hold_snapshot_ttl_seconds=hold_ttl,
