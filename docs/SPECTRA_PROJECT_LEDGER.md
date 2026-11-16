@@ -1,0 +1,164 @@
+# Spectra Finance — Canonical Project Ledger
+
+**Status:** living continuity record  
+**Updated:** 2026-11-15 (America/New_York)  
+**Repository:** `andredepaulnash-cmd/spectra-finance-core`  
+**Companion API repository:** `andredepaulnash-cmd/spectra-hummingbot-api`
+
+This ledger is the short operational source of truth for reconstructing the project after a conversation, model, or workstation session changes. It points to deeper historical artifacts rather than replacing them. Update it when a decision, verified implementation state, or operational fact changes.
+
+## 1. Mission and authority
+
+Spectra Finance is an adaptive capital allocator and trading system, not merely a signal bot. Its objective is repeatable, fee-aware, capital-efficient compounding through opportunity discovery, recovery, rotation, profit harvesting, and redeployment.
+
+**Authority boundary**
+- Architect owns the mission, capital authority, hard bounds, and reserved decisions.
+- Spectra Core is the deterministic policy, capital-governance, accounting, and authoritative position-state layer.
+- Condor is the intelligence, research, scanning, ranking, orchestration, and bounded-adaptation layer.
+- Hummingbot is the exchange connectivity, market-data, executor, and order-mechanics layer.
+- Canonical flow: **Condor proposes → Core validates and authorizes → Hummingbot executes → Core reconciles actual exchange evidence → Condor receives authoritative state.**
+- Autonomy means initiating investigation and pursuing approved objectives, not exceeding authorization.
+- Paper and live modes remain selectable capabilities. Live execution requires separate explicit Architect authorization and existing governance controls. No live authorization is implied by this ledger.
+- Do not wipe/reset paper or live state, alter credentials, enable live execution, merge PRs, or change strategy policy without the appropriate explicit authorization.
+
+## 2. Current approved paper portfolio specification (November 2026)
+
+These are the latest explicit project decisions and supersede older September bootstrap assumptions:
+- Total simulated portfolio: **25,000 USDT**.
+- Initial-entry allocation: **25% = 6,250 USDT**, distributed evenly across eligible initial entries.
+- VCAP/recovery allocation: **75% = 18,750 USDT**.
+- Concurrent asset-position target: **50 or 83**; not yet selected as one default.
+- Maximum **two active VCAP shards per asset position**.
+- No arbitrary global count cap on assets undergoing VCAP, provided the shared recovery pool, per-position ownership, and Fat–Skinny–Fat ladder rules are obeyed. Portfolio-wide risk aggregation remains an identified gap.
+- Minimum VCAP shard: **20 USDT**.
+- Net take-profit target: **+1.74% after Kraken buy and sell fees**.
+- Fees and slippage are execution expenses. Buy fees affect current P&L immediately; estimated sell fees belong in projected net P&L. Keep realized and projected P&L distinct.
+- Use only actual Kraken-supported USDT pairs; verify current market metadata. Never assume appending `-USDT` creates a valid pair.
+- Reinvest realized profits promptly, subject to the current allocation policy and governance.
+- Historical Fat–Skinny–Fat bands remembered from the latest discussion: FAT from 0% to -11.74%, SKINNY from -11.74% to -17.77%, FAT from -17.77% to -24%. The exact shard-sizing formula must be recovered from the Governor/implementation before use; do not infer it.
+- A full enforcement model for the 6,250 initial-entry envelope must be verified in code. PR #126 adds 25,000/18,750 policy defaults; that alone does not prove the 6,250 initial-entry allocation is enforced end-to-end.
+
+Older September handoff values ($200 bootstrap, $50 VCAP reserve, 75% productive / 25% reserve routing, 15 × $10 initial positions) are historical scenarios, not current production defaults.
+
+## 3. Historical architecture and strategy recovery
+
+### Canonical design sources located
+1. **Spectra Finance Blueprint: Hummingbot V2 + Condor + Spectra Core** — 22 pages.
+2. **Spectra Finance Production Alignment Handoff** — 14 pages, dated 2026-09-28.
+3. **Spectra Core and Finance Layout** — 8 pages.
+4. **Spectra_Canonical_Continuity_v13_pending.md** — 701 lines, detailed historical continuity and design doctrine.
+5. **Pasted text(4).txt** — earlier Spectra Intelligence operating instructions and tool/readiness transcript; not a verified Governor configuration.
+6. **Pasted text(5).txt** — 823-line local doctor/market-data log capture from 2026-11-15.
+
+The PDFs and continuity files are in the user's project Library. They are not yet all mirrored into this repository.
+
+### Historical strategy lineage
+- MoneyPenny / early Polygon work → Freqtrade strategy experiments → Condor + Hummingbot + Spectra Core.
+- Original strategy artifacts located include `SpectraVCAPFillUSDVeryLoose.py` and duplicate copy `SpectraVCAPFillUSDVeryLoose(1).py`. The handoff also names `SpectraVCAPFillUSD.py`, `dcahvy.py`, and very-tight DCA variants; those additional original files still need to be located and reviewed.
+- **Python duplicate-method rule:** when a class defines the same method multiple times, the last definition is effective. Historical strategy files contain layered experiments; do not treat every code block as simultaneously active runtime behavior.
+- Historical VeryLoose variants include immediate VCAP, deep ladders, variable patch multipliers, broad entry/hotlist behavior, stoploss-off experiments, and velocity exits. One variant documents a 9-level ladder at -1.24%, -2.24%, -4.44%, -7.77%, -12.74%, -17.77%, -24.44%, -33.33%, -44.44% with multipliers 0.25, 0.35, 0.50, 0.75, 1.00, 1.25, 1.50, 0.75, 1.00. This is historical experimental code, **not** the current Fat–Skinny–Fat production formula.
+- Canonical historical record reports actual VCAP activity in Feb 2026 logs: 863 patch signals in one segment and 3,042 in another, with roughly 347 successful dry-run patch fills in the latter and progression to at least level 21. The old runtime used 50 max trades, 1-minute candles, a broad dynamic universe, and at one point a 200-adjustment override. This proves the old VCAP machinery executed in dry-run; it does not prove profitability or validate the current Hummingbot implementation.
+- Historical Freqtrade failure: many positions independently requested patches until shared free cash was exhausted. Production VCAP must be globally arbitrated.
+- Historical January 23 incident: a web/API process could respond while the trading process was not healthy; port 8081 was already occupied and meaningful endpoints returned 502. **Process/HTTP health is not semantic trading health.**
+- SQLite `.sqlite-wal` and `.sqlite-shm` are sidecars, not databases. Preserve main DB + sidecars as a consistency set; never point a runtime at a sidecar as the database.
+
+### Universal asset state and ranking doctrine
+One shared observation/ranking engine feeds specialized behavior profiles. Lists are views into common state, not disconnected scanners:
+- Top Opportunities; Hot / Repeat Winners; 24h Gainers / Continuation; 24h Losers / Reversion; Hyper-Volatility Watchlist; VCAP Recovery; PSSM/MIR; Cooling; Weak/Demotion; Dead-Watch; Reactivating; Capital Queue.
+- Global lifecycle concept: UNRANKED → SCANNED → WATCH → PRIORITY → PROBE → ACTIVE → HOT, with deterioration through COOLING / WEAK / PSSM-MIR / DEAD-WATCH and possible reactivation.
+- Top gainers earn priority inspection, not automatic buys. Top losers earn reversion inspection, not automatic bargain buys.
+- Strength Hunting and Dislocation Hunting feed the same capital queue.
+- Persist component scores and reasons: Opportunity Score, Execution Score, Capital Efficiency Score, Behavior/Risk Class, and Overall Priority.
+- Relevant shared inputs include RSI, MFI, BBWP, EMA/trend, momentum/ROC, VWAP/deviation/reclaim, normalized ATR, volume acceleration, order-flow imbalance, relative strength, spread, depth, price-for-volume, expected slippage, fill probability, capital velocity, reserve pressure, VCAP burden, correlation, and opportunity cost.
+- Ranking requires hysteresis/anti-thrashing and auditable promotion/demotion. Every decision should preserve feature snapshot/config version and later compare higher-ranked vs lower-ranked alternatives net of costs.
+- Capital goes to the highest expected productive use after costs and hard reserve/ownership/risk rules; empty slots and legacy ownership do not automatically earn priority.
+
+### Recovery and exit concepts
+- **VCAP:** Volumetric Cost Averaging and Batching; split authorized recovery into independently tracked shards, re-evaluate after confirmed fills, and never blindly continue a stale ladder.
+- **Fat–Skinny–Fat:** current bands are in §2; exact shard-sizing formula still needs authoritative recovery.
+- **MIR:** rotate capital only after an authorized source exit is reconciled; if destination opportunity disappears, keep cash liquid rather than force a replacement.
+- **PSSM:** planned pseudo-short/exit-weakness corridor before MIR; it must own the position exclusively while ordinary VCAP is suspended. Preserve shadow-position and recovery-equity lineage. A below-basis sale remains a real realized loss; never rewrite it as profit.
+- **DTTP/DTSL:** fee-aware profit floor, high-water/giveback, stagnation and opportunity-cost exits. 1.74% net DTTP was a September controlled-replay champion, not proof of production edge; current November specification keeps +1.74% net target.
+- **Hyper-Volatility Watchlist:** separate lifecycle and thresholds; breakout/volume/flow/depth confirmation, probe→press, fast profit protection. Do not mix its risk profile with normal mean-reversion inventory.
+- Adaptive intelligence may propose bounded parameter changes; hard capital, reserve, permissions, and kill-switch controls remain deterministic.
+
+## 4. Hummingbot / Core contracts to preserve
+
+- Hummingbot Strategy V2 uses controllers and self-managing executors; do not rebuild order mechanics that already exist without a measured reason.
+- The Capital Governor must make atomic reservations so simultaneous controllers cannot spend the same free cash.
+- Every order/fill transition needs durable IDs, timestamps, ownership, state, and receipts.
+- Exact order lifecycle: proposal → authorization/reservation → dispatch → exchange acknowledgement → zero or more partial fills → terminal order state → fee-aware fill ledger → authoritative position update → Condor state update.
+- Fill IDs must be idempotent. Unknown/ambiguous submissions must be reconciled before retry; no blind retry after timeout.
+- Actual exchange evidence and the reconciled economic ledger are authoritative; Core must not invent positions from proposals or wallet balance.
+- Partial fills, fee currency, order amount/precision, minimum notional, order/trade journal lag, duplicate/out-of-order events, cancellation races, restart recovery, and stale data must be explicitly tested.
+- Semantic health includes authenticated API, broker, active bot/controller, fresh market data, reconciled portfolio, persistence, and no unresolved order/ownership anomaly.
+- Use WebSocket market-data fan-out and shared cached calculations; avoid independent polling storms.
+- Local workstation services should remain loopback/private. Never put exchange secrets, tokens, or config passwords in this ledger, memory, receipts, or ordinary logs.
+
+## 5. PR and repository state (refreshed 2026-11-15 local / 2026-11-16 UTC)
+
+Repositories:
+- Core: https://github.com/andredepaulnash-cmd/spectra-finance-core
+- API: https://github.com/andredepaulnash-cmd/spectra-hummingbot-api
+
+### Merged
+- API PR #18 — executor order provenance writes in `services/orders_recorder.py`; records executor-owned order rows on create/fill/completion/cancel. Already merged; do not redo.
+
+### Open at last refresh
+- Core PR #118 — [Governed market-entry path and Alpha validation fixes](https://github.com/andredepaulnash-cmd/spectra-finance-core/pull/118). Market discovery, Kraken minimum order quote, supervisor adapter, governed MARKET BUY entry, position identity and VCAP lifecycle bootstrap. Earlier clean Linux paper acceptance failed; not install-ready.
+- Core PR #126 — [Fix governed paper MARKET BUY reconciliation](https://github.com/andredepaulnash-cmd/spectra-finance-core/pull/126). Adds policy defaults for 25,000 total / 18,750 recovery and protected MARKET BUY reconciliation. Latest known head: `0ee633eb03ce61c105e1802a79f91791ec9dfa4d`. Workflow `43798156044` failed clean Linux paper acceptance.
+- Core PR #127 — [Restore vertical scrolling on the Overview page](https://github.com/andredepaulnash-cmd/spectra-finance-core/pull/127). Frontend TypeScript and production build passed; its workflow was blocked by the inherited paper-acceptance failure. Not merged.
+
+### Exact current PR #126 blocker
+- Clean Linux acceptance proved the API order was created, the paper exchange confirmed a fill, the ledger recorded it, and order/trade provenance was recognized.
+- Position remained HOLD because protected BUY reconciliation recorded `protected_buy_order_amount_changed`.
+- Current bridge compares the exact authorized amount from the durable protected submission (`config.amount`) against the amount recorded for the Hummingbot executor-owned order. Exact equality currently fails.
+- Do **not** weaken this invariant or assume the cause is rounding/precision. First expose and compare exact authorized amount, submitted executor config amount, Hummingbot order-created event amount, persisted `ExecutorOrder.amount`, and cumulative fill amount. Then reproduce with a regression test and fix the true unit/precision/serialization mismatch.
+- The current fill audit separately ensures cumulative confirmed base fills do not exceed the authorized amount and fees stay within the recorded fee allowance.
+- No merge or install-ready claim until the complete clean Linux acceptance, restart/idempotency checks, and all required workflows pass.
+
+## 6. Local runtime evidence supplied 2026-11-15
+
+The Library's `Pasted text(5).txt` contains an 823-line capture of the local doctor and market-data checks:
+- Paper-only / live-disabled configuration was confirmed.
+- Authenticated Hummingbot API confirmed Kraken paper-only mode.
+- API, PostgreSQL, and broker were reported running/healthy.
+- Dashboard responded on loopback in most checks; one transient connection failure to port 8088 was followed by successful checks.
+- Kraken paper connector returned valid BTC-USD order-book levels with bids and asks; this was a read-only check and submitted no orders.
+- **No Governor-approved asset list was configured; all paper BUY-side intents were blocked.** This is a real runtime blocker until the Architect-approved list is present and validated.
+- Doctor repeatedly reported the latest paper-state backup archive as corrupt. The tar error showed a literal escaped newline suffix in the archive path (`...tar.gz\\n`); investigate quoting/path construction before relying on backups.
+- These logs do not establish current paper balances, open positions, or that the full paper trading loop is currently operating.
+
+A separate Library text named `Pasted text(4).txt` contains an earlier agent instruction/transcript. It is not the actual current Governor policy file. No standalone authoritative Governor configuration file or current approved-asset list has yet been identified in the reviewed Library material.
+
+## 7. Current gaps and next work
+
+### Immediate integration
+1. Diagnose exact protected MARKET BUY quantity mismatch using the evidence fields listed in §5.
+2. Run focused tests before consuming another full CI run; then rerun the clean Linux paper acceptance.
+3. Verify that the 6,250 initial-entry envelope is enforced in addition to the 18,750 VCAP/recovery envelope.
+4. Recover/validate the approved Kraken USDT asset list; do not invent it or use BTC-USD test fixture as production universe.
+5. Fix and verify the paper-state backup archive path; verify backup integrity before any reset/update.
+6. Keep PR #118/#126/#127 separate; merge only after acceptance and explicit Architect approval.
+
+### Historical recovery still needed
+- Locate and review original `SpectraVCAPFillUSD.py`, all VeryLoose variants, `dcahvy.py`, very-tight DCA variants, and the actual Governor file.
+- Locate original `freqtrade.log` and rotated hotlist logs; inspect actual runtime overrides and order/patch outcomes.
+- Locate SQLite snapshot/analysis and verify main DB/WAL/SHM consistency set.
+- Locate `Spectra_50_Altcoin_3Day_Simulation_Report.md` and `Spectra_Exit_Strategy_Comparison.md`; treat three-day results as exploratory, not profitability proof.
+- Review PRs #1–#25, especially #7–#20 production VCAP/accounting contracts and #21–#25 research infrastructure. Preserve research provenance and causal replay.
+- The September handoff says PR #25 is provisional and that any future strategy change needs an implementation delta and Architect approval.
+
+### Operational and economic validation
+- Prove order lifecycle, fill idempotency, fee currency, restart reconciliation, partial fills, cancellation races, unknown timeouts, stale data, exchange minima, and failure injection.
+- Add portfolio-wide exposure/correlation/drawdown/recovery budget controls only through a reviewed spec; they are identified gaps, not silently adopted changes.
+- Demonstrate strategy expectancy out-of-sample after fees, spread, slippage, and capital lock time. Do not infer edge from closed winners while underwater positions remain unresolved.
+- Progressive rollout: unit → recorded replay → walk-forward → parity → shadow → Kraken paper → tiny live only after explicit authorization → controlled scale.
+
+## 8. Operating discipline
+
+- One focused change at a time; preserve backups and exact commit hashes.
+- Verify effective runtime config after writes; requested config is not proof of applied config.
+- No state reset during recovery without explicit authorization.
+- No strategy or architecture expansion merely because an idea is interesting. First make the existing system observable and correct.
+- Keep this ledger current with: verified commit SHAs, PR/workflow results, test evidence, runtime config hashes, operational blockers, decisions, and next exact action.
