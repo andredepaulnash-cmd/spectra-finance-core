@@ -184,6 +184,17 @@ The PR #126 code currently defaults to `target_active_positions=83`, `max_new_en
 - Current paper policy initializer has `max_total_committed_quote=25000`, `max_pair_quote=25000`, `max_position_quote=25000`, `max_recovery_quote=18750`, and `reserve_floor_quote=100`. It has no explicit 6,250 initial-entry envelope. The max-pair/max-position defaults also do not themselves enforce even initial-entry sizing.
 This is a material integration gap. Do not reset or start the $25,000 paper portfolio on the assumption that the current supervisor already implements the November 25%/75% allocation.
 
+### External verification of Kraken USDT market availability
+Checked Kraken's current public documentation on 2026-11-15:
+- Kraken Pro's official markets list, updated 2026-10-30, explicitly lists USDT as a crypto-to-crypto quote market and marks multiple assets as tradable against USDT. Not every asset has a USDT market.
+- Kraken's API symbols article, updated 2026-10-29, states REST and WebSocket symbols can differ and directs clients to the public `AssetPairs` endpoint to retrieve available markets and symbol variants.
+- Kraken's US jurisdiction page, updated 2026-11-04, lists restricted assets for US clients; USDT is not in that US restricted-asset list. Account eligibility and market-specific restrictions still need to be checked at runtime.
+Sources:
+- https://support.kraken.com/articles/kraken-markets
+- https://support.kraken.com/in/articles/360000920306-api-symbols-and-tickers
+- https://support.kraken.com/articles/where-is-kraken-licensed-or-regulated
+Implication: the requested USDT quote universe is a real Kraken spot-market option, but the scanner must enumerate actual supported pairs and account/connector rules. Never synthesize `BASE-USDT` by suffix concatenation or assume every USD market has a USDT counterpart.
+
 ## 5. Hummingbot / Core contracts to preserve
 
 - Hummingbot Strategy V2 uses controllers and self-managing executors; do not rebuild order mechanics that already exist without a measured reason.
