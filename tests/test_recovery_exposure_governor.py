@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from spectra_core.capital_governor import CapitalGovernor
+from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.models import (
     CapitalPolicy,
     CapitalProposal,
@@ -197,6 +198,86 @@ def test_initial_entry_budget_is_separate_from_vcap_recovery_budget(tmp_path):
         ),
     )
     assert accepted.status == DecisionStatus.RESERVED
+
+
+def test_entry_budget_uses_base_entry_ledger_and_keeps_uncertified_flat_capital_charged(
+    tmp_path,
+):
+    g = governor(tmp_path, max_entry="100")
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite")
+    ledger.open_position(
+        position_id="entry-position",
+        pair="BTC-USD",
+        created_at=1000,
+    )
+    proposal = CapitalProposal(
+        proposal_id="ledger-entry",
+        pair="BTC-USD",
+        intent=IntentKind.ENTRY,
+        amount_quote=D("80"),
+        leverage=D("1"),
+        account_name="master_account",
+        connector_name="kraken_paper_trade",
+        quote_asset="USD",
+        controller_id="spectra",
+    )
+    snapshot = CapitalSnapshot(
+        free_quote=D("1000"),
+        committed_quote=D("0"),
+        pair_exposure_quote=D("0"),
+        position_exposure_quote=D("0"),
+        recovery_exposure_quote=D("0"),
+    )
+    assert g.reserve(proposal, snapshot).status == DecisionStatus.RESERVED
+    assert g.commit_entry_submission_if_matches(
+        proposal,
+        position_id="entry-position",
+        ledger_path=ledger.path,
+        account_name="master_account",
+        connector_name="kraken_paper_trade",
+        controller_id="spectra",
+    )
+    assert g.reconcile_execution(
+        proposal_id="ledger-entry",
+        executor_id="entry-executor",
+        account_name="master_account",
+        connector_name="kraken_paper_trade",
+        controller_id="spectra",
+    )
+    ledger.record_entry_fill(
+        governor=g,
+        position_id="entry-position",
+        lot_id="base-entry-lot",
+        proposal_id="ledger-entry",
+        base_amount=D("1"),
+        cost_basis_quote=D("80"),
+        entry_fees_quote=D("0.48"),
+        occurred_at=1001,
+    )
+    g.reconcile_executor_accounting(
+        ExecutorAccountingObservation(
+            executor_id="entry-executor",
+            executor_type="order_executor",
+            status="TERMINATED",
+            close_type="COMPLETED",
+            filled_amount_quote=D("80"),
+            cum_fees_quote=D("0.48"),
+            position_size_quote=D("80"),
+        )
+    )
+
+    assert g.current_entry_exposure_quote() == D("80.48")
+
+    # A full sale without a verified terminal-flat certificate must not
+    # release the original entry authority.
+    ledger.record_partial_exit(
+        event_id="entry-position-full-sale",
+        position_id="entry-position",
+        base_sold=D("1"),
+        gross_proceeds_quote=D("80"),
+        occurred_at=1002,
+    )
+    assert g.current_entry_exposure_quote() == D("80")
 
 
 def test_press_and_rotation_also_consume_the_non_recovery_entry_budget(tmp_path):
