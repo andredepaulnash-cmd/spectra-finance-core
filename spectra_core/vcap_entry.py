@@ -130,6 +130,13 @@ async def reserve_vcap_candidate_entry(
     if str(candidate.get("quote_asset") or "USD").strip().upper() != "USD":
         raise ValueError("VCAP entries are restricted to Kraken USD spot pairs")
 
+    if paper_only:
+        asset_policy = load_approved_kraken_assets()
+        if not asset_policy.configured or pair not in asset_policy.pairs:
+            raise ValueError(
+                f"{pair} is not in the Governor-approved Kraken asset list"
+            )
+
     if entry_quote is None and paper_only:
         raise ValueError(
             "paper initial entry quote must be supplied by the governed portfolio supervisor"
@@ -159,16 +166,6 @@ async def reserve_vcap_candidate_entry(
         raise ValueError(
             f"candidate venue minimum cannot fit inside the {amount_quote} entry after fee and slippage allowances"
         )
-
-    if paper_only:
-        connector_name = "kraken_paper_trade"
-        if connector_name != "kraken_paper_trade":
-            raise ValueError("Spectra paper asset authority only permits kraken_paper_trade")
-        asset_policy = load_approved_kraken_assets()
-        if not asset_policy.configured or pair not in asset_policy.pairs:
-            raise ValueError(
-                f"{pair} is not in the Governor-approved Kraken asset list"
-            )
 
     authorization = await reserve_kraken_capital(
         client,
