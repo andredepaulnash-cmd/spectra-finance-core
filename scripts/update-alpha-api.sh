@@ -360,12 +360,6 @@ CORE_OPS_SOURCES=(
 )
 declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/spectra"]="f716e1b6abccc775270fb9c5480d57091e2c202e"
-)
-# Exact previously shipped Alpha launcher version; safe to replace with the
-# reviewed current launcher during this update.
-declare -A CORE_OPS_OLD_BLOBS=(
-  ["scripts/spectra"]="774ae8e7912896d7266fbb06c459b9f5a48a7dc3"
-
   ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
@@ -375,6 +369,11 @@ declare -A CORE_OPS_OLD_BLOBS=(
   ["scripts/spectra-alpha-backup.sh"]="1320e0d1ccf552917105c85f17fb67d046d8a3fc"
   ["scripts/systemd/spectra-alpha-backup.service"]="e49bc3d235744a92d7c463e6a98d9b8b282ae08b"
   ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
+)
+# Exact previously shipped Alpha launcher version; safe to replace with the
+# reviewed current launcher during this update.
+declare -A CORE_OPS_OLD_BLOBS=(
+  ["scripts/spectra"]="774ae8e7912896d7266fbb06c459b9f5a48a7dc3"
 )
 for source in "${CORE_OPS_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
