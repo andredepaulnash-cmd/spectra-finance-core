@@ -15,6 +15,7 @@ def test_creates_separate_conservative_paper_policy_and_normal_paper_breaker(tmp
     assert policy["max_total_committed_quote"] == "25000"
     assert policy["max_pair_quote"] == "25000"
     assert policy["max_position_quote"] == "25000"
+    assert policy["max_entry_quote"] == "6250"
     assert policy["max_recovery_quote"] == "18750"
     assert policy["max_leverage"] == "1"
     assert breaker == {"mode": "NORMAL"}
@@ -26,10 +27,13 @@ def test_creates_separate_conservative_paper_policy_and_normal_paper_breaker(tmp
 def test_rerun_preserves_operator_changes(tmp_path: Path):
     paper = configure(tmp_path)
     policy_path = paper / "capital_policy.json"
-    policy_path.write_text('{"max_total_committed_quote":"250"}\n')
+    policy_path.write_text('{"max_total_committed_quote":"25000","max_pair_quote":"20000"}\n')
 
     configure(tmp_path)
 
-    assert json.loads(policy_path.read_text()) == {
-        "max_total_committed_quote": "250"
-    }
+    migrated = json.loads(policy_path.read_text())
+    assert migrated["max_total_committed_quote"] == "25000"
+    assert migrated["max_pair_quote"] == "20000"
+    assert migrated["max_entry_quote"] == "6250"
+    assert migrated["max_recovery_quote"] == "18750"
+    assert migrated["reserve_floor_quote"] == "100"
