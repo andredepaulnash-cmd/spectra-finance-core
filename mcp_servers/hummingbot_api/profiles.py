@@ -125,8 +125,9 @@ ADMIN_TOOLS: tuple[str, ...] = (
     "manage_gateway_config",
 )
 
-#: profile name → the tools it registers. ``full`` is the default because this
-#: server is also run standalone (uvx, external hosts, `.mcp.json`).
+#: profile name → the tools it registers. Live-authorized standalone launches
+#: retain ``full``; paper-only launches default to the matching ``paper_full``
+#: safe surface, while Condor seats use paper_tick/paper_agent as appropriate.
 # Tools that cannot operate safely or meaningfully in the current native
 # spot-paper runtime. The API guard remains authoritative; this profile keeps
 # paper agents from being offered live-only tools in the first place.
