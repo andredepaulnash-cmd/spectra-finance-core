@@ -96,6 +96,12 @@ async def execute_vcap_decision(
             "executor_id": existing_executor,
         }
 
+    if settings.paper_only:
+        if not (position_id or "").strip():
+            raise ValueError("paper VCAP MARKET BUY requires its exact position_id")
+        if buy_fee_allowance_bps is None:
+            raise ValueError("paper VCAP MARKET BUY requires an explicit fee allowance")
+
     carved = carve_next_vcap_tranche(governor, decision)
     if not carved:
         return {
@@ -111,10 +117,6 @@ async def execute_vcap_decision(
         # entries so a stale fixed price cap cannot strand a valid recovery shard.
         # The Governor's reserved quote amount remains the authority; the
         # executor cannot choose or increase the shard budget.
-        if not (position_id or "").strip():
-            raise ValueError("paper VCAP MARKET BUY requires its exact position_id")
-        if buy_fee_allowance_bps is None:
-            raise ValueError("paper VCAP MARKET BUY requires an explicit fee allowance")
         result = await create_order_executor(
             client,
             connector_name=connector_name,
