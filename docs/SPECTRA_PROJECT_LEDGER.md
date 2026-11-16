@@ -114,7 +114,7 @@ This conflicts with the latest Architect requirement to use actual Kraken-suppor
 
 **Asset-list discovery contract:** `asset_authority.py` checks an operator-provided `approved_assets.json` first; absent that, it can load a fresh `discovered_assets.json` (maximum age 300 seconds) when automatic asset selection is enabled. The scanner returns candidates but the exact runtime call that persists the discovered list still needs verification. The local doctor log's missing-list warning means the live local state did not have a usable list at that time.
 
-## 4A. Historical GitHub archaeology — PRs #1–#25
+## 4. Historical GitHub archaeology — PRs #1–#25
 
 The first 25 Core PRs form a deliberate progression, not 25 unrelated features. All were closed at the last repository review; the September handoff treats #1–#24 as aligned infrastructure/research and #25 as a provisional research prototype. Do not discard this work or rebuild it from scratch.
 
@@ -165,7 +165,7 @@ The auction is research-only: it ranks and allocates a simulated proposal but do
 - **PR #25 rotating fleet:** one shared $2,000 account, 50 target positions, $10.25 entries, 83 non-BTC/non-ETH USDT altcoins, 2026-09-24–26, Binance one-minute data. At the 40 bps fee scenario it reported ending equity $2,093.01 (+$93.01 total), +$110.95 realized, -$17.95 open P&L, 331 rotations, 477 recovery fills, and 2.25% max drawdown. Execution was estimated from next-minute VWAP plus slippage and volume caps; the dataset had no bid/ask, order-book depth, queue position, Kraken rules, or the user's fee tier. It is a three-day Binance proxy experiment, **not proof of a durable edge or Kraken fill behavior**.
 - The exact rotating-fleet result and protocol are preserved in `docs/research-results/rotating-fleet-2026-09-24_26.md` and `docs/research-protocols/rotating-fleet-v1.json`.
 
-## 4. Hummingbot / Core contracts to preserve
+## 5. Hummingbot / Core contracts to preserve
 
 - Hummingbot Strategy V2 uses controllers and self-managing executors; do not rebuild order mechanics that already exist without a measured reason.
 - The Capital Governor must make atomic reservations so simultaneous controllers cannot spend the same free cash.
@@ -178,7 +178,7 @@ The auction is research-only: it ranks and allocates a simulated proposal but do
 - Use WebSocket market-data fan-out and shared cached calculations; avoid independent polling storms.
 - Local workstation services should remain loopback/private. Never put exchange secrets, tokens, or config passwords in this ledger, memory, receipts, or ordinary logs.
 
-## 5. PR and repository state (refreshed 2026-11-15 local / 2026-11-16 UTC)
+## 6. PR and repository state (refreshed 2026-11-15 local / 2026-11-16 UTC)
 
 Repositories:
 - Core: https://github.com/andredepaulnash-cmd/spectra-finance-core
@@ -202,7 +202,7 @@ Repositories:
 - Workflow run [`43805192285`](https://github.com/andredepaulnash-cmd/spectra-finance-core/actions/runs/43805192285) was triggered by that commit. Static/unit checks completed successfully; the clean Linux installation/acceptance job was still in progress at the last check. No diagnostic amount values or final acceptance result are available yet.
 - No merge or install-ready claim until the complete clean Linux acceptance, restart/idempotency checks, and all required workflows pass.
 
-## 6. Local runtime evidence supplied 2026-11-15
+## 7. Local runtime evidence supplied 2026-11-15
 
 The Library's `Pasted text(5).txt` contains an 823-line capture of the local doctor and market-data checks:
 - Paper-only / live-disabled configuration was confirmed.
@@ -216,10 +216,10 @@ The Library's `Pasted text(5).txt` contains an 823-line capture of the local doc
 
 A separate Library text named `Pasted text(4).txt` contains an earlier agent instruction/transcript. It is not the actual current Governor policy file. No standalone authoritative Governor configuration file or current approved-asset list has yet been identified in the reviewed Library material.
 
-## 7. Current gaps and next work
+## 8. Current gaps and next work
 
 ### Immediate integration
-1. Diagnose exact protected MARKET BUY quantity mismatch using the evidence fields listed in §5.
+1. Diagnose exact protected MARKET BUY quantity mismatch using the evidence fields listed in §6.
 2. Run focused tests before consuming another full CI run; then rerun the clean Linux paper acceptance.
 3. Verify that the 6,250 initial-entry envelope is enforced in addition to the 18,750 VCAP/recovery envelope.
 4. Recover/validate the approved Kraken USDT asset list; do not invent it or use BTC-USD test fixture as production universe.
@@ -240,7 +240,7 @@ A separate Library text named `Pasted text(4).txt` contains an earlier agent ins
 - Demonstrate strategy expectancy out-of-sample after fees, spread, slippage, and capital lock time. Do not infer edge from closed winners while underwater positions remain unresolved.
 - Progressive rollout: unit → recorded replay → walk-forward → parity → shadow → Kraken paper → tiny live only after explicit authorization → controlled scale.
 
-## 8. Operating discipline
+## 9. Operating discipline
 
 - One focused change at a time; preserve backups and exact commit hashes.
 - Verify effective runtime config after writes; requested config is not proof of applied config.
