@@ -485,7 +485,7 @@ def test_confirmed_fresh_entry_is_bootstrapped_into_governed_vcap_runtime(
 
     async def healthy_sync(*args, **kwargs):
         return SimpleNamespace(
-            state=SimpleNamespace(value="HEALTHY"),
+            state=accounting_tool.AccountingHealthState.HEALTHY,
             fully_reconciled=True,
         )
 
