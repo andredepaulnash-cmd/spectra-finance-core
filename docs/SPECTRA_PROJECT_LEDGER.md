@@ -176,6 +176,14 @@ Its research promotion gate requires adversarial, out-of-sample, and shadow chec
 - **PR #25 rotating fleet:** one shared $2,000 account, 50 target positions, $10.25 entries, 83 non-BTC/non-ETH USDT altcoins, 2026-09-24–26, Binance one-minute data. At the 40 bps fee scenario it reported ending equity $2,093.01 (+$93.01 total), +$110.95 realized, -$17.95 open P&L, 331 rotations, 477 recovery fills, and 2.25% max drawdown. Execution was estimated from next-minute VWAP plus slippage and volume caps; the dataset had no bid/ask, order-book depth, queue position, Kraken rules, or the user's fee tier. It is a three-day Binance proxy experiment, **not proof of a durable edge or Kraken fill behavior**.
 - The exact rotating-fleet result and protocol are preserved in `docs/research-results/rotating-fleet-2026-09-24_26.md` and `docs/research-protocols/rotating-fleet-v1.json`.
 
+### Current portfolio-supervisor defaults versus the November allocation
+The PR #126 code currently defaults to `target_active_positions=83`, `max_new_entries_per_tick=3`, scan interval 60 seconds, supervisor tick 10 seconds, discovery top-N 150/show-N 100, and VCAP seed setting 20 quote units. The 83 target is a **code default**, not a settled Architect decision; 50 vs 83 remains open.
+- More importantly, `spectra_core/vcap_entry.py` defines `PAPER_VCAP_SEED_QUOTE = Decimal("20")` and `reserve_vcap_candidate_entry()` always reserves exactly $20 for each new ENTRY. The supervisor logs this as its initial-entry amount. The configurable `SPECTRA_VCAP_SEED_QUOTE` is passed into VCAP servicing, but it does not replace the fixed $20 initial-entry reservation.
+- At 83 positions, that entry path would nominally reserve $1,660 total; at 50 positions, $1,000. It does not deploy the approved 6,250 initial-entry pool, nor distribute that pool evenly ($75.30 at 83 or $125 at 50).
+- The 20-unit constant is close to the current **minimum VCAP shard**, but that does not make it the approved initial-entry size. Initial entries and recovery shards need separate budgets and sizing logic.
+- Current paper policy initializer has `max_total_committed_quote=25000`, `max_pair_quote=25000`, `max_position_quote=25000`, `max_recovery_quote=18750`, and `reserve_floor_quote=100`. It has no explicit 6,250 initial-entry envelope. The max-pair/max-position defaults also do not themselves enforce even initial-entry sizing.
+This is a material integration gap. Do not reset or start the $25,000 paper portfolio on the assumption that the current supervisor already implements the November 25%/75% allocation.
+
 ## 5. Hummingbot / Core contracts to preserve
 
 - Hummingbot Strategy V2 uses controllers and self-managing executors; do not rebuild order mechanics that already exist without a measured reason.
