@@ -406,6 +406,7 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/asset_authority.py"
   "spectra_core/kraken_authorization.py"
   "spectra_core/market_discovery.py"
+  "spectra_core/portfolio_supervisor.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
   "spectra_core/execution_policy.py"
   "spectra_core/capital_governor.py"
@@ -417,6 +418,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="26b65d413e9dffde2464e20945b3e7755c6491e6"
   ["spectra_core/kraken_authorization.py"]="3e3d4e195422002f43818c936d9c88a740ff7c72"
   ["spectra_core/market_discovery.py"]="7b3178236c221f691f141ab3753394b9498a141b"
+  ["spectra_core/portfolio_supervisor.py"]="6d2e4476c1b136757bb44a0eb00f0b7f6001b0d1"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="bb3e8c508b78e690eaf36f8f54fe3dd21e4ac8e2"
   ["spectra_core/execution_policy.py"]="d83b1ca2301b0a60ca10471d71e5a146fdc7b897"
   ["spectra_core/capital_governor.py"]="102a8f94a4a0d20b6f0e07c34dda610a2495033e"
@@ -428,6 +430,7 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/asset_authority.py"]=""
   ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050"
   ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
+  ["spectra_core/portfolio_supervisor.py"]="1200fa1698bf3dcb58a9c8ae9b315babb7cfedab"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
   ["spectra_core/execution_policy.py"]="403f0e7d229d36231a1fdd88f21eb809aacae2e8"
   ["spectra_core/capital_governor.py"]="d100fc52c8bab80aebf49e1b7a51da21d4d1750e"
@@ -467,6 +470,7 @@ done
   "$CORE_DIR/spectra_core/asset_authority.py" \
   "$CORE_DIR/spectra_core/kraken_authorization.py" \
   "$CORE_DIR/spectra_core/market_discovery.py" \
+  "$CORE_DIR/spectra_core/portfolio_supervisor.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
   "$CORE_DIR/spectra_core/execution_policy.py" \
   "$CORE_DIR/spectra_core/capital_governor.py" \
