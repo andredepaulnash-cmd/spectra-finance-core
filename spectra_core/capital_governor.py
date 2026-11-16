@@ -4218,7 +4218,7 @@ class CapitalGovernor:
         )
         if (
             "executor_id" in binding.keys()
-            and binding["executor_id"] not in (None, provenance.executor_id)
+            and binding["executor_id"] != provenance.executor_id
         ):
             exact_scope = False
         schema = position_ledgers.get(
