@@ -28,7 +28,7 @@ async def execute_vcap_decision(
     buy_max_price_slippage_bps: Decimal | None = None,
     buy_fee_allowance_bps: Decimal | None = None,
 ) -> dict[str, Any]:
-    """Execute one prevalidated VCAP tranche through the Spectra DCA path.
+    """Execute one prevalidated VCAP tranche through governed spot execution (paper MARKET BUY; live LIMIT/DCA).
 
     Exact replay is idempotent. If the child proposal already has an execution
     receipt, the existing executor is returned and no new external mutation is
