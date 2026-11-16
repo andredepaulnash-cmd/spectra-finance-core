@@ -97,6 +97,7 @@ def normalize_kraken_tickers(
     payload: Mapping[str, Any],
     *,
     quote_assets: Iterable[str] = ("USD",),
+    connector_name: str = "kraken",
 ) -> tuple[dict[str, KrakenTicker], dict[str, str], float | None]:
     """Normalize the Hummingbot API Kraken ticker payload.
 
@@ -109,9 +110,11 @@ def normalize_kraken_tickers(
     if not isinstance(tickers_root, Mapping):
         raise ValueError("ticker payload has no 'tickers' mapping")
 
-    raw = tickers_root.get("kraken")
+    raw = tickers_root.get(connector_name)
     if not isinstance(raw, Mapping):
-        raise ValueError("ticker payload has no Kraken ticker mapping")
+        raise ValueError(
+            f"ticker payload has no {connector_name!r} ticker mapping"
+        )
 
     normalized: dict[str, KrakenTicker] = {}
     rejected: dict[str, str] = {}
@@ -149,9 +152,9 @@ def normalize_kraken_tickers(
 
     updated = payload.get("updated_at")
     updated_at: float | None = None
-    if isinstance(updated, Mapping) and updated.get("kraken") is not None:
+    if isinstance(updated, Mapping) and updated.get(connector_name) is not None:
         try:
-            updated_at = float(updated["kraken"])
+            updated_at = float(updated[connector_name])
         except (TypeError, ValueError):
             updated_at = None
 
@@ -310,6 +313,7 @@ async def collect_kraken_universe(
     quote_assets: Iterable[str] = ("USD",),
     order_book_pairs: Iterable[str] = (),
     order_book_depth: int = 10,
+    connector_name: str | None = None,
 ) -> KrakenUniverseSnapshot:
     """Collect one canonical Kraken universe snapshot through Hummingbot API.
 
@@ -320,8 +324,23 @@ async def collect_kraken_universe(
     if order_book_depth <= 0:
         raise ValueError("order_book_depth must be positive")
 
-    ticker_payload = await client.market_data.get_tickers("kraken")
-    rules_payload = await client.connectors.get_trading_rules("kraken")
+    if connector_name is None:
+        # Paper mode must address the keyless market-data adapter by its paper
+        # identity. The API deliberately rejects the live connector name even
+        # for public ticker/rule/book requests while paper-only mode is active.
+        from .runtime import spectra_paper_only_enabled
+
+        connector_name = (
+            "kraken_paper_trade" if spectra_paper_only_enabled() else "kraken"
+        )
+    connector_name = str(connector_name).strip().lower()
+    if connector_name not in {"kraken", "kraken_paper_trade"}:
+        raise ValueError(
+            "Kraken market data connector must be kraken or kraken_paper_trade"
+        )
+
+    ticker_payload = await client.market_data.get_tickers(connector_name)
+    rules_payload = await client.connectors.get_trading_rules(connector_name)
 
     if not isinstance(ticker_payload, Mapping):
         raise RuntimeError("Kraken ticker response is not a mapping")
@@ -331,6 +350,7 @@ async def collect_kraken_universe(
     tickers, ticker_rejected, updated_at = normalize_kraken_tickers(
         ticker_payload,
         quote_assets=quote_assets,
+        connector_name=connector_name,
     )
     rules, rule_rejected = normalize_kraken_trading_rules(
         rules_payload,
@@ -341,7 +361,7 @@ async def collect_kraken_universe(
     eligible: list[str] = []
     for pair in sorted(set(tickers) | set(rules)):
         if pair not in tickers:
-            rejected.setdefault(pair, "missing live Kraken ticker")
+            rejected.setdefault(pair, "missing Kraken ticker")
             continue
         if pair not in rules:
             rejected.setdefault(pair, "missing Kraken trading rule")
@@ -360,7 +380,7 @@ async def collect_kraken_universe(
             continue
         try:
             payload = await client.market_data.get_order_book(
-                connector_name="kraken",
+                connector_name=connector_name,
                 trading_pair=pair,
                 depth=order_book_depth,
             )
