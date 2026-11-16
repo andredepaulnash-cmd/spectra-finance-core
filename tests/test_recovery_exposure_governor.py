@@ -238,7 +238,6 @@ def test_entry_budget_uses_base_entry_ledger_and_keeps_uncertified_flat_capital_
         account_name="master_account",
         connector_name="kraken_paper_trade",
         quote_asset="USD",
-        controller_id="spectra",
     )
     snapshot = CapitalSnapshot(
         free_quote=D("1000"),
@@ -344,7 +343,7 @@ def test_running_executor_uses_current_position_value_for_entry_budget(tmp_path)
         g,
         proposal_id="running-entry",
         executor_id="running-entry-executor",
-        amount="100",
+        amount="50",
         intent=IntentKind.ENTRY,
     )
     g.reconcile_executor_accounting(
