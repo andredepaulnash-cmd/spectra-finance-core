@@ -211,6 +211,7 @@ async def scan_kraken_universe(
     min_median_daily_range_pct: float = 0.8,
     max_current_move_pct: float = 15.0,
     quote_assets: Iterable[str] = ("USD",),
+    connector_name: str | None = None,
     approved_pairs: Iterable[str] | None = None,
     now: float | None = None,
 ) -> dict[str, Any]:
@@ -245,7 +246,11 @@ async def scan_kraken_universe(
         else {str(pair).strip().upper() for pair in approved_pairs if str(pair).strip()}
     )
 
-    snapshot = await collect_kraken_universe(client, quote_assets=quote_assets)
+    snapshot = await collect_kraken_universe(
+        client,
+        quote_assets=quote_assets,
+        connector_name=connector_name,
+    )
     candidates = []
     for pair in snapshot.eligible_pairs:
         ticker = snapshot.tickers[pair]
