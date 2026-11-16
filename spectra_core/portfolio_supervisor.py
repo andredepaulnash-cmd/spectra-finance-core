@@ -36,7 +36,11 @@ from .runtime import (
     spectra_paper_only_enabled,
     spectra_state_dir,
 )
-from .vcap_entry import PAPER_INITIAL_ENTRY_QUOTE, reserve_vcap_candidate_entry
+from .vcap_entry import (
+    PAPER_INITIAL_ENTRY_QUOTE,
+    PAPER_VCAP_SHARD_QUOTE,
+    reserve_vcap_candidate_entry,
+)
 
 logger = logging.getLogger(__name__)
 GOVERNOR_POSITION_HARD_LIMIT = 83
@@ -92,7 +96,7 @@ class PortfolioSupervisorConfig:
     discovery_show_n: int = 100
     account_name: str = "master_account"
     controller_id: str = DEFAULT_CONTROLLER_ID
-    vcap_seed_quote: Decimal = Decimal("20")
+    vcap_seed_quote: Decimal = PAPER_VCAP_SHARD_QUOTE
     expected_exit_fee_bps: Decimal = Decimal("60")
     slippage_allowance_bps: Decimal = Decimal("10")
     buy_max_price_slippage_bps: Decimal = Decimal("10")
