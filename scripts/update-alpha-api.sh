@@ -102,11 +102,11 @@ git fetch --depth 1 origin main
 # Bazzite installation. They differ from API main only by the two fixes below:
 #   market_data_service.py: missing lazy order-book initialization
 #   deps.py: missing paper-only 503 guard for disabled bot orchestration
+# The managed-clock intermediate connector revision is also recognized by exact blob ID;
+# current API main descends from it and adds the paper-only credential-scan guard.
 # Any other local source version is preserved and causes a safe stop.
 declare -A APPROVED_LEGACY_BLOBS=(
   ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
-  # Exact intermediate release: native paper connectors already use a managed Hummingbot clock.
-  ["services/unified_connector_service.py.clock"]="a35c432e74d829b02c8c153b334e20abcd10dd2b"
   ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
   ["services/orders_recorder.py"]="1c18d3768fb08654c4b51b16f8813013d8d9da78"
   ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
@@ -125,7 +125,7 @@ for source in "${API_SOURCES[@]}"; do
     approved_blob="$worktree_blob"
   fi
   if [[ -n "$approved_blob" && "$worktree_blob" == "$approved_blob" ]]; then
-    say "Recognized the exact pre-fix Alpha version of $source; applying its reviewed upstream fix."
+    say "Recognized an exact reviewed legacy/intermediate Alpha version of $source; applying its reviewed upstream version."
     continue
   fi
 
