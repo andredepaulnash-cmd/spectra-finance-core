@@ -32,6 +32,12 @@ ZERO = Decimal("0")
 ONE = Decimal("1")
 BPS = Decimal("10000")
 MAX_MARKET_AGE_SECONDS = 30.0
+# Hummingbot 20260922 PaperTradeExchange.c_quantize_order_amount first
+# quantizes every paper order to 1e-7 with ROUND_DOWN. Its quantization
+# parameter map is empty in this pinned implementation, so the effective
+# paper connector base step is at least this value. Keep this paper-only
+# adapter aligned with the exact execution connector behavior.
+PAPER_TRADE_BASE_AMOUNT_QUANTUM = Decimal("0.0000001")
 
 
 def _financial_precision(function):
@@ -284,6 +290,7 @@ class MarketBuyOrder:
     authorized_quote_budget: Decimal
     reference_ask: Decimal
     amount_base: Decimal
+    execution_amount_increment: Decimal
     estimated_principal_quote: Decimal
     estimated_fee_quote: Decimal
     estimated_total_quote: Decimal
@@ -344,6 +351,11 @@ def build_protected_buy_market_config(
     if observed > current or current - observed > MAX_MARKET_AGE_SECONDS:
         raise ValueError("market BUY book observation is stale or future")
     step = _decimal(trading_rule.min_base_amount_increment, "min_base_amount_increment", positive=True)
+    # PaperTradeExchange quantizes before emitting its order-created event.
+    # Authorize that executable quantity up front; never apply this paper-only
+    # floor to the live Kraken connector.
+    if connector == "kraken_paper_trade":
+        step = max(step, PAPER_TRADE_BASE_AMOUNT_QUANTUM)
     minimum_base = _decimal(trading_rule.min_order_size, "min_order_size")
     minimum_quote = max(
         _decimal(trading_rule.min_notional_size, "min_notional_size"),
@@ -423,6 +435,7 @@ def build_protected_buy_market_config(
         budget,
         ask,
         amount,
+        step,
         estimated_principal,
         estimated_fee,
         estimated_total,
