@@ -333,7 +333,7 @@ declare -A CORE_SHELL_OLD_BLOBS=(
   ["frontend/src/lib/api.ts"]="dfdc7867012c37de2e0c1fc0ea1ee8cffbbccf10"
 )
 declare -A CORE_SHELL_NEW_BLOBS=(
-  ["frontend/src/components/layout/AppShell.tsx"]="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
+  ["frontend/src/components/layout/AppShell.tsx"]="a17454c86670e8f5b49fc2a6e9e8d377a63aea63"
   ["frontend/src/index.css"]="6d79e7a5111d423be6bf260a65e238c0344a4f5e"
   ["frontend/src/pages/SpectraOverview.tsx"]="31a9fe01decc24a7067da27e575552186dc98988"
   ["frontend/src/lib/api.ts"]="93d2e82aa4f1e9905f95f66c52842a53f81ca0af"
@@ -346,6 +346,12 @@ for source in "${CORE_SHELL_SOURCES[@]}"; do
   fi
   worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
   old_blob="${CORE_SHELL_OLD_BLOBS[$source]}"
+  # Accept the immediately preceding reviewed integration shell as well as
+  # the older Alpha shell so an incremental update preserves local edits.
+  if [[ "$source" == "frontend/src/components/layout/AppShell.tsx" \
+    && "$worktree_blob" == "776e421f5ab1312ab97a09756bc82df8e4da0fc5" ]]; then
+    old_blob="$worktree_blob"
+  fi
   if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
     die "Unrecognized local changes in $source. They were preserved; review them before updating."
   fi
