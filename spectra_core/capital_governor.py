@@ -1228,10 +1228,10 @@ class CapitalGovernor:
                     intent=IntentKind.RECOVERY,
                 )
 
-                # Recovery attribution must be read under the same write
-                # transaction as RESERVED/COMMITTED claims. Otherwise a
-                # COMMITTED -> RECONCILED handoff could briefly disappear
-                # from both buckets between two separate reads.
+                # Entry and recovery attribution must be read under the
+                # same write transaction as RESERVED/COMMITTED claims.
+                # Otherwise a COMMITTED -> RECONCILED handoff could briefly
+                # disappear from both exposure buckets between separate reads.
                 reconciled_recovery = self._current_recovery_exposure_quote(
                     conn, recovery_ledgers
                 )
@@ -1457,6 +1457,8 @@ class CapitalGovernor:
             )
         ):
             return "capital snapshot contains negative exposure/balance"
+        if any(value < ZERO for value in (active_entry, reconciled_entry)):
+            return "entry exposure contains negative values"
 
         # Absolute liquidity floor.
         if available_after < p.reserve_floor_quote:
