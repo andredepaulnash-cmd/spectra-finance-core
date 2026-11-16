@@ -33,12 +33,13 @@ def scan_result(*, as_of=1_000.0, pair="BTC-USD", **candidate_changes):
     }
 
 
-def authorization():
+def authorization(amount=Decimal("20")):
+    amount = Decimal(amount)
     proposal = CapitalProposal(
         proposal_id="spectra-entry-test",
         pair="BTC-USD",
         intent=IntentKind.ENTRY,
-        amount_quote=Decimal("20"),
+        amount_quote=amount,
         leverage=Decimal("1"),
         account_name="master_account",
         connector_name="kraken_paper_trade",
@@ -48,8 +49,8 @@ def authorization():
         proposal_id=proposal.proposal_id,
         status=DecisionStatus.RESERVED,
         reason="reserved by test Governor",
-        reserved_quote=Decimal("20"),
-        available_after_quote=Decimal("480"),
+        reserved_quote=amount,
+        available_after_quote=Decimal("500") - amount,
     )
     return SimpleNamespace(
         proposal=proposal,
@@ -81,7 +82,7 @@ async def test_fresh_shortlist_candidate_reserves_exactly_one_twenty_dollar_pape
 
     async def reserve(*args, **kwargs):
         calls.append(kwargs)
-        return authorization()
+        return authorization(kwargs["amount_quote"])
 
     monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
 
@@ -104,6 +105,31 @@ async def test_fresh_shortlist_candidate_reserves_exactly_one_twenty_dollar_pape
     assert len(calls) == 1
     assert calls[0]["intent"] == IntentKind.ENTRY
     assert calls[0]["amount_quote"] == Decimal("20")
+
+
+@pytest.mark.asyncio
+async def test_initial_entry_quote_can_be_evenly_sized_by_the_portfolio_budget(monkeypatch):
+    configure(monkeypatch)
+    calls = []
+    entry_quote = Decimal("75.30")
+
+    async def reserve(*args, **kwargs):
+        calls.append(kwargs)
+        return authorization(kwargs["amount_quote"])
+
+    monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
+
+    result = await vcap_entry.reserve_vcap_candidate_entry(
+        object(),
+        scan_result=scan_result(),
+        trading_pair="BTC-USD",
+        account_name="master_account",
+        now=1_000.0,
+        entry_quote=entry_quote,
+    )
+
+    assert result.amount_quote == entry_quote
+    assert calls[0]["amount_quote"] == entry_quote
 
 
 @pytest.mark.asyncio
