@@ -22,7 +22,7 @@ SERVER_CONFIG_PATH = CONFIG_DIR / "server.yml"
 #: Default tool profile (FEAT-066). ``full`` on purpose: this server is also run
 #: standalone (the uvx console script, an external MCP host, the checked-in
 #: `.mcp.json`), and a launch with no flag has to keep serving the whole surface.
-DEFAULT_TOOL_PROFILE = "full"
+DEFAULT_TOOL_PROFILE = "paper_full" if spectra_paper_only_enabled() else "full"
 
 
 class ServerConfig(BaseModel):
@@ -128,18 +128,29 @@ class Settings(BaseModel):
         self.server_name = config.name
 
 
+def profile_for_execution_mode(profile: str, paper_only: bool) -> str:
+    """Keep the mounted MCP surface inside the active execution-mode boundary."""
+    if paper_only and not profile.startswith("paper_"):
+        return f"paper_{profile}"
+    if not paper_only and profile.startswith("paper_"):
+        return profile.removeprefix("paper_")
+    return profile
+
+
 def get_settings() -> Settings:
     """Get application settings from server configuration"""
     try:
         server_config = _load_server_config()
+        paper_only = spectra_paper_only_enabled()
         tool_profile, muted_tools = parse_profile_flags(DEFAULT_TOOL_PROFILE)
+        tool_profile = profile_for_execution_mode(tool_profile, paper_only)
 
         return Settings(
             api_url=server_config.url,
             api_username=server_config.username,
             api_password=server_config.password,
             server_name=server_config.name,
-            paper_only=spectra_paper_only_enabled(),
+            paper_only=paper_only,
             agent_slug=os.getenv("CONDOR_AGENT_SLUG", ""),
             connection_timeout=float(os.getenv("HUMMINGBOT_TIMEOUT", "30.0")),
             max_retries=int(os.getenv("HUMMINGBOT_MAX_RETRIES", "3")),
