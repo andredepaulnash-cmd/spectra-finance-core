@@ -62,6 +62,19 @@ The PDFs and continuity files are in the user's project Library. They are not ye
 - Historical January 23 incident: a web/API process could respond while the trading process was not healthy; port 8081 was already occupied and meaningful endpoints returned 502. **Process/HTTP health is not semantic trading health.**
 - SQLite `.sqlite-wal` and `.sqlite-shm` are sidecars, not databases. Preserve main DB + sidecars as a consistency set; never point a runtime at a sidecar as the database.
 
+### Deeper inspection of the recovered VeryLoose strategy
+The 1,500-line `SpectraVCAPFillUSDVeryLoose.py` has **seven** definitions of `adjust_trade_position` inside one class. The final definition wins under Python class semantics. The last active method is the later `SPECTRA_MEGA_VCAP_LADDER_V2` block, not the earlier immediate/19-level variants:
+- Final method uses a 47-threshold `VCAP_LEVELS` list from -1.24% through -47.77% and a 47-element descending `VCAP_WEIGHTS` array.
+- The class-level `max_entry_position_adjustment = 19` is set in the preceding block and is not overwritten later in the file. Historical runtime configuration/logs must be checked because the handoff separately reports an effective override of 200 at one point and runtime patch logs reached at least level 21.
+- Final method's comments say a single position may use up to 6× initial stake, but the actual `target_budget` expression clamps it to the 1× `VCAP_BASE_MULT` baseline (subject to `max_stake`); the 6× `VCAP_MAX_MULT` is therefore not, by itself, evidence that the code deployed a 6× budget.
+- The file sets `PATCH_BANK_RATIO = 0.75`, so its intended entry bank is 25% and patch bank 75%, matching the broad split concept later carried forward.
+- Its only `custom_stake_amount` implementation computes entry-bank / max-open-trades, but then replaces any calculated stake below 99 with the entire remaining entry-bank amount whenever at least 99 remains. For a $1,000 wallet and 50 slots, that path can turn the nominal $5 target into a $250 first stake rather than evenly spreading the bank. This is a source-level inconsistency that must be compared with historical runtime overrides and logs; do not transplant it into the current engine.
+These findings reinforce the handoff's instruction: source text, effective Python method, runtime configuration, and actual logs are four separate evidence layers.
+
+### Additional historical handoff and local update logs
+- **Spectra Core / Spectra OS / Spectra Finance — Master Handoff Plan** — 9 pages, dated 2026-01-30. It documents the earlier Bazzite/Kinoite immutable-host model, Spectra Core control plane, old Freqtrade finance chassis, tiered permissions, backup/no-wipe doctrine, and a proposed local-first agent runtime. It is earlier historical context; the later Condor + Hummingbot + Spectra Core blueprint is the current finance architecture.
+- **Pasted text(6).txt** and **Pasted text(7).txt** contain the 2026-11-15 local API-update transcript. It records a successful rebuild of the local Hummingbot API image, preservation of existing PostgreSQL/EMQX volumes and credentials, and a running `spectra-alpha-hummingbot-api` container. The same transcript records a failed connection to the dashboard on port 8088 at that moment. This is historical runtime evidence, not a fresh current health check.
+
 ### Universal asset state and ranking doctrine
 One shared observation/ranking engine feeds specialized behavior profiles. Lists are views into common state, not disconnected scanners:
 - Top Opportunities; Hot / Repeat Winners; 24h Gainers / Continuation; 24h Losers / Reversion; Hyper-Volatility Watchlist; VCAP Recovery; PSSM/MIR; Cooling; Weak/Demotion; Dead-Watch; Reactivating; Capital Queue.
