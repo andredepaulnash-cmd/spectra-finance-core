@@ -127,8 +127,32 @@ ADMIN_TOOLS: tuple[str, ...] = (
 
 #: profile name → the tools it registers. ``full`` is the default because this
 #: server is also run standalone (uvx, external hosts, `.mcp.json`).
+# Tools that cannot operate safely or meaningfully in the current native
+# spot-paper runtime. The API guard remains authoritative; this profile keeps
+# paper agents from being offered live-only tools in the first place.
+PAPER_BLOCKED_TOOLS = frozenset(
+    {
+        "set_account_position_mode_and_leverage",
+        "create_position_executor",
+        "create_lp_executor",
+        "explore_dex_pools",
+        "quote_swap",
+        "execute_swap",
+        "get_swap_status",
+        "search_swaps",
+    }
+)
+PAPER_TRADING_TOOLS: tuple[str, ...] = tuple(
+    name for name in TRADING_TOOLS if name not in PAPER_BLOCKED_TOOLS
+)
+
 PROFILE_TOOLS: dict[str, tuple[str, ...]] = {
     "tick": TRADING_TOOLS,
     "agent": TRADING_TOOLS + LIQUIDITY_TOOLS,
     "full": TRADING_TOOLS + LIQUIDITY_TOOLS + ADMIN_TOOLS,
+    # Attendance still controls the Condor seat; the Hummingbot paper surface
+    # is intentionally the same safe subset for every attendance level.
+    "paper_tick": PAPER_TRADING_TOOLS,
+    "paper_agent": PAPER_TRADING_TOOLS,
+    "paper_full": PAPER_TRADING_TOOLS,
 }
