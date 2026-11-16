@@ -153,6 +153,30 @@ async def reserve_kraken_capital(
             proposal_id=proposal.proposal_id, now=time.time()
         )
 
+    # A fresh ENTRY has no dust-successor admission to supply a position ID.
+    # Create its empty economic owner only after the Governor has reserved
+    # capital. The executor boundary will atomically commit this exact
+    # position/proposal binding before any external order is dispatched.
+    if (
+        decision.approved
+        and intent_kind == IntentKind.ENTRY
+        and economic_position_id is None
+    ):
+        ledger = get_economic_position_ledger()
+        economic_position_id = f"spectra-position-{uuid4().hex}"
+        try:
+            ledger.open_position(
+                position_id=economic_position_id,
+                pair=pair,
+                created_at=authorization_now,
+            )
+        except Exception:
+            capital_governor.release(
+                proposal.proposal_id,
+                reason="economic_position_open_failed",
+            )
+            raise
+
     return KrakenCapitalAuthorization(
         proposal=proposal,
         decision=decision,
