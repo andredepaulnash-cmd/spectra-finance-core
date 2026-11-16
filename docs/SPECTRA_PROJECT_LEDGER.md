@@ -238,6 +238,11 @@ The first passing workflow (`43805192285`) exposed a separate updater defect:
 A new CI run is required to verify the in-place updater now completes.
 - This was a false-negative verification bug, not evidence that the API guard itself was absent. Keep the guard and fail-closed behavior; do not remove it.
 
+### Follow-up CI result — exact protected BUY mismatch recovered
+Workflow `43805709781` completed with failure in the end-to-end paper execution test. The updater correction itself worked: it applied the reviewed API updates, created a consistent isolated paper-state backup, rebuilt the trade screen, and the Hummingbot API passed authenticated readiness after restart. The remaining test failure now reports the exact conflict:
+`protected_buy_order_amount_changed: ... authorized=0.00038359:observed=0.000383500000000000`.
+There was one confirmed fill and one ledgered fill, with no unresolved orders or trades; the Governor nevertheless correctly held the position because the protected BUY amount changed. This is a venue-precision/amount-normalization discrepancy of 0.00000009 BTC in the Kraken paper execution path. Investigate the precise amount semantics across authorization, connector quantization, order-created provenance, fill event, and ledger. Do not loosen authorization or treat the order as fully reconciled until the permitted venue rounding rule is explicit and tested. The updater false-negative is fixed; the protected BUY reconciliation is still not fixed.
+
 ### Exact current PR #126 blocker
 - Clean Linux acceptance proved the API order was created, the paper exchange confirmed a fill, the ledger recorded it, and order/trade provenance was recognized.
 - Position remained HOLD because protected BUY reconciliation recorded `protected_buy_order_amount_changed`.
