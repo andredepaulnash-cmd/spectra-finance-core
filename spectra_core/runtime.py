@@ -21,16 +21,19 @@ from .vcap_runtime import VCAPRuntimeStore
 from .vcap_state import VCAPStateStore
 
 
-def spectra_paper_only_enabled() -> bool:
-    """Resolve the paper-only boundary, defaulting Spectra agents to paper.
+def spectra_paper_only_enabled(agent_slug: str | None = None) -> bool:
+    """Resolve the paper-only boundary, defaulting Spectra seats to paper.
 
-    An explicit operator setting always wins. When the setting is absent,
-    a process bound to the Spectra agent is paper-only by default; unrelated
-    Condor processes retain their legacy behavior. Invalid explicit values
-    fail closed rather than silently selecting either mode.
+    An explicit operator setting always wins. When the setting is absent, the
+    supplied seat identity (or CONDOR_AGENT_SLUG when no seat is supplied)
+    makes Spectra paper-only by default; unrelated Condor processes retain
+    their legacy behavior. Invalid explicit values fail closed.
     """
     configured = os.getenv("SPECTRA_PAPER_ONLY")
-    agent_slug = os.getenv("CONDOR_AGENT_SLUG", "").strip().lower()
+    agent_slug = (
+        agent_slug if agent_slug is not None
+        else os.getenv("CONDOR_AGENT_SLUG", "")
+    ).strip().lower()
     if configured is None:
         return agent_slug == "spectra"
 
