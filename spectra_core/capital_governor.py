@@ -4319,6 +4319,15 @@ class CapitalGovernor:
                 ):
                     return fallback
                 basis = exact_decimal_sum((basis, remaining, fees))
+
+            # A zero-basis lot is not enough to release entry authority. The
+            # entry claim must also be retired by the existing verified-flat
+            # terminal certificate; otherwise keep the original authorization
+            # charged, matching the position-reuse safety gate.
+            if basis == ZERO and binding["state"] != "RETIRED":
+                return fallback
+            if binding["state"] == "RETIRED" and basis > ZERO:
+                return fallback
             return basis
         except (sqlite3.Error, ValueError, TypeError, ArithmeticError):
             return fallback
