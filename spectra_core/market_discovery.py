@@ -306,6 +306,12 @@ async def scan_kraken_universe(
                 )
                 analysis["trading_pair"] = item["trading_pair"]
                 analysis["quote_asset"] = item["quote_asset"]
+                rule = snapshot.trading_rules.get(item["trading_pair"])
+                if rule is None:
+                    return item["trading_pair"], None, "missing_trading_rules"
+                # VCAP admission needs the venue's actual quote-denominated
+                # minimum before it can decide whether a $20 seed is executable.
+                analysis["minimum_order_quote"] = float(rule.effective_min_quote)
                 analysis["volume_rank_24h"] = item["volume_rank_24h"]
                 analysis["governor_approved"] = (
                     approved is not None and item["trading_pair"] in approved
