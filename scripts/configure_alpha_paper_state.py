@@ -6,26 +6,21 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from spectra_core.models import (
-    DEFAULT_PAPER_ENTRY_BUDGET_QUOTE,
-    DEFAULT_PAPER_RECOVERY_BUDGET_QUOTE,
-    DEFAULT_PAPER_TOTAL_CAPITAL_QUOTE,
-)
+# Keep this bootstrap script standard-library-only; these values mirror the
+# runtime defaults in spectra_core.models without importing the full package.
+PAPER_TOTAL_CAPITAL_QUOTE = "25000"
+PAPER_ENTRY_BUDGET_QUOTE = "6250"
+PAPER_RECOVERY_BUDGET_QUOTE = "18750"
 
 PAPER_POLICY = {
     "reserve_floor_quote": "100",
-    "max_total_committed_quote": str(DEFAULT_PAPER_TOTAL_CAPITAL_QUOTE),
-    "max_pair_quote": str(DEFAULT_PAPER_TOTAL_CAPITAL_QUOTE),
-    "max_position_quote": str(DEFAULT_PAPER_TOTAL_CAPITAL_QUOTE),
-    "max_entry_quote": str(DEFAULT_PAPER_ENTRY_BUDGET_QUOTE),
-    "max_recovery_quote": str(DEFAULT_PAPER_RECOVERY_BUDGET_QUOTE),
+    "max_total_committed_quote": PAPER_TOTAL_CAPITAL_QUOTE,
+    "max_pair_quote": PAPER_TOTAL_CAPITAL_QUOTE,
+    "max_position_quote": PAPER_TOTAL_CAPITAL_QUOTE,
+    "max_entry_quote": PAPER_ENTRY_BUDGET_QUOTE,
+    "max_recovery_quote": PAPER_RECOVERY_BUDGET_QUOTE,
     "max_leverage": "1",
     "reservation_ttl_seconds": 120,
     "position_hold_snapshot_ttl_seconds": 30,
