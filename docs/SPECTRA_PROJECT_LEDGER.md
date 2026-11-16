@@ -82,6 +82,25 @@ One shared observation/ranking engine feeds specialized behavior profiles. Lists
 - **Hyper-Volatility Watchlist:** separate lifecycle and thresholds; breakout/volume/flow/depth confirmation, probe→press, fast profit protection. Do not mix its risk profile with normal mean-reversion inventory.
 - Adaptive intelligence may propose bounded parameter changes; hard capital, reserve, permissions, and kill-switch controls remain deterministic.
 
+### Current implemented scanner: exact scope and ranking (PR #118 branch inspection)
+The current `spectra_core/market_discovery.py` implementation is a **research-only Kraken USD scanner**, not yet the complete canonical universal ranking engine:
+- Default scan universe is `quote_assets=("USD",)`; it ranks the top 100 by 24h quote volume, analyzes up to 25 candidates, requires at least 90 completed daily candles, and does not place orders or authorize capital.
+- Default guardrails: 24h quote volume at least $10m; 30-day median daily quote turnover at least $1m; active-range day ratio at least 0.65; median daily range at least 0.8%; current move from last completed daily close no more than 15%.
+- Rejections include persistent 30-day decline of at least 25% while below the 20-day average, within 5% of the 90-day low while the 30-day trend is negative, weak turnover, sporadic volatility, low daily range, excessive current-session move, and pump-dominated history.
+- Mean-reversion score (75% of final score): 90-day VWAP discount up to 35 points; 90-day high drawdown 20 points for 15–65% or 10 points for 8–80%; RSI 15 points for 30–55 or 7 for 25–65; positive 7-day recovery 10; price above 20-day SMA 10; 30-day stability 10 or 5.
+- Volatility-consistency score (25% of final score): active-day ratio up to 60 points, median daily range up to 25, median daily quote turnover up to 15. Final selection score is 75% mean-reversion score + 25% volatility-consistency score.
+- This is a transparent initial shortlist, not a complete implementation of the universal Opportunity / Execution / Capital Efficiency score stack. It does not yet prove order-flow/depth/correlation/capital-queue ranking or strategy edge.
+
+**Critical quote-asset mismatch:** the current PR #118 path is USD-only in more than one layer:
+- `scan_kraken_universe()` defaults to USD.
+- `asset_authority.py` validates only `BASE-USD`, uses policy `kraken-usd-mean-reversion-v1`, and writes/loads USD-only approved/discovered lists.
+- `kraken_authorization.py` explicitly rejects non-USD quote pairs.
+- The current CI paper acceptance fixture and local doctor capture use BTC-USD.
+- Although the standalone history analyzer defaults its `quote_asset` argument to USDT and has a unit test with a synthetic TEST-USDT symbol, that does **not** establish end-to-end USDT support.
+This conflicts with the latest Architect requirement to use actual Kraken-supported **USDT** pairs. Before paper portfolio deployment, the scanner, asset-authority schema, authorization path, pair metadata, paper connector, and tests must be aligned to verified Kraken USDT pairs. Do not simply change the regex or quote default without end-to-end pair/rule verification.
+
+**Asset-list discovery contract:** `asset_authority.py` checks an operator-provided `approved_assets.json` first; absent that, it can load a fresh `discovered_assets.json` (maximum age 300 seconds) when automatic asset selection is enabled. The scanner returns candidates but the exact runtime call that persists the discovered list still needs verification. The local doctor log's missing-list warning means the live local state did not have a usable list at that time.
+
 ## 4. Hummingbot / Core contracts to preserve
 
 - Hummingbot Strategy V2 uses controllers and self-managing executors; do not rebuild order mechanics that already exist without a measured reason.
