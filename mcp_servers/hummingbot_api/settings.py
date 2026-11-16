@@ -19,9 +19,8 @@ load_dotenv(find_dotenv())
 CONFIG_DIR = Path(os.getenv("HUMMINGBOT_MCP_CONFIG_DIR", str(Path.home() / ".hummingbot_mcp"))).expanduser()
 SERVER_CONFIG_PATH = CONFIG_DIR / "server.yml"
 
-#: Default tool profile (FEAT-066). ``full`` on purpose: this server is also run
-#: standalone (the uvx console script, an external MCP host, the checked-in
-#: `.mcp.json`), and a launch with no flag has to keep serving the whole surface.
+#: Standalone launches get the mode-appropriate surface too: paper_full in the
+#: default fail-closed paper mode, full only after the separate live authorization.
 DEFAULT_TOOL_PROFILE = "paper_full" if spectra_paper_only_enabled() else "full"
 
 
