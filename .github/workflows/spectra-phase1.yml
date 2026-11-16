@@ -1,8 +1,6 @@
 name: Spectra Phase 1 CI
 
 on:
-  # Feature/experiment branches are validated once through their PR instead of
-  # paying for both a branch-push run and a pull-request run on the same SHA.
   push:
     branches:
       - spectra-core-phase2
@@ -19,16 +17,92 @@ permissions:
   contents: read
 
 concurrency:
-  # Keep only the newest validation for a given PR or branch. This prevents
-  # stale runs from consuming hosted-runner minutes while newer code is waiting.
   group: spectra-phase1-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   capital-core:
-    name: Capital Core / Execution Safety
+    name: Capital Core / ${{ matrix.group }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Keep each bounded suite comfortably below GitHub's former 60-minute
+    # monolithic-job failure. A timeout is a signal to investigate, not retry.
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - group: Foundation and Market Data
+            test_files:
+              - tests/test_spectra_core.py
+              - tests/test_kraken_market_fabric.py
+              - tests/test_market_discovery.py
+              - tests/test_stack_lock_manifest.py
+              - tests/test_hummingbot_api_contract.py
+              - tests/test_asset_fingerprint.py
+              - tests/test_recovery_fingerprint.py
+              - tests/test_module_registry.py
+              - tests/test_kraken_tardis_import.py
+              - tests/test_binance_kline_import.py
+          - group: Capital Governance and Accounting
+            test_files:
+              - tests/test_position_hold_snapshot_ledger.py
+              - tests/test_recovery_exposure_governor.py
+              - tests/test_economic_position_ledger.py
+              - tests/test_live_fill_reconciliation.py
+              - tests/test_executor_provenance_bridge.py
+              - tests/test_accounting_health_gate.py
+              - tests/test_parked_cash_authority.py
+              - tests/test_cash_scope_adapters.py
+              - tests/test_cash_runtime_resume.py
+              - tests/test_integrated_entry_cash_authority.py
+              - tests/test_position_mutation.py
+              - tests/test_cycle_reconciliation.py
+          - group: VCAP and Recovery
+            test_files:
+              - tests/test_vcap_tranches.py
+              - tests/test_vcap_execution_loop.py
+              - tests/test_vcap_market_shard_dispatch.py
+              - tests/test_vcap_profit_exit.py
+              - tests/test_vcap_restart_continuity.py
+              - tests/test_vcap_lifecycle_controller.py
+              - tests/test_vcap_runtime_supervisor.py
+              - tests/test_partial_recovery_recycling.py
+              - tests/test_protected_recovery_exit.py
+              - tests/test_protected_whole_exit.py
+              - tests/test_selected_recovery.py
+              - tests/test_selected_recovery_runtime.py
+              - tests/test_strategy_replay_vcap.py
+          - group: Execution and Position Lifecycle
+            test_files:
+              - tests/test_spectra_kraken_execution_flow.py
+              - tests/test_spectra_executor_accounting_flow.py
+              - tests/test_unified_economic_exit.py
+              - tests/test_multi_position_runtime_scheduler.py
+              - tests/test_entry_identity_submission.py
+              - tests/test_residual_position_lifecycle.py
+              - tests/test_dust_lifecycle.py
+              - tests/test_dispatch_receipt.py
+              - tests/test_terminal_retirement_runtime.py
+              - tests/test_terminal_retirement_scheduler.py
+              - tests/test_partial_recycle_dispatch_guards.py
+              - tests/test_partial_residual_runtime.py
+              - tests/test_executor_trading_rule_preflight.py
+              - tests/test_typed_executor_tools.py
+              - tests/test_integrated_partial_exit.py
+              - tests/test_integrated_retirement_exit.py
+              - tests/test_execution_price_policy.py
+              - tests/test_protected_buy_reconciliation.py
+              - tests/test_partial_attempt_assessment.py
+          - group: Strategies and Runtime Integration
+            test_files:
+              - tests/test_strategy_laboratory.py
+              - tests/test_strategy_replay.py
+              - tests/test_rotating_fleet.py
+              - tests/test_integrated_runtime_restart.py
+              - tests/test_decision_trace.py
+              - tests/test_spectra_runtime.py
+
     env:
       UV_PYTHON: "3.13"
 
@@ -50,70 +124,11 @@ jobs:
         run: uv sync --dev --frozen
 
       - name: Compile Spectra module registry API route
+        if: matrix.group == 'Foundation and Market Data'
         run: python -m py_compile condor/web/routes/servers.py
-      - name: Run Spectra Phase 1 focused tests
-        run: |
-          uv run pytest -q \
-            tests/test_spectra_core.py \
-            tests/test_spectra_kraken_execution_flow.py \
-            tests/test_spectra_executor_accounting_flow.py \
-            tests/test_position_hold_snapshot_ledger.py \
-            tests/test_recovery_exposure_governor.py \
-            tests/test_kraken_market_fabric.py \
-            tests/test_market_discovery.py \
-            tests/test_stack_lock_manifest.py \
-            tests/test_hummingbot_api_contract.py \
-            tests/test_asset_fingerprint.py \
-            tests/test_recovery_fingerprint.py \
-            tests/test_vcap_tranches.py \
-            tests/test_vcap_execution_loop.py \
-            tests/test_vcap_market_shard_dispatch.py \
-            tests/test_vcap_profit_exit.py \
-            tests/test_vcap_restart_continuity.py \
-            tests/test_vcap_lifecycle_controller.py \
-            tests/test_economic_position_ledger.py \
-            tests/test_live_fill_reconciliation.py \
-            tests/test_executor_provenance_bridge.py \
-            tests/test_accounting_health_gate.py \
-            tests/test_vcap_runtime_supervisor.py \
-            tests/test_unified_economic_exit.py \
-            tests/test_multi_position_runtime_scheduler.py \
-            tests/test_partial_recovery_recycling.py \
-            tests/test_protected_recovery_exit.py \
-            tests/test_protected_whole_exit.py \
-            tests/test_parked_cash_authority.py \
-            tests/test_cash_scope_adapters.py \
-            tests/test_cash_runtime_resume.py \
-            tests/test_strategy_laboratory.py \
-            tests/test_strategy_replay.py \
-            tests/test_strategy_replay_vcap.py \
-            tests/test_kraken_tardis_import.py \
-            tests/test_binance_kline_import.py \
-            tests/test_rotating_fleet.py \
-            tests/test_entry_identity_submission.py \
-            tests/test_residual_position_lifecycle.py \
-            tests/test_dust_lifecycle.py \
-            tests/test_dispatch_receipt.py \
-            tests/test_module_registry.py \
-            tests/test_terminal_retirement_runtime.py \
-            tests/test_terminal_retirement_scheduler.py \
-            tests/test_partial_recycle_dispatch_guards.py \
-            tests/test_partial_residual_runtime.py \
-            tests/test_executor_trading_rule_preflight.py \
-            tests/test_typed_executor_tools.py \
-            tests/test_integrated_entry_cash_authority.py \
-            tests/test_integrated_partial_exit.py \
-            tests/test_integrated_retirement_exit.py \
-            tests/test_integrated_runtime_restart.py \
-            tests/test_execution_price_policy.py \
-            tests/test_protected_buy_reconciliation.py \
-            tests/test_decision_trace.py \
-            tests/test_position_mutation.py \
-            tests/test_cycle_reconciliation.py \
-            tests/test_partial_attempt_assessment.py \
-            tests/test_selected_recovery.py \
-            tests/test_selected_recovery_runtime.py \
-            tests/test_spectra_runtime.py \
+
+      - name: Run focused tests
+        run: uv run pytest -q ${{ join(matrix.test_files, ' ') }}
 
   frontend-build:
     name: Spectra Finance Frontend Build
