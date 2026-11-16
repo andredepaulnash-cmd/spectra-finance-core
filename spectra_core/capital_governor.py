@@ -4107,7 +4107,11 @@ class CapitalGovernor:
             if row["file"]
         }
         rows = conn.execute(
-            "SELECT DISTINCT ledger_path FROM position_submission_bindings"
+            """
+            SELECT DISTINCT ledger_path FROM position_submission_bindings
+            UNION
+            SELECT DISTINCT ledger_path FROM entry_submission_claims
+            """
         ).fetchall()
         for index, row in enumerate(rows):
             path = Path(row["ledger_path"]).resolve()
