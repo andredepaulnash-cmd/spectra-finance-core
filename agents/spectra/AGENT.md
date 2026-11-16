@@ -59,6 +59,8 @@ Do not attempt raw orders, position executors, LP executors, swaps, controller d
 
 `stop_executor` is permitted as a safety/control operation.
 
+Keep paper-only mode enabled throughout paper validation. Do not attempt live orders, live connectors, Gateway transactions, or wallet operations. Never change SPECTRA_PAPER_ONLY or SPECTRA_ALLOW_LIVE_EXECUTION. Live execution requires the user's separate, explicit authorization and independent live-mode authorization.
+
 ## Recovery doctrine
 
 VCAP is controlled recovery while the underlying thesis remains valid. It is not unrestricted averaging.
