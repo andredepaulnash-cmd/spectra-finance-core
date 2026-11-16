@@ -650,6 +650,49 @@ def test_market_buy_sizes_from_fresh_ask_depth_without_price_cap():
     assert result.authorized_quote_budget == D("50")
 
 
+
+def test_paper_market_buy_authorizes_hummingbot_seven_decimal_quantization():
+    from spectra_core.execution_policy import build_protected_buy_market_config
+    from spectra_core.kraken_market_fabric import KrakenTradingRule
+
+    rule = KrakenTradingRule(
+        trading_pair="BTC-USD",
+        min_order_size=D("0.00000001"),
+        min_notional_size=D("1"),
+        min_order_value=D("1"),
+        min_price_increment=D("0.01"),
+        min_base_amount_increment=D("0.00000001"),
+        min_quote_amount_increment=D("0.01"),
+        supports_limit_orders=True,
+        supports_market_orders=True,
+    )
+    result = build_protected_buy_market_config(
+        {
+            "type": "order_executor",
+            "connector_name": "kraken_paper_trade",
+            "trading_pair": "BTC-USD",
+            "side": 1,
+            "execution_strategy": "MARKET",
+            "leverage": 1,
+        },
+        trading_rule=rule,
+        asks=((D("65000"), D("1")),),
+        best_ask=D("65000"),
+        market_observed_at=1000,
+        now=1001,
+        authorized_quote_budget=D("24.93335"),
+        fee_allowance_bps=D("0"),
+        connector_name="kraken_paper_trade",
+    )
+
+    # 24.93335 USD / 65,000 USD per BTC = 0.00038359 BTC.
+    # Hummingbot 20260922 PaperTradeExchange floors this to 0.0003835 BTC.
+    assert result.execution_amount_increment == D("0.0000001")
+    assert result.amount_base == D("0.0003835")
+    assert D(result.executor_config["amount"]) == result.amount_base
+    assert result.estimated_total_quote <= result.authorized_quote_budget
+
+
 def test_market_buy_refuses_venues_without_market_support():
     from spectra_core.execution_policy import build_protected_buy_market_config
     from spectra_core.kraken_market_fabric import KrakenTradingRule
@@ -784,6 +827,8 @@ def test_governed_market_entry_dispatches_market_order_and_persists_policy(
     assert submission["config"]["execution_strategy"] == "MARKET"
     assert "price" not in submission["config"]
     assert submission["policy"]["execution_strategy"] == "MARKET"
+    assert D(submission["policy"]["amount_base"]) == D(submission["config"]["amount"])
+    assert D(submission["policy"]["execution_amount_increment"]) > 0
     assert "price_cap" not in submission["policy"]
     assert D(submission["policy"]["estimated_total_quote"]) <= D("50")
     decision = g.get_decision(authorization.proposal.proposal_id)
