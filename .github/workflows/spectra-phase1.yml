@@ -128,7 +128,7 @@ jobs:
         run: python -m py_compile condor/web/routes/servers.py
 
       - name: Run focused tests
-        run: uv run pytest -q ${{ join(matrix.test_files, ' ') }}
+        run: uv run pytest -vv -o faulthandler_timeout=120 --durations=20 ${{ join(matrix.test_files, ' ') }}
 
   frontend-build:
     name: Spectra Finance Frontend Build
