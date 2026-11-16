@@ -1,10 +1,10 @@
 """Governor-gated admission from the fresh Kraken mean-reversion shortlist.
 
 The autonomous portfolio supervisor calls this for each eligible fleet
-vacancy. This function reserves exactly one $20 seed through CapitalGovernor;
-it never creates an executor or dispatches an order. It accepts only a fresh
-candidate from the scanner's own mean_reversion_candidates list and requires
-the separate paper asset allowlist before reserving capital.
+vacancy. The initial entry amount is evenly derived from the configured
+non-recovery budget and target position count. This function reserves through
+CapitalGovernor; it never creates an executor or dispatches an order. It
+accepts only a fresh scanner candidate and the separate paper asset allowlist.
 """
 from __future__ import annotations
 
@@ -20,7 +20,9 @@ from .kraken_authorization import reserve_kraken_capital
 from .models import DecisionStatus, IntentKind
 from .runtime import spectra_paper_only_enabled
 
-PAPER_VCAP_SEED_QUOTE = Decimal("20")
+PAPER_INITIAL_ENTRY_QUOTE = Decimal("20")
+# Backwards-compatible alias; this is the initial ENTRY amount, not a VCAP shard.
+PAPER_VCAP_SEED_QUOTE = PAPER_INITIAL_ENTRY_QUOTE
 MAX_DISCOVERY_AGE_SECONDS = 300.0
 LIVE_TRUE_VALUES = {"1", "true", "yes"}
 
@@ -60,8 +62,9 @@ async def reserve_vcap_candidate_entry(
     account_name: str,
     governor=None,
     now: float | None = None,
+    entry_quote: Decimal | None = None,
 ) -> VCAPPaperEntryAdmission:
-    """Reserve one $20 ENTRY for a fresh scanner candidate.
+    """Reserve one budget-sized ENTRY for a fresh scanner candidate.
 
     No executor is created and no order is sent. Paper entries require the
     manual or fresh auto-discovery allowlist. Live entries additionally require
@@ -126,12 +129,22 @@ async def reserve_vcap_candidate_entry(
     if str(candidate.get("quote_asset") or "USD").strip().upper() != "USD":
         raise ValueError("VCAP entries are restricted to Kraken USD spot pairs")
 
+    amount_quote = (
+        PAPER_INITIAL_ENTRY_QUOTE if entry_quote is None else entry_quote
+    )
+    if (
+        not isinstance(amount_quote, Decimal)
+        or not amount_quote.is_finite()
+        or amount_quote <= 0
+    ):
+        raise ValueError("initial entry quote must be a positive finite Decimal")
+
     try:
         minimum_order_quote = Decimal(str(candidate.get("minimum_order_quote")))
     except (InvalidOperation, ValueError) as exc:
         raise ValueError("candidate is missing a valid Kraken minimum-order quote") from exc
     maximum_minimum_quote = (
-        PAPER_VCAP_SEED_QUOTE * Decimal("10000") / Decimal("10070")
+        amount_quote * Decimal("10000") / Decimal("10070")
     )
     if (
         not minimum_order_quote.is_finite()
@@ -139,7 +152,7 @@ async def reserve_vcap_candidate_entry(
         or minimum_order_quote > maximum_minimum_quote
     ):
         raise ValueError(
-            "candidate venue minimum cannot fit inside the $20 entry after fee and slippage allowances"
+            f"candidate venue minimum cannot fit inside the {amount_quote} entry after fee and slippage allowances"
         )
 
     if paper_only:
@@ -157,7 +170,7 @@ async def reserve_vcap_candidate_entry(
         account_name=account_name,
         trading_pair=pair,
         intent=IntentKind.ENTRY,
-        amount_quote=PAPER_VCAP_SEED_QUOTE,
+        amount_quote=amount_quote,
         governor=governor,
     )
     position_id = (
@@ -170,7 +183,7 @@ async def reserve_vcap_candidate_entry(
         pair=pair,
         proposal_id=authorization.proposal.proposal_id,
         position_id=position_id,
-        amount_quote=PAPER_VCAP_SEED_QUOTE,
+        amount_quote=amount_quote,
         decision_status=authorization.decision.status,
         decision_reason=authorization.decision.reason,
         selection_score=selection_score,
