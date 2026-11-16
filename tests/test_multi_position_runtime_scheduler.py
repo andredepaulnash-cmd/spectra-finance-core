@@ -1,5 +1,6 @@
 import asyncio
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
@@ -9,7 +10,13 @@ from mcp_servers.hummingbot_api.tools.runtime_scheduler import (
 from spectra_core.accounting_health import AccountingHealthSupervisor
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.economic_position import EconomicPositionLedger
-from spectra_core.models import BreakerMode, CapitalPolicy
+from spectra_core.models import (
+    BreakerMode,
+    CapitalPolicy,
+    CapitalProposal,
+    CapitalSnapshot,
+    IntentKind,
+)
 from spectra_core.runtime_scheduler import (
     FleetPositionState,
     RuntimeSchedulerPolicy,
@@ -397,3 +404,132 @@ def test_closed_position_disappears_from_active_fleet(tmp_path):
     assert result["active_position_count"] == 0
     assert result["selected_position_count"] == 0
     assert result["fleet"] == []
+
+
+def test_confirmed_fresh_entry_is_bootstrapped_into_governed_vcap_runtime(
+    monkeypatch, tmp_path
+):
+    import mcp_servers.hummingbot_api.tools.accounting_health as accounting_tool
+
+    g = CapitalGovernor(
+        tmp_path / "bootstrap-governor.sqlite3",
+        CapitalPolicy(
+            reserve_floor_quote=D("0"),
+            max_total_committed_quote=D("1000"),
+            max_pair_quote=D("500"),
+            max_position_quote=D("100"),
+            max_recovery_quote=D("40"),
+            max_leverage=D("1"),
+            reservation_ttl_seconds=120,
+        ),
+    )
+    ledger = EconomicPositionLedger(tmp_path / "bootstrap-economic.sqlite3")
+    lifecycle = VCAPStateStore(tmp_path / "bootstrap-vcap.sqlite3")
+    runtime = VCAPRuntimeStore(tmp_path / "bootstrap-runtime.sqlite3")
+    scheduler = RuntimeSchedulerStore(tmp_path / "bootstrap-scheduler.sqlite3")
+    health_supervisor = AccountingHealthSupervisor(ledger.path)
+
+    proposal = CapitalProposal(
+        proposal_id="auto-entry-proposal-1",
+        pair="BTC-USD",
+        intent=IntentKind.ENTRY,
+        amount_quote=D("20"),
+        leverage=D("1"),
+        account_name="master_account",
+        connector_name="kraken_paper_trade",
+        quote_asset="USD",
+    )
+    decision = g.reserve(
+        proposal,
+        CapitalSnapshot(
+            free_quote=D("500"),
+            committed_quote=D("0"),
+            pair_exposure_quote=D("0"),
+            position_exposure_quote=D("0"),
+            recovery_exposure_quote=D("0"),
+        ),
+    )
+    assert decision.status.value == "RESERVED"
+
+    position_id = "fresh-position-1"
+    ledger.open_position(
+        position_id=position_id,
+        pair="BTC-USD",
+        created_at=1_000,
+    )
+    assert g.commit_entry_submission_if_matches(
+        proposal,
+        position_id=position_id,
+        ledger_path=ledger.path,
+        account_name="master_account",
+        connector_name="kraken_paper_trade",
+        controller_id="spectra",
+    )
+    assert g.reconcile_execution(
+        proposal_id=proposal.proposal_id,
+        executor_id="paper-executor-1",
+        account_name="master_account",
+        connector_name="kraken_paper_trade",
+        controller_id="spectra",
+    )
+    ledger.record_entry_fill(
+        governor=g,
+        position_id=position_id,
+        lot_id="fresh-entry-lot-1",
+        proposal_id=proposal.proposal_id,
+        base_amount=D("0.2"),
+        cost_basis_quote=D("20"),
+        entry_fees_quote=D("0.12"),
+        occurred_at=1_100,
+    )
+
+    async def healthy_sync(*args, **kwargs):
+        return SimpleNamespace(
+            state=SimpleNamespace(value="HEALTHY"),
+            fully_reconciled=True,
+        )
+
+    monkeypatch.setattr(
+        accounting_tool,
+        "synchronize_position_accounting_health",
+        healthy_sync,
+    )
+
+    async def runner(client, **kwargs):
+        assert kwargs["position_id"] == position_id
+        assert kwargs["envelope_proposal_id"] == proposal.proposal_id
+        return {
+            "cycle_id": "fresh-position-1:cycle:1",
+            "phase": VCAPRuntimePhase.COMPLETED.value,
+            "terminal": True,
+        }
+
+    result = asyncio.run(
+        run_vcap_scheduler_tick(
+            object(),
+            governor=g,
+            ledger=ledger,
+            lifecycle_store=lifecycle,
+            runtime_store=runtime,
+            scheduler_store=scheduler,
+            accounting_supervisor=health_supervisor,
+            seed_quote=D("20"),
+            expected_exit_fee_bps=D("20"),
+            slippage_allowance_bps=D("10"),
+            now=2_000,
+            breaker_mode=BreakerMode.NORMAL,
+            scheduler_policy=policy(1),
+            cycle_runner=runner,
+        )
+    )
+
+    state = lifecycle.load(proposal.proposal_id)
+    binding = scheduler.binding_for_position(position_id)
+    assert result["bootstrapped_position_ids"] == [position_id]
+    assert state is not None
+    assert state.remaining_authorized_quote == D("40")
+    assert state.position_base == D("0.2")
+    assert state.cost_basis_quote == D("20")
+    assert binding is not None
+    assert binding.envelope_proposal_id == proposal.proposal_id
+    assert result["results"][0]["serviced"] is True
