@@ -30,10 +30,11 @@ def spectra_paper_only_enabled(agent_slug: str | None = None) -> bool:
     their legacy behavior. Invalid explicit values fail closed.
     """
     configured = os.getenv("SPECTRA_PAPER_ONLY")
-    agent_slug = (
-        agent_slug if agent_slug is not None
-        else os.getenv("CONDOR_AGENT_SLUG", "")
-    ).strip().lower()
+    resolved_agent_slug = (
+        str(agent_slug).strip()
+        if agent_slug is not None and str(agent_slug).strip()
+        else os.getenv("CONDOR_AGENT_SLUG", "").strip()
+    ).lower()
     if configured is None:
         return agent_slug == "spectra"
 
@@ -41,7 +42,7 @@ def spectra_paper_only_enabled(agent_slug: str | None = None) -> bool:
     if value not in {"1", "true", "yes", "0", "false", "no"}:
         raise RuntimeError("SPECTRA_PAPER_ONLY must be an explicit boolean")
     enabled = value in {"1", "true", "yes"}
-    if agent_slug == "spectra" and not enabled:
+    if resolved_agent_slug == "spectra" and not enabled:
         allow_live = os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false").strip().lower()
         if allow_live not in {"1", "true", "yes"}:
             raise RuntimeError(
