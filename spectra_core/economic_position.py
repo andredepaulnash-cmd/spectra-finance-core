@@ -1543,6 +1543,25 @@ class EconomicPositionLedger:
             ).fetchall()
         return tuple(str(row["position_id"]) for row in rows)
 
+    def list_inventory_position_ids(self) -> tuple[str, ...]:
+        """Return every non-closed position retained in the inventory lineage.
+
+        A successor position can be opened before its first fill, so ACTIVE
+        positions with zero inventory remain part of the tracked lineage.
+        Dust and residual predecessors likewise remain visible until closed.
+        """
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT position_id
+                FROM economic_positions
+                WHERE status != ?
+                ORDER BY created_at, position_id
+                """,
+                (EconomicPositionStatus.CLOSED.value,),
+            ).fetchall()
+        return tuple(str(row["position_id"]) for row in rows)
+
     def active_proposal_ids(self, position_id: str) -> tuple[str, ...]:
         """Return exact capital proposals still owning active trade inventory."""
         pid = _text(position_id, "position_id")
