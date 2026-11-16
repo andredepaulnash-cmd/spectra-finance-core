@@ -360,6 +360,12 @@ CORE_OPS_SOURCES=(
 )
 declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/spectra"]="f716e1b6abccc775270fb9c5480d57091e2c202e"
+)
+# Exact previously shipped Alpha launcher version; safe to replace with the
+# reviewed current launcher during this update.
+declare -A CORE_OPS_OLD_BLOBS=(
+  ["scripts/spectra"]="774ae8e7912896d7266fbb06c459b9f5a48a7dc3"
+
   ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
@@ -380,7 +386,8 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
     die "Refusing to replace symlinked local path $source."
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-    if [[ "$worktree_blob" != "$expected_blob" ]]; then
+    previous_blob="${CORE_OPS_OLD_BLOBS[$source]:-}"
+    if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$previous_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
   fi
