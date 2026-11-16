@@ -111,8 +111,16 @@ def seat_profile(agent_slug: str | None, tick: bool) -> str:
     from condor.memory.paths import CHAT_SLUG
 
     if tick:
-        return "tick"
-    return "agent" if agent_slug and agent_slug != CHAT_SLUG else "full"
+        profile = "tick"
+    else:
+        profile = "agent" if agent_slug and agent_slug != CHAT_SLUG else "full"
+
+    # The MCP mount itself is a permission boundary for ACP seats. In paper-only
+    # mode, use matching paper profiles so live-only Hummingbot tools are never
+    # offered to the model, even though the API guard remains authoritative.
+    from spectra_core.runtime import spectra_paper_only_enabled
+
+    return f"paper_{profile}" if spectra_paper_only_enabled() else profile
 
 
 def seat_tools(agent_slug: str | None, tick: bool = False) -> list[dict[str, Any]]:
