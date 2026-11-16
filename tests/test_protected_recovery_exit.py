@@ -231,7 +231,9 @@ def fill(manifest, trade_id, amount, *, price=None, fee=None):
         trade_id=trade_id,
         order_id="protected-sell-order",
         account_name="master_account",
-        connector_name="kraken",
+        # The executor and manifest use the paper connector; live-connector
+        # evidence must not be accepted as belonging to that immutable scope.
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         side="SELL",
         amount_base=base,
