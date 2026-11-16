@@ -153,6 +153,53 @@ async def reserve_kraken_capital(
             proposal_id=proposal.proposal_id, now=time.time()
         )
 
+    # A fresh ENTRY has no dust-successor admission to supply a position ID.
+    # Create its empty economic owner only after the Governor has reserved
+    # capital. The executor boundary will atomically commit this exact
+    # position/proposal binding before any external order is dispatched.
+    if (
+        decision.approved
+        and intent_kind == IntentKind.ENTRY
+        and economic_position_id is None
+    ):
+        ledger = get_economic_position_ledger()
+        try:
+            # Reuse only an exact, empty prefill slot that an integration
+            # prepared before asking for authorization. Never attach a new
+            # entry to an existing position with inventory.
+            matching_slots = []
+            base = pair.rsplit("-", 1)[0]
+            for existing_id in ledger.list_active_position_ids():
+                existing = ledger.snapshot(existing_id)
+                if existing.pair.rsplit("-", 1)[0] != base:
+                    continue
+                if existing.pair != pair:
+                    raise ValueError(
+                        "existing economic position uses a different quote pair"
+                    )
+                if existing.active_base != 0 or existing.active_cost_basis_quote != 0:
+                    raise ValueError(
+                        "asset already has active economic inventory"
+                    )
+                matching_slots.append(existing_id)
+            if len(matching_slots) > 1:
+                raise ValueError("multiple empty economic position slots exist for asset")
+            if matching_slots:
+                economic_position_id = matching_slots[0]
+            else:
+                economic_position_id = f"spectra-position-{uuid4().hex}"
+                ledger.open_position(
+                    position_id=economic_position_id,
+                    pair=pair,
+                    created_at=authorization_now,
+                )
+        except Exception:
+            capital_governor.release(
+                proposal.proposal_id,
+                reason="economic_position_open_failed",
+            )
+            raise
+
     return KrakenCapitalAuthorization(
         proposal=proposal,
         decision=decision,

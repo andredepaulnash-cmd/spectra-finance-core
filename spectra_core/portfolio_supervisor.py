@@ -142,7 +142,7 @@ class PortfolioSupervisorDependencies:
     load_assets: Callable[..., Any]
     run_vcap_tick: Callable[..., Any]
     reserve_entry: Callable[..., Any]
-    create_grid_executor: Callable[..., Any]
+    create_order_executor: Callable[..., Any]
     get_client: Callable[..., Any]
     get_governor: Callable[..., Any]
     get_ledger: Callable[..., Any]
@@ -174,25 +174,24 @@ def portfolio_autorun_enabled() -> bool:
 
 def default_dependencies() -> PortfolioSupervisorDependencies:
     from mcp_servers.hummingbot_api.hummingbot_client import hummingbot_client
-    from mcp_servers.hummingbot_api.tools.executor_create import create_grid_executor
+    from mcp_servers.hummingbot_api.tools.executor_create import create_order_executor
     from mcp_servers.hummingbot_api.tools.runtime_scheduler import run_vcap_scheduler_tick
     from spectra_core.market_discovery import scan_kraken_universe
     from spectra_core.runtime_scheduler import RuntimeSchedulerPolicy
 
-    async def scan_with_asset_memory(client: Any, **kwargs: Any) -> dict[str, Any]:
-        return await scan_kraken_universe(
-            client,
-            fingerprint_store=get_vcap_runtime_store(),
-            **kwargs,
-        )
+    async def scan_candidates(client: Any, **kwargs: Any) -> dict[str, Any]:
+        # The market scanner is deliberately stateless research. VCAP runtime
+        # fingerprints are refreshed later by the position lifecycle, not by
+        # an unsupported scanner argument.
+        return await scan_kraken_universe(client, **kwargs)
 
     return PortfolioSupervisorDependencies(
-        scan=scan_with_asset_memory,
+        scan=scan_candidates,
         write_discovery=write_discovered_kraken_assets,
         load_assets=load_approved_kraken_assets,
         run_vcap_tick=run_vcap_scheduler_tick,
         reserve_entry=reserve_vcap_candidate_entry,
-        create_grid_executor=create_grid_executor,
+        create_order_executor=create_order_executor,
         get_client=hummingbot_client.get_client,
         get_governor=get_capital_governor,
         get_ledger=get_economic_position_ledger,
@@ -519,26 +518,25 @@ async def run_portfolio_cycle(
             "executor_id": None,
         }
         try:
-            executor_result = await deps.create_grid_executor(
+            # Ordinary portfolio entries use the governed MARKET BUY path.
+            # Grid strategies retain their separate LIMIT-order execution policy;
+            # this admission loop is a one-shot VCAP seed, not a grid deployment.
+            executor_result = await deps.create_order_executor(
                 client,
                 account_name=cfg.account_name,
                 connector_name=connector_name,
                 trading_pair=pair,
                 side=1,
-                start_price=price * 0.999,
-                end_price=price * 1.001,
-                limit_price=price * 0.998,
-                total_amount_quote=float(getattr(admission, "amount_quote", PAPER_VCAP_SEED_QUOTE)),
-                min_order_amount_quote=float(getattr(admission, "amount_quote", PAPER_VCAP_SEED_QUOTE)),
-                max_open_orders=1,
-                max_orders_per_batch=1,
+                execution_strategy="MARKET",
+                amount=None,
+                price=None,
                 leverage=1,
+                position_action="OPEN",
                 controller_id=cfg.controller_id,
                 save_as_default=False,
                 spectra_proposal_id=str(proposal_id),
                 spectra_intent="ENTRY",
                 spectra_position_id=str(position_id),
-                spectra_max_price_slippage_bps=float(cfg.buy_max_price_slippage_bps),
                 spectra_fee_allowance_bps=float(cfg.buy_fee_allowance_bps),
             )
             executor_id = (

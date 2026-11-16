@@ -735,10 +735,13 @@ class LiveFillLedgerReconciler:
         if submission is None:
             return
         config = submission["config"]
-        cap = Fraction(Decimal(str(config["price"])))
+        # LIMIT BUY submissions carry a protected price cap. A governed MARKET
+        # BUY intentionally has no price field: its confirmed fills are instead
+        # bounded by the authorized base amount and fee allowance below.
+        raw_cap = config.get("price")
         amount = Fraction(Decimal(str(config["amount"])))
         reasons: list[str] = []
-        if Fraction(fill.price) > cap:
+        if raw_cap is not None and Fraction(fill.price) > Fraction(Decimal(str(raw_cap))):
             reasons.append(f"protected_buy_fill_price_above_cap:{fill.trade_id}")
 
         with self._connect() as conn:

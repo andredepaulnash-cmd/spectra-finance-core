@@ -116,7 +116,7 @@ def _dependencies(
         load_assets=lambda **kwargs: assets,
         run_vcap_tick=run_vcap,
         reserve_entry=reserve,
-        create_grid_executor=create,
+        create_order_executor=create,
         get_client=lambda: None,
         get_governor=lambda: object(),
         get_ledger=lambda: ledger,
@@ -138,7 +138,7 @@ def _dependencies(
 
 
 @pytest.mark.asyncio
-async def test_supervisor_fills_only_three_vacancies_per_tick_and_uses_governed_grid_executor():
+async def test_supervisor_fills_only_three_vacancies_per_tick_and_uses_governed_market_buy():
     active = [f"OLD{index:02d}-USD" for index in range(80)]
     deps, reserved, created, vcap_calls = _dependencies(active_pairs=active)
     candidates = _scan("BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "ADA-USD")
@@ -159,7 +159,10 @@ async def test_supervisor_fills_only_three_vacancies_per_tick_and_uses_governed_
     assert status["vacancies"] == 0
     assert status["available_governor_slots"] == 0
     assert all(call["connector_name"] == "kraken_paper_trade" for call in created)
-    assert all(call["total_amount_quote"] == 20.0 for call in created)
+    assert all(call["execution_strategy"] == "MARKET" for call in created)
+    assert all(call["side"] == 1 and call["amount"] is None and call["price"] is None for call in created)
+    assert all(call["position_action"] == "OPEN" for call in created)
+    assert all(call["spectra_fee_allowance_bps"] == 60.0 for call in created)
     assert all(call["spectra_intent"] == "ENTRY" for call in created)
     assert all(call["controller_id"] == "condor-portfolio" for call in created)
     assert vcap_calls[0]["breaker_mode"] == BreakerMode.NORMAL

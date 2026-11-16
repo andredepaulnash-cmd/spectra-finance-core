@@ -831,3 +831,44 @@ def test_batch_reconciliation_applies_oldest_fill_first(tmp_path):
         "batch-newer",
     ]
     assert ledger.snapshot("position-1").active_base == D("20")
+
+
+
+def test_governed_market_buy_fill_reconciles_without_limit_price_cap(tmp_path):
+    g = governor(tmp_path)
+    prepare_execution(
+        g,
+        proposal_id="market-entry",
+        executor_id="exec-market-entry",
+        intent=IntentKind.ENTRY,
+        amount="20",
+    )
+    g.get_protected_buy_submission = lambda proposal_id: {
+        "config": {"amount": "40"},
+        "policy": {"fee_allowance_bps": "60"},
+    }
+    ledger = book(tmp_path)
+    reconciler = LiveFillLedgerReconciler(ledger=ledger, governor=g)
+    bind(
+        reconciler,
+        order_id="market-entry-order",
+        role=EconomicFillRole.BASE_ENTRY,
+        proposal_id="market-entry",
+    )
+
+    result = reconciler.reconcile_trade_fill(
+        fill(
+            trade_id="market-entry-trade",
+            order_id="market-entry-order",
+            side="BUY",
+            amount="20",
+            price="0.50",
+            fee="0.06",
+            fee_currency="USD",
+        )
+    )
+
+    assert result.status == FillReconciliationStatus.APPLIED
+    snapshot = ledger.snapshot("position-1")
+    assert snapshot.active_base == D("20")
+    assert snapshot.active_cost_basis_quote == D("10")

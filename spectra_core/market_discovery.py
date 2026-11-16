@@ -306,6 +306,12 @@ async def scan_kraken_universe(
                 )
                 analysis["trading_pair"] = item["trading_pair"]
                 analysis["quote_asset"] = item["quote_asset"]
+                rule = snapshot.trading_rules.get(item["trading_pair"])
+                if rule is None:
+                    return item["trading_pair"], None, "missing_trading_rules"
+                # VCAP admission needs the venue's actual quote-denominated
+                # minimum before it can decide whether a $20 seed is executable.
+                analysis["minimum_order_quote"] = float(rule.effective_min_quote)
                 analysis["volume_rank_24h"] = item["volume_rank_24h"]
                 analysis["governor_approved"] = (
                     approved is not None and item["trading_pair"] in approved
@@ -357,7 +363,12 @@ async def scan_kraken_universe(
             "history_or_data_rejected": len(rejected),
             "governor_approved": sum(bool(row["governor_approved"]) for row in ranked_all),
         },
+        # Keep the flat key for the existing dashboard/routine consumers,
+        # and publish the canonical Condor supervisor contract alongside it.
+        # The portfolio supervisor, VCAP admission, and discovery asset writer
+        # all consume this exact research-only candidate list.
         "candidates": ranked,
+        "lists": {"mean_reversion_candidates": ranked},
         "rejected_data": rejected,
         "governor_approved_list_loaded": approved is not None,
         "approved_asset_list_source": approved_asset_source,

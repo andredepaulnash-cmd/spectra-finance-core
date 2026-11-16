@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 CORE_REPO="https://github.com/andredepaulnash-cmd/spectra-finance-core.git"
-CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-fix/market-entry-and-unblock-alpha-20261115}"
 API_REPO="https://github.com/andredepaulnash-cmd/spectra-hummingbot-api.git"
 API_REF="main"
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -170,6 +170,20 @@ clone_or_reuse "$CORE_REPO" "$CORE_REF" "$CORE_DIR"
 
 say "Cloning the matching public Hummingbot API branch"
 clone_or_reuse "$API_REPO" "$API_REF" "$API_DIR"
+
+# The reviewed Hummingbot API version has a PaperTradeExchange compatibility
+# gap: its Cython wrapper does not expose _trading_pairs. Apply the exact,
+# idempotent adapter before the first API image is built.
+PAPER_TRADE_SOURCE="services/trading_service.py"
+PAPER_TRADE_EXPECTED_BLOB="975f3fe9907e47029c0f66904a01b8c741857416"
+PAPER_TRADE_PATCHER="$CORE_DIR/scripts/patch_hummingbot_trading_service_paper_trade.py"
+[[ -f "$PAPER_TRADE_PATCHER" ]] || die "Reviewed PaperTradeExchange compatibility patcher is missing."
+actual_paper_trade_blob="$(git -C "$API_DIR" rev-parse "HEAD:$PAPER_TRADE_SOURCE")"
+[[ "$actual_paper_trade_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
+  || die "Hummingbot API $PAPER_TRADE_SOURCE is not the reviewed source version (expected $PAPER_TRADE_EXPECTED_BLOB, got $actual_paper_trade_blob)."
+python3 "$PAPER_TRADE_PATCHER" "$API_DIR/$PAPER_TRADE_SOURCE"
+grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$API_DIR/$PAPER_TRADE_SOURCE" \
+  || die "PaperTradeExchange pair-registration compatibility adapter was not applied."
 
 say "Installing the reviewed Python 3.12 runtime"
 uv python install 3.12

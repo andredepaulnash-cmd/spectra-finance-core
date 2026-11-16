@@ -9,6 +9,7 @@ from spectra_core import (
     DecisionStatus,
     IntentKind,
 )
+from spectra_core.economic_position import EconomicPositionLedger, EconomicPositionStatus
 from spectra_core.kraken_authorization import reserve_kraken_capital
 
 
@@ -57,9 +58,21 @@ def usd_client(available=500):
     })
 
 
-def test_live_snapshot_can_create_reserved_entry_claim(tmp_path):
+def test_live_snapshot_can_create_reserved_entry_claim(monkeypatch, tmp_path):
     g = governor(tmp_path)
     client = usd_client(500)
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
+    monkeypatch.setattr(
+        "spectra_core.kraken_authorization.get_economic_position_ledger",
+        lambda: ledger,
+    )
+    monkeypatch.setattr(
+        "spectra_core.kraken_authorization.get_dust_lifecycle",
+        lambda: type("DustAdmission", (), {
+            "prepare_entry": staticmethod(lambda **kwargs: None),
+            "cancel_unsubmitted_entry": staticmethod(lambda **kwargs: None),
+        })(),
+    )
 
     auth = asyncio.run(
         reserve_kraken_capital(
@@ -80,6 +93,8 @@ def test_live_snapshot_can_create_reserved_entry_claim(tmp_path):
 
     assert auth.snapshot.free_quote == D("500")
     assert auth.decision.status == DecisionStatus.RESERVED
+    assert auth.economic_position_id is not None
+    assert ledger.snapshot(auth.economic_position_id).status == EconomicPositionStatus.ACTIVE
     assert g.get_decision(auth.proposal.proposal_id).status == DecisionStatus.RESERVED
 
 
@@ -147,6 +162,18 @@ def test_authorization_threads_governor_recovery_attribution(
 ):
     g = governor(tmp_path)
     client = usd_client(500)
+    ledger = EconomicPositionLedger(tmp_path / "attribution-economic.sqlite3")
+    monkeypatch.setattr(
+        "spectra_core.kraken_authorization.get_economic_position_ledger",
+        lambda: ledger,
+    )
+    monkeypatch.setattr(
+        "spectra_core.kraken_authorization.get_dust_lifecycle",
+        lambda: type("DustAdmission", (), {
+            "prepare_entry": staticmethod(lambda **kwargs: None),
+            "cancel_unsubmitted_entry": staticmethod(lambda **kwargs: None),
+        })(),
+    )
 
     monkeypatch.setattr(
         g,

@@ -9,10 +9,10 @@ from pathlib import Path
 
 PAPER_POLICY = {
     "reserve_floor_quote": "100",
-    "max_total_committed_quote": "1000",
-    "max_pair_quote": "1000",
-    "max_position_quote": "1000",
-    "max_recovery_quote": "0",
+    "max_total_committed_quote": "25000",
+    "max_pair_quote": "25000",
+    "max_position_quote": "25000",
+    "max_recovery_quote": "18750",
     "max_leverage": "1",
     "reservation_ttl_seconds": 120,
     "position_hold_snapshot_ttl_seconds": 30,

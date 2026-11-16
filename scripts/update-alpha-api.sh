@@ -7,15 +7,18 @@ set -Eeuo pipefail
 # The installer places user-local runtime helpers in ~/.local/bin.
 export PATH="$HOME/.local/bin:$PATH"
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
-CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-fix/market-entry-and-unblock-alpha-20261115}"
 API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
 LOG_DIR="$INSTALL_ROOT/logs"
 LOG_FILE="$LOG_DIR/api-update.log"
 LOCK_FILE="$LOG_DIR/api-update.lock"
 COMPOSE_FILE="$API_DIR/docker-compose.alpha.yml"
-API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py")
+API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "services/orders_recorder.py" "deps.py")
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
@@ -102,6 +105,7 @@ git fetch --depth 1 origin main
 declare -A APPROVED_LEGACY_BLOBS=(
   ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
   ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
+  ["services/orders_recorder.py"]="1c18d3768fb08654c4b51b16f8813013d8d9da78"
   ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
 )
 
@@ -127,6 +131,7 @@ done
 declare -A EXPECTED_UPSTREAM_BLOBS=(
   ["services/unified_connector_service.py"]="a35c432e74d829b02c8c153b334e20abcd10dd2b"
   ["services/market_data_service.py"]="95e8e31c5e9be5bb2945b80038419b88b35ba41f"
+  ["services/orders_recorder.py"]="b0812c513c7a393cc825a732450c60a6617fe659"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
 )
 
@@ -139,11 +144,33 @@ done
 
 git restore --source=FETCH_HEAD --worktree -- "${API_SOURCES[@]}"
 
+# PaperTradeExchange is a Cython wrapper and does not expose _trading_pairs.
+# Pin the exact API source before applying the reviewed, idempotent adapter.
+PAPER_TRADE_SOURCE="services/trading_service.py"
+PAPER_TRADE_EXPECTED_BLOB="975f3fe9907e47029c0f66904a01b8c741857416"
+PAPER_TRADE_PATCHER="$(mktemp "$LOG_DIR/paper-trade-patcher.XXXXXX.py")"
+PAPER_TRADE_PATCHER_URL="https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/$CORE_REF/scripts/patch_hummingbot_trading_service_paper_trade.py"
+PAPER_TRADE_PATCHER_EXPECTED_BLOB="1f5a464e614e81cf64e5d4fe5e46b8752710a702"
+curl -fsSL "$PAPER_TRADE_PATCHER_URL" -o "$PAPER_TRADE_PATCHER" \
+  || die "Could not download the reviewed PaperTradeExchange compatibility patcher."
+actual_patcher_blob="$(git hash-object "$PAPER_TRADE_PATCHER")"
+[[ "$actual_patcher_blob" == "$PAPER_TRADE_PATCHER_EXPECTED_BLOB" ]] \
+  || die "Downloaded PaperTradeExchange patcher is not the reviewed version (expected $PAPER_TRADE_PATCHER_EXPECTED_BLOB, got $actual_patcher_blob)."
+python3 -m py_compile "$PAPER_TRADE_PATCHER" \
+  || die "Downloaded PaperTradeExchange patcher failed Python syntax validation."
+actual_paper_trade_blob="$(git rev-parse "FETCH_HEAD:$PAPER_TRADE_SOURCE")"
+[[ "$actual_paper_trade_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
+  || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed source version (expected $PAPER_TRADE_EXPECTED_BLOB, got $actual_paper_trade_blob)."
+python3 "$PAPER_TRADE_PATCHER" "$API_DIR/$PAPER_TRADE_SOURCE"
+rm -f "$PAPER_TRADE_PATCHER"
+grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$API_DIR/$PAPER_TRADE_SOURCE" \
+  || die "PaperTradeExchange pair-registration compatibility adapter was not applied."
+
 grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
 grep -q "A read request must be able to initialize its own feed" "${API_SOURCES[1]}" \
   || die "The lazy order-book initialization fix was not applied locally."
-grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[2]}" \
+grep -q "Bot orchestration is disabled in Spectra paper-only mode" "$API_DIR/deps.py" \
   || die "The paper-only bot-status guard was not applied locally."
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
@@ -334,8 +361,8 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-backup.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="774ae8e7912896d7266fbb06c459b9f5a48a7dc3"
-  ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
+  ["scripts/spectra"]="f716e1b6abccc775270fb9c5480d57091e2c202e"
+  ["scripts/spectra-alpha-doctor.sh"]="13185d2fe40175f2541288e27b6ecb816dcc26e7"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
   ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
@@ -344,6 +371,12 @@ declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/spectra-alpha-backup.sh"]="1320e0d1ccf552917105c85f17fb67d046d8a3fc"
   ["scripts/systemd/spectra-alpha-backup.service"]="e49bc3d235744a92d7c463e6a98d9b8b282ae08b"
   ["scripts/systemd/spectra-alpha-backup.timer"]="698a284d5663fc58e850f6ec8f0b85983ab32a6f"
+)
+# Exact previously shipped Alpha launcher version; safe to replace with the
+# reviewed current launcher during this update.
+declare -A CORE_OPS_OLD_BLOBS=(
+  ["scripts/spectra"]="774ae8e7912896d7266fbb06c459b9f5a48a7dc3"
+  ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
 )
 for source in "${CORE_OPS_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
@@ -355,7 +388,8 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
     die "Refusing to replace symlinked local path $source."
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-    if [[ "$worktree_blob" != "$expected_blob" ]]; then
+    previous_blob="${CORE_OPS_OLD_BLOBS[$source]:-}"
+    if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$previous_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
   fi
@@ -374,23 +408,38 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/asset_authority.py"
   "spectra_core/kraken_authorization.py"
   "spectra_core/market_discovery.py"
+  "spectra_core/portfolio_supervisor.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
+  "mcp_servers/hummingbot_api/tools/runtime_scheduler.py"
+  "spectra_core/execution_policy.py"
+  "spectra_core/capital_governor.py"
+  "spectra_core/economic_position.py"
   "routines/mean_reversion_scanner.py"
   "condor/web/routes/market.py"
 )
 declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="26b65d413e9dffde2464e20945b3e7755c6491e6"
-  ["spectra_core/kraken_authorization.py"]="3e3d4e195422002f43818c936d9c88a740ff7c72"
-  ["spectra_core/market_discovery.py"]="5222e752f46f56bc58e4acd8bdd80f940ae1ce36"
-  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["spectra_core/kraken_authorization.py"]="199bd1d7c4ef0940e8531c9f020f21c7a2ba43e6"
+  ["spectra_core/market_discovery.py"]="43191679ac7027354406d32ec312a5f3dadb433e"
+  ["spectra_core/portfolio_supervisor.py"]="9e4e65074999c0b47d3d5f18076b11c8fb9a4350"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="274c68d8dd7a6e7419f018bed21305c89eaaaf0e"
+  ["mcp_servers/hummingbot_api/tools/runtime_scheduler.py"]="3481b486fc820eef7fff9381212dfa8e72627efd"
+  ["spectra_core/execution_policy.py"]="1e37a51dea7a0634a5c1a2e89dd5c9ff08c44592"
+  ["spectra_core/capital_governor.py"]="102a8f94a4a0d20b6f0e07c34dda610a2495033e"
+  ["spectra_core/economic_position.py"]="e7fbbdf56cead43c186fa8be923795442fa0e289"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"
 )
 declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/asset_authority.py"]=""
-  ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050"
-  ["spectra_core/market_discovery.py"]="0254d08864eecf2f72e9371c4292f6eba9c17df6"
-  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a"
+  ["spectra_core/kraken_authorization.py"]="3e3d4e195422002f43818c936d9c88a740ff7c72"
+  ["spectra_core/market_discovery.py"]="5222e752f46f56bc58e4acd8bdd80f940ae1ce36"
+  ["spectra_core/portfolio_supervisor.py"]="1200fa1698bf3dcb58a9c8ae9b315babb7cfedab"
+  ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["mcp_servers/hummingbot_api/tools/runtime_scheduler.py"]="1709bebcbefc326c19c9d403857cff937144f900"
+  ["spectra_core/execution_policy.py"]="403f0e7d229d36231a1fdd88f21eb809aacae2e8"
+  ["spectra_core/capital_governor.py"]="d100fc52c8bab80aebf49e1b7a51da21d4d1750e"
+  ["spectra_core/economic_position.py"]="3d63e76d57081c5a9b232d3966b7ef20f975ca8a"
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
@@ -405,6 +454,12 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
     old_blob="${CORE_PYTHON_OLD_BLOBS[$source]}"
+    # Recognize both the immediately previous reviewed integration blob and
+    # the older Alpha-installed MCP source; never overwrite unknown edits.
+    if [[ "$source" == "mcp_servers/hummingbot_api/tools/executor_create.py" \
+      && "$worktree_blob" == "2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a" ]]; then
+      old_blob="$worktree_blob"
+    fi
     if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
@@ -420,7 +475,12 @@ done
   "$CORE_DIR/spectra_core/asset_authority.py" \
   "$CORE_DIR/spectra_core/kraken_authorization.py" \
   "$CORE_DIR/spectra_core/market_discovery.py" \
+  "$CORE_DIR/spectra_core/portfolio_supervisor.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
+  "$CORE_DIR/mcp_servers/hummingbot_api/tools/runtime_scheduler.py" \
+  "$CORE_DIR/spectra_core/execution_policy.py" \
+  "$CORE_DIR/spectra_core/capital_governor.py" \
+  "$CORE_DIR/spectra_core/economic_position.py" \
   "$CORE_DIR/routines/mean_reversion_scanner.py" \
   "$CORE_DIR/condor/web/routes/market.py"
 say "Installed and syntax-checked the reviewed paper asset authority and strategy-discovery code."
@@ -467,9 +527,19 @@ say "Creating the initial consistent paper-state backup."
 if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   # shellcheck disable=SC1091
   . "$HOME/.nvm/nvm.sh"
-  nvm use 22 >/dev/null
+  current_node="$(node --version 2>/dev/null || true)"
+  if [[ "$current_node" =~ ^v22\. ]]; then
+    : # CI/setup-node or the user's PATH already provides the reviewed Node 22 runtime.
+  elif nvm ls 22 >/dev/null 2>&1; then
+    nvm use 22 >/dev/null
+  else
+    nvm install 22 >/dev/null
+    nvm use 22 >/dev/null
+  fi
 fi
 command -v npm >/dev/null 2>&1 || die "npm is required to rebuild the Spectra dashboard."
+node_major="$(node --version 2>/dev/null || true)"
+[[ "$node_major" =~ ^v22\. ]] || die "Node.js 22 is required for the Spectra dashboard build; found ${node_major:-unavailable}."
 cd "$CORE_DIR/frontend"
 if [[ ! -f node_modules/.package-lock.json || package-lock.json -nt node_modules/.package-lock.json ]]; then
   say "Synchronizing the existing frontend dependencies."
