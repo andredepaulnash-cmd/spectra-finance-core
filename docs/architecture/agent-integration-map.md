@@ -31,6 +31,12 @@ The table describes current verified behavior, not a permanent removal of capabi
 
 Use controller/agent identity to isolate executors and prevent one seat from managing another seat's positions.
 
+## MCP tool profiles
+
+Condor chooses the tool profile from both attendance and execution mode. In paper-only mode, the seat mounts paper_tick, paper_agent, or paper_full; the Hummingbot surface omits live-only perpetual, LP, Gateway swap, AMM/CLMM mutation, and Gateway administration tools. The supported spot-paper executors, market data, portfolio, history, and executor controls remain available. Live-authorized mode retains the original tick/agent/full profiles.
+
+The profile is a least-privilege model surface, not the security boundary. API-side paper guards and Spectra Core capital admission still validate every operation.
+
 ## Global paper/live rules
 
 - Paper-only mode stays enabled during paper validation.
