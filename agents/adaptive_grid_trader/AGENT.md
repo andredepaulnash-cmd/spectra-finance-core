@@ -271,3 +271,7 @@ Normal stop + verify flat. Orphan = reduce-only close, retry bound, alert, never
 - `baseline_7d` — market compass (reports trend direction, strength, price-vs-EMAs, 48h price slope)
 - `hourly_mtf_check` — prices + Layer-2; never first-entry veto
 - `position_mode_check` — **mode is only HEDGE or ONEWAY**; unreadable path already defaulted to ONEWAY with optional `mode_read: SHRUG`. Act on `two_sided_allowed`. Look-only.
+
+## Spectra paper/live execution policy
+
+While SPECTRA_PAPER_ONLY is enabled, create or manage trading exposure only on an explicitly configured native *_paper_trade connector. The current active Kraken paper universe is USD-quoted only. Every new entry or increase must have the exact Spectra Core CapitalGovernor authorization and matching executor/dispatch receipt; never estimate or invent the approved amount. Do not switch to a live connector or Gateway if a paper connector is unavailable. Preserve the adaptive-grid capability for separately authorized live mode, but never enable live execution or change its environment flags yourself.

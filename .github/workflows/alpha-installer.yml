@@ -11,7 +11,9 @@ on:
     branches:
       - alpha/one-command-paper-demo-20261108
       - alpha/spectra-command-center-verified-20261109
+      - fix/paper-portfolio-25-75-capital-allocation
     paths:
+      - .github/workflows/alpha-installer.yml
       - install-alpha.sh
       - scripts/**
       - scripts/update-alpha-api.sh
@@ -138,7 +140,7 @@ jobs:
       - name: Install locked Core dependencies
         run: uv sync --locked --dev --python 3.12
       - name: Test alpha runtime safety and paper configuration
-        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_hummingbot_mcp_config_dir.py tests/test_market_discovery.py tests/test_patch_hummingbot_trading_service_paper_trade.py
+        run: uv run --python 3.12 pytest -q tests/test_spectra_runtime_fail_closed.py tests/test_spectra_runtime.py tests/test_spectra_kraken_execution_flow.py tests/test_configure_alpha_paper_connector.py tests/test_configure_alpha_paper_state.py tests/test_migrate_alpha_paper_balance.py tests/test_hummingbot_mcp_config_dir.py tests/test_mcp_tool_profiles.py tests/test_market_discovery.py tests/test_patch_hummingbot_trading_service_paper_trade.py
       - name: Test persistent module lifecycle and registry
         run: uv run --python 3.12 pytest -q tests/test_module_lifecycle.py tests/test_module_registry.py
       - name: Test authenticated module trigger API
@@ -152,6 +154,8 @@ jobs:
             tests/test_market_discovery.py \
             tests/test_spectra_executor_accounting_flow.py \
             tests/test_accounting_health_gate.py \
+            tests/test_recovery_exposure.py \
+            tests/test_recovery_exposure_governor.py \
             tests/test_vcap_runtime_supervisor.py \
             tests/test_vcap_execution_loop.py \
             tests/test_portfolio_supervisor.py \
@@ -246,19 +250,30 @@ jobs:
               raise SystemExit("Paper integration test environment is incomplete: " + ", ".join(missing))
           if required["SPECTRA_PAPER_ONLY"].lower() != "true" or required["SPECTRA_ALLOW_LIVE_EXECUTION"].lower() != "false":
               raise SystemExit("Paper integration test refused: unsafe execution flags.")
+          # Mask generated test credentials before later steps inherit them.
+          for value in required.values():
+              if value:
+                  print(f"::add-mask::{value}")
           with open(sys.argv[3], "a", encoding="utf-8") as env:
               for key, value in required.items():
                   env.write(f"{key}={value}\n")
           PY
-      - name: Run the exact one-command in-place updater
-        id: alpha_updater
-        continue-on-error: true
+      - name: Stage the exact historical paper-clock revision for updater migration coverage
+        shell: bash
+        run: |
+          API_DIR="$HOME/SpectraFinance-Alpha/spectra-hummingbot-api"
+          git -C "$API_DIR" fetch --no-tags origin 94a1487d99cd316b296396795543b801ec74894a
+          git -C "$API_DIR" show FETCH_HEAD:services/unified_connector_service.py > "$API_DIR/services/unified_connector_service.py"
+          actual="$(git -C "$API_DIR" hash-object "$API_DIR/services/unified_connector_service.py")"
+          [[ "$actual" == "a35c432e74d829b02c8c153b334e20abcd10dd2b" ]] || {
+            echo "Historical paper-clock migration fixture mismatch: $actual"
+            exit 1
+          }
+          echo "Exact historical paper-clock source staged; updater must migrate it without bypassing blob validation."
+      - name: Run and require the exact one-command in-place updater
         run: bash scripts/update-alpha-api.sh
         env:
           SPECTRA_ALPHA_CORE_REF: ${{ github.head_ref || github.ref_name }}
-      - name: Report updater outcome without blocking application acceptance
-        if: steps.alpha_updater.outcome == 'failure'
-        run: echo "::warning::The in-place updater failed; the clean install remains available for independent paper acceptance."
       - name: Wait for Hummingbot API after updater restart
         shell: bash
         run: |

@@ -12,6 +12,7 @@ REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
+# After merge, the integration branch is the single reviewed release source.
 CORE_REF="${SPECTRA_ALPHA_CORE_REF:-integration/condor-hummingbot-spectra-runtime-20261115}"
 API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
 LOG_DIR="$INSTALL_ROOT/logs"
@@ -101,6 +102,8 @@ git fetch --depth 1 origin main
 # Bazzite installation. They differ from API main only by the two fixes below:
 #   market_data_service.py: missing lazy order-book initialization
 #   deps.py: missing paper-only 503 guard for disabled bot orchestration
+# The managed-clock intermediate connector revision is also recognized by exact blob ID;
+# current API main descends from it and adds the paper-only credential-scan guard.
 # Any other local source version is preserved and causes a safe stop.
 declare -A APPROVED_LEGACY_BLOBS=(
   ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
@@ -118,8 +121,11 @@ for source in "${API_SOURCES[@]}"; do
   fi
 
   approved_blob="${APPROVED_LEGACY_BLOBS[$source]:-}"
+  if [[ "$source" == "services/unified_connector_service.py" && "$worktree_blob" == "a35c432e74d829b02c8c153b334e20abcd10dd2b" ]]; then
+    approved_blob="$worktree_blob"
+  fi
   if [[ -n "$approved_blob" && "$worktree_blob" == "$approved_blob" ]]; then
-    say "Recognized the exact pre-fix Alpha version of $source; applying its reviewed upstream fix."
+    say "Recognized an exact reviewed legacy/intermediate Alpha version of $source; applying its reviewed upstream version."
     continue
   fi
 
@@ -129,7 +135,7 @@ done
 # Verify the exact reviewed API source blobs. This is deterministic and avoids
 # shell text-search, pager, locale, and pipefail behavior entirely.
 declare -A EXPECTED_UPSTREAM_BLOBS=(
-  ["services/unified_connector_service.py"]="a35c432e74d829b02c8c153b334e20abcd10dd2b"
+  ["services/unified_connector_service.py"]="5cb201c8b8c3a3abf958832a8f92107636850a37"
   ["services/market_data_service.py"]="95e8e31c5e9be5bb2945b80038419b88b35ba41f"
   ["services/orders_recorder.py"]="b0812c513c7a393cc825a732450c60a6617fe659"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
@@ -361,7 +367,7 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-backup.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="f716e1b6abccc775270fb9c5480d57091e2c202e"
+  ["scripts/spectra"]="1cbda078dab23afed7a1190613f69180a8fb6582"
   ["scripts/spectra-alpha-doctor.sh"]="13185d2fe40175f2541288e27b6ecb816dcc26e7"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
@@ -389,6 +395,10 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
     previous_blob="${CORE_OPS_OLD_BLOBS[$source]:-}"
+    # Also recognize the launcher shipped by the immediately preceding paper-allocation branch.
+    if [[ "$source" == "scripts/spectra" && "$worktree_blob" == "1cbda078dab23afed7a1190613f69180a8fb6582" ]]; then
+      previous_blob="$worktree_blob"
+    fi
     if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$previous_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
@@ -421,11 +431,11 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="26b65d413e9dffde2464e20945b3e7755c6491e6"
   ["spectra_core/kraken_authorization.py"]="199bd1d7c4ef0940e8531c9f020f21c7a2ba43e6"
   ["spectra_core/market_discovery.py"]="43191679ac7027354406d32ec312a5f3dadb433e"
-  ["spectra_core/portfolio_supervisor.py"]="9e4e65074999c0b47d3d5f18076b11c8fb9a4350"
+  ["spectra_core/portfolio_supervisor.py"]="148cb2516cf029f84d5e8d82b4ea623891323149"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="274c68d8dd7a6e7419f018bed21305c89eaaaf0e"
   ["mcp_servers/hummingbot_api/tools/runtime_scheduler.py"]="3481b486fc820eef7fff9381212dfa8e72627efd"
   ["spectra_core/execution_policy.py"]="1e37a51dea7a0634a5c1a2e89dd5c9ff08c44592"
-  ["spectra_core/capital_governor.py"]="102a8f94a4a0d20b6f0e07c34dda610a2495033e"
+  ["spectra_core/capital_governor.py"]="feaf6eeb85afc4f8c43e20fe6f34ffa4540389ac"
   ["spectra_core/economic_position.py"]="e7fbbdf56cead43c186fa8be923795442fa0e289"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"

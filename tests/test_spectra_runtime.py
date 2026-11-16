@@ -164,6 +164,9 @@ def test_load_capital_policy_is_read_only(monkeypatch, tmp_path):
 
     assert policy.reserve_floor_quote == Decimal("100")
     assert policy.max_leverage == Decimal("1")
+    # Older policy files omit max_entry_quote; paper mode allocates only the
+    # amount left after the configured recovery ceiling.
+    assert policy.max_entry_quote == Decimal("400")
     assert not db_path.exists()
 
     reset_runtime_cache()
@@ -429,6 +432,22 @@ def test_spectra_agent_defaults_to_paper_only_unless_explicitly_overridden(
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
     assert spectra_paper_only_enabled() is False
 
+
+
+def test_spectra_seat_defaults_to_paper_even_without_parent_agent_env(monkeypatch):
+    monkeypatch.delenv("SPECTRA_PAPER_ONLY", raising=False)
+    monkeypatch.delenv("CONDOR_AGENT_SLUG", raising=False)
+    assert spectra_paper_only_enabled("spectra") is True
+    assert spectra_paper_only_enabled("adaptive_grid_trader") is False
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    assert spectra_paper_only_enabled("") is True
+
+
+def test_spectra_seat_cannot_override_paper_default_without_live_authorization(monkeypatch):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.delenv("SPECTRA_ALLOW_LIVE_EXECUTION", raising=False)
+    with pytest.raises(RuntimeError, match="separate explicit authorization"):
+        spectra_paper_only_enabled("spectra")
 
 
 def test_condor_spectra_runtime_status_route_is_registered():

@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 import time
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from typing import Any, Callable, Mapping
 
 from .asset_authority import (
@@ -36,7 +36,11 @@ from .runtime import (
     spectra_paper_only_enabled,
     spectra_state_dir,
 )
-from .vcap_entry import PAPER_VCAP_SEED_QUOTE, reserve_vcap_candidate_entry
+from .vcap_entry import (
+    PAPER_INITIAL_ENTRY_QUOTE,
+    PAPER_VCAP_SHARD_QUOTE,
+    reserve_vcap_candidate_entry,
+)
 
 logger = logging.getLogger(__name__)
 GOVERNOR_POSITION_HARD_LIMIT = 83
@@ -92,7 +96,7 @@ class PortfolioSupervisorConfig:
     discovery_show_n: int = 100
     account_name: str = "master_account"
     controller_id: str = DEFAULT_CONTROLLER_ID
-    vcap_seed_quote: Decimal = Decimal("20")
+    vcap_seed_quote: Decimal = PAPER_VCAP_SHARD_QUOTE
     expected_exit_fee_bps: Decimal = Decimal("60")
     slippage_allowance_bps: Decimal = Decimal("10")
     buy_max_price_slippage_bps: Decimal = Decimal("10")
@@ -405,6 +409,11 @@ async def run_portfolio_cycle(
         ),
         "scan_candidate_count": 0,
         "new_entries_this_cycle": 0,
+        "initial_entry_budget_quote": None,
+        "initial_entry_quote": (
+            None if paper_only else str(PAPER_INITIAL_ENTRY_QUOTE)
+        ),
+        "vcap_recovery_shard_quote": str(cfg.vcap_seed_quote),
         "entries": [],
         "vcap": _json_summary(vcap_result),
         "vcap_error": vcap_error,
@@ -427,6 +436,29 @@ async def run_portfolio_cycle(
     if scan_result is None:
         status["blocked_reason"] = "market_discovery_unavailable"
         return status
+
+    initial_entry_quote = PAPER_INITIAL_ENTRY_QUOTE
+    if paper_only:
+        initial_entry_budget = getattr(
+            getattr(governor, "policy", None),
+            "max_entry_quote",
+            None,
+        )
+        if (
+            not isinstance(initial_entry_budget, Decimal)
+            or not initial_entry_budget.is_finite()
+            or initial_entry_budget <= 0
+        ):
+            status["blocked_reason"] = "paper_initial_entry_budget_unconfigured"
+            return status
+        initial_entry_quote = (
+            initial_entry_budget / Decimal(cfg.target_active_positions)
+        ).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        if initial_entry_quote <= 0:
+            status["blocked_reason"] = "paper_initial_entry_quote_below_precision"
+            return status
+        status["initial_entry_budget_quote"] = str(initial_entry_budget)
+    status["initial_entry_quote"] = str(initial_entry_quote)
 
     lists = scan_result.get("lists")
     candidates = lists.get("mean_reversion_candidates") if isinstance(lists, Mapping) else None
@@ -484,6 +516,7 @@ async def run_portfolio_cycle(
                 account_name=cfg.account_name,
                 governor=governor,
                 now=timestamp,
+                entry_quote=initial_entry_quote,
             )
         except Exception as exc:
             entries.append({
@@ -513,14 +546,14 @@ async def run_portfolio_cycle(
             "pair": pair,
             "proposal_id": str(proposal_id),
             "position_id": str(position_id),
-            "amount_quote": str(getattr(admission, "amount_quote", PAPER_VCAP_SEED_QUOTE)),
+            "amount_quote": str(getattr(admission, "amount_quote", PAPER_INITIAL_ENTRY_QUOTE)),
             "status": "reserved",
             "executor_id": None,
         }
         try:
             # Ordinary portfolio entries use the governed MARKET BUY path.
             # Grid strategies retain their separate LIMIT-order execution policy;
-            # this admission loop is a one-shot VCAP seed, not a grid deployment.
+            # VCAP recovery shards are managed independently by the VCAP scheduler.
             executor_result = await deps.create_order_executor(
                 client,
                 account_name=cfg.account_name,
@@ -602,9 +635,9 @@ async def run_portfolio_supervisor(
     scan_result: Mapping[str, Any] | None = None
     last_scan_at = 0.0
     logger.info(
-        "Spectra portfolio supervisor initialized: target=%s, initial-entry=%s USD, tick=%ss",
+        "Spectra portfolio supervisor initialized: target=%s, initial-entry=policy-budget/target, VCAP recovery shard=%s USD, tick=%ss",
         cfg.target_active_positions,
-        PAPER_VCAP_SEED_QUOTE,
+        cfg.vcap_seed_quote,
         cfg.tick_interval_seconds,
     )
 

@@ -120,3 +120,7 @@ honestly within them.
 [RISK]       max 1 executor, 2x leverage, $50 wallet cap (enforced), 8% drawdown.
 [JOURNAL]    Record the flow thesis each tick, not just the fill.
 ```
+
+## Spectra paper/live execution policy
+
+The current Derive perpetual configuration is identified as mainnet-only and leverage-enabled. Therefore, while SPECTRA_PAPER_ONLY is enabled, this seat is **research-only**: analyze capital flow, positioning, and signals, but do not create position executors, deploy controllers, use leverage, or submit mainnet orders. Do not substitute another live venue if a paper adapter is unavailable. Preserve the Derive strategy for a separately authorized live deployment; never enable live mode or change its environment flags yourself.

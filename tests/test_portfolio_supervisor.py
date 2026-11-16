@@ -83,6 +83,9 @@ def _dependencies(
     reserved = []
     created = []
     vcap_calls = []
+    governor = SimpleNamespace(
+        policy=SimpleNamespace(max_entry_quote=Decimal("6250"))
+    )
 
     async def run_vcap(client, **kwargs):
         vcap_calls.append(kwargs)
@@ -95,7 +98,7 @@ def _dependencies(
             position_slot_opened=True,
             position_id="new-" + pair,
             proposal_id="proposal-" + pair,
-            amount_quote=Decimal("20"),
+            amount_quote=kwargs.get("entry_quote", Decimal("20")),
             decision_reason="reserved",
         )
 
@@ -118,7 +121,7 @@ def _dependencies(
         reserve_entry=reserve,
         create_order_executor=create,
         get_client=lambda: None,
-        get_governor=lambda: object(),
+        get_governor=lambda: governor,
         get_ledger=lambda: ledger,
         get_vcap_state_store=lambda: object(),
         get_vcap_runtime_store=lambda: object(),
@@ -186,6 +189,33 @@ async def test_supervisor_does_not_force_entries_when_no_candidate_is_eligible()
     assert status["new_entries_this_cycle"] == 0
     assert status["vacancies"] == 1
     assert status["blocked_reason"] == "no_new_candidate_admitted"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("target_positions", "expected_entry_quote"),
+    [(83, "75.30"), (50, "125.00")],
+)
+async def test_supervisor_evenly_distributes_initial_entry_budget(
+    target_positions, expected_entry_quote
+):
+    deps, reserved, created, _ = _dependencies()
+    status = await run_portfolio_cycle(
+        object(),
+        scan_result=_scan("BTC-USD"),
+        config=_config(
+            target_active_positions=target_positions,
+            max_new_entries_per_tick=1,
+        ),
+        dependencies=deps,
+        now=1000.0,
+    )
+
+    assert reserved == ["BTC-USD"]
+    assert len(created) == 1
+    assert status["initial_entry_budget_quote"] == "6250"
+    assert status["initial_entry_quote"] == expected_entry_quote
+    assert status["entries"][0]["amount_quote"] == expected_entry_quote
 
 
 @pytest.mark.asyncio

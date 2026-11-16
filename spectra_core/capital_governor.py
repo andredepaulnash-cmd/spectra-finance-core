@@ -44,9 +44,24 @@ def validate_capital_policy(policy: CapitalPolicy) -> None:
         policy.max_position_quote,
         policy.max_recovery_quote,
     )
+    if policy.max_entry_quote is not None:
+        if not isinstance(policy.max_entry_quote, Decimal):
+            raise ValueError("max_entry_quote must be Decimal or None")
+        values = (*values, policy.max_entry_quote)
 
+    if any(not value.is_finite() for value in values):
+        raise ValueError("capital policy limits must be finite")
     if any(value < ZERO for value in values):
         raise ValueError("capital policy limits cannot be negative")
+    if (
+        policy.max_entry_quote is not None
+        and policy.max_entry_quote + policy.max_recovery_quote
+        > policy.max_total_committed_quote
+    ):
+        raise ValueError(
+            "max_entry_quote plus max_recovery_quote cannot exceed "
+            "max_total_committed_quote"
+        )
 
     if policy.max_leverage <= ZERO:
         raise ValueError("max_leverage must be positive")
@@ -1217,12 +1232,18 @@ class CapitalGovernor:
                     intent=IntentKind.RECOVERY,
                 )
 
-                # Recovery attribution must be read under the same write
-                # transaction as RESERVED/COMMITTED claims. Otherwise a
-                # COMMITTED -> RECONCILED handoff could briefly disappear
-                # from both buckets between two separate reads.
+                # Entry and recovery attribution must be read under the
+                # same write transaction as RESERVED/COMMITTED claims.
+                # Otherwise a COMMITTED -> RECONCILED handoff could briefly
+                # disappear from both exposure buckets between separate reads.
                 reconciled_recovery = self._current_recovery_exposure_quote(
                     conn, recovery_ledgers
+                )
+                reconciled_entry = self._current_entry_exposure_quote(
+                    conn, recovery_ledgers
+                )
+                active_entry = exact_decimal_difference(
+                    active_total, active_recovery
                 )
 
                 amount = proposal.amount_quote
@@ -1270,6 +1291,8 @@ class CapitalGovernor:
                     active_pair=active_pair,
                     active_recovery=active_recovery,
                     reconciled_recovery=reconciled_recovery,
+                    active_entry=active_entry,
+                    reconciled_entry=reconciled_entry,
                     available_after=available_after,
                 )
                 reason = authority_reason or reason
@@ -1348,12 +1371,15 @@ class CapitalGovernor:
                         "protected_pair_quote": active_pair,
                         "protected_recovery_quote": active_recovery,
                         "reconciled_recovery_quote": reconciled_recovery,
+                        "protected_entry_quote": active_entry,
+                        "reconciled_entry_quote": reconciled_entry,
                         "available_after_quote": available_after,
                         "reserve_floor_quote": self.policy.reserve_floor_quote,
                         "max_total_committed_quote": self.policy.max_total_committed_quote,
                         "max_pair_quote": self.policy.max_pair_quote,
                         "max_position_quote": self.policy.max_position_quote,
                         "max_recovery_quote": self.policy.max_recovery_quote,
+                        "max_entry_quote": self.policy.max_entry_quote,
                     },
                 )
                 conn.commit()
@@ -1381,6 +1407,8 @@ class CapitalGovernor:
         active_pair: Decimal,
         active_recovery: Decimal,
         reconciled_recovery: Decimal,
+        active_entry: Decimal,
+        reconciled_entry: Decimal,
         available_after: Decimal,
     ) -> str:
         p = self.policy
@@ -1399,6 +1427,8 @@ class CapitalGovernor:
             "active_pair": active_pair,
             "active_recovery": active_recovery,
             "reconciled_recovery": reconciled_recovery,
+            "active_entry": active_entry,
+            "reconciled_entry": reconciled_entry,
             "available_after": available_after,
         }
 
@@ -1431,6 +1461,8 @@ class CapitalGovernor:
             )
         ):
             return "capital snapshot contains negative exposure/balance"
+        if any(value < ZERO for value in (active_entry, reconciled_entry)):
+            return "entry exposure contains negative values"
 
         # Absolute liquidity floor.
         if available_after < p.reserve_floor_quote:
@@ -1468,7 +1500,9 @@ class CapitalGovernor:
                 f"{p.max_position_quote}"
             )
 
-        # Recovery capital is separately bounded.
+        # Recovery capital and non-recovery entry capital have separate
+        # ceilings. Reconciled BASE_ENTRY lots remain charged until sold;
+        # RESERVED/COMMITTED claims are charged until the ledger handoff.
         if proposal.intent == IntentKind.RECOVERY:
             recovery_after = reconciled_recovery + active_recovery + amount
 
@@ -1477,6 +1511,14 @@ class CapitalGovernor:
                     f"recovery budget exceeded: "
                     f"{recovery_after} > "
                     f"{p.max_recovery_quote}"
+                )
+        elif p.max_entry_quote is not None:
+            entry_after = reconciled_entry + active_entry + amount
+            if entry_after > p.max_entry_quote:
+                return (
+                    f"initial entry budget exceeded: "
+                    f"{entry_after} > "
+                    f"{p.max_entry_quote}"
                 )
 
         return ""
@@ -4096,7 +4138,11 @@ class CapitalGovernor:
             if row["file"]
         }
         rows = conn.execute(
-            "SELECT DISTINCT ledger_path FROM position_submission_bindings"
+            """
+            SELECT DISTINCT ledger_path FROM position_submission_bindings
+            UNION
+            SELECT DISTINCT ledger_path FROM entry_submission_claims
+            """
         ).fetchall()
         for index, row in enumerate(rows):
             path = Path(row["ledger_path"]).resolve()
@@ -4172,6 +4218,249 @@ class CapitalGovernor:
             return basis
         except (sqlite3.Error, ValueError, TypeError, ArithmeticError):
             return fallback
+
+    def _scoped_entry_basis_floor(
+        self,
+        conn: sqlite3.Connection,
+        provenance: ExecutionProvenance,
+        position_ledgers: dict[str, str],
+        observation: ExecutorAccountingObservation | None,
+    ) -> Decimal:
+        """Return exact remaining BASE_ENTRY basis, failing closed if unproven."""
+        binding = conn.execute(
+            "SELECT * FROM entry_submission_claims WHERE proposal_id = ?",
+            (provenance.proposal_id,),
+        ).fetchone()
+        if binding is None:
+            binding = conn.execute(
+                "SELECT * FROM position_submission_bindings WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchone()
+        fallback = provenance.authorized_quote
+
+        def observation_fallback() -> Decimal:
+            if observation is None:
+                return fallback
+            if (
+                observation.status.upper() == "TERMINATED"
+                and observation.filled_amount_quote == ZERO
+            ):
+                return ZERO
+            if (
+                observation.status.upper() == "RUNNING"
+                and observation.position_size_quote is not None
+            ):
+                position_size = observation.position_size_quote
+                fees = observation.cum_fees_quote
+                if (
+                    position_size.is_finite()
+                    and fees.is_finite()
+                    and position_size >= ZERO
+                    and fees >= ZERO
+                ):
+                    return exact_decimal_sum((position_size, fees))
+            return fallback
+
+        if binding is None:
+            return observation_fallback()
+
+        exact_scope = (
+            binding["pair"] == provenance.pair
+            and binding["account_name"] == provenance.account_name
+            and binding["connector_name"] == provenance.connector_name
+            and binding["controller_id"] == provenance.controller_id
+            and binding["state"] in {"COMMITTED", "DISPATCHED", "RETIRED"}
+        )
+        if (
+            "executor_id" in binding.keys()
+            and binding["executor_id"] != provenance.executor_id
+        ):
+            exact_scope = False
+        schema = position_ledgers.get(
+            str(Path(binding["ledger_path"]).resolve())
+        )
+        if not exact_scope or schema is None:
+            return fallback
+
+        try:
+            position = conn.execute(
+                f"SELECT pair, base_asset, status FROM {schema}.economic_positions "
+                "WHERE position_id = ?",
+                (binding["position_id"],),
+            ).fetchone()
+            if (
+                position is None
+                or position["pair"] != binding["pair"]
+                or position["base_asset"] != binding["base_asset"]
+                or position["status"]
+                not in {"ACTIVE", "DUST", "DUST_REVIEW", "RESIDUAL", "CLOSED"}
+            ):
+                return fallback
+
+            lots = conn.execute(
+                f"SELECT * FROM {schema}.economic_lots WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchall()
+            if not lots:
+                return observation_fallback()
+
+            basis = ZERO
+            for lot in lots:
+                if (
+                    lot["position_id"] != binding["position_id"]
+                    or lot["pair"] != provenance.pair
+                    or lot["executor_id"] != provenance.executor_id
+                    or lot["source"] != "BASE_ENTRY"
+                    or lot["ownership"]
+                    not in {"ACTIVE_TRADE", "STRATEGIC_RETAINED", "UNATTRIBUTED"}
+                ):
+                    return fallback
+                remaining = Decimal(lot["cost_basis_remaining_quote"])
+                fees = Decimal(lot["entry_fees_remaining_quote"])
+                if (
+                    not remaining.is_finite()
+                    or not fees.is_finite()
+                    or remaining < ZERO
+                    or fees < ZERO
+                ):
+                    return fallback
+                basis = exact_decimal_sum((basis, remaining, fees))
+
+            # A zero-basis lot is not enough to release entry authority. The
+            # entry claim must also be retired by the existing verified-flat
+            # terminal certificate; otherwise keep the original authorization
+            # charged, matching the position-reuse safety gate.
+            if basis == ZERO and binding["state"] != "RETIRED":
+                return fallback
+            if binding["state"] == "RETIRED" and basis > ZERO:
+                return fallback
+            return basis
+        except (sqlite3.Error, ValueError, TypeError, ArithmeticError):
+            return fallback
+
+    def _current_entry_exposure_quote(
+        self,
+        conn: sqlite3.Connection,
+        position_ledgers: dict[str, str],
+    ) -> Decimal:
+        """Compute reconciled non-recovery entry exposure from remaining lots."""
+        rows = conn.execute(
+            """
+            SELECT
+                p.proposal_id,
+                p.executor_id,
+                p.pair,
+                p.intent,
+                p.authorized_quote,
+                p.leverage,
+                p.account_name,
+                p.connector_name,
+                p.controller_id,
+                o.observation_id,
+                o.executor_type AS obs_executor_type,
+                o.status AS obs_status,
+                o.close_type AS obs_close_type,
+                o.filled_amount_quote AS obs_filled_amount_quote,
+                o.cum_fees_quote AS obs_cum_fees_quote,
+                o.position_size_quote AS obs_position_size_quote,
+                o.net_pnl_quote AS obs_net_pnl_quote,
+                o.realized_pnl_quote AS obs_realized_pnl_quote
+            FROM execution_provenance AS p
+            JOIN capital_reservations AS r
+              ON r.proposal_id = p.proposal_id
+             AND r.status = ?
+            LEFT JOIN executor_accounting_observations AS o
+              ON o.observation_id = (
+                  SELECT MAX(latest.observation_id)
+                  FROM executor_accounting_observations AS latest
+                  WHERE latest.executor_id = p.executor_id
+              )
+            WHERE p.intent IN (?, ?, ?)
+            ORDER BY p.proposal_id
+            """,
+            (
+                DecisionStatus.RECONCILED.value,
+                IntentKind.ENTRY.value,
+                IntentKind.PRESS.value,
+                IntentKind.ROTATION.value,
+            ),
+        ).fetchall()
+
+        total = ZERO
+        for row in rows:
+            provenance = ExecutionProvenance(
+                proposal_id=str(row["proposal_id"]),
+                executor_id=str(row["executor_id"]),
+                pair=str(row["pair"]),
+                intent=IntentKind(str(row["intent"])),
+                authorized_quote=Decimal(str(row["authorized_quote"])),
+                leverage=Decimal(str(row["leverage"])),
+                account_name=(
+                    None if row["account_name"] is None else str(row["account_name"])
+                ),
+                connector_name=(
+                    None
+                    if row["connector_name"] is None
+                    else str(row["connector_name"])
+                ),
+                controller_id=(
+                    None if row["controller_id"] is None else str(row["controller_id"])
+                ),
+            )
+            observation = None
+            if row["observation_id"] is not None:
+                observation = ExecutorAccountingObservation(
+                    executor_id=provenance.executor_id,
+                    executor_type=(
+                        None
+                        if row["obs_executor_type"] is None
+                        else str(row["obs_executor_type"])
+                    ),
+                    status=str(row["obs_status"]),
+                    close_type=(
+                        None
+                        if row["obs_close_type"] is None
+                        else str(row["obs_close_type"])
+                    ),
+                    filled_amount_quote=Decimal(str(row["obs_filled_amount_quote"])),
+                    cum_fees_quote=Decimal(str(row["obs_cum_fees_quote"])),
+                    position_size_quote=(
+                        None
+                        if row["obs_position_size_quote"] is None
+                        else Decimal(str(row["obs_position_size_quote"]))
+                    ),
+                    net_pnl_quote=(
+                        None
+                        if row["obs_net_pnl_quote"] is None
+                        else Decimal(str(row["obs_net_pnl_quote"]))
+                    ),
+                    realized_pnl_quote=(
+                        None
+                        if row["obs_realized_pnl_quote"] is None
+                        else Decimal(str(row["obs_realized_pnl_quote"]))
+                    ),
+                )
+            exposure = self._scoped_entry_basis_floor(
+                conn,
+                provenance,
+                position_ledgers,
+                observation,
+            )
+            total = exact_decimal_sum((total, exposure))
+        return total
+
+    def current_entry_exposure_quote(self) -> Decimal:
+        """Return current quote capital attributable to non-recovery entries."""
+        with self._connect() as conn:
+            position_ledgers = self._attach_recovery_exposure_ledgers(conn)
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                exposure = self._current_entry_exposure_quote(conn, position_ledgers)
+                conn.commit()
+                return exposure
+            except Exception:
+                conn.rollback()
+                raise
 
     def _current_recovery_exposure_quote(
         self,
