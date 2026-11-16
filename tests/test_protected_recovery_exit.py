@@ -734,7 +734,7 @@ def test_concurrent_dispatch_claim_has_one_winner_and_survives_restart(protected
                     governor=g,
                     trading_rule=rule(),
                     current_price=D("0.50"),
-                    market_observed_at=time.time(),
+                    market_observed_at=2009,
                 ),
                 stores,
             )
@@ -751,7 +751,7 @@ def test_concurrent_dispatch_claim_has_one_winner_and_survives_restart(protected
             governor=g,
             trading_rule=rule(),
             current_price=D("0.50"),
-            market_observed_at=time.time(),
+            market_observed_at=2009,
         )
         is None
     )
