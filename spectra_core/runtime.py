@@ -36,7 +36,7 @@ def spectra_paper_only_enabled(agent_slug: str | None = None) -> bool:
         else os.getenv("CONDOR_AGENT_SLUG", "").strip()
     ).lower()
     if configured is None:
-        return agent_slug == "spectra"
+        return resolved_agent_slug == "spectra"
 
     value = configured.strip().lower()
     if value not in {"1", "true", "yes", "0", "false", "no"}:
@@ -183,7 +183,11 @@ def load_capital_policy() -> CapitalPolicy:
                 Decimal(str(raw["max_entry_quote"]))
                 if raw.get("max_entry_quote") is not None
                 else (
-                    DEFAULT_PAPER_ENTRY_BUDGET_QUOTE
+                    max(
+                        Decimal("0"),
+                        Decimal(str(raw["max_total_committed_quote"]))
+                        - Decimal(str(raw["max_recovery_quote"])),
+                    )
                     if spectra_paper_only_enabled()
                     else None
                 )
