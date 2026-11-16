@@ -158,6 +158,17 @@ The lab's default `CapitalAuctionPolicy` uses: reserve fraction 50%; minimum rec
 - expected execution cost bps × -1.
 The auction is research-only: it ranks and allocates a simulated proposal but does not reserve or dispatch live capital. These weights and fleet targets are old research defaults, not the November 2026 $25,000 policy or a verified current production ranking formula.
 
+### Strategy-lab stress and promotion gates
+The research lab also defines five explicit stress hypotheses:
+- Fee shock: fees ×1.75.
+- Liquidity crunch: spread ×3, depth ×0.20, volatility ×2.
+- Correlated crash: spread ×2.5, depth ×0.30, volatility ×3, return shock -20%.
+- Token collapse: spread ×5, depth ×0.05, volatility ×5, return shock -65%.
+- Pump/dump: spread ×4, depth ×0.15, volatility ×4, return shock -35%.
+These are deterministic adversarial test settings, not calibrated forecasts.
+
+Its research promotion gate requires adversarial, out-of-sample, and shadow checks to pass, Deflated Sharpe probability ≥0.95, PBO ≤0.20, parameter-neighborhood stability ≥0.70, and max drawdown ≤30%. Even a pass returns only `CANARY_ELIGIBLE`; the laboratory cannot authorize live capital or bypass CapitalGovernor. This is a useful validation framework to preserve, but its thresholds remain research policy until explicitly adopted.
+
 ### PR #22–#25 evidence and limitations
 - **PR #22 replay:** five research baselines (cash, fixed DCA, recovery, recovery recycling, capital-time variant). Uses later executable quotes, shared cash, exact Decimal accounting, fee-inclusive basis, spread/slippage, depth and partial-fill caps. It is a research proxy, not a production-controller replica.
 - **PR #23 planner adapter:** invokes production AssetFingerprint, recovery sizing, tranche and profit-exit planners offline. It does not mirror production Governor reservations, full lifecycle/restart behavior, or partial-recycle manifests. Synthetic/estimated data is explicitly adversarial; provenance is caller-declared.
