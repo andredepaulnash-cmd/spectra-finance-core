@@ -436,6 +436,8 @@ def test_spectra_seat_defaults_to_paper_even_without_parent_agent_env(monkeypatc
     monkeypatch.delenv("CONDOR_AGENT_SLUG", raising=False)
     assert spectra_paper_only_enabled("spectra") is True
     assert spectra_paper_only_enabled("adaptive_grid_trader") is False
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    assert spectra_paper_only_enabled("") is True
 
 
 def test_spectra_seat_cannot_override_paper_default_without_live_authorization(monkeypatch):
