@@ -1235,6 +1235,12 @@ class CapitalGovernor:
                 reconciled_recovery = self._current_recovery_exposure_quote(
                     conn, recovery_ledgers
                 )
+                reconciled_entry = self._current_entry_exposure_quote(
+                    conn, recovery_ledgers
+                )
+                active_entry = exact_decimal_difference(
+                    active_total, active_recovery
+                )
 
                 amount = proposal.amount_quote
 
@@ -1281,6 +1287,8 @@ class CapitalGovernor:
                     active_pair=active_pair,
                     active_recovery=active_recovery,
                     reconciled_recovery=reconciled_recovery,
+                    active_entry=active_entry,
+                    reconciled_entry=reconciled_entry,
                     available_after=available_after,
                 )
                 reason = authority_reason or reason
