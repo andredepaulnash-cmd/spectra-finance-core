@@ -31,7 +31,7 @@ from tests.spectra_test_support import configure_spectra_live_dispatch
 
 @pytest.fixture(autouse=True)
 def _spectra_live_dispatch(monkeypatch):
-    configure_spectra_live_dispatch(monkeypatch, spectra_settings)
+    configure_spectra_live_dispatch(monkeypatch, spectra_settings, agent_slug="condor")
 
 
 from condor.agents.risk import (
