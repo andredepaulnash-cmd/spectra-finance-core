@@ -12,10 +12,10 @@ def test_creates_separate_conservative_paper_policy_and_normal_paper_breaker(tmp
     breaker = json.loads((paper / "breaker_state.json").read_text())
 
     assert policy["reserve_floor_quote"] == "100"
-    assert policy["max_total_committed_quote"] == "1000"
-    assert policy["max_pair_quote"] == "1000"
-    assert policy["max_position_quote"] == "1000"
-    assert policy["max_recovery_quote"] == "0"
+    assert policy["max_total_committed_quote"] == "25000"
+    assert policy["max_pair_quote"] == "25000"
+    assert policy["max_position_quote"] == "25000"
+    assert policy["max_recovery_quote"] == "18750"
     assert policy["max_leverage"] == "1"
     assert breaker == {"mode": "NORMAL"}
     assert not live.exists()
