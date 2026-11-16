@@ -10,11 +10,7 @@ from pathlib import Path
 from .accounting_health import AccountingHealthSupervisor
 from .capital_governor import CapitalGovernor, validate_capital_policy
 from .economic_position import EconomicPositionLedger
-from .models import (
-    DEFAULT_PAPER_ENTRY_BUDGET_QUOTE,
-    BreakerMode,
-    CapitalPolicy,
-)
+from .models import BreakerMode, CapitalPolicy
 from .module_lifecycle import ModuleLifecycleStore
 from .runtime_scheduler import RuntimeSchedulerStore
 from .vcap_runtime import VCAPRuntimeStore
