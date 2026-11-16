@@ -390,6 +390,10 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
   elif [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
     previous_blob="${CORE_OPS_OLD_BLOBS[$source]:-}"
+    # Also recognize the launcher shipped by the immediately preceding paper-allocation branch.
+    if [[ "$source" == "scripts/spectra" && "$worktree_blob" == "1cbda078dab23afed7a1190613f69180a8fb6582" ]]; then
+      previous_blob="$worktree_blob"
+    fi
     if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$previous_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
