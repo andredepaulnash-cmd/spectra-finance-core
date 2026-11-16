@@ -257,7 +257,7 @@ def execute(case, client, *, current_price=D("0.50"), trading_rule=None):
             now=2010,
             # Market evidence must be fresh relative to the deterministic
             # transaction clock, not the wall clock of the test runner.
-            market_observed_at=2009,
+            market_observed_at=1999,
         )
     )
 
@@ -734,7 +734,7 @@ def test_concurrent_dispatch_claim_has_one_winner_and_survives_restart(protected
                     governor=g,
                     trading_rule=rule(),
                     current_price=D("0.50"),
-                    market_observed_at=2009,
+                    market_observed_at=1999,
                 ),
                 stores,
             )
@@ -751,7 +751,7 @@ def test_concurrent_dispatch_claim_has_one_winner_and_survives_restart(protected
             governor=g,
             trading_rule=rule(),
             current_price=D("0.50"),
-            market_observed_at=2009,
+            market_observed_at=1999,
         )
         is None
     )
