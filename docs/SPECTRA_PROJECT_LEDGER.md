@@ -279,6 +279,13 @@ A separate Library text named `Pasted text(4).txt` contains an earlier agent ins
 ### VCAP shard-count compatibility check
 The recovered PR #8 implementation defaults `VCAPTranchePolicy.max_tranches = 5` (aggressive minimum 2); each accepted tranche is independently sellable and tracked, and PR #9 executes only the next tranche before replanning. PRs #13–#20 preserve multiple recovery lots under one economic position. The November Architect rule is **no more than two active VCAP shards per asset position at a time**. If a tranche is an active shard (the PR #8 sellability/independent-lot model strongly suggests it is), the historical default of five is not compliant. One-at-a-time dispatch does not automatically enforce a two-active-shard cap when earlier fills remain open. Before using the old planner, explicitly define shard vs tranche vs lot, count active recovery owners, and enforce the two-shard cap at the authoritative Core/Governor layer; preserve the ability to service many different positions concurrently. This is a compatibility gap, not permission to silently change the current rule.
 
+### Fat–Skinny–Fat and shard-minimum compatibility check
+The current Core VCAP planner is not yet the remembered November Fat–Skinny–Fat ladder:
+- `VCAPRecoveryPolicy` defaults to a 500 bps target rebound, maximum seed multiplier 4×, maximum patch-to-position ratio 1×, minimum rebound improvement 25 bps, and an adaptive reversal-signal threshold of 0.25.
+- Recovery size is shaped by position break-even geometry and the fingerprint's reversal score/confidence. No code in the inspected recovery/tranche modules encodes the November drawdown bands 0 to -11.74% FAT, -11.74% to -17.77% SKINNY, and -17.77% to -24% FAT.
+- `VCAPTranchePolicy` has max_tranches=5, aggressive_min_tranches=2, and a sellability buffer; it has no explicit 20-quote minimum shard field. It enforces venue sellability/minimums, not the Architect's independent minimum-shard rule.
+- The two-shard cap and Fat–Skinny–Fat sizing must be specified and enforced at the authoritative Core layer before the current planner is considered compliant. Do not confuse the older 47-level VeryLoose strategy, the PR #8 five-tranche planner, the current fingerprint-based recovery planner, and the November Fat–Skinny–Fat rules; they are distinct generations.
+
 ### Operational and economic validation
 - Prove order lifecycle, fill idempotency, fee currency, restart reconciliation, partial fills, cancellation races, unknown timeouts, stale data, exchange minima, and failure injection.
 - Add portfolio-wide exposure/correlation/drawdown/recovery budget controls only through a reviewed spec; they are identified gaps, not silently adopted changes.
