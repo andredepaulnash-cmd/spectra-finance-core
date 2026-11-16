@@ -18,7 +18,7 @@ LOG_DIR="$INSTALL_ROOT/logs"
 LOG_FILE="$LOG_DIR/api-update.log"
 LOCK_FILE="$LOG_DIR/api-update.lock"
 COMPOSE_FILE="$API_DIR/docker-compose.alpha.yml"
-API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "deps.py")
+API_SOURCES=("services/unified_connector_service.py" "services/market_data_service.py" "services/orders_recorder.py" "deps.py")
 
 say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
@@ -105,6 +105,7 @@ git fetch --depth 1 origin main
 declare -A APPROVED_LEGACY_BLOBS=(
   ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
   ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
+  ["services/orders_recorder.py"]="1c18d3768fb08654c4b51b16f8813013d8d9da78"
   ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
 )
 
@@ -130,6 +131,7 @@ done
 declare -A EXPECTED_UPSTREAM_BLOBS=(
   ["services/unified_connector_service.py"]="a35c432e74d829b02c8c153b334e20abcd10dd2b"
   ["services/market_data_service.py"]="95e8e31c5e9be5bb2945b80038419b88b35ba41f"
+  ["services/orders_recorder.py"]="b0812c513c7a393cc825a732450c60a6617fe659"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
 )
 
