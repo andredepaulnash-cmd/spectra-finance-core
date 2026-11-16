@@ -357,7 +357,12 @@ async def scan_kraken_universe(
             "history_or_data_rejected": len(rejected),
             "governor_approved": sum(bool(row["governor_approved"]) for row in ranked_all),
         },
+        # Keep the flat key for the existing dashboard/routine consumers,
+        # and publish the canonical Condor supervisor contract alongside it.
+        # The portfolio supervisor, VCAP admission, and discovery asset writer
+        # all consume this exact research-only candidate list.
         "candidates": ranked,
+        "lists": {"mean_reversion_candidates": ranked},
         "rejected_data": rejected,
         "governor_approved_list_loaded": approved is not None,
         "approved_asset_list_source": approved_asset_source,
