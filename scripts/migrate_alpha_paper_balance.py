@@ -208,6 +208,8 @@ def migrate(
     target_usd: Decimal,
     apply: bool,
 ) -> int:
+    if not target_usd.is_finite() or target_usd <= 0:
+        raise ValueError("target USD balance must be a positive finite amount")
     env = _read_env(api_env_path)
     username = env.get("USERNAME", "")
     password = env.get("PASSWORD", "")
