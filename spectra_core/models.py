@@ -5,6 +5,11 @@ from decimal import Decimal
 from enum import StrEnum
 
 
+DEFAULT_PAPER_TOTAL_CAPITAL_QUOTE = Decimal("25000")
+DEFAULT_PAPER_ENTRY_BUDGET_QUOTE = Decimal("6250")
+DEFAULT_PAPER_RECOVERY_BUDGET_QUOTE = Decimal("18750")
+
+
 class IntentKind(StrEnum):
     ENTRY = "ENTRY"
     PRESS = "PRESS"
@@ -34,6 +39,7 @@ class CapitalPolicy:
     max_pair_quote: Decimal
     max_position_quote: Decimal
     max_recovery_quote: Decimal
+    max_entry_quote: Decimal | None = None
     max_leverage: Decimal = Decimal("1")
     reservation_ttl_seconds: int = 120
     position_hold_snapshot_ttl_seconds: int = 30
