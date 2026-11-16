@@ -74,9 +74,7 @@ def configure(monkeypatch, *, approved=True):
 
 
 @pytest.mark.asyncio
-async def test_fresh_shortlist_candidate_reserves_exactly_one_twenty_dollar_paper_entry(
-    monkeypatch,
-):
+async def test_paper_entry_rejects_implicit_twenty_dollar_fallback(monkeypatch):
     configure(monkeypatch)
     calls = []
 
@@ -86,25 +84,16 @@ async def test_fresh_shortlist_candidate_reserves_exactly_one_twenty_dollar_pape
 
     monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
 
-    result = await vcap_entry.reserve_vcap_candidate_entry(
-        object(),
-        scan_result=scan_result(),
-        trading_pair="xbt-usd",
-        account_name="master_account",
-        now=1_000.0,
-    )
+    with pytest.raises(ValueError, match="must be supplied by the governed portfolio supervisor"):
+        await vcap_entry.reserve_vcap_candidate_entry(
+            object(),
+            scan_result=scan_result(),
+            trading_pair="xbt-usd",
+            account_name="master_account",
+            now=1_000.0,
+        )
 
-    assert result.pair == "BTC-USD"
-    assert result.proposal_id == "spectra-entry-test"
-    assert result.position_id == "spectra-position-spectra-entry-test"
-    assert result.amount_quote == Decimal("20")
-    assert result.decision_status == DecisionStatus.RESERVED
-    assert result.paper_only is True
-    assert result.position_slot_opened is True
-    assert result.order_dispatched is False
-    assert len(calls) == 1
-    assert calls[0]["intent"] == IntentKind.ENTRY
-    assert calls[0]["amount_quote"] == Decimal("20")
+    assert calls == []
 
 
 @pytest.mark.asyncio
@@ -269,6 +258,7 @@ async def test_fresh_paper_entry_does_not_fabricate_position_id_before_dispatch(
         trading_pair="BTC-USD",
         account_name="master_account",
         now=1_000.0,
+        entry_quote=Decimal("75.30"),
     )
 
     assert result.position_id is None
