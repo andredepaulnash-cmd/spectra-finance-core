@@ -875,7 +875,8 @@ def test_book_expiring_inside_atomic_commit_rolls_back_cash_and_identity(
     assert reserve(g, p).status == DecisionStatus.RESERVED
     module, _ = configure_protected_wrapper(monkeypatch, g, ledger, rules_age=rules_age)
     now = [time() + 1]
-    monkeypatch.setattr(governor_module.time, "time", lambda: now[0])
+    # CapitalGovernor captures its clock at construction; replace the instance clock.
+    monkeypatch.setattr(g, "_clock", lambda: now[0])
     original_burn = cash_authority.burn
 
     def delayed_burn(*args, **kwargs):
