@@ -73,9 +73,20 @@ def _request_json(
 
 
 def _response_items(payload: dict, label: str) -> list:
-    for key in ("data", "items", "results", label):
+    for key in ("data", "items", "results", "orders", "trades", "positions", label):
         value = payload.get(key)
         if isinstance(value, list):
+            pagination = payload.get("pagination")
+            if isinstance(pagination, dict) and not value:
+                total = pagination.get("total_count", pagination.get("total"))
+                if total is not None and int(total) > 0:
+                    raise RuntimeError(
+                        f"local API {label} response reports records but returned no items"
+                    )
+                if pagination.get("has_more") is True:
+                    raise RuntimeError(
+                        f"local API {label} response is incomplete; refusing migration"
+                    )
             return value
     raise RuntimeError(f"local API {label} response has no recognizable item list")
 
@@ -185,7 +196,7 @@ def _check_balances(config: dict, target_usd: Decimal) -> Decimal:
 
 
 def _write_config_atomic(path: Path, config: dict) -> Path:
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     backup = path.with_name(f"{path.name}.before-paper-capital-{timestamp}.bak")
     shutil.copy2(path, backup)
     mode = path.stat().st_mode & 0o777
