@@ -4188,6 +4188,222 @@ class CapitalGovernor:
         except (sqlite3.Error, ValueError, TypeError, ArithmeticError):
             return fallback
 
+    def _scoped_entry_basis_floor(
+        self,
+        conn: sqlite3.Connection,
+        provenance: ExecutionProvenance,
+        position_ledgers: dict[str, str],
+        observation: ExecutorAccountingObservation | None,
+    ) -> Decimal:
+        """Return exact remaining BASE_ENTRY basis, failing closed if unproven."""
+        binding = conn.execute(
+            "SELECT * FROM entry_submission_claims WHERE proposal_id = ?",
+            (provenance.proposal_id,),
+        ).fetchone()
+        if binding is None:
+            binding = conn.execute(
+                "SELECT * FROM position_submission_bindings WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchone()
+        fallback = provenance.authorized_quote
+        if binding is None:
+            return fallback
+
+        exact_scope = (
+            binding["pair"] == provenance.pair
+            and binding["account_name"] == provenance.account_name
+            and binding["connector_name"] == provenance.connector_name
+            and binding["controller_id"] == provenance.controller_id
+            and binding["state"] in {"COMMITTED", "DISPATCHED", "RETIRED"}
+        )
+        if (
+            "executor_id" in binding.keys()
+            and binding["executor_id"] not in (None, provenance.executor_id)
+        ):
+            exact_scope = False
+        schema = position_ledgers.get(
+            str(Path(binding["ledger_path"]).resolve())
+        )
+        if not exact_scope or schema is None:
+            return fallback
+
+        try:
+            position = conn.execute(
+                f"SELECT pair, base_asset, status FROM {schema}.economic_positions "
+                "WHERE position_id = ?",
+                (binding["position_id"],),
+            ).fetchone()
+            if (
+                position is None
+                or position["pair"] != binding["pair"]
+                or position["base_asset"] != binding["base_asset"]
+                or position["status"]
+                not in {"ACTIVE", "DUST", "DUST_REVIEW", "RESIDUAL", "CLOSED"}
+            ):
+                return fallback
+
+            lots = conn.execute(
+                f"SELECT * FROM {schema}.economic_lots WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchall()
+            if not lots:
+                if (
+                    observation is not None
+                    and observation.status.upper() == "TERMINATED"
+                    and observation.filled_amount_quote == ZERO
+                ):
+                    return ZERO
+                return fallback
+
+            basis = ZERO
+            for lot in lots:
+                if (
+                    lot["position_id"] != binding["position_id"]
+                    or lot["pair"] != provenance.pair
+                    or lot["executor_id"] != provenance.executor_id
+                    or lot["source"] != "BASE_ENTRY"
+                    or lot["ownership"]
+                    not in {"ACTIVE_TRADE", "STRATEGIC_RETAINED", "UNATTRIBUTED"}
+                ):
+                    return fallback
+                remaining = Decimal(lot["cost_basis_remaining_quote"])
+                fees = Decimal(lot["entry_fees_remaining_quote"])
+                if (
+                    not remaining.is_finite()
+                    or not fees.is_finite()
+                    or remaining < ZERO
+                    or fees < ZERO
+                ):
+                    return fallback
+                basis = exact_decimal_sum((basis, remaining, fees))
+            return basis
+        except (sqlite3.Error, ValueError, TypeError, ArithmeticError):
+            return fallback
+
+    def _current_entry_exposure_quote(
+        self,
+        conn: sqlite3.Connection,
+        position_ledgers: dict[str, str],
+    ) -> Decimal:
+        """Compute reconciled non-recovery entry exposure from remaining lots."""
+        rows = conn.execute(
+            """
+            SELECT
+                p.proposal_id,
+                p.executor_id,
+                p.pair,
+                p.intent,
+                p.authorized_quote,
+                p.leverage,
+                p.account_name,
+                p.connector_name,
+                p.controller_id,
+                o.observation_id,
+                o.executor_type AS obs_executor_type,
+                o.status AS obs_status,
+                o.close_type AS obs_close_type,
+                o.filled_amount_quote AS obs_filled_amount_quote,
+                o.cum_fees_quote AS obs_cum_fees_quote,
+                o.position_size_quote AS obs_position_size_quote,
+                o.net_pnl_quote AS obs_net_pnl_quote,
+                o.realized_pnl_quote AS obs_realized_pnl_quote
+            FROM execution_provenance AS p
+            JOIN capital_reservations AS r
+              ON r.proposal_id = p.proposal_id
+             AND r.status = ?
+            LEFT JOIN executor_accounting_observations AS o
+              ON o.observation_id = (
+                  SELECT MAX(latest.observation_id)
+                  FROM executor_accounting_observations AS latest
+                  WHERE latest.executor_id = p.executor_id
+              )
+            WHERE p.intent IN (?, ?, ?)
+            ORDER BY p.proposal_id
+            """,
+            (
+                DecisionStatus.RECONCILED.value,
+                IntentKind.ENTRY.value,
+                IntentKind.PRESS.value,
+                IntentKind.ROTATION.value,
+            ),
+        ).fetchall()
+
+        total = ZERO
+        for row in rows:
+            provenance = ExecutionProvenance(
+                proposal_id=str(row["proposal_id"]),
+                executor_id=str(row["executor_id"]),
+                pair=str(row["pair"]),
+                intent=IntentKind(str(row["intent"])),
+                authorized_quote=Decimal(str(row["authorized_quote"])),
+                leverage=Decimal(str(row["leverage"])),
+                account_name=(
+                    None if row["account_name"] is None else str(row["account_name"])
+                ),
+                connector_name=(
+                    None
+                    if row["connector_name"] is None
+                    else str(row["connector_name"])
+                ),
+                controller_id=(
+                    None if row["controller_id"] is None else str(row["controller_id"])
+                ),
+            )
+            observation = None
+            if row["observation_id"] is not None:
+                observation = ExecutorAccountingObservation(
+                    executor_id=provenance.executor_id,
+                    executor_type=(
+                        None
+                        if row["obs_executor_type"] is None
+                        else str(row["obs_executor_type"])
+                    ),
+                    status=str(row["obs_status"]),
+                    close_type=(
+                        None
+                        if row["obs_close_type"] is None
+                        else str(row["obs_close_type"])
+                    ),
+                    filled_amount_quote=Decimal(str(row["obs_filled_amount_quote"])),
+                    cum_fees_quote=Decimal(str(row["obs_cum_fees_quote"])),
+                    position_size_quote=(
+                        None
+                        if row["obs_position_size_quote"] is None
+                        else Decimal(str(row["obs_position_size_quote"]))
+                    ),
+                    net_pnl_quote=(
+                        None
+                        if row["obs_net_pnl_quote"] is None
+                        else Decimal(str(row["obs_net_pnl_quote"]))
+                    ),
+                    realized_pnl_quote=(
+                        None
+                        if row["obs_realized_pnl_quote"] is None
+                        else Decimal(str(row["obs_realized_pnl_quote"]))
+                    ),
+                )
+            exposure = self._scoped_entry_basis_floor(
+                conn,
+                provenance,
+                position_ledgers,
+                observation,
+            )
+            total = exact_decimal_sum((total, exposure))
+        return total
+
+    def current_entry_exposure_quote(self) -> Decimal:
+        """Return current quote capital attributable to non-recovery entries."""
+        with self._connect() as conn:
+            position_ledgers = self._attach_recovery_exposure_ledgers(conn)
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                exposure = self._current_entry_exposure_quote(conn, position_ledgers)
+                conn.commit()
+                return exposure
+            except Exception:
+                conn.rollback()
+                raise
+
     def _current_recovery_exposure_quote(
         self,
         conn: sqlite3.Connection,
