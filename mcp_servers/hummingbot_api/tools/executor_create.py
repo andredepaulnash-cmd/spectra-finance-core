@@ -831,6 +831,7 @@ async def _bounded_market_buy(
         "authorized_quote_budget": str(order.authorized_quote_budget),
         "reference_ask": str(order.reference_ask),
         "amount_base": str(order.amount_base),
+        "execution_amount_increment": str(order.execution_amount_increment),
         "estimated_principal_quote": str(order.estimated_principal_quote),
         "estimated_fee_quote": str(order.estimated_fee_quote),
         "estimated_total_quote": str(order.estimated_total_quote),
