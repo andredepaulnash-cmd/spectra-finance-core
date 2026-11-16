@@ -126,7 +126,7 @@ def seat_profile(agent_slug: str | None, tick: bool) -> str:
     # offered to the model, even though the API guard remains authoritative.
     from spectra_core.runtime import spectra_paper_only_enabled
 
-    return f"paper_{profile}" if spectra_paper_only_enabled() else profile
+    return f"paper_{profile}" if spectra_paper_only_enabled(agent_slug) else profile
 
 
 def seat_tools(agent_slug: str | None, tick: bool = False) -> list[dict[str, Any]]:
