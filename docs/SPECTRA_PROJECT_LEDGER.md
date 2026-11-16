@@ -311,3 +311,31 @@ The current Core VCAP planner is not yet the remembered November Fat–Skinny–
 - No state reset during recovery without explicit authorization.
 - No strategy or architecture expansion merely because an idea is interesting. First make the existing system observable and correct.
 - Keep this ledger current with: verified commit SHAs, PR/workflow results, test evidence, runtime config hashes, operational blockers, decisions, and next exact action.
+
+
+## 10. Follow-up verification 2026-11-16 (Architect priorities 1–3)
+
+### Protected MARKET BUY quantity mismatch — narrowed, not fixed
+- Rechecked clean-install workflow `43805709781` and job `133095890234`. The updater correction is confirmed successful in the same run: reviewed API sources were applied, the API image rebuilt, the container restarted, and authenticated API readiness was confirmed.
+- The end-to-end paper execution still fails after one confirmed fill and one ledgered fill. The exact immutable protected BUY amount remains `0.00038359`; the Hummingbot order-created evidence is `0.000383500000000000`. No unresolved order or trade IDs were reported.
+- Inspected API `services/orders_recorder.py` on main at blob `b0812c513c7a393cc825a732450c60a6617fe659`: it persists `Decimal(str(event.amount))` into the executor-order record. The database schema uses `Numeric(30,18)`. This rules out the API recorder's database column scale as the cause; the observed amount already differs at the Hummingbot order-created event boundary.
+- Core's `build_protected_buy_market_config` floors amount using `KrakenTradingRule.min_base_amount_increment`. The current fresh public AssetPairs evidence validates `ordermin` and `costmin`, but does not yet attest the venue's `lot_decimals`/base-amount increment against the Hummingbot connector's actual `quantize_order_amount` behavior.
+- Root cause remains unproven. Next diagnostic must compare: exact persisted executor config amount; connector's own size quantum; amount passed into connector; emitted BuyOrderCreatedEvent amount; and resulting executor-order record. Add a deterministic mismatch regression and an end-to-end paper assertion. Keep exact authorization equality and fail-closed HOLD behavior until the executable quantity is authorized before dispatch.
+- The test workflow output also exposed generated CI-only API credentials/signing material in an environment listing. These were ephemeral test values, not user live credentials; nevertheless mask them in workflow logs before the next run and avoid echoing secret-bearing environments.
+
+### Updater verification — passed its intended operation
+- Commit `98a9e37d11a5ec764581dd51f6569761cd570fe3` fixes the false-negative check to inspect `deps.py`, where the paper-only bot-status guard actually lives.
+- In workflow `43805709781`, the updater itself completed successfully: it fetched the reviewed API main branch, verified expected source hashes, applied the four reviewed API files, rebuilt/restarted the API, applied reviewed Core files, rebuilt the dashboard, and reported authenticated API readiness.
+- The overall clean-install job remains failed only because the protected BUY amount reconciliation test failed. Therefore item 2's updater-specific correction is verified; full acceptance is not green.
+
+### USD-preferred / USD+USDT market support — implementation boundary identified
+- Current Core implementation is still USD-only across multiple authority boundaries: `asset_authority.py` canonicalizes only `BASE-USD`; `kraken_authorization.py` rejects non-USD pairs; `market_discovery.py` defaults to `quote_assets=(\"USD\",)`; `vcap_entry.py` requires USD and uses `canonical_kraken_usd_pair`; `kraken_market_fabric.py` defaults to USD; and `kraken_snapshot.py` reserves the selected pair's quote balance in native quote units.
+- Consequently, changing only the discovery quote filter to include USDT would be unsafe. USDT-quoted proposals and USD-quoted proposals would otherwise reserve different native quote units against shared Governor limits, and the portfolio snapshot's free/committed figures are not yet normalized into one USDT accounting unit.
+- Architect's standing choice remains: prefer USD if it provides the broader eligible Kraken universe, retain useful actual USDT markets, and value/limit the portfolio in USDT with explicit fresh USD↔USDT pricing and conversion-cost treatment. Do not assume USD equals USDT and do not synthesize pair symbols.
+- Kraken's official API-symbol documentation identifies public REST `AssetPairs` as the source for actual pair identity, base/quote, precision, and minimums: https://support.kraken.com/in/articles/360000920306-api-symbols-and-tickers. A live complete AssetPairs enumeration and eligible USD-vs-USDT comparison have not yet been captured in this work. Do not claim which quote has the majority until that comparison is performed against current venue metadata.
+- Before enabling either quote for paper entries, implement common USDT-denominated capital snapshots/reservations, quote conversion with freshness and explicit rate direction, and actual execution/fee accounting in the trade's native quote. Preserve each market's exact native quote amount in immutable execution evidence.
+
+### Branch and disposition
+- Created isolated working branch `fix/kraken-precision-usd-usdt-20261116` from PR #126 for the next implementation pass. No speculative code changes were committed to it during this investigation.
+- No PR was merged, no local Bazzite installation was changed, no paper portfolio was reset, and no live execution was enabled.
+- Current completion: updater-specific fix verified; protected BUY root cause narrowed but unresolved; USD/USDT support and live universe comparison not implemented/verified. Overall clean paper acceptance remains blocked.
