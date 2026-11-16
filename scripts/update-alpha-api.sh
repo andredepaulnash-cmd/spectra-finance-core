@@ -470,6 +470,12 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
       && "$worktree_blob" == "2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a" ]]; then
       old_blob="$worktree_blob"
     fi
+    # Also accept the immediately preceding reviewed Kraken paper-routing
+    # revision so existing Alpha installs can advance without a manual reset.
+    if [[ "$source" == "spectra_core/market_discovery.py" \
+      && "$worktree_blob" == "43191679ac7027354406d32ec312a5f3dadb433e" ]]; then
+      old_blob="$worktree_blob"
+    fi
     if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
