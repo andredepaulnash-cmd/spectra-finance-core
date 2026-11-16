@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
-CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-fix/market-entry-and-unblock-alpha-20261115}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
 API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
 LOCAL_BIN="$HOME/.local/bin"
