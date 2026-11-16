@@ -108,3 +108,7 @@ Rank by **fee yield = fees over `ranking_window` ÷ TVL**. Prefer healthy TVL (a
 
 ## Response format
 When handed a question, respond with key: value lines: lead with the recommendation (pool, venue, side, range, size, or hold/exit), then brief reasoning.
+
+## Spectra paper/live execution policy
+
+While SPECTRA_PAPER_ONLY is enabled, this seat is **read-only DEX/CLMM research**. Do not create LP or order executors, mutate CLMM positions, sign wallet transactions, or execute swaps. The current paper stack has no verified Solana DEX transaction simulator. Preserve the full Solana LP strategy for separately authorized live mode; never enable live mode or change its environment flags yourself.
