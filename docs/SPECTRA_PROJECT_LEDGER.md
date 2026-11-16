@@ -211,6 +211,13 @@ Repositories:
 - Core PR #126 — [Fix governed paper MARKET BUY reconciliation](https://github.com/andredepaulnash-cmd/spectra-finance-core/pull/126). Adds policy defaults for 25,000 total / 18,750 recovery and protected MARKET BUY reconciliation. Latest known head: `0ee633eb03ce61c105e1802a79f91791ec9dfa4d`. Workflow `43798156044` failed clean Linux paper acceptance.
 - Core PR #127 — [Restore vertical scrolling on the Overview page](https://github.com/andredepaulnash-cmd/spectra-finance-core/pull/127). Frontend TypeScript and production build passed; its workflow was blocked by the inherited paper-acceptance failure. Not merged.
 
+### In-place updater failure: exact root cause and correction
+The first passing workflow (`43805192285`) exposed a separate updater defect:
+- `scripts/update-alpha-api.sh` defines `API_SOURCES` in this order: unified connector, market-data service, orders recorder, then `deps.py`.
+- Its final paper-only bot-status guard check incorrectly searched `${API_SOURCES[2]}`, which is `services/orders_recorder.py`, even though the guard text lives in `deps.py`. The updater therefore stopped with “paper-only bot-status guard was not applied locally” even though the fetched `deps.py` already matched reviewed upstream.
+- Corrected on PR #126 in [`98a9e37`](https://github.com/andredepaulnash-cmd/spectra-finance-core/commit/98a9e37d11a5ec764581dd51f6569761cd570fe3) to check `$API_DIR/deps.py` explicitly. A new CI run is required to verify the in-place updater now completes.
+- This was a false-negative verification bug, not evidence that the API guard itself was absent. Keep the guard and fail-closed behavior; do not remove it.
+
 ### Exact current PR #126 blocker
 - Clean Linux acceptance proved the API order was created, the paper exchange confirmed a fill, the ledger recorded it, and order/trade provenance was recognized.
 - Position remained HOLD because protected BUY reconciliation recorded `protected_buy_order_amount_changed`.
