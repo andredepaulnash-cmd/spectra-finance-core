@@ -336,7 +336,7 @@ def test_press_and_rotation_also_consume_the_non_recovery_entry_budget(tmp_path)
     assert "initial entry budget exceeded" in decision.reason
 
 
-def test_unreconciled_running_executor_keeps_full_entry_claim_charged(tmp_path):
+def test_running_executor_uses_current_position_value_for_entry_budget(tmp_path):
     g = governor(tmp_path, max_entry="60")
     bind_executor(
         g,
@@ -356,10 +356,7 @@ def test_unreconciled_running_executor_keeps_full_entry_claim_charged(tmp_path):
         )
     )
 
-    # Until the canonical entry ledger handoff is reconciled, the full
-    # COMMITTED reservation remains charged even when an observation reports
-    # a smaller current position size.
-    assert g.current_entry_exposure_quote() == D("0")
+    assert g.current_entry_exposure_quote() == D("50.05")
     proposal = CapitalProposal(
         proposal_id="running-entry-over-budget",
         pair="BTC-USD",
