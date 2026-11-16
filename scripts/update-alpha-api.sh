@@ -146,8 +146,16 @@ git restore --source=FETCH_HEAD --worktree -- "${API_SOURCES[@]}"
 # Pin the exact API source before applying the reviewed, idempotent adapter.
 PAPER_TRADE_SOURCE="services/trading_service.py"
 PAPER_TRADE_EXPECTED_BLOB="975f3fe9907e47029c0f66904a01b8c741857416"
-PAPER_TRADE_PATCHER="$REPO_ROOT/scripts/patch_hummingbot_trading_service_paper_trade.py"
-[[ -f "$PAPER_TRADE_PATCHER" ]] || die "Reviewed PaperTradeExchange compatibility patcher is missing."
+PAPER_TRADE_PATCHER="$(mktemp "$LOG_DIR/paper-trade-patcher.XXXXXX.py")"
+PAPER_TRADE_PATCHER_URL="https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/$CORE_REF/scripts/patch_hummingbot_trading_service_paper_trade.py"
+PAPER_TRADE_PATCHER_EXPECTED_BLOB="1f5a464e614e81cf64e5d4fe5e46b8752710a702"
+curl -fsSL "$PAPER_TRADE_PATCHER_URL" -o "$PAPER_TRADE_PATCHER" \
+  || die "Could not download the reviewed PaperTradeExchange compatibility patcher."
+actual_patcher_blob="$(git hash-object "$PAPER_TRADE_PATCHER")"
+[[ "$actual_patcher_blob" == "$PAPER_TRADE_PATCHER_EXPECTED_BLOB" ]] \
+  || die "Downloaded PaperTradeExchange patcher is not the reviewed version (expected $PAPER_TRADE_PATCHER_EXPECTED_BLOB, got $actual_patcher_blob)."
+python3 -m py_compile "$PAPER_TRADE_PATCHER" \
+  || die "Downloaded PaperTradeExchange patcher failed Python syntax validation."
 actual_paper_trade_blob="$(git rev-parse "FETCH_HEAD:$PAPER_TRADE_SOURCE")"
 [[ "$actual_paper_trade_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
   || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed source version (expected $PAPER_TRADE_EXPECTED_BLOB, got $actual_paper_trade_blob)."
