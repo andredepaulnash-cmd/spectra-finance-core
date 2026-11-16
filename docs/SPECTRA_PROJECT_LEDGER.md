@@ -193,6 +193,8 @@ Sources:
 - https://support.kraken.com/articles/kraken-markets
 - https://support.kraken.com/in/articles/360000920306-api-symbols-and-tickers
 - https://support.kraken.com/articles/where-is-kraken-licensed-or-regulated
+- Counting the official crypto-to-crypto table's USDT column on that page yields **45 listed USDT-quoted markets** (including stablecoins/tokenized assets and major assets). This is fewer than either proposed 50 or 83 distinct active positions, before account eligibility, volume/depth filters, or duplicate-base prevention. Treat 45 as a documentation-table count, not a substitute for a live AssetPairs query; new listings and pair status can change.
+- Therefore, a strict USDT-only Kraken universe may not support 50/83 simultaneous distinct asset positions. Before selecting the target, compare the live AssetPairs set against the approved universe. If it remains below 50, Architect must choose between a lower feasible target or a broader quote-currency universe with explicit quote conversion/accounting. Do not silently mix USD and USDT or invent extra markets.
 Implication: the requested USDT quote universe is a real Kraken spot-market option, but the scanner must enumerate actual supported pairs and account/connector rules. Never synthesize `BASE-USDT` by suffix concatenation or assume every USD market has a USDT counterpart.
 
 ## 5. Hummingbot / Core contracts to preserve
