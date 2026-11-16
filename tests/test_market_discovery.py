@@ -151,6 +151,7 @@ async def test_kraken_scan_uses_configured_connector_and_never_creates_orders():
         min_volume_usd=1_000,
         min_history_days=90,
         min_median_daily_quote_volume_usd=0,
+        connector_name="kraken",
         approved_pairs=("BTC-USD",),
         now=now,
     )
@@ -196,6 +197,7 @@ async def test_kraken_scan_does_not_mark_candidates_approved_without_list():
         min_volume_usd=1_000,
         min_history_days=90,
         min_median_daily_quote_volume_usd=0,
+        connector_name="kraken",
         now=now,
     )
 
@@ -280,10 +282,10 @@ async def test_paper_scan_loads_the_same_explicit_governor_allowlist_as_executio
         }
         for index in range(90)
     ]
-    market_data = FakeKrakenMarketData(history)
+    market_data = FakePaperKrakenMarketData(history)
     client = type("Client", (), {
         "market_data": market_data,
-        "connectors": FakeKrakenConnectors(),
+        "connectors": FakePaperKrakenConnectors(),
     })()
 
     result = await scan_kraken_universe(
@@ -294,6 +296,8 @@ async def test_paper_scan_loads_the_same_explicit_governor_allowlist_as_executio
         now=now,
     )
 
+    assert market_data.ticker_connectors == ["kraken_paper_trade"]
+    assert market_data.candle_calls == [("kraken", "BTC-USD", "1d", 92)]
     assert result["governor_approved_list_loaded"] is True
     assert result["approved_asset_list_source"] == "test Governor allowlist"
     assert result["counts"]["governor_approved"] == 1
