@@ -4231,8 +4231,32 @@ class CapitalGovernor:
                 (provenance.proposal_id,),
             ).fetchone()
         fallback = provenance.authorized_quote
-        if binding is None:
+
+        def observation_fallback() -> Decimal:
+            if observation is None:
+                return fallback
+            if (
+                observation.status.upper() == "TERMINATED"
+                and observation.filled_amount_quote == ZERO
+            ):
+                return ZERO
+            if (
+                observation.status.upper() == "RUNNING"
+                and observation.position_size_quote is not None
+            ):
+                position_size = observation.position_size_quote
+                fees = observation.cum_fees_quote
+                if (
+                    position_size.is_finite()
+                    and fees.is_finite()
+                    and position_size >= ZERO
+                    and fees >= ZERO
+                ):
+                    return exact_decimal_sum((position_size, fees))
             return fallback
+
+        if binding is None:
+            return observation_fallback()
 
         exact_scope = (
             binding["pair"] == provenance.pair
@@ -4272,13 +4296,7 @@ class CapitalGovernor:
                 (provenance.proposal_id,),
             ).fetchall()
             if not lots:
-                if (
-                    observation is not None
-                    and observation.status.upper() == "TERMINATED"
-                    and observation.filled_amount_quote == ZERO
-                ):
-                    return ZERO
-                return fallback
+                return observation_fallback()
 
             basis = ZERO
             for lot in lots:
