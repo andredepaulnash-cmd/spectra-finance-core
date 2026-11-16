@@ -147,6 +147,8 @@ Repositories:
 - Current bridge compares the exact authorized amount from the durable protected submission (`config.amount`) against the amount recorded for the Hummingbot executor-owned order. Exact equality currently fails.
 - Do **not** weaken this invariant or assume the cause is rounding/precision. First expose and compare exact authorized amount, submitted executor config amount, Hummingbot order-created event amount, persisted `ExecutorOrder.amount`, and cumulative fill amount. Then reproduce with a regression test and fix the true unit/precision/serialization mismatch.
 - The current fill audit separately ensures cumulative confirmed base fills do not exceed the authorized amount and fees stay within the recorded fee allowance.
+- A diagnostic-only commit was added to the PR #126 branch: [`be3f098`](https://github.com/andredepaulnash-cmd/spectra-finance-core/commit/be3f0982eb714623f5f5dcc602134487f757c049). It leaves the exact equality check intact and adds the authorized and observed decimal amounts to the conflict reason.
+- Workflow run [`43805192285`](https://github.com/andredepaulnash-cmd/spectra-finance-core/actions/runs/43805192285) was triggered by that commit. Static/unit checks completed successfully; the clean Linux installation/acceptance job was still in progress at the last check. No diagnostic amount values or final acceptance result are available yet.
 - No merge or install-ready claim until the complete clean Linux acceptance, restart/idempotency checks, and all required workflows pass.
 
 ## 6. Local runtime evidence supplied 2026-11-15
