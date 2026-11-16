@@ -197,6 +197,9 @@ Sources:
 - Therefore, a strict USDT-only Kraken universe may not support 50/83 simultaneous distinct asset positions. Before selecting the target, compare the live AssetPairs set against the approved universe. If it remains below 50, Architect must choose between a lower feasible target or a broader quote-currency universe with explicit quote conversion/accounting. Do not silently mix USD and USDT or invent extra markets.
 Implication: the requested USDT quote universe is a real Kraken spot-market option, but the scanner must enumerate actual supported pairs and account/connector rules. Never synthesize `BASE-USDT` by suffix concatenation or assume every USD market has a USDT counterpart.
 
+### Condor source discovery status
+The authenticated GitHub repository listing for the Architect's account currently exposes only `spectra-finance-core` and `spectra-hummingbot-api`. No separate Condor repository was discoverable by repository search. Core references a `condor-portfolio` controller and the architecture documents describe Condor as the intelligence layer, but this does not recover the complete Condor application source or its full feature/ranking inventory. Treat Condor-source recovery as incomplete until the local Condor project path, archive, or repository is identified.
+
 ## 5. Hummingbot / Core contracts to preserve
 
 - Hummingbot Strategy V2 uses controllers and self-managing executors; do not rebuild order mechanics that already exist without a measured reason.
