@@ -12,6 +12,7 @@ REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
 CORE_DIR="$INSTALL_ROOT/spectra-core"
+# After merge, the integration branch is the single reviewed release source.
 CORE_REF="${SPECTRA_ALPHA_CORE_REF:-integration/condor-hummingbot-spectra-runtime-20261115}"
 API_DIR="$INSTALL_ROOT/spectra-hummingbot-api"
 LOG_DIR="$INSTALL_ROOT/logs"
