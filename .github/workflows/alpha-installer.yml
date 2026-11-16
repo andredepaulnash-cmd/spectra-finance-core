@@ -258,6 +258,18 @@ jobs:
               for key, value in required.items():
                   env.write(f"{key}={value}\n")
           PY
+      - name: Stage the exact historical paper-clock revision for updater migration coverage
+        shell: bash
+        run: |
+          API_DIR="$HOME/SpectraFinance-Alpha/spectra-hummingbot-api"
+          git -C "$API_DIR" fetch --no-tags origin 94a1487d99cd316b296396795543b801ec74894a
+          git -C "$API_DIR" show FETCH_HEAD:services/unified_connector_service.py > "$API_DIR/services/unified_connector_service.py"
+          actual="$(git -C "$API_DIR" hash-object "$API_DIR/services/unified_connector_service.py")"
+          [[ "$actual" == "a35c432e74d829b02c8c153b334e20abcd10dd2b" ]] || {
+            echo "Historical paper-clock migration fixture mismatch: $actual"
+            exit 1
+          }
+          echo "Exact historical paper-clock source staged; updater must migrate it without bypassing blob validation."
       - name: Run and require the exact one-command in-place updater
         run: bash scripts/update-alpha-api.sh
         env:
