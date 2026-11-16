@@ -328,12 +328,11 @@ The current Core VCAP planner is not yet the remembered November Fat–Skinny–
 - In workflow `43805709781`, the updater itself completed successfully: it fetched the reviewed API main branch, verified expected source hashes, applied the four reviewed API files, rebuilt/restarted the API, applied reviewed Core files, rebuilt the dashboard, and reported authenticated API readiness.
 - The overall clean-install job remains failed only because the protected BUY amount reconciliation test failed. Therefore item 2's updater-specific correction is verified; full acceptance is not green.
 
-### USD-preferred / USD+USDT market support — implementation boundary identified
-- Current Core implementation is still USD-only across multiple authority boundaries: `asset_authority.py` canonicalizes only `BASE-USD`; `kraken_authorization.py` rejects non-USD pairs; `market_discovery.py` defaults to `quote_assets=(\"USD\",)`; `vcap_entry.py` requires USD and uses `canonical_kraken_usd_pair`; `kraken_market_fabric.py` defaults to USD; and `kraken_snapshot.py` reserves the selected pair's quote balance in native quote units.
-- Consequently, changing only the discovery quote filter to include USDT would be unsafe. USDT-quoted proposals and USD-quoted proposals would otherwise reserve different native quote units against shared Governor limits, and the portfolio snapshot's free/committed figures are not yet normalized into one USDT accounting unit.
-- Architect's standing choice remains: prefer USD if it provides the broader eligible Kraken universe, retain useful actual USDT markets, and value/limit the portfolio in USDT with explicit fresh USD↔USDT pricing and conversion-cost treatment. Do not assume USD equals USDT and do not synthesize pair symbols.
-- Kraken's official API-symbol documentation identifies public REST `AssetPairs` as the source for actual pair identity, base/quote, precision, and minimums: https://support.kraken.com/in/articles/360000920306-api-symbols-and-tickers. A live complete AssetPairs enumeration and eligible USD-vs-USDT comparison have not yet been captured in this work. Do not claim which quote has the majority until that comparison is performed against current venue metadata.
-- Before enabling either quote for paper entries, implement common USDT-denominated capital snapshots/reservations, quote conversion with freshness and explicit rate direction, and actual execution/fee accounting in the trade's native quote. Preserve each market's exact native quote amount in immutable execution evidence.
+### Kraken quote-currency scope — Architect decision 2026-11-16
+- Architect confirms Kraken trading should remain USD-only for now.
+- Keep actual USD-quoted Kraken spot pairs as the only eligible quote markets for discovery, authorization, VCAP entry, and execution. Do not add USDT quote markets or USD↔USDT conversion logic in this implementation pass.
+- This is an intentional scope decision, not a claim that USDT support is technically complete. Revisit only when Architect explicitly authorizes expanding quote-currency scope.
+- Existing USD-only behavior is therefore retained; no code change is needed for item 3 under the current decision.
 
 ### Branch and disposition
 - Created isolated working branch `fix/kraken-precision-usd-usdt-20261116` from PR #126 for the next implementation pass. No speculative code changes were committed to it during this investigation.
