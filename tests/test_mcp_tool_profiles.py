@@ -56,10 +56,25 @@ HB_TRADING = {
 HB_LIQUIDITY = {"manage_amm", "manage_clmm"}
 HB_ADMIN = {"configure_server", "manage_gateway_config"}
 
+HB_PAPER_BLOCKED = {
+    "set_account_position_mode_and_leverage",
+    "create_position_executor",
+    "create_lp_executor",
+    "explore_dex_pools",
+    "quote_swap",
+    "execute_swap",
+    "get_swap_status",
+    "search_swaps",
+}
+HB_PAPER_TRADING = HB_TRADING - HB_PAPER_BLOCKED
+
 HB_PROFILES = {
     "tick": HB_TRADING,
     "agent": HB_TRADING | HB_LIQUIDITY,
     "full": HB_TRADING | HB_LIQUIDITY | HB_ADMIN,
+    "paper_tick": HB_PAPER_TRADING,
+    "paper_agent": HB_PAPER_TRADING,
+    "paper_full": HB_PAPER_TRADING,
 }
 
 CONDOR_COMMON = {
@@ -84,6 +99,9 @@ CONDOR_PROFILES = {
     "tick": CONDOR_COMMON,
     "agent": CONDOR_COMMON | CONDOR_ORCHESTRATION,
     "full": CONDOR_COMMON | CONDOR_ORCHESTRATION,
+    "paper_tick": CONDOR_COMMON,
+    "paper_agent": CONDOR_COMMON | CONDOR_ORCHESTRATION,
+    "paper_full": CONDOR_COMMON | CONDOR_ORCHESTRATION,
 }
 
 
@@ -304,8 +322,9 @@ def test_a_launch_with_no_flag_serves_the_full_surface(module):
     """External-host compat: uvx, the checked-in `.mcp.json`, a bare console run."""
     server = FastMCP("probe")
     module.register_tools(server)
+    default_profile = module.DEFAULT_TOOL_PROFILE
     assert {tool.name for tool in asyncio.run(server.list_tools())} == _registered(
-        module, "full"
+        module, default_profile
     )
 
 
@@ -330,8 +349,42 @@ def test_the_module_singleton_is_registered_at_import(module):
         ("", False, "full"),
     ],
 )
-def test_the_seat_picks_its_profile(agent_slug, tick, expected):
+def test_the_seat_picks_its_profile(agent_slug, tick, expected, monkeypatch):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
     assert seat_profile(agent_slug, tick) == expected
+
+
+@pytest.mark.parametrize(
+    "agent_slug,tick,expected",
+    [
+        ("adaptive_grid_trader", True, "paper_tick"),
+        (CHAT_SLUG, True, "paper_tick"),
+        (None, True, "paper_tick"),
+        ("adaptive_grid_trader", False, "paper_agent"),
+        (CHAT_SLUG, False, "paper_full"),
+        (None, False, "paper_full"),
+    ],
+)
+def test_paper_mode_seats_mount_mode_scoped_profiles(agent_slug, tick, expected, monkeypatch):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    assert seat_profile(agent_slug, tick) == expected
+
+
+def test_paper_hummingbot_profiles_hide_live_only_tools():
+    for profile in ("paper_tick", "paper_agent", "paper_full"):
+        mounted = _registered(hb_server, profile)
+        assert {"create_order_executor", "create_grid_executor", "create_dca_executor"} <= mounted
+        assert {"get_prices", "get_market_data", "explore_geckoterminal"} <= mounted
+        assert HB_PAPER_BLOCKED.isdisjoint(mounted)
+        assert HB_LIQUIDITY.isdisjoint(mounted)
+        assert HB_ADMIN.isdisjoint(mounted)
+
+
+def test_paper_condor_profiles_preserve_the_attendance_boundary():
+    assert _registered(condor_server, "paper_tick") == _registered(condor_server, "tick")
+    assert _registered(condor_server, "paper_agent") == _registered(condor_server, "agent")
+    assert _registered(condor_server, "paper_full") == _registered(condor_server, "full")
 
 
 def test_both_subprocesses_are_told_the_profile():
@@ -344,6 +397,8 @@ def test_both_subprocesses_are_told_the_profile():
 
 def test_a_tick_session_mounts_the_narrow_surface_on_both_servers(monkeypatch):
     """End to end through the builder the engine actually calls."""
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
     import condor.runtime.toolsets as toolsets
 
     class _CM:
@@ -441,6 +496,8 @@ def test_hummingbot_settings_load_host_agent_identity(monkeypatch):
 def _session_profiles(monkeypatch, permission, **kwargs) -> dict[str, str]:
     """``{mcp server name: profile}`` for a chat seat on a server the caller
     holds at ``permission``."""
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
     import condor.runtime.toolsets as toolsets
 
     class _CM:
