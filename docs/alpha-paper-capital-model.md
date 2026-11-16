@@ -44,7 +44,8 @@ The supervisor opens no more than its configured number of new positions per cyc
 - Paper execution uses Hummingbot's explicit `*_paper_trade` connector path and supported API executors.
 - Hummingbot V2 controllers are not currently supported by the native paper-trade connector path. Keep those controller capabilities available in the full live architecture, but do not pretend they are paper-compatible.
 - Paper-only mode continues to reject order-capable live connectors. Live execution remains a separately authorized mode and is not enabled by this paper capital model.
-- Existing paper balances, order history, and credentials must not be reset by setup scripts. New-account defaults may be seeded; existing balances are preserved unless a separate, verified migration confirms the account is clean.
+- Existing paper balances, order history, and credentials must not be reset by setup scripts. New-account defaults may be seeded; existing balances are preserved.
+- `scripts/migrate_alpha_paper_balance.py` upgrades an existing account to $25,000 only after the local API proves paper-only mode, no trades/orders/active orders/positions exist, and all non-USD balances are zero. It is dry-run by default, creates a timestamped backup, and requires `--apply` to write.
 
 ## Configuration sources
 
