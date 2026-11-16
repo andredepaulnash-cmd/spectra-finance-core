@@ -418,7 +418,7 @@ CORE_PYTHON_SOURCES=(
 )
 declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="26b65d413e9dffde2464e20945b3e7755c6491e6"
-  ["spectra_core/kraken_authorization.py"]="3e3d4e195422002f43818c936d9c88a740ff7c72"
+  ["spectra_core/kraken_authorization.py"]="68af4d33f3d950ce1b9239aac1395d10eb0f926a"
   ["spectra_core/market_discovery.py"]="43191679ac7027354406d32ec312a5f3dadb433e"
   ["spectra_core/portfolio_supervisor.py"]="6d2e4476c1b136757bb44a0eb00f0b7f6001b0d1"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="bb3e8c508b78e690eaf36f8f54fe3dd21e4ac8e2"
@@ -430,7 +430,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
 )
 declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/asset_authority.py"]=""
-  ["spectra_core/kraken_authorization.py"]="f841e3689fc6821037b2a2d288a129138265b050"
+  ["spectra_core/kraken_authorization.py"]="3e3d4e195422002f43818c936d9c88a740ff7c72"
   ["spectra_core/market_discovery.py"]="5222e752f46f56bc58e4acd8bdd80f940ae1ce36"
   ["spectra_core/portfolio_supervisor.py"]="1200fa1698bf3dcb58a9c8ae9b315babb7cfedab"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
