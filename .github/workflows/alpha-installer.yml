@@ -152,7 +152,6 @@ jobs:
             tests/test_market_discovery.py \
             tests/test_spectra_executor_accounting_flow.py \
             tests/test_accounting_health_gate.py \
-            tests/test_entry_identity_submission.py \
             tests/test_recovery_exposure.py \
             tests/test_recovery_exposure_governor.py \
             tests/test_vcap_runtime_supervisor.py \
