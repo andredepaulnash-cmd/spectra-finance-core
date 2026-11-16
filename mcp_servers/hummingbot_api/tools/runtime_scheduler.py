@@ -61,6 +61,7 @@ async def _bootstrap_confirmed_entry_positions(
     scheduler_store: RuntimeSchedulerStore,
     accounting_supervisor: AccountingHealthSupervisor,
     active_position_ids: tuple[str, ...],
+    max_positions: int,
     now: float,
 ) -> tuple[str, ...]:
     """Create exact VCAP bindings for freshly filled, Governor-owned entries.
@@ -75,7 +76,7 @@ async def _bootstrap_confirmed_entry_positions(
     )
 
     bootstrapped: list[str] = []
-    for position_id in active_position_ids:
+    for position_id in active_position_ids[:max_positions]:
         if scheduler_store.binding_for_position(position_id) is not None:
             continue
         claims = governor.get_entry_submissions_for_position(
@@ -308,6 +309,7 @@ async def run_vcap_scheduler_tick(
         scheduler_store=scheduler_store,
         accounting_supervisor=accounting_supervisor,
         active_position_ids=active_ids,
+        max_positions=policy.max_positions_per_tick,
         now=now,
     )
 
