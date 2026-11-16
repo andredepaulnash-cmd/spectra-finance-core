@@ -105,6 +105,8 @@ git fetch --depth 1 origin main
 # Any other local source version is preserved and causes a safe stop.
 declare -A APPROVED_LEGACY_BLOBS=(
   ["services/unified_connector_service.py"]="27b79133556466d6d27ec130034f28444d33f860"
+  # Exact intermediate release: native paper connectors already use a managed Hummingbot clock.
+  ["services/unified_connector_service.py.clock"]="a35c432e74d829b02c8c153b334e20abcd10dd2b"
   ["services/market_data_service.py"]="132d74e8d0a182d65ab740763cab8a90bd176990"
   ["services/orders_recorder.py"]="1c18d3768fb08654c4b51b16f8813013d8d9da78"
   ["deps.py"]="fc93e8d86b5639b329fe8549873989275e60ff4e"
@@ -119,6 +121,9 @@ for source in "${API_SOURCES[@]}"; do
   fi
 
   approved_blob="${APPROVED_LEGACY_BLOBS[$source]:-}"
+  if [[ "$source" == "services/unified_connector_service.py" && "$worktree_blob" == "a35c432e74d829b02c8c153b334e20abcd10dd2b" ]]; then
+    approved_blob="$worktree_blob"
+  fi
   if [[ -n "$approved_blob" && "$worktree_blob" == "$approved_blob" ]]; then
     say "Recognized the exact pre-fix Alpha version of $source; applying its reviewed upstream fix."
     continue
@@ -362,7 +367,7 @@ CORE_OPS_SOURCES=(
   "scripts/systemd/spectra-alpha-backup.timer"
 )
 declare -A CORE_OPS_NEW_BLOBS=(
-  ["scripts/spectra"]="f716e1b6abccc775270fb9c5480d57091e2c202e"
+  ["scripts/spectra"]="1cbda078dab23afed7a1190613f69180a8fb6582"
   ["scripts/spectra-alpha-doctor.sh"]="13185d2fe40175f2541288e27b6ecb816dcc26e7"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
