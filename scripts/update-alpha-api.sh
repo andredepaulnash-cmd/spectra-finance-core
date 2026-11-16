@@ -160,6 +160,7 @@ actual_paper_trade_blob="$(git rev-parse "FETCH_HEAD:$PAPER_TRADE_SOURCE")"
 [[ "$actual_paper_trade_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
   || die "Fetched $PAPER_TRADE_SOURCE is not the reviewed source version (expected $PAPER_TRADE_EXPECTED_BLOB, got $actual_paper_trade_blob)."
 python3 "$PAPER_TRADE_PATCHER" "$API_DIR/$PAPER_TRADE_SOURCE"
+rm -f "$PAPER_TRADE_PATCHER"
 grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$API_DIR/$PAPER_TRADE_SOURCE" \
   || die "PaperTradeExchange pair-registration compatibility adapter was not applied."
 
