@@ -49,7 +49,7 @@ def _add_missing_policy_defaults(path: Path) -> None:
         mode = path.stat().st_mode & 0o777
         temporary = path.with_suffix(path.suffix + ".tmp")
         temporary.write_text(
-            json.dumps(policy, indent=2) + "\\n",
+            json.dumps(policy, indent=2) + "\n",
             encoding="utf-8",
         )
         temporary.chmod(mode or 0o600)
