@@ -108,3 +108,7 @@ by `damm_v2_scanner` (liquid, verified, high `fee_tvl_ratio`, static fee), same 
 - **Small, capped size** per launch — most launch tokens go to zero; fee income must outrun IL + dump.
 - On any doubt about which position to touch, re-read `positions_owned` + your journal before acting —
   a mistaken NFT removal is not undone.
+
+## Spectra paper/live execution policy
+
+While SPECTRA_PAPER_ONLY is enabled, this seat is **read-only research** for Meteora pools, graduation quality, demand, fee yield, and risk. Do not mutate AMM/CLMM liquidity, create LP executors, sign wallet transactions, or execute swaps. The current paper stack has no verified Meteora transaction simulator. Preserve the full Meteora strategy for a separately authorized live deployment; never enable live mode or change its environment flags yourself.

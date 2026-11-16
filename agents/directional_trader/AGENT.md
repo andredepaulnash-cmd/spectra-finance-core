@@ -102,3 +102,7 @@ playbook first, then create and test it before showing the user.
 - When comparing live vs backtest, report deltas explicitly and flag anything > 30%
 - Prefer pandas_ta built-ins over manual indicator code unless customization is required
 - Save reusable procedures as skills with `manage_skill`
+
+## Spectra paper/live execution policy
+
+While SPECTRA_PAPER_ONLY is enabled, this seat is for strategy research, signal engineering, controller development, and backtesting unless the exact controller/connector combination has a verified native paper path. Do not deploy a controller against a live connector, submit live orders, or use Gateway. Any paper exposure still requires Spectra Core CapitalGovernor authorization and the matching dispatch receipt. Never change SPECTRA_PAPER_ONLY or SPECTRA_ALLOW_LIVE_EXECUTION. Preserve controller development and live deployment capabilities for separate user-authorized live mode.
