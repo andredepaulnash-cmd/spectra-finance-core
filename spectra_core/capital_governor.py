@@ -53,11 +53,17 @@ def validate_capital_policy(policy: CapitalPolicy) -> None:
         raise ValueError("capital policy limits must be finite")
     if any(value < ZERO for value in values):
         raise ValueError("capital policy limits cannot be negative")
+    if policy.max_recovery_quote > policy.max_total_committed_quote:
+        raise ValueError("max_recovery_quote cannot exceed max_total_committed_quote")
     if (
         policy.max_entry_quote is not None
-        and policy.max_entry_quote > policy.max_total_committed_quote
+        and policy.max_entry_quote + policy.max_recovery_quote
+        > policy.max_total_committed_quote
     ):
-        raise ValueError("max_entry_quote cannot exceed max_total_committed_quote")
+        raise ValueError(
+            "max_entry_quote plus max_recovery_quote cannot exceed "
+            "max_total_committed_quote"
+        )
 
     if policy.max_leverage <= ZERO:
         raise ValueError("max_leverage must be positive")
