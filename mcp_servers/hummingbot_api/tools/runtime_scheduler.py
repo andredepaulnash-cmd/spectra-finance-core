@@ -225,16 +225,6 @@ async def run_vcap_scheduler_tick(
         raise TypeError("breaker_mode must be BreakerMode")
     policy = scheduler_policy or RuntimeSchedulerPolicy()
     active_ids = ledger.list_active_position_ids()
-    bootstrapped_positions = await _bootstrap_confirmed_entry_positions(
-        client,
-        governor=governor,
-        ledger=ledger,
-        lifecycle_store=lifecycle_store,
-        scheduler_store=scheduler_store,
-        accounting_supervisor=accounting_supervisor,
-        active_position_ids=active_ids,
-        now=now,
-    )
     active_set = set(active_ids)
     # Confirmed SELL fills can make a position CLOSED before its executor and
     # capital ownership have terminal proof. Keep only that existing mutation
@@ -306,6 +296,20 @@ async def run_vcap_scheduler_tick(
             lifecycle_store=lifecycle_store,
             now=now,
         )
+
+    # Explicit and previously persisted envelope bindings take precedence.
+    # Only newly reconciled entry positions without an exact binding are
+    # bootstrapped from their own durable ENTRY proposal.
+    bootstrapped_positions = await _bootstrap_confirmed_entry_positions(
+        client,
+        governor=governor,
+        ledger=ledger,
+        lifecycle_store=lifecycle_store,
+        scheduler_store=scheduler_store,
+        accounting_supervisor=accounting_supervisor,
+        active_position_ids=active_ids,
+        now=now,
+    )
 
     selected = scheduler_store.select_positions(
         active_position_ids=service_ids,
