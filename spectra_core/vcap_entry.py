@@ -20,9 +20,10 @@ from .kraken_authorization import reserve_kraken_capital
 from .models import DecisionStatus, IntentKind
 from .runtime import spectra_paper_only_enabled
 
-PAPER_INITIAL_ENTRY_QUOTE = Decimal("20")
-# Backwards-compatible alias; this is the initial ENTRY amount, not a VCAP shard.
-PAPER_VCAP_SEED_QUOTE = PAPER_INITIAL_ENTRY_QUOTE
+PAPER_INITIAL_ENTRY_QUOTE = Decimal("20")  # legacy live-mode fallback only
+PAPER_VCAP_SHARD_QUOTE = Decimal("20")
+# Backwards-compatible name for the independent VCAP recovery shard size.
+PAPER_VCAP_SEED_QUOTE = PAPER_VCAP_SHARD_QUOTE
 MAX_DISCOVERY_AGE_SECONDS = 300.0
 LIVE_TRUE_VALUES = {"1", "true", "yes"}
 
@@ -129,6 +130,10 @@ async def reserve_vcap_candidate_entry(
     if str(candidate.get("quote_asset") or "USD").strip().upper() != "USD":
         raise ValueError("VCAP entries are restricted to Kraken USD spot pairs")
 
+    if entry_quote is None and paper_only:
+        raise ValueError(
+            "paper initial entry quote must be supplied by the governed portfolio supervisor"
+        )
     amount_quote = (
         PAPER_INITIAL_ENTRY_QUOTE if entry_quote is None else entry_quote
     )
