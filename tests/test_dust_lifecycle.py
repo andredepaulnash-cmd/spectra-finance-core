@@ -1684,11 +1684,27 @@ def test_inflight_external_create_keeps_single_use_claim_across_real_await(
             )
 
         first = asyncio.create_task(create())
-        await entered.wait()
-        second = await create()
-        assert "already claimed" in second["error"]
-        finish.set()
-        return await first
+        try:
+            try:
+                await asyncio.wait_for(entered.wait(), timeout=10)
+            except asyncio.TimeoutError as exc:
+                if first.done():
+                    early = await first
+                    raise AssertionError(
+                        "create returned before reaching the external mutation boundary: "
+                        f"{early}"
+                    ) from exc
+                raise AssertionError(
+                    "create stalled before reaching the external mutation boundary"
+                ) from exc
+            second = await asyncio.wait_for(create(), timeout=10)
+            assert "already claimed" in second["error"]
+            finish.set()
+            return await asyncio.wait_for(first, timeout=10)
+        finally:
+            finish.set()
+            if not first.done():
+                first.cancel()
 
     assert "error" not in asyncio.run(run())
     assert len(client.calls) == 1
