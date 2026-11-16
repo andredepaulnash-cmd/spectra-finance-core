@@ -387,6 +387,16 @@ def test_paper_condor_profiles_preserve_the_attendance_boundary():
     assert _registered(condor_server, "paper_full") == _registered(condor_server, "full")
 
 
+def test_hummingbot_profile_is_forced_inside_the_execution_mode():
+    from mcp_servers.hummingbot_api.settings import profile_for_execution_mode
+
+    assert profile_for_execution_mode("full", paper_only=True) == "paper_full"
+    assert profile_for_execution_mode("tick", paper_only=True) == "paper_tick"
+    assert profile_for_execution_mode("paper_agent", paper_only=True) == "paper_agent"
+    assert profile_for_execution_mode("paper_full", paper_only=False) == "full"
+    assert profile_for_execution_mode("agent", paper_only=False) == "agent"
+
+
 def test_both_subprocesses_are_told_the_profile():
     hb = _hummingbot_mcp_args({"host": "h", "port": 1}, "srv", "tick")
     assert hb[hb.index("--profile") + 1] == "tick"
