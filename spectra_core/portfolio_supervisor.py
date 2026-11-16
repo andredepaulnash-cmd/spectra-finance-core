@@ -410,7 +410,9 @@ async def run_portfolio_cycle(
         "scan_candidate_count": 0,
         "new_entries_this_cycle": 0,
         "initial_entry_budget_quote": None,
-        "initial_entry_quote": str(PAPER_INITIAL_ENTRY_QUOTE),
+        "initial_entry_quote": (
+            None if paper_only else str(PAPER_INITIAL_ENTRY_QUOTE)
+        ),
         "vcap_recovery_shard_quote": str(cfg.vcap_seed_quote),
         "entries": [],
         "vcap": _json_summary(vcap_result),
