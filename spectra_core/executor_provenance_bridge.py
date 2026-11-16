@@ -521,7 +521,10 @@ def synchronize_executor_evidence(
             elif order.price is None or Fraction(order.price) > price_cap:
                 breaches.append(f"protected_buy_order_price_above_cap:{order.order_id}")
             if Fraction(order.amount) != authorized_amount:
-                breaches.append(f"protected_buy_order_amount_changed:{order.order_id}")
+                breaches.append(
+                    f"protected_buy_order_amount_changed:{order.order_id}:"
+                    f"authorized={config['amount']}:observed={order.amount}"
+                )
             if Fraction(order.filled_amount) > authorized_amount:
                 breaches.append(
                     f"protected_buy_order_fills_above_authorized_amount:{order.order_id}"
