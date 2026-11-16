@@ -410,6 +410,7 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/market_discovery.py"
   "spectra_core/portfolio_supervisor.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
+  "mcp_servers/hummingbot_api/tools/runtime_scheduler.py"
   "spectra_core/execution_policy.py"
   "spectra_core/capital_governor.py"
   "spectra_core/economic_position.py"
@@ -422,6 +423,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/market_discovery.py"]="43191679ac7027354406d32ec312a5f3dadb433e"
   ["spectra_core/portfolio_supervisor.py"]="6d2e4476c1b136757bb44a0eb00f0b7f6001b0d1"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="bb3e8c508b78e690eaf36f8f54fe3dd21e4ac8e2"
+  ["mcp_servers/hummingbot_api/tools/runtime_scheduler.py"]="f1a7b03bf00b7e4a63e37302f8abed56865bb27d"
   ["spectra_core/execution_policy.py"]="d83b1ca2301b0a60ca10471d71e5a146fdc7b897"
   ["spectra_core/capital_governor.py"]="102a8f94a4a0d20b6f0e07c34dda610a2495033e"
   ["spectra_core/economic_position.py"]="e7fbbdf56cead43c186fa8be923795442fa0e289"
@@ -434,6 +436,7 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/market_discovery.py"]="5222e752f46f56bc58e4acd8bdd80f940ae1ce36"
   ["spectra_core/portfolio_supervisor.py"]="1200fa1698bf3dcb58a9c8ae9b315babb7cfedab"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["mcp_servers/hummingbot_api/tools/runtime_scheduler.py"]="1709bebcbefc326c19c9d403857cff937144f900"
   ["spectra_core/execution_policy.py"]="403f0e7d229d36231a1fdd88f21eb809aacae2e8"
   ["spectra_core/capital_governor.py"]="d100fc52c8bab80aebf49e1b7a51da21d4d1750e"
   ["spectra_core/economic_position.py"]="3d63e76d57081c5a9b232d3966b7ef20f975ca8a"
@@ -474,6 +477,7 @@ done
   "$CORE_DIR/spectra_core/market_discovery.py" \
   "$CORE_DIR/spectra_core/portfolio_supervisor.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
+  "$CORE_DIR/mcp_servers/hummingbot_api/tools/runtime_scheduler.py" \
   "$CORE_DIR/spectra_core/execution_policy.py" \
   "$CORE_DIR/spectra_core/capital_governor.py" \
   "$CORE_DIR/spectra_core/economic_position.py" \
