@@ -6,7 +6,7 @@ from typing import Any, Awaitable, Callable, Mapping
 from mcp_servers.hummingbot_api.tools.vcap_runtime import (
     run_vcap_runtime_cycle,
 )
-from spectra_core.accounting_health import AccountingHealthSupervisor
+from spectra_core.accounting_health import AccountingHealthState, AccountingHealthSupervisor
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.economic_position import (
     EconomicPositionLedger,
@@ -22,7 +22,11 @@ from spectra_core.vcap_runtime import (
     VCAPRuntimePhase,
     VCAPRuntimeStore,
 )
-from spectra_core.vcap_state import VCAPStateStore
+from spectra_core.vcap_state import (
+    VCAPLifecycleState,
+    VCAPLifecycleStatus,
+    VCAPStateStore,
+)
 
 CycleRunner = Callable[..., Awaitable[dict[str, Any]]]
 
@@ -46,6 +50,140 @@ def _fleet_state_for_result(result: Mapping[str, Any]) -> FleetPositionState:
     if raw == VCAPRuntimePhase.CONFLICT.value:
         return FleetPositionState.CONFLICT
     return FleetPositionState.ACTIVE
+
+
+async def _bootstrap_confirmed_entry_positions(
+    client: Any,
+    *,
+    governor: CapitalGovernor,
+    ledger: EconomicPositionLedger,
+    lifecycle_store: VCAPStateStore,
+    scheduler_store: RuntimeSchedulerStore,
+    accounting_supervisor: AccountingHealthSupervisor,
+    active_position_ids: tuple[str, ...],
+    max_positions: int,
+    now: float,
+) -> tuple[str, ...]:
+    """Create exact VCAP bindings for freshly filled, Governor-owned entries.
+
+    A new entry is not a VCAP-managed position until its executor order/trade
+    evidence has reconciled into the economic ledger. The entry proposal ID is
+    the immutable envelope identity; every later recovery tranche still needs
+    its own independent Capital Governor reservation.
+    """
+    from mcp_servers.hummingbot_api.tools.accounting_health import (
+        synchronize_position_accounting_health,
+    )
+
+    bootstrapped: list[str] = []
+    for position_id in active_position_ids[:max_positions]:
+        if scheduler_store.binding_for_position(position_id) is not None:
+            continue
+        claims = governor.get_entry_submissions_for_position(
+            position_id=position_id,
+            ledger_path=ledger.path,
+        )
+        if not claims:
+            continue
+
+        dispatched_claims = []
+        for claim in claims:
+            proposal_id = str(claim.get("proposal_id") or "").strip()
+            executor_id = governor.get_execution_receipt(proposal_id) if proposal_id else None
+            if (
+                proposal_id
+                and executor_id
+                and str(claim.get("executor_id") or "") == str(executor_id)
+            ):
+                dispatched_claims.append((proposal_id, str(executor_id)))
+        if not dispatched_claims:
+            continue
+
+        proposal_ids = tuple(proposal_id for proposal_id, _ in dispatched_claims)
+        try:
+            health = await synchronize_position_accounting_health(
+                client,
+                position_id=position_id,
+                proposal_ids=proposal_ids,
+                governor=governor,
+                ledger=ledger,
+                supervisor=accounting_supervisor,
+                now=now,
+            )
+        except Exception:
+            # Keep the position unbound and fail closed for this tick. The
+            # ordinary scheduler result will expose it as UNBOUND; a later
+            # fresh reconciliation can retry bootstrap without guessing.
+            continue
+        if (
+            health.state != AccountingHealthState.HEALTHY
+            or not health.fully_reconciled
+        ):
+            continue
+
+        snapshot = ledger.snapshot(position_id)
+        if (
+            snapshot.status != EconomicPositionStatus.ACTIVE
+            or snapshot.active_base <= 0
+            or snapshot.active_cost_basis_quote <= 0
+        ):
+            continue
+
+        # Only a proposal that is already represented by reconciled active
+        # inventory may become this position's VCAP envelope identity.
+        active_proposals = set(ledger.active_proposal_ids(position_id))
+        envelope_id = next(
+            (
+                proposal_id
+                for proposal_id, _ in dispatched_claims
+                if proposal_id in active_proposals
+            ),
+            None,
+        )
+        if envelope_id is None:
+            continue
+
+        existing_state = lifecycle_store.load(envelope_id)
+        if existing_state is None:
+            policy = governor.policy
+            position_headroom = max(
+                Decimal("0"),
+                Decimal(policy.max_position_quote)
+                - snapshot.active_cost_basis_quote,
+            )
+            recovery_ceiling = max(
+                Decimal("0"),
+                min(Decimal(policy.max_recovery_quote), position_headroom),
+            )
+            average_entry_price = (
+                snapshot.active_cost_basis_quote / snapshot.active_base
+            )
+            lifecycle_store.save(
+                VCAPLifecycleState(
+                    envelope_proposal_id=envelope_id,
+                    pair=snapshot.pair,
+                    next_sequence=1,
+                    remaining_authorized_quote=recovery_ceiling,
+                    recovery_proposal_ids=(),
+                    position_base=snapshot.active_base,
+                    cost_basis_quote=snapshot.active_cost_basis_quote,
+                    last_known_price=average_entry_price,
+                    profit_state=None,
+                    status=VCAPLifecycleStatus.ACTIVE,
+                    updated_at=float(now),
+                )
+            )
+
+        scheduler_store.bind_position(
+            position_id=position_id,
+            envelope_proposal_id=envelope_id,
+            ledger=ledger,
+            lifecycle_store=lifecycle_store,
+            now=now,
+        )
+        bootstrapped.append(position_id)
+
+    return tuple(bootstrapped)
 
 
 async def run_vcap_scheduler_tick(
@@ -159,6 +297,21 @@ async def run_vcap_scheduler_tick(
             lifecycle_store=lifecycle_store,
             now=now,
         )
+
+    # Explicit and previously persisted envelope bindings take precedence.
+    # Only newly reconciled entry positions without an exact binding are
+    # bootstrapped from their own durable ENTRY proposal.
+    bootstrapped_positions = await _bootstrap_confirmed_entry_positions(
+        client,
+        governor=governor,
+        ledger=ledger,
+        lifecycle_store=lifecycle_store,
+        scheduler_store=scheduler_store,
+        accounting_supervisor=accounting_supervisor,
+        active_position_ids=active_ids,
+        max_positions=policy.max_positions_per_tick,
+        now=now,
+    )
 
     selected = scheduler_store.select_positions(
         active_position_ids=service_ids,
@@ -330,6 +483,7 @@ async def run_vcap_scheduler_tick(
         "tick_sequence": tick.sequence,
         "breaker_mode": breaker_mode.value,
         "active_position_count": len(active_ids),
+        "bootstrapped_position_ids": list(bootstrapped_positions),
         "service_position_count": len(service_ids),
         "retirement_position_ids": retirement_ids,
         "selected_position_count": len(selected),

@@ -77,4 +77,9 @@ PROFILE_TOOLS: dict[str, tuple[str, ...]] = {
     "tick": COMMON_TOOLS,
     "agent": COMMON_TOOLS + ORCHESTRATION_TOOLS,
     "full": COMMON_TOOLS + ORCHESTRATION_TOOLS,
+    # Paper mode narrows Hummingbot tools; Condor's orchestration/memory surface
+    # is unchanged and remains governed by its existing seat/owner checks.
+    "paper_tick": COMMON_TOOLS,
+    "paper_agent": COMMON_TOOLS + ORCHESTRATION_TOOLS,
+    "paper_full": COMMON_TOOLS + ORCHESTRATION_TOOLS,
 }

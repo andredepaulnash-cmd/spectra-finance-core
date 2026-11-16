@@ -20,6 +20,7 @@ from spectra_core.runtime import (
     get_spectra_accounting_health_snapshot,
     get_spectra_module_lifecycle_store,
 )
+from spectra_core.portfolio_supervisor import get_portfolio_supervisor_status
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,15 @@ async def spectra_runtime_status(
             "live_dispatch_available": False,
             "paper_connector_count": 0,
             "error": "Spectra runtime status could not be verified",
+        }
+
+    try:
+        result["portfolio_supervisor"] = get_portfolio_supervisor_status()
+    except Exception as e:
+        logger.warning("Spectra portfolio supervisor status unavailable: %s", e)
+        result["portfolio_supervisor"] = {
+            "supervisor_state": "UNAVAILABLE",
+            "error": "Core portfolio supervisor status could not be verified",
         }
 
     try:

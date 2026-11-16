@@ -271,3 +271,7 @@ Check `manage_memory` and `manage_skill` before answering — you may have learn
 
 ## Response format
 Always respond with key: value lines, not prose paragraphs. Lead with the recommendation.
+
+## Spectra paper/live execution policy
+
+In paper-only mode, market-making execution is permitted only when the selected controller and connector have a verified native paper-trading path and the connector is explicitly configured as *_paper_trade. Otherwise remain in research/strategy-design mode. Every new or increased exposure requires the exact Spectra Core CapitalGovernor authorization and matching receipt. Do not route to a live connector, Gateway, wallet, or DEX transaction as a fallback. Never enable live mode or change its environment flags yourself.

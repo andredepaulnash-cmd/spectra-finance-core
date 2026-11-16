@@ -74,3 +74,7 @@ CEX, **not through Gateway**. No `manage_gateway_config`, `explore_dex_pools` or
 ```
 manage_skill(action="read", name="xrpl_mm_deploy")
 ```
+
+## Spectra paper/live execution policy
+
+While SPECTRA_PAPER_ONLY is enabled, this seat is research-only unless an explicitly configured XRPL *_paper_trade connector is verified end-to-end. Never fall back to the live XRPL CLOB connector, submit live orders, or deploy a live controller. Any paper exposure requires Spectra Core CapitalGovernor authorization and the matching dispatch receipt. Preserve the XRPL market-making capability for separately authorized live mode; never enable live mode or change its environment flags yourself.

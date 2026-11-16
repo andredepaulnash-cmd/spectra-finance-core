@@ -76,6 +76,7 @@ class Connectors:
                 "min_price_increment": "0.01",
                 "min_quote_amount_increment": "0.01",
                 "supports_limit_orders": True,
+                "supports_market_orders": True,
             }
         }
 
@@ -108,7 +109,7 @@ class FakeSession:
                         {
                             "executor_id": self.executor_id,
                             "client_order_id": "kraken-paper-buy-1",
-                            "order_type": "LIMIT",
+                            "order_type": getattr(self, "order_type", "LIMIT"),
                             "trade_type": "BUY",
                             "amount": self.order_amount,
                             "price": self.order_price,
@@ -168,7 +169,8 @@ class Executors:
         self.receipt_token = self.session.headers.get("X-Spectra-Dispatch-Receipt")
         assert self.receipt_token
         self.session.order_amount = str(executor_config["amount"])
-        self.session.order_price = str(executor_config["price"])
+        self.session.order_price = str(executor_config.get("price") or "94")
+        self.session.order_type = executor_config["execution_strategy"]
         decision = self.governor.get_decision(self.proposal_id)
 
         assert decision is not None
@@ -425,7 +427,7 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
     from mcp_servers.hummingbot_api.tools.accounting_health import (
         synchronize_position_accounting_health,
     )
-    from mcp_servers.hummingbot_api.tools.executor_create import create_grid_executor
+    from mcp_servers.hummingbot_api.tools.executor_create import create_order_executor
 
     paper_state = tmp_path / "paper-state"
     live_state = tmp_path / "live-state"
@@ -497,25 +499,23 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
         )
         assert authorization.decision.status == DecisionStatus.RESERVED
 
-        result = await create_grid_executor(
+        # The real API-backed acceptance path exercises the ordinary MARKET BUY.
+        # Grid's independent LIMIT policy remains covered by the deterministic unit test.
+        result = await create_order_executor(
             client,
             connector_name="kraken_paper_trade",
             trading_pair="BTC-USD",
             side=1,
-            start_price=90,
-            end_price=100,
-            limit_price=80,
-            total_amount_quote=25,
+            execution_strategy="MARKET",
+            amount=None,
+            price=None,
             leverage=1,
+            position_action="OPEN",
             account_name="master_account",
             controller_id="spectra-ci",
             spectra_proposal_id=authorization.proposal.proposal_id,
             spectra_intent="ENTRY",
             spectra_position_id=position_id,
-            max_open_orders=1,
-            max_orders_per_batch=1,
-            min_order_amount_quote=25,
-            spectra_max_price_slippage_bps=10,
             spectra_fee_allowance_bps=60,
         )
         assert not result.get("error"), result
@@ -594,7 +594,266 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             "No fully reconciled confirmed paper fill within 60 seconds: "
             f"executor={executor_id}, state={getattr(last_health, 'state', None)}, "
             f"confirmed={getattr(last_health, 'confirmed_fills', 0)}, "
-            f"ledgered={getattr(last_health, 'ledgered_fills', 0)}"
+            f"ledgered={getattr(last_health, 'ledgered_fills', 0)}, "
+            f"known_orders={getattr(last_health, 'known_orders', 0)}, "
+            f"bound_orders={getattr(last_health, 'bound_orders', 0)}, "
+            f"reasons={getattr(last_health, 'reasons', ())}, "
+            f"unresolved_orders={getattr(last_health, 'unresolved_order_ids', ())}, "
+            f"unresolved_trades={getattr(last_health, 'unresolved_trade_ids', ())}, "
+            f"protected_buy_conflicts={governor.get_protected_buy_conflicts(authorization.proposal.proposal_id)}"
         )
     finally:
         await client.close()
+
+
+
+def test_market_buy_sizes_from_fresh_ask_depth_without_price_cap():
+    from spectra_core.execution_policy import build_protected_buy_market_config
+    from spectra_core.kraken_market_fabric import KrakenTradingRule
+
+    rule = KrakenTradingRule(
+        trading_pair="BTC-USD",
+        min_order_size=D("0.00001"),
+        min_notional_size=D("1"),
+        min_order_value=D("1"),
+        min_price_increment=D("0.01"),
+        min_base_amount_increment=D("0.00001"),
+        min_quote_amount_increment=D("0.01"),
+        supports_limit_orders=True,
+        supports_market_orders=True,
+    )
+    result = build_protected_buy_market_config(
+        {
+            "type": "order_executor",
+            "connector_name": "kraken_paper_trade",
+            "trading_pair": "BTC-USD",
+            "side": 1,
+            "execution_strategy": "MARKET",
+            "leverage": 1,
+        },
+        trading_rule=rule,
+        asks=((D("94"), D("0.1")), (D("95"), D("0.5"))),
+        best_ask=D("94"),
+        market_observed_at=1000,
+        now=1001,
+        authorized_quote_budget=D("50"),
+        fee_allowance_bps=D("10"),
+        connector_name="kraken_paper_trade",
+    )
+
+    assert result.executor_config["execution_strategy"] == "MARKET"
+    assert "price" not in result.executor_config
+    assert D(result.executor_config["amount"]) == result.amount_base
+    assert result.amount_base > D("0.1")
+    assert result.estimated_total_quote <= D("50")
+    assert result.estimated_principal_quote > D("0")
+    assert result.authorized_quote_budget == D("50")
+
+
+
+def test_paper_market_buy_authorizes_hummingbot_seven_decimal_quantization():
+    from spectra_core.execution_policy import build_protected_buy_market_config
+    from spectra_core.kraken_market_fabric import KrakenTradingRule
+
+    rule = KrakenTradingRule(
+        trading_pair="BTC-USD",
+        min_order_size=D("0.00000001"),
+        min_notional_size=D("1"),
+        min_order_value=D("1"),
+        min_price_increment=D("0.01"),
+        min_base_amount_increment=D("0.00000001"),
+        min_quote_amount_increment=D("0.01"),
+        supports_limit_orders=True,
+        supports_market_orders=True,
+    )
+    result = build_protected_buy_market_config(
+        {
+            "type": "order_executor",
+            "connector_name": "kraken_paper_trade",
+            "trading_pair": "BTC-USD",
+            "side": 1,
+            "execution_strategy": "MARKET",
+            "leverage": 1,
+        },
+        trading_rule=rule,
+        asks=((D("65000"), D("1")),),
+        best_ask=D("65000"),
+        market_observed_at=1000,
+        now=1001,
+        authorized_quote_budget=D("24.93335"),
+        fee_allowance_bps=D("0"),
+        connector_name="kraken_paper_trade",
+    )
+
+    # 24.93335 USD / 65,000 USD per BTC = 0.00038359 BTC.
+    # Hummingbot 20260922 PaperTradeExchange floors this to 0.0003835 BTC.
+    assert result.execution_amount_increment == D("0.0000001")
+    assert result.amount_base == D("0.0003835")
+    assert D(result.executor_config["amount"]) == result.amount_base
+    assert result.estimated_total_quote <= result.authorized_quote_budget
+
+
+def test_market_buy_refuses_venues_without_market_support():
+    from spectra_core.execution_policy import build_protected_buy_market_config
+    from spectra_core.kraken_market_fabric import KrakenTradingRule
+
+    rule = KrakenTradingRule(
+        trading_pair="BTC-USD",
+        min_order_size=D("0.00001"),
+        min_notional_size=D("1"),
+        min_order_value=D("1"),
+        min_price_increment=D("0.01"),
+        min_base_amount_increment=D("0.00001"),
+        min_quote_amount_increment=D("0.01"),
+        supports_limit_orders=True,
+        supports_market_orders=False,
+    )
+    with pytest.raises(ValueError, match="does not support MARKET"):
+        build_protected_buy_market_config(
+            {
+                "type": "order_executor",
+                "connector_name": "kraken_paper_trade",
+                "trading_pair": "BTC-USD",
+                "side": 1,
+                "execution_strategy": "MARKET",
+                "leverage": 1,
+            },
+            trading_rule=rule,
+            asks=((D("94"), D("1")),),
+            best_ask=D("94"),
+            market_observed_at=1000,
+            now=1001,
+            authorized_quote_budget=D("50"),
+            fee_allowance_bps=D("10"),
+            connector_name="kraken_paper_trade",
+        )
+
+
+
+def test_governed_market_entry_dispatches_market_order_and_persists_policy(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv(
+        "SPECTRA_APPROVED_ASSETS_FILE",
+        str(Path(__file__).parent / "fixtures" / "approved_assets.json"),
+    )
+    monkeypatch.setenv(
+        "SPECTRA_DISPATCH_PRIVATE_KEY",
+        base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="),
+    )
+    monkeypatch.setattr(executor_create.settings, "paper_only", True)
+    monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
+    monkeypatch.setattr(
+        executor_create, "get_breaker_mode", lambda: executor_create.BreakerMode.NORMAL
+    )
+    g = governor(tmp_path)
+    client = Client("kraken_paper_trade")
+    ledger = EconomicPositionLedger(tmp_path / "market-economic.sqlite3")
+    ledger.open_position(position_id="market-entry", pair="BTC-USD", created_at=1000)
+    health = AccountingHealthSupervisor(ledger.path)
+    monkeypatch.setattr(executor_create, "get_economic_position_ledger", lambda: ledger)
+    monkeypatch.setattr(kraken_authorization, "get_economic_position_ledger", lambda: ledger)
+    monkeypatch.setattr(
+        kraken_authorization, "get_accounting_health_supervisor", lambda: health
+    )
+    monkeypatch.setattr(executor_create, "get_capital_governor", lambda: g)
+
+    async def fresh(rule):
+        observed = time.time()
+        return execution_book.FreshVenueBook(
+            "BTC-USD",
+            "XBTUSD",
+            D("93"),
+            D("94"),
+            ((D("93"), D("100")),),
+            ((D("94"), D("100")), (D("95"), D("100"))),
+            observed,
+            observed,
+            "test-fresh-Kraken-Market-Depth",
+            "c" * 64,
+            venue_min_order_size=D("0.00001"),
+            venue_min_cost_quote=D("1"),
+            venue_base_asset="BTC",
+            venue_quote_asset="USD",
+            venue_rules_observed_at=observed,
+            venue_rules_sha256="d" * 64,
+        )
+
+    monkeypatch.setattr(execution_book, "fetch_protected_kraken_book", fresh)
+    executor_create.trading_rules_cache.clear()
+    authorization = asyncio.run(
+        reserve_kraken_capital(
+            client,
+            account_name="master_account",
+            trading_pair="BTC-USD",
+            intent="ENTRY",
+            amount_quote="50",
+            governor=g,
+        )
+    )
+    assert authorization.decision.status == DecisionStatus.RESERVED
+    client.executors = Executors(g, authorization.proposal.proposal_id, client._session)
+
+    result = asyncio.run(
+        executor_create.create_order_executor(
+            client,
+            connector_name="kraken_paper_trade",
+            trading_pair="BTC-USD",
+            side=1,
+            execution_strategy="MARKET",
+            amount=None,
+            price=None,
+            leverage=1,
+            position_action="OPEN",
+            account_name="master_account",
+            spectra_proposal_id=authorization.proposal.proposal_id,
+            spectra_intent="ENTRY",
+            spectra_position_id="market-entry",
+            spectra_fee_allowance_bps=10,
+        )
+    )
+
+    assert result.get("executor_id") == "spectra-e2e-1", result
+    call = client.executors.calls[0]["executor_config"]
+    assert call["type"] == "order_executor"
+    assert call["execution_strategy"] == "MARKET"
+    assert "price" not in call
+    assert D(call["amount"]) > 0
+    submission = g.get_protected_buy_submission(authorization.proposal.proposal_id)
+    assert submission is not None
+    assert submission["config"]["execution_strategy"] == "MARKET"
+    assert "price" not in submission["config"]
+    assert submission["policy"]["execution_strategy"] == "MARKET"
+    assert D(submission["policy"]["amount_base"]) == D(submission["config"]["amount"])
+    assert D(submission["policy"]["execution_amount_increment"]) > 0
+    assert "price_cap" not in submission["policy"]
+    assert D(submission["policy"]["estimated_total_quote"]) <= D("50")
+    decision = g.get_decision(authorization.proposal.proposal_id)
+    assert decision is not None
+    assert decision.status == DecisionStatus.RECONCILED
+
+
+
+def test_live_market_buy_stays_gated_without_quote_sized_connector_support(
+    monkeypatch
+):
+    monkeypatch.setattr(executor_create.settings, "paper_only", False)
+
+    with pytest.raises(ValueError, match="quote-denominated spend bound"):
+        asyncio.run(
+            executor_create._bounded_market_buy(
+                Client("kraken"),
+                {
+                    "connector_name": "kraken",
+                    "trading_pair": "BTC-USD",
+                    "side": 1,
+                    "execution_strategy": "MARKET",
+                    "leverage": 1,
+                },
+                proposal_id="live-market-proposal",
+                fee_allowance_bps=60,
+            )
+        )

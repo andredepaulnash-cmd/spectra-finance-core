@@ -32,6 +32,12 @@ ZERO = Decimal("0")
 ONE = Decimal("1")
 BPS = Decimal("10000")
 MAX_MARKET_AGE_SECONDS = 30.0
+# Hummingbot 20260922 PaperTradeExchange.c_quantize_order_amount first
+# quantizes every paper order to 1e-7 with ROUND_DOWN. Its quantization
+# parameter map is empty in this pinned implementation, so the effective
+# paper connector base step is at least this value. Keep this paper-only
+# adapter aligned with the exact execution connector behavior.
+PAPER_TRADE_BASE_AMOUNT_QUANTUM = Decimal("0.0000001")
 
 
 def _financial_precision(function):
@@ -275,6 +281,164 @@ def build_protected_buy_limit_config(
         principal,
         fee_quote,
         total,
+    )
+
+
+@dataclass(frozen=True)
+class MarketBuyOrder:
+    executor_config: dict[str, Any]
+    authorized_quote_budget: Decimal
+    reference_ask: Decimal
+    amount_base: Decimal
+    execution_amount_increment: Decimal
+    estimated_principal_quote: Decimal
+    estimated_fee_quote: Decimal
+    estimated_total_quote: Decimal
+
+
+@_financial_precision
+def build_protected_buy_market_config(
+    config: dict[str, Any],
+    *,
+    trading_rule: KrakenTradingRule,
+    asks: tuple[tuple[Decimal, Decimal], ...],
+    best_ask: Decimal,
+    market_observed_at: float,
+    now: float,
+    authorized_quote_budget: Decimal,
+    fee_allowance_bps: Decimal,
+    connector_name: str = "kraken",
+) -> MarketBuyOrder:
+    """Size a MARKET BUY from a fresh, depth-checked book without a price ceiling.
+
+    The quote budget is the capital authorization and sizing target. Hummingbot's
+    market OrderExecutor accepts a base-denominated amount, so actual spend can
+    differ if the book moves between this observation and matching. The policy
+    records the depth-based estimate for post-fill reconciliation; it does not
+    misrepresent an ask-price snapshot as a hard execution-price guarantee.
+    """
+    if not isinstance(config, dict):
+        raise ValueError("market BUY config must be an object")
+    if config.get("type") not in (None, "order_executor"):
+        raise ValueError("market BUY requires an order_executor")
+    if config.get("side") not in (1, "1", "BUY") or isinstance(config.get("side"), bool):
+        raise ValueError("market BUY requires BUY side")
+    if config.get("execution_strategy") != "MARKET":
+        raise ValueError("ordinary Spectra entry requires execution_strategy=MARKET")
+    if "price" in config and config.get("price") is not None:
+        raise ValueError("MARKET BUY must not carry a limit price")
+    if any(field in config for field in ("time_in_force", "timeinforce", "execution_mode")):
+        raise ValueError("market BUY config contains unsupported execution fields")
+    connector = str(connector_name).strip().lower()
+    if connector not in {"kraken", "kraken_paper_trade"}:
+        raise ValueError("market BUY requires Kraken spot or paper")
+    if str(config.get("connector_name", "")).strip().lower() != connector:
+        raise ValueError("market BUY connector does not match authorized connector")
+    pair = str(config.get("trading_pair", "")).strip().upper()
+    if not pair or pair != trading_rule.trading_pair.strip().upper():
+        raise ValueError("market BUY pair does not match trading rule")
+    if not trading_rule.supports_market_orders:
+        raise ValueError("venue does not support MARKET orders")
+    if _decimal(config.get("leverage", 1), "leverage", positive=True) != ONE:
+        raise ValueError("market BUY requires leverage=1")
+    budget = _decimal(authorized_quote_budget, "authorized_quote_budget", positive=True)
+    fees = _decimal(fee_allowance_bps, "fee_allowance_bps")
+    if fees >= BPS:
+        raise ValueError("market BUY fee allowance must be below 10000 bps")
+    ask = _decimal(best_ask, "best_ask", positive=True)
+    observed = _timestamp(market_observed_at, "market_observed_at")
+    current = _timestamp(now, "now")
+    if observed > current or current - observed > MAX_MARKET_AGE_SECONDS:
+        raise ValueError("market BUY book observation is stale or future")
+    step = _decimal(trading_rule.min_base_amount_increment, "min_base_amount_increment", positive=True)
+    # PaperTradeExchange quantizes before emitting its order-created event.
+    # Authorize that executable quantity up front; never apply this paper-only
+    # floor to the live Kraken connector.
+    if connector == "kraken_paper_trade":
+        step = max(step, PAPER_TRADE_BASE_AMOUNT_QUANTUM)
+    minimum_base = _decimal(trading_rule.min_order_size, "min_order_size")
+    minimum_quote = max(
+        _decimal(trading_rule.min_notional_size, "min_notional_size"),
+        _decimal(trading_rule.min_order_value, "min_order_value"),
+    )
+    if not isinstance(asks, (tuple, list)) or not asks:
+        raise ValueError("market BUY requires fresh non-empty ask depth")
+    first_ask = _decimal(asks[0][0], "asks[0].price", positive=True)
+    if first_ask != ask:
+        raise ValueError("market BUY best ask differs from the first depth level")
+
+    principal_budget = budget / (ONE + fees / BPS)
+    remaining = principal_budget
+    available_base = ZERO
+    estimated_principal = ZERO
+    previous_price = ZERO
+    for index, level in enumerate(asks):
+        if not isinstance(level, (tuple, list)) or len(level) != 2:
+            raise ValueError(f"market BUY ask level {index} is malformed")
+        price = _decimal(level[0], f"asks[{index}].price", positive=True)
+        size = _decimal(level[1], f"asks[{index}].amount", positive=True)
+        if price < ask or (previous_price and price < previous_price):
+            raise ValueError("market BUY ask depth is unsorted or conflicts with best ask")
+        previous_price = price
+        if remaining <= ZERO:
+            break
+        take = min(size, remaining / price)
+        if take <= ZERO:
+            break
+        available_base += take
+        cost = take * price
+        estimated_principal += cost
+        remaining -= cost
+
+    amount = (available_base / step).to_integral_value(rounding=ROUND_FLOOR) * step
+    if amount <= ZERO:
+        raise ValueError("market BUY authorized budget cannot fund one venue-sized base increment")
+
+    # Reprice the quantized amount against the observed ask ladder, not only
+    # the top ask. This is an estimate, not a promise about the later fill.
+    left = amount
+    estimated_principal = ZERO
+    for price, size in asks:
+        take = min(left, _decimal(size, "ask amount", positive=True))
+        estimated_principal += take * _decimal(price, "ask price", positive=True)
+        left -= take
+        if left <= ZERO:
+            break
+    if left > ZERO:
+        raise ValueError("market BUY amount exceeds visible fresh ask depth")
+    estimated_fee = estimated_principal * fees / BPS
+    estimated_total = estimated_principal + estimated_fee
+    if amount < minimum_base or estimated_principal < minimum_quote:
+        raise ValueError("market BUY cannot meet current venue minimums")
+    if estimated_total > budget:
+        raise RuntimeError("market BUY depth estimate exceeds authorized quote budget")
+
+    payload = {
+        "type": "order_executor",
+        "connector_name": connector,
+        "trading_pair": pair,
+        "side": 1,
+        "amount": str(amount),
+        "execution_strategy": "MARKET",
+        "leverage": 1,
+        "position_action": "OPEN",
+    }
+    for field in ("id", "controller_id", "level_id"):
+        if config.get(field) is not None:
+            if not isinstance(config[field], str) or not config[field].strip():
+                raise ValueError(f"market BUY {field} must be a non-empty string")
+            payload[field] = config[field]
+    if config.get("timestamp") is not None:
+        payload["timestamp"] = _timestamp(config["timestamp"], "timestamp")
+    return MarketBuyOrder(
+        payload,
+        budget,
+        ask,
+        amount,
+        step,
+        estimated_principal,
+        estimated_fee,
+        estimated_total,
     )
 
 

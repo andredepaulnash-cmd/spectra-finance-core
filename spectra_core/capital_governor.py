@@ -44,9 +44,24 @@ def validate_capital_policy(policy: CapitalPolicy) -> None:
         policy.max_position_quote,
         policy.max_recovery_quote,
     )
+    if policy.max_entry_quote is not None:
+        if not isinstance(policy.max_entry_quote, Decimal):
+            raise ValueError("max_entry_quote must be Decimal or None")
+        values = (*values, policy.max_entry_quote)
 
+    if any(not value.is_finite() for value in values):
+        raise ValueError("capital policy limits must be finite")
     if any(value < ZERO for value in values):
         raise ValueError("capital policy limits cannot be negative")
+    if (
+        policy.max_entry_quote is not None
+        and policy.max_entry_quote + policy.max_recovery_quote
+        > policy.max_total_committed_quote
+    ):
+        raise ValueError(
+            "max_entry_quote plus max_recovery_quote cannot exceed "
+            "max_total_committed_quote"
+        )
 
     if policy.max_leverage <= ZERO:
         raise ValueError("max_leverage must be positive")
@@ -1217,12 +1232,18 @@ class CapitalGovernor:
                     intent=IntentKind.RECOVERY,
                 )
 
-                # Recovery attribution must be read under the same write
-                # transaction as RESERVED/COMMITTED claims. Otherwise a
-                # COMMITTED -> RECONCILED handoff could briefly disappear
-                # from both buckets between two separate reads.
+                # Entry and recovery attribution must be read under the
+                # same write transaction as RESERVED/COMMITTED claims.
+                # Otherwise a COMMITTED -> RECONCILED handoff could briefly
+                # disappear from both exposure buckets between separate reads.
                 reconciled_recovery = self._current_recovery_exposure_quote(
                     conn, recovery_ledgers
+                )
+                reconciled_entry = self._current_entry_exposure_quote(
+                    conn, recovery_ledgers
+                )
+                active_entry = exact_decimal_difference(
+                    active_total, active_recovery
                 )
 
                 amount = proposal.amount_quote
@@ -1270,6 +1291,8 @@ class CapitalGovernor:
                     active_pair=active_pair,
                     active_recovery=active_recovery,
                     reconciled_recovery=reconciled_recovery,
+                    active_entry=active_entry,
+                    reconciled_entry=reconciled_entry,
                     available_after=available_after,
                 )
                 reason = authority_reason or reason
@@ -1348,12 +1371,15 @@ class CapitalGovernor:
                         "protected_pair_quote": active_pair,
                         "protected_recovery_quote": active_recovery,
                         "reconciled_recovery_quote": reconciled_recovery,
+                        "protected_entry_quote": active_entry,
+                        "reconciled_entry_quote": reconciled_entry,
                         "available_after_quote": available_after,
                         "reserve_floor_quote": self.policy.reserve_floor_quote,
                         "max_total_committed_quote": self.policy.max_total_committed_quote,
                         "max_pair_quote": self.policy.max_pair_quote,
                         "max_position_quote": self.policy.max_position_quote,
                         "max_recovery_quote": self.policy.max_recovery_quote,
+                        "max_entry_quote": self.policy.max_entry_quote,
                     },
                 )
                 conn.commit()
@@ -1381,6 +1407,8 @@ class CapitalGovernor:
         active_pair: Decimal,
         active_recovery: Decimal,
         reconciled_recovery: Decimal,
+        active_entry: Decimal,
+        reconciled_entry: Decimal,
         available_after: Decimal,
     ) -> str:
         p = self.policy
@@ -1399,6 +1427,8 @@ class CapitalGovernor:
             "active_pair": active_pair,
             "active_recovery": active_recovery,
             "reconciled_recovery": reconciled_recovery,
+            "active_entry": active_entry,
+            "reconciled_entry": reconciled_entry,
             "available_after": available_after,
         }
 
@@ -1431,6 +1461,8 @@ class CapitalGovernor:
             )
         ):
             return "capital snapshot contains negative exposure/balance"
+        if any(value < ZERO for value in (active_entry, reconciled_entry)):
+            return "entry exposure contains negative values"
 
         # Absolute liquidity floor.
         if available_after < p.reserve_floor_quote:
@@ -1468,7 +1500,9 @@ class CapitalGovernor:
                 f"{p.max_position_quote}"
             )
 
-        # Recovery capital is separately bounded.
+        # Recovery capital and non-recovery entry capital have separate
+        # ceilings. Reconciled BASE_ENTRY lots remain charged until sold;
+        # RESERVED/COMMITTED claims are charged until the ledger handoff.
         if proposal.intent == IntentKind.RECOVERY:
             recovery_after = reconciled_recovery + active_recovery + amount
 
@@ -1477,6 +1511,14 @@ class CapitalGovernor:
                     f"recovery budget exceeded: "
                     f"{recovery_after} > "
                     f"{p.max_recovery_quote}"
+                )
+        elif p.max_entry_quote is not None:
+            entry_after = reconciled_entry + active_entry + amount
+            if entry_after > p.max_entry_quote:
+                return (
+                    f"initial entry budget exceeded: "
+                    f"{entry_after} > "
+                    f"{p.max_entry_quote}"
                 )
 
         return ""
@@ -1859,80 +1901,149 @@ class CapitalGovernor:
         }
         if not isinstance(config, dict) or set(config) - allowed:
             raise ValueError("protected BUY configuration has unsupported fields")
+        execution_strategy = config.get("execution_strategy")
         if (
             config.get("type") != "order_executor"
             or type(config.get("side")) is not int
             or config["side"] != 1
-            or config.get("execution_strategy") != "LIMIT"
+            or execution_strategy not in {"LIMIT", "MARKET"}
             or config.get("connector_name") != scope[1]
             or config.get("trading_pair") != proposal.pair.strip().upper()
             or config.get("leverage") != 1
             or config.get("position_action", "OPEN") != "OPEN"
             or config.get("controller_id", scope[2]) != scope[2]
+            or (execution_strategy == "MARKET" and config.get("price") is not None)
         ):
             raise ValueError("protected BUY configuration conflicts with authorization")
-        amount, price = Decimal(str(config.get("amount"))), Decimal(
-            str(config.get("price"))
-        )
-        if not all(value.is_finite() and value > ZERO for value in (amount, price)):
-            raise ValueError(
-                "protected BUY amount and price must be finite and positive"
-            )
-        with localcontext() as context:
-            context.prec = max(
-                28, len(amount.as_tuple().digits) + len(price.as_tuple().digits) + 2
-            )
-            principal = amount * price
-        if principal > proposal.amount_quote:
-            raise ValueError(
-                "protected BUY price/quantity exceeds original quote budget"
-            )
+        amount = Decimal(str(config.get("amount")))
+        if not amount.is_finite() or amount <= ZERO:
+            raise ValueError("protected BUY amount must be finite and positive")
+        principal = None
+        if execution_strategy == "LIMIT":
+            price = Decimal(str(config.get("price")))
+            if not price.is_finite() or price <= ZERO:
+                raise ValueError("protected LIMIT BUY price must be finite and positive")
+            with localcontext() as context:
+                context.prec = max(
+                    28, len(amount.as_tuple().digits) + len(price.as_tuple().digits) + 2
+                )
+                principal = amount * price
+            if principal > proposal.amount_quote:
+                raise ValueError(
+                    "protected BUY price/quantity exceeds original quote budget"
+                )
         if policy is not None:
             if not isinstance(policy, dict):
                 raise ValueError("protected BUY policy must be an exact mapping")
             values = {}
-            for field in (
-                "fee_allowance_bps",
-                "max_price_slippage_bps",
-                "reference_price",
-                "price_cap",
-                "amount_base",
-                "max_principal_quote",
-                "max_fee_quote",
-                "max_total_quote",
-                "authorized_quote_budget",
-            ):
+            if execution_strategy == "MARKET":
+                fields = (
+                    "fee_allowance_bps",
+                    "reference_ask",
+                    "amount_base",
+                    "estimated_principal_quote",
+                    "estimated_fee_quote",
+                    "estimated_total_quote",
+                    "authorized_quote_budget",
+                )
+            else:
+                fields = (
+                    "fee_allowance_bps",
+                    "max_price_slippage_bps",
+                    "reference_price",
+                    "price_cap",
+                    "amount_base",
+                    "max_principal_quote",
+                    "max_fee_quote",
+                    "max_total_quote",
+                    "authorized_quote_budget",
+                )
+            for field in fields:
                 raw = policy.get(field)
                 if isinstance(raw, bool):
                     raise ValueError("protected BUY policy contains an invalid decimal")
                 values[field] = Decimal(str(raw))
                 if not values[field].is_finite() or values[field] < ZERO:
                     raise ValueError("protected BUY policy contains an invalid decimal")
-            with localcontext() as context:
-                context.prec = max(
-                    60, sum(len(v.as_tuple().digits) for v in values.values()) + 10
-                )
-                fee = principal * values["fee_allowance_bps"] / Decimal("10000")
-                total = principal + fee
-                admitted_cap = values["reference_price"] * (
-                    Decimal("1") + values["max_price_slippage_bps"] / Decimal("10000")
-                )
-            if (
-                values["fee_allowance_bps"] >= Decimal("10000")
-                or values["max_price_slippage_bps"] >= Decimal("10000")
-                or values["reference_price"] <= ZERO
-                or price > values["price_cap"]
-                or values["price_cap"] > admitted_cap
-                or amount != values["amount_base"]
-                or principal != values["max_principal_quote"]
-                or fee != values["max_fee_quote"]
-                or total != values["max_total_quote"]
-                or values["authorized_quote_budget"] != proposal.amount_quote
-                or total > proposal.amount_quote
-            ):
-                raise ValueError(
-                    "protected BUY policy conflicts with exact bounded geometry"
-                )
+            if execution_strategy == "MARKET":
+                with localcontext() as context:
+                    context.prec = max(
+                        60, sum(len(v.as_tuple().digits) for v in values.values()) + 10
+                    )
+                    fee = values["estimated_principal_quote"] * values["fee_allowance_bps"] / Decimal("10000")
+                    total = values["estimated_principal_quote"] + fee
+                if (
+                    policy.get("execution_strategy") != "MARKET"
+                    or values["fee_allowance_bps"] >= Decimal("10000")
+                    or values["reference_ask"] <= ZERO
+                    or amount != values["amount_base"]
+                    or fee != values["estimated_fee_quote"]
+                    or total != values["estimated_total_quote"]
+                    or values["authorized_quote_budget"] != proposal.amount_quote
+                    or total > proposal.amount_quote
+                ):
+                    raise ValueError("protected MARKET BUY policy conflicts with exact depth estimate")
+                book_depth = policy.get("venue_book")
+                levels = book_depth.get("asks") if isinstance(book_depth, dict) else None
+                if (
+                    not isinstance(book_depth, dict)
+                    or book_depth.get("pair") != proposal.pair.strip().upper()
+                    or Decimal(str(book_depth.get("best_ask"))) != values["reference_ask"]
+                    or not isinstance(levels, list)
+                    or not levels
+                    or not isinstance(levels[0], list)
+                    or len(levels[0]) != 2
+                    or Decimal(str(levels[0][0])) != values["reference_ask"]
+                ):
+                    raise ValueError("protected MARKET BUY lacks matching auditable best-ask depth")
+                remaining = amount
+                depth_cost = ZERO
+                previous_price = ZERO
+                for level in levels:
+                    if not isinstance(level, list) or len(level) != 2:
+                        raise ValueError("protected MARKET BUY ask depth is malformed")
+                    level_price, level_size = Decimal(str(level[0])), Decimal(str(level[1]))
+                    if (
+                        not level_price.is_finite() or level_price <= ZERO
+                        or not level_size.is_finite() or level_size <= ZERO
+                        or (previous_price and level_price < previous_price)
+                    ):
+                        raise ValueError("protected MARKET BUY ask depth is invalid or unsorted")
+                    previous_price = level_price
+                    take = min(remaining, level_size)
+                    depth_cost += take * level_price
+                    remaining -= take
+                    if remaining <= ZERO:
+                        break
+                if remaining > ZERO or depth_cost != values["estimated_principal_quote"]:
+                    raise ValueError("protected MARKET BUY depth estimate does not match submitted base amount")
+                principal = values["estimated_principal_quote"]
+            else:
+                with localcontext() as context:
+                    context.prec = max(
+                        60, sum(len(v.as_tuple().digits) for v in values.values()) + 10
+                    )
+                    fee = principal * values["fee_allowance_bps"] / Decimal("10000")
+                    total = principal + fee
+                    admitted_cap = values["reference_price"] * (
+                        Decimal("1") + values["max_price_slippage_bps"] / Decimal("10000")
+                    )
+                if (
+                    values["fee_allowance_bps"] >= Decimal("10000")
+                    or values["max_price_slippage_bps"] >= Decimal("10000")
+                    or values["reference_price"] <= ZERO
+                    or Decimal(str(config.get("price"))) > values["price_cap"]
+                    or values["price_cap"] > admitted_cap
+                    or amount != values["amount_base"]
+                    or principal != values["max_principal_quote"]
+                    or fee != values["max_fee_quote"]
+                    or total != values["max_total_quote"]
+                    or values["authorized_quote_budget"] != proposal.amount_quote
+                    or total > proposal.amount_quote
+                ):
+                    raise ValueError(
+                        "protected BUY policy conflicts with exact bounded geometry"
+                    )
             book = policy.get("venue_book")
             if (
                 not isinstance(book, dict)
@@ -4027,7 +4138,11 @@ class CapitalGovernor:
             if row["file"]
         }
         rows = conn.execute(
-            "SELECT DISTINCT ledger_path FROM position_submission_bindings"
+            """
+            SELECT DISTINCT ledger_path FROM position_submission_bindings
+            UNION
+            SELECT DISTINCT ledger_path FROM entry_submission_claims
+            """
         ).fetchall()
         for index, row in enumerate(rows):
             path = Path(row["ledger_path"]).resolve()
@@ -4103,6 +4218,249 @@ class CapitalGovernor:
             return basis
         except (sqlite3.Error, ValueError, TypeError, ArithmeticError):
             return fallback
+
+    def _scoped_entry_basis_floor(
+        self,
+        conn: sqlite3.Connection,
+        provenance: ExecutionProvenance,
+        position_ledgers: dict[str, str],
+        observation: ExecutorAccountingObservation | None,
+    ) -> Decimal:
+        """Return exact remaining BASE_ENTRY basis, failing closed if unproven."""
+        binding = conn.execute(
+            "SELECT * FROM entry_submission_claims WHERE proposal_id = ?",
+            (provenance.proposal_id,),
+        ).fetchone()
+        if binding is None:
+            binding = conn.execute(
+                "SELECT * FROM position_submission_bindings WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchone()
+        fallback = provenance.authorized_quote
+
+        def observation_fallback() -> Decimal:
+            if observation is None:
+                return fallback
+            if (
+                observation.status.upper() == "TERMINATED"
+                and observation.filled_amount_quote == ZERO
+            ):
+                return ZERO
+            if (
+                observation.status.upper() == "RUNNING"
+                and observation.position_size_quote is not None
+            ):
+                position_size = observation.position_size_quote
+                fees = observation.cum_fees_quote
+                if (
+                    position_size.is_finite()
+                    and fees.is_finite()
+                    and position_size >= ZERO
+                    and fees >= ZERO
+                ):
+                    return exact_decimal_sum((position_size, fees))
+            return fallback
+
+        if binding is None:
+            return observation_fallback()
+
+        exact_scope = (
+            binding["pair"] == provenance.pair
+            and binding["account_name"] == provenance.account_name
+            and binding["connector_name"] == provenance.connector_name
+            and binding["controller_id"] == provenance.controller_id
+            and binding["state"] in {"COMMITTED", "DISPATCHED", "RETIRED"}
+        )
+        if (
+            "executor_id" in binding.keys()
+            and binding["executor_id"] != provenance.executor_id
+        ):
+            exact_scope = False
+        schema = position_ledgers.get(
+            str(Path(binding["ledger_path"]).resolve())
+        )
+        if not exact_scope or schema is None:
+            return fallback
+
+        try:
+            position = conn.execute(
+                f"SELECT pair, base_asset, status FROM {schema}.economic_positions "
+                "WHERE position_id = ?",
+                (binding["position_id"],),
+            ).fetchone()
+            if (
+                position is None
+                or position["pair"] != binding["pair"]
+                or position["base_asset"] != binding["base_asset"]
+                or position["status"]
+                not in {"ACTIVE", "DUST", "DUST_REVIEW", "RESIDUAL", "CLOSED"}
+            ):
+                return fallback
+
+            lots = conn.execute(
+                f"SELECT * FROM {schema}.economic_lots WHERE proposal_id = ?",
+                (provenance.proposal_id,),
+            ).fetchall()
+            if not lots:
+                return observation_fallback()
+
+            basis = ZERO
+            for lot in lots:
+                if (
+                    lot["position_id"] != binding["position_id"]
+                    or lot["pair"] != provenance.pair
+                    or lot["executor_id"] != provenance.executor_id
+                    or lot["source"] != "BASE_ENTRY"
+                    or lot["ownership"]
+                    not in {"ACTIVE_TRADE", "STRATEGIC_RETAINED", "UNATTRIBUTED"}
+                ):
+                    return fallback
+                remaining = Decimal(lot["cost_basis_remaining_quote"])
+                fees = Decimal(lot["entry_fees_remaining_quote"])
+                if (
+                    not remaining.is_finite()
+                    or not fees.is_finite()
+                    or remaining < ZERO
+                    or fees < ZERO
+                ):
+                    return fallback
+                basis = exact_decimal_sum((basis, remaining, fees))
+
+            # A zero-basis lot is not enough to release entry authority. The
+            # entry claim must also be retired by the existing verified-flat
+            # terminal certificate; otherwise keep the original authorization
+            # charged, matching the position-reuse safety gate.
+            if basis == ZERO and binding["state"] != "RETIRED":
+                return fallback
+            if binding["state"] == "RETIRED" and basis > ZERO:
+                return fallback
+            return basis
+        except (sqlite3.Error, ValueError, TypeError, ArithmeticError):
+            return fallback
+
+    def _current_entry_exposure_quote(
+        self,
+        conn: sqlite3.Connection,
+        position_ledgers: dict[str, str],
+    ) -> Decimal:
+        """Compute reconciled non-recovery entry exposure from remaining lots."""
+        rows = conn.execute(
+            """
+            SELECT
+                p.proposal_id,
+                p.executor_id,
+                p.pair,
+                p.intent,
+                p.authorized_quote,
+                p.leverage,
+                p.account_name,
+                p.connector_name,
+                p.controller_id,
+                o.observation_id,
+                o.executor_type AS obs_executor_type,
+                o.status AS obs_status,
+                o.close_type AS obs_close_type,
+                o.filled_amount_quote AS obs_filled_amount_quote,
+                o.cum_fees_quote AS obs_cum_fees_quote,
+                o.position_size_quote AS obs_position_size_quote,
+                o.net_pnl_quote AS obs_net_pnl_quote,
+                o.realized_pnl_quote AS obs_realized_pnl_quote
+            FROM execution_provenance AS p
+            JOIN capital_reservations AS r
+              ON r.proposal_id = p.proposal_id
+             AND r.status = ?
+            LEFT JOIN executor_accounting_observations AS o
+              ON o.observation_id = (
+                  SELECT MAX(latest.observation_id)
+                  FROM executor_accounting_observations AS latest
+                  WHERE latest.executor_id = p.executor_id
+              )
+            WHERE p.intent IN (?, ?, ?)
+            ORDER BY p.proposal_id
+            """,
+            (
+                DecisionStatus.RECONCILED.value,
+                IntentKind.ENTRY.value,
+                IntentKind.PRESS.value,
+                IntentKind.ROTATION.value,
+            ),
+        ).fetchall()
+
+        total = ZERO
+        for row in rows:
+            provenance = ExecutionProvenance(
+                proposal_id=str(row["proposal_id"]),
+                executor_id=str(row["executor_id"]),
+                pair=str(row["pair"]),
+                intent=IntentKind(str(row["intent"])),
+                authorized_quote=Decimal(str(row["authorized_quote"])),
+                leverage=Decimal(str(row["leverage"])),
+                account_name=(
+                    None if row["account_name"] is None else str(row["account_name"])
+                ),
+                connector_name=(
+                    None
+                    if row["connector_name"] is None
+                    else str(row["connector_name"])
+                ),
+                controller_id=(
+                    None if row["controller_id"] is None else str(row["controller_id"])
+                ),
+            )
+            observation = None
+            if row["observation_id"] is not None:
+                observation = ExecutorAccountingObservation(
+                    executor_id=provenance.executor_id,
+                    executor_type=(
+                        None
+                        if row["obs_executor_type"] is None
+                        else str(row["obs_executor_type"])
+                    ),
+                    status=str(row["obs_status"]),
+                    close_type=(
+                        None
+                        if row["obs_close_type"] is None
+                        else str(row["obs_close_type"])
+                    ),
+                    filled_amount_quote=Decimal(str(row["obs_filled_amount_quote"])),
+                    cum_fees_quote=Decimal(str(row["obs_cum_fees_quote"])),
+                    position_size_quote=(
+                        None
+                        if row["obs_position_size_quote"] is None
+                        else Decimal(str(row["obs_position_size_quote"]))
+                    ),
+                    net_pnl_quote=(
+                        None
+                        if row["obs_net_pnl_quote"] is None
+                        else Decimal(str(row["obs_net_pnl_quote"]))
+                    ),
+                    realized_pnl_quote=(
+                        None
+                        if row["obs_realized_pnl_quote"] is None
+                        else Decimal(str(row["obs_realized_pnl_quote"]))
+                    ),
+                )
+            exposure = self._scoped_entry_basis_floor(
+                conn,
+                provenance,
+                position_ledgers,
+                observation,
+            )
+            total = exact_decimal_sum((total, exposure))
+        return total
+
+    def current_entry_exposure_quote(self) -> Decimal:
+        """Return current quote capital attributable to non-recovery entries."""
+        with self._connect() as conn:
+            position_ledgers = self._attach_recovery_exposure_ledgers(conn)
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                exposure = self._current_entry_exposure_quote(conn, position_ledgers)
+                conn.commit()
+                return exposure
+            except Exception:
+                conn.rollback()
+                raise
 
     def _current_recovery_exposure_quote(
         self,

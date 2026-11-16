@@ -5,14 +5,22 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
+
+# Keep this bootstrap script standard-library-only; these values mirror the
+# runtime defaults in spectra_core.models without importing the full package.
+PAPER_TOTAL_CAPITAL_QUOTE = "25000"
+PAPER_ENTRY_BUDGET_QUOTE = "6250"
+PAPER_RECOVERY_BUDGET_QUOTE = "18750"
 
 PAPER_POLICY = {
     "reserve_floor_quote": "100",
-    "max_total_committed_quote": "1000",
-    "max_pair_quote": "1000",
-    "max_position_quote": "1000",
-    "max_recovery_quote": "0",
+    "max_total_committed_quote": PAPER_TOTAL_CAPITAL_QUOTE,
+    "max_pair_quote": PAPER_TOTAL_CAPITAL_QUOTE,
+    "max_position_quote": PAPER_TOTAL_CAPITAL_QUOTE,
+    "max_entry_quote": PAPER_ENTRY_BUDGET_QUOTE,
+    "max_recovery_quote": PAPER_RECOVERY_BUDGET_QUOTE,
     "max_leverage": "1",
     "reservation_ttl_seconds": 120,
     "position_hold_snapshot_ttl_seconds": 30,
@@ -27,13 +35,36 @@ def _write_if_missing(path: Path, value: dict) -> None:
         path.chmod(0o600)
 
 
+def _add_missing_policy_defaults(path: Path) -> None:
+    """Add newly introduced safeguards without overwriting operator settings."""
+    policy = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(policy, dict):
+        raise ValueError(f"paper capital policy must be a JSON object: {path}")
+    changed = False
+    for key, value in PAPER_POLICY.items():
+        if key not in policy:
+            policy[key] = value
+            changed = True
+    if changed:
+        mode = path.stat().st_mode & 0o777
+        temporary = path.with_suffix(path.suffix + ".tmp")
+        temporary.write_text(
+            json.dumps(policy, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        temporary.chmod(mode or 0o600)
+        os.replace(temporary, path)
+
+
 def configure(core_root: Path) -> Path:
-    """Initialize paper-only policy/breaker without touching live state."""
+    """Initialize isolated paper policy while preserving existing state."""
     paper_dir = core_root / "data" / "spectra-paper"
     live_dir = core_root / "data" / "spectra"
     if paper_dir.resolve() == live_dir.resolve():
         raise ValueError("paper state must never share the live state directory")
-    _write_if_missing(paper_dir / "capital_policy.json", PAPER_POLICY)
+    policy_path = paper_dir / "capital_policy.json"
+    _write_if_missing(policy_path, PAPER_POLICY)
+    _add_missing_policy_defaults(policy_path)
     _write_if_missing(paper_dir / "breaker_state.json", PAPER_BREAKER)
     return paper_dir
 

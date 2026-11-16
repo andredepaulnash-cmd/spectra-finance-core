@@ -647,6 +647,10 @@ def _outbound_bot(application: Application):
 # handle here (and discarding it on completion) is the documented fix.
 _BACKGROUND_TASKS: set[asyncio.Task] = set()
 
+# Spectra governed portfolio supervisor lifecycle.
+_SPECTRA_PORTFOLIO_TASK: asyncio.Task | None = None
+_SPECTRA_PORTFOLIO_STOP: asyncio.Event | None = None
+
 
 def _spawn_background(coro, label: str) -> asyncio.Task:
     """Run ``coro`` off the critical path, logging rather than swallowing errors.
@@ -823,6 +827,29 @@ async def startup(application: Application) -> None:
     except Exception:
         logger.exception("Reflection job registration failed (continuing without it)")
 
+    # Start Spectra's governed portfolio supervisor. Condor remains responsible
+    # for intelligence and agent orchestration; Spectra Core governs admission
+    # and VCAP; Hummingbot remains the execution engine.
+    global _SPECTRA_PORTFOLIO_TASK, _SPECTRA_PORTFOLIO_STOP
+    try:
+        from spectra_core.portfolio_supervisor import (
+            portfolio_autorun_enabled,
+            run_portfolio_supervisor,
+        )
+
+        if portfolio_autorun_enabled() and (
+            _SPECTRA_PORTFOLIO_TASK is None or _SPECTRA_PORTFOLIO_TASK.done()
+        ):
+            _SPECTRA_PORTFOLIO_STOP = asyncio.Event()
+            _SPECTRA_PORTFOLIO_TASK = asyncio.create_task(
+                run_portfolio_supervisor(stop_event=_SPECTRA_PORTFOLIO_STOP),
+                name="spectra-portfolio-supervisor",
+            )
+            logger.info("Spectra governed portfolio supervisor started")
+    except Exception:
+        # Keep the Condor application available if optional portfolio startup fails.
+        logger.exception("Spectra portfolio supervisor could not start")
+
     # Start file watcher
     asyncio.create_task(watch_and_reload(application))
 
@@ -834,6 +861,20 @@ async def teardown(application: Application) -> None:
     same reason: ``Application.shutdown()`` does not call that hook either.
     Called explicitly from :func:`_run_dual`.
     """
+    global _SPECTRA_PORTFOLIO_TASK, _SPECTRA_PORTFOLIO_STOP
+    if _SPECTRA_PORTFOLIO_STOP is not None:
+        _SPECTRA_PORTFOLIO_STOP.set()
+    if _SPECTRA_PORTFOLIO_TASK is not None:
+        try:
+            await asyncio.wait_for(_SPECTRA_PORTFOLIO_TASK, timeout=20.0)
+        except asyncio.TimeoutError:
+            logger.warning("Spectra portfolio supervisor did not stop in time; cancelling")
+            _SPECTRA_PORTFOLIO_TASK.cancel()
+            await asyncio.gather(_SPECTRA_PORTFOLIO_TASK, return_exceptions=True)
+        finally:
+            _SPECTRA_PORTFOLIO_TASK = None
+            _SPECTRA_PORTFOLIO_STOP = None
+
     from condor.runtime import client as runtime
     from condor.runtime import sessions as runtime_sessions
     from condor.runtime.confirmations import get_registry

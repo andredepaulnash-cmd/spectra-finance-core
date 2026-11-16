@@ -17,24 +17,28 @@ from .vcap_runtime import VCAPRuntimeStore
 from .vcap_state import VCAPStateStore
 
 
-def spectra_paper_only_enabled() -> bool:
-    """Resolve the paper-only boundary, defaulting Spectra agents to paper.
+def spectra_paper_only_enabled(agent_slug: str | None = None) -> bool:
+    """Resolve the paper-only boundary, defaulting Spectra seats to paper.
 
-    An explicit operator setting always wins. When the setting is absent,
-    a process bound to the Spectra agent is paper-only by default; unrelated
-    Condor processes retain their legacy behavior. Invalid explicit values
-    fail closed rather than silently selecting either mode.
+    An explicit operator setting always wins. When the setting is absent, the
+    supplied seat identity (or CONDOR_AGENT_SLUG when no seat is supplied)
+    makes Spectra paper-only by default; unrelated Condor processes retain
+    their legacy behavior. Invalid explicit values fail closed.
     """
     configured = os.getenv("SPECTRA_PAPER_ONLY")
-    agent_slug = os.getenv("CONDOR_AGENT_SLUG", "").strip().lower()
+    resolved_agent_slug = (
+        str(agent_slug).strip()
+        if agent_slug is not None and str(agent_slug).strip()
+        else os.getenv("CONDOR_AGENT_SLUG", "").strip()
+    ).lower()
     if configured is None:
-        return agent_slug == "spectra"
+        return resolved_agent_slug == "spectra"
 
     value = configured.strip().lower()
     if value not in {"1", "true", "yes", "0", "false", "no"}:
         raise RuntimeError("SPECTRA_PAPER_ONLY must be an explicit boolean")
     enabled = value in {"1", "true", "yes"}
-    if agent_slug == "spectra" and not enabled:
+    if resolved_agent_slug == "spectra" and not enabled:
         allow_live = os.getenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false").strip().lower()
         if allow_live not in {"1", "true", "yes"}:
             raise RuntimeError(
@@ -171,6 +175,19 @@ def load_capital_policy() -> CapitalPolicy:
             max_pair_quote=Decimal(str(raw["max_pair_quote"])),
             max_position_quote=Decimal(str(raw["max_position_quote"])),
             max_recovery_quote=Decimal(str(raw["max_recovery_quote"])),
+            max_entry_quote=(
+                Decimal(str(raw["max_entry_quote"]))
+                if raw.get("max_entry_quote") is not None
+                else (
+                    max(
+                        Decimal("0"),
+                        Decimal(str(raw["max_total_committed_quote"]))
+                        - Decimal(str(raw["max_recovery_quote"])),
+                    )
+                    if spectra_paper_only_enabled()
+                    else None
+                )
+            ),
             max_leverage=Decimal(str(raw["max_leverage"])),
             reservation_ttl_seconds=ttl,
             position_hold_snapshot_ttl_seconds=hold_ttl,

@@ -128,6 +128,19 @@ export interface SpectraRuntimeStatus {
   paper_connector_count: number;
   paper_connectors?: string[];
   accounting_health?: SpectraAccountingHealth;
+  portfolio_supervisor?: {
+    supervisor_state?: string;
+    mode?: string;
+    target_active_positions?: number;
+    active_positions?: number;
+    unique_active_positions?: number;
+    vacancies?: number;
+    new_entries_this_cycle?: number;
+    blocked_reason?: string | null;
+    last_error?: string | null;
+    updated_at?: number | null;
+    error?: string;
+  };
   error?: string;
 }
 

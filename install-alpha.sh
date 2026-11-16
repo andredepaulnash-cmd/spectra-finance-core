@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 CORE_REPO="https://github.com/andredepaulnash-cmd/spectra-finance-core.git"
-CORE_REF="${SPECTRA_ALPHA_CORE_REF:-alpha/one-command-paper-demo-20261108}"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-fix/market-entry-and-unblock-alpha-20261115}"
 API_REPO="https://github.com/andredepaulnash-cmd/spectra-hummingbot-api.git"
 API_REF="main"
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -119,9 +119,19 @@ if ! has node || ! has npm; then
 fi
 has node && has npm || die "Node.js/npm are required to build the Spectra dashboard."
 
-# Prefer Podman on Bazzite/Atomic hosts; Docker Compose is also supported.
+# Use one container runtime consistently for install, update, health checks and logs.
+# Bazzite/Atomic hosts prefer rootless Podman; conventional Linux may use Docker.
 COMPOSE_KIND=""
-if has docker && docker compose version >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+if [[ -e /run/ostree-booted ]] && has podman; then
+  podman info >/dev/null 2>&1 || die "Podman is installed but unavailable to this user. Enable the user's rootless Podman environment and rerun."
+  if ! has podman-compose; then
+    say "Installing the user-local Podman Compose provider"
+    uv tool install podman-compose
+    export PATH="$LOCAL_BIN:$PATH"
+  fi
+  has podman-compose || die "Could not install podman-compose."
+  COMPOSE_KIND="podman"
+elif has docker && docker compose version >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   COMPOSE_KIND="docker"
 elif has podman; then
   podman info >/dev/null 2>&1 || die "Podman is installed but unavailable to this user. Enable the user's rootless Podman environment and rerun."
@@ -151,11 +161,29 @@ else
   COMPOSE_KIND="podman"
 fi
 
+# Persist the selected runtime so the updater never inspects a different engine.
+printf '%s\n' "$COMPOSE_KIND" > "$INSTALL_ROOT/.container-runtime"
+chmod 600 "$INSTALL_ROOT/.container-runtime"
+
 say "Cloning the pinned Spectra Core alpha branch"
 clone_or_reuse "$CORE_REPO" "$CORE_REF" "$CORE_DIR"
 
 say "Cloning the matching public Hummingbot API branch"
 clone_or_reuse "$API_REPO" "$API_REF" "$API_DIR"
+
+# The reviewed Hummingbot API version has a PaperTradeExchange compatibility
+# gap: its Cython wrapper does not expose _trading_pairs. Apply the exact,
+# idempotent adapter before the first API image is built.
+PAPER_TRADE_SOURCE="services/trading_service.py"
+PAPER_TRADE_EXPECTED_BLOB="975f3fe9907e47029c0f66904a01b8c741857416"
+PAPER_TRADE_PATCHER="$CORE_DIR/scripts/patch_hummingbot_trading_service_paper_trade.py"
+[[ -f "$PAPER_TRADE_PATCHER" ]] || die "Reviewed PaperTradeExchange compatibility patcher is missing."
+actual_paper_trade_blob="$(git -C "$API_DIR" rev-parse "HEAD:$PAPER_TRADE_SOURCE")"
+[[ "$actual_paper_trade_blob" == "$PAPER_TRADE_EXPECTED_BLOB" ]] \
+  || die "Hummingbot API $PAPER_TRADE_SOURCE is not the reviewed source version (expected $PAPER_TRADE_EXPECTED_BLOB, got $actual_paper_trade_blob)."
+python3 "$PAPER_TRADE_PATCHER" "$API_DIR/$PAPER_TRADE_SOURCE"
+grep -q "SPECTRA_PAPER_TRADE_PAIR_MAP_COMPAT" "$API_DIR/$PAPER_TRADE_SOURCE" \
+  || die "PaperTradeExchange pair-registration compatibility adapter was not applied."
 
 say "Installing the reviewed Python 3.12 runtime"
 uv python install 3.12
