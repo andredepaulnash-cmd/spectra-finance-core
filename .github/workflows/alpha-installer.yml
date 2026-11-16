@@ -11,6 +11,7 @@ on:
     branches:
       - alpha/one-command-paper-demo-20261108
       - alpha/spectra-command-center-verified-20261109
+      - fix/paper-portfolio-25-75-capital-allocation
     paths:
       - install-alpha.sh
       - scripts/**
