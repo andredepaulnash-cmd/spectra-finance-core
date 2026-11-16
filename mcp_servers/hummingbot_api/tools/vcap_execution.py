@@ -5,7 +5,10 @@ from decimal import Decimal
 from typing import Any
 
 from mcp_servers.hummingbot_api.settings import settings
-from mcp_servers.hummingbot_api.tools.executor_create import create_dca_executor
+from mcp_servers.hummingbot_api.tools.executor_create import (
+    create_dca_executor,
+    create_order_executor,
+)
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.vcap_execution import (
     VCAPExecutionDecision,
@@ -25,7 +28,7 @@ async def execute_vcap_decision(
     buy_max_price_slippage_bps: Decimal | None = None,
     buy_fee_allowance_bps: Decimal | None = None,
 ) -> dict[str, Any]:
-    """Execute one prevalidated VCAP tranche through the Spectra DCA path.
+    """Execute one prevalidated VCAP tranche through governed spot execution (paper MARKET BUY; live LIMIT/DCA).
 
     Exact replay is idempotent. If the child proposal already has an execution
     receipt, the existing executor is returned and no new external mutation is
@@ -93,6 +96,12 @@ async def execute_vcap_decision(
             "executor_id": existing_executor,
         }
 
+    if settings.paper_only:
+        if not (position_id or "").strip():
+            raise ValueError("paper VCAP MARKET BUY requires its exact position_id")
+        if buy_fee_allowance_bps is None:
+            raise ValueError("paper VCAP MARKET BUY requires an explicit fee allowance")
+
     carved = carve_next_vcap_tranche(governor, decision)
     if not carved:
         return {
@@ -102,23 +111,50 @@ async def execute_vcap_decision(
             "error": "VCAP recovery envelope could not carve the next tranche",
         }
 
-    result = await create_dca_executor(
-        client,
-        connector_name=connector_name,
-        trading_pair=proposal.pair,
-        side=1,
-        amounts_quote=[str(proposal.amount_quote)],
-        prices=[str(decision.current_price)],
-        leverage=1,
-        level_id=f"vcap-{decision.sequence:04d}",
-        account_name=account,
-        controller_id=controller_id,
-        spectra_proposal_id=proposal.proposal_id,
-        spectra_intent="RECOVERY",
-        spectra_position_id=position_id,
-        spectra_max_price_slippage_bps=buy_max_price_slippage_bps,
-        spectra_fee_allowance_bps=buy_fee_allowance_bps,
-    )
+    if settings.paper_only:
+        # A VCAP shard is one discrete recovery purchase, not a standing DCA
+        # ladder. Use the same fresh-depth MARKET BUY path as ordinary paper
+        # entries so a stale fixed price cap cannot strand a valid recovery shard.
+        # The Governor's reserved quote amount remains the authority; the
+        # executor cannot choose or increase the shard budget.
+        result = await create_order_executor(
+            client,
+            connector_name=connector_name,
+            trading_pair=proposal.pair,
+            side=1,
+            execution_strategy="MARKET",
+            amount=None,
+            price=None,
+            leverage=1,
+            position_action="OPEN",
+            level_id=f"vcap-{decision.sequence:04d}",
+            account_name=account,
+            controller_id=controller_id,
+            spectra_proposal_id=proposal.proposal_id,
+            spectra_intent="RECOVERY",
+            spectra_position_id=position_id,
+            spectra_fee_allowance_bps=buy_fee_allowance_bps,
+        )
+    else:
+        # Keep the separately governed live LIMIT/DCA route until Kraken
+        # exposes a verified quote-denominated market-spend bound.
+        result = await create_dca_executor(
+            client,
+            connector_name=connector_name,
+            trading_pair=proposal.pair,
+            side=1,
+            amounts_quote=[str(proposal.amount_quote)],
+            prices=[str(decision.current_price)],
+            leverage=1,
+            level_id=f"vcap-{decision.sequence:04d}",
+            account_name=account,
+            controller_id=controller_id,
+            spectra_proposal_id=proposal.proposal_id,
+            spectra_intent="RECOVERY",
+            spectra_position_id=position_id,
+            spectra_max_price_slippage_bps=buy_max_price_slippage_bps,
+            spectra_fee_allowance_bps=buy_fee_allowance_bps,
+        )
 
     return {
         "action": "EXECUTE",

@@ -681,6 +681,13 @@ def add_protected_buy_policy_breach(case, monkeypatch, *, lagging=False, breache
             quote_asset="USD",
         ),
     ).approved
+    # This recovery child is deliberately modelled as an already-authorized
+    # proposal owned by the selected exit mutation, not as a fresh competing buy.
+    lock_owner = case.ledger.selected_recovery_lock_owner("position")
+    if lock_owner is not None:
+        case.ledger.allow_selected_recovery_proposal(
+            "position", lock_owner, proposal.proposal_id
+        )
 
     async def rules(**kwargs):
         return {

@@ -42,7 +42,7 @@ from tests.test_protected_recovery_exit import protected_case
 from tests.test_protected_whole_exit import whole_case
 
 D = Decimal
-SCOPE = dict(account_name="master_account", connector_name="kraken", quote_asset="USD")
+SCOPE = dict(account_name="master_account", connector_name="kraken_paper_trade", quote_asset="USD")
 PAPER_CONNECTOR = "kraken_paper_trade"
 
 

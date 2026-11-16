@@ -231,7 +231,9 @@ def fill(manifest, trade_id, amount, *, price=None, fee=None):
         trade_id=trade_id,
         order_id="protected-sell-order",
         account_name="master_account",
-        connector_name="kraken",
+        # The executor and manifest use the paper connector; live-connector
+        # evidence must not be accepted as belonging to that immutable scope.
+        connector_name="kraken_paper_trade",
         pair="XRP-USD",
         side="SELL",
         amount_base=base,
@@ -253,7 +255,9 @@ def execute(case, client, *, current_price=D("0.50"), trading_rule=None):
             trading_rule=rule() if trading_rule is None else trading_rule,
             current_price=current_price,
             now=2010,
-            market_observed_at=time.time(),
+            # Market evidence must be fresh relative to the deterministic
+            # transaction clock, not the wall clock of the test runner.
+            market_observed_at=1999,
         )
     )
 
@@ -730,7 +734,7 @@ def test_concurrent_dispatch_claim_has_one_winner_and_survives_restart(protected
                     governor=g,
                     trading_rule=rule(),
                     current_price=D("0.50"),
-                    market_observed_at=time.time(),
+                    market_observed_at=1999,
                 ),
                 stores,
             )
@@ -747,7 +751,7 @@ def test_concurrent_dispatch_claim_has_one_winner_and_survives_restart(protected
             governor=g,
             trading_rule=rule(),
             current_price=D("0.50"),
-            market_observed_at=time.time(),
+            market_observed_at=1999,
         )
         is None
     )

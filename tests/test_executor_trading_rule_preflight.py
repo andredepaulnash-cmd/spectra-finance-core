@@ -83,7 +83,7 @@ class _Client:
 @pytest.fixture(autouse=True)
 def _offline_fake_client_dispatch(monkeypatch):
     # These tests exercise venue preflight with an in-process fake backend.
-    configure_spectra_live_dispatch(monkeypatch, executor_create.settings)
+    configure_spectra_live_dispatch(monkeypatch, executor_create.settings, agent_slug="condor")
 
 
 @pytest.fixture(autouse=True)
