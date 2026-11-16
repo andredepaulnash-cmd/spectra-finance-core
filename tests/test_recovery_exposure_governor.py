@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import pytest
+
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.economic_position import EconomicPositionLedger
 from spectra_core.models import (
@@ -21,7 +23,7 @@ def governor(tmp_path, *, max_recovery="5000", max_entry=None):
         tmp_path / "capital.sqlite",
         CapitalPolicy(
             reserve_floor_quote=D("0"),
-            max_total_committed_quote=D("5000"),
+            max_total_committed_quote=D("10000"),
             max_pair_quote=D("5000"),
             max_position_quote=D("5000"),
             max_recovery_quote=D(max_recovery),
