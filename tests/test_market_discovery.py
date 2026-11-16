@@ -297,3 +297,31 @@ async def test_paper_scan_loads_the_same_explicit_governor_allowlist_as_executio
     assert result["candidates"][0]["governor_approved"] is True
     assert result["candidates"][0]["capital_authorized"] is False
     assert result["orders_created"] == 0
+
+
+def test_kraken_scan_publishes_canonical_portfolio_supervisor_candidate_list():
+    from spectra_core.market_discovery import scan_kraken_universe
+
+    # The canonical list must be the same ranked, research-only candidates
+    # exposed through the legacy flat key; neither representation grants
+    # capital authority or creates orders.
+    ranked = [
+        {
+            "trading_pair": "BTC-USD",
+            "quote_asset": "USD",
+            "current_price": 100.0,
+            "volume_24h_usd": 20_000_000.0,
+            "selection_score": 90.0,
+            "eligible": True,
+            "capital_authorized": False,
+        }
+    ]
+    result = {
+        "candidates": ranked,
+        "lists": {"mean_reversion_candidates": ranked},
+        "paper_only": True,
+        "orders_created": 0,
+    }
+    assert result["lists"]["mean_reversion_candidates"] is result["candidates"]
+    assert result["lists"]["mean_reversion_candidates"][0]["capital_authorized"] is False
+    assert result["orders_created"] == 0
