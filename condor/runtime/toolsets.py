@@ -96,6 +96,12 @@ def seat_profile(agent_slug: str | None, tick: bool) -> str:
     - ``full`` — the chat coordinator, where a human confirms every dangerous
       call, and any launch with no seat at all.
 
+    When SPECTRA_PAPER_ONLY is active, the selected seat is prefixed with
+    ``paper_``. The Condor profile keeps the same attendance boundary, while
+    the Hummingbot profile mounts only the native spot-paper/read-only surface:
+    no perpetual leverage, position executors, LP mutations, Gateway swaps, or
+    Gateway administration. The API paper guard remains the final enforcement.
+
     Note the axis is attendance, not identity: a specialist chatted with by a user
     watching and the same specialist ticking unattended are different seats, and
     neither ``agent_slug`` nor ``--delegate-worker`` tells them apart, which is
