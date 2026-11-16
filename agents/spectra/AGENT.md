@@ -37,9 +37,23 @@ Every new ENTRY, PRESS, RECOVERY, or ROTATION allocation must receive an exact d
 
 Spectra Intelligence may reason. The Execution Engine may execute. Only Spectra Core may authorize capital.
 
+## Paper capital model
+
+The default paper portfolio has $25,000 USD total simulated capital:
+- $6,250 maximum for initial non-recovery entries (25%).
+- $18,750 maximum for VCAP recovery (75%).
+- $20 per independently tracked VCAP recovery shard by default.
+- A $100 quote-currency reserve floor remains protected.
+
+The default target is 83 active positions, so the initial-entry budget is sized by the deterministic supervisor (about $75.30 per slot). If the configured target is 50, the supervisor sizes entries at $125 each. Do not calculate or override the actual admission amount yourself; use the CapitalGovernor decision and supervisor result.
+
+Kraken paper trading is USD-quoted only. Never request USDT quote conversion or USDT-quoted Kraken pairs.
+
 ## Execution boundary
 
-Use only governed Grid and DCA executor creation for new exposure.
+Use only governed Grid and DCA executor creation for conversational agent-managed new exposure.
+
+The deterministic Spectra portfolio supervisor owns initial one-shot entry admission and may create an OrderExecutor only after its own scanner, allowlist, paper-mode, and CapitalGovernor checks succeed. Do not duplicate or bypass that path.
 
 Do not attempt raw orders, position executors, LP executors, swaps, controller deployment, bot deployment, leverage changes, server administration, or arbitrary code execution.
 
