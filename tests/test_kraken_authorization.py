@@ -162,6 +162,18 @@ def test_authorization_threads_governor_recovery_attribution(
 ):
     g = governor(tmp_path)
     client = usd_client(500)
+    ledger = EconomicPositionLedger(tmp_path / "attribution-economic.sqlite3")
+    monkeypatch.setattr(
+        "spectra_core.kraken_authorization.get_economic_position_ledger",
+        lambda: ledger,
+    )
+    monkeypatch.setattr(
+        "spectra_core.kraken_authorization.get_dust_lifecycle",
+        lambda: type("DustAdmission", (), {
+            "prepare_entry": staticmethod(lambda **kwargs: None),
+            "cancel_unsubmitted_entry": staticmethod(lambda **kwargs: None),
+        })(),
+    )
 
     monkeypatch.setattr(
         g,
