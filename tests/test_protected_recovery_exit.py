@@ -255,7 +255,9 @@ def execute(case, client, *, current_price=D("0.50"), trading_rule=None):
             trading_rule=rule() if trading_rule is None else trading_rule,
             current_price=current_price,
             now=2010,
-            market_observed_at=time.time(),
+            # Market evidence must be fresh relative to the deterministic
+            # transaction clock, not the wall clock of the test runner.
+            market_observed_at=2009,
         )
     )
 
