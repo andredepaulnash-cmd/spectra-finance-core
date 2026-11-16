@@ -1367,12 +1367,15 @@ class CapitalGovernor:
                         "protected_pair_quote": active_pair,
                         "protected_recovery_quote": active_recovery,
                         "reconciled_recovery_quote": reconciled_recovery,
+                        "protected_entry_quote": active_entry,
+                        "reconciled_entry_quote": reconciled_entry,
                         "available_after_quote": available_after,
                         "reserve_floor_quote": self.policy.reserve_floor_quote,
                         "max_total_committed_quote": self.policy.max_total_committed_quote,
                         "max_pair_quote": self.policy.max_pair_quote,
                         "max_position_quote": self.policy.max_position_quote,
                         "max_recovery_quote": self.policy.max_recovery_quote,
+                        "max_entry_quote": self.policy.max_entry_quote,
                     },
                 )
                 conn.commit()
