@@ -594,7 +594,12 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             "No fully reconciled confirmed paper fill within 60 seconds: "
             f"executor={executor_id}, state={getattr(last_health, 'state', None)}, "
             f"confirmed={getattr(last_health, 'confirmed_fills', 0)}, "
-            f"ledgered={getattr(last_health, 'ledgered_fills', 0)}"
+            f"ledgered={getattr(last_health, 'ledgered_fills', 0)}, "
+            f"known_orders={getattr(last_health, 'known_orders', 0)}, "
+            f"bound_orders={getattr(last_health, 'bound_orders', 0)}, "
+            f"reasons={getattr(last_health, 'reasons', ())}, "
+            f"unresolved_orders={getattr(last_health, 'unresolved_order_ids', ())}, "
+            f"unresolved_trades={getattr(last_health, 'unresolved_trade_ids', ())}"
         )
     finally:
         await client.close()
