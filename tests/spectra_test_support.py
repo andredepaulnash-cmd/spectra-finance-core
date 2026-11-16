@@ -57,5 +57,9 @@ def configure_spectra_live_dispatch(monkeypatch, settings):
         "SPECTRA_DISPATCH_PRIVATE_KEY",
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     )
+    # Offline clients must expose the same authenticated-session header
+    # surface used by the signed production transport.
+    from mcp_servers.hummingbot_api.tools import dispatch_receipts
+    monkeypatch.setattr(dispatch_receipts, "_session_headers", _attach_fake_session_headers)
     monkeypatch.setattr(settings, "paper_only", False)
     monkeypatch.setattr(settings, "agent_slug", "spectra")
