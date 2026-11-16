@@ -99,15 +99,21 @@ async def _bootstrap_confirmed_entry_positions(
             continue
 
         proposal_ids = tuple(proposal_id for proposal_id, _ in dispatched_claims)
-        health = await synchronize_position_accounting_health(
-            client,
-            position_id=position_id,
-            proposal_ids=proposal_ids,
-            governor=governor,
-            ledger=ledger,
-            supervisor=accounting_supervisor,
-            now=now,
-        )
+        try:
+            health = await synchronize_position_accounting_health(
+                client,
+                position_id=position_id,
+                proposal_ids=proposal_ids,
+                governor=governor,
+                ledger=ledger,
+                supervisor=accounting_supervisor,
+                now=now,
+            )
+        except Exception:
+            # Keep the position unbound and fail closed for this tick. The
+            # ordinary scheduler result will expose it as UNBOUND; a later
+            # fresh reconciliation can retry bootstrap without guessing.
+            continue
         if (
             health.state != AccountingHealthState.HEALTHY
             or not health.fully_reconciled
