@@ -51,9 +51,10 @@ The repository vendors a Condor/Hummingbot MCP surface and adds Spectra-specific
 Only register a tool when the connected Hummingbot API version implements its route. For example, newer upstream Condor has a resolve_swap tool for reconciling an unverifiable submitted swap, but the current Hummingbot API branch does not expose the corresponding resolve action. Do not register that tool against this API version; add the server route and its tests first, then enable the MCP tool.
 
 Tool profiles and agent prompts are separate controls:
-- MCP profiles determine which tools a given agent seat can see.
-- Agent prompts explain when and how to use those tools.
-- API-side paper guards and Spectra's CapitalGovernor remain the actual enforcement layers. A prompt is never a security boundary.
+- In paper-only mode, Condor selects paper_tick, paper_agent, or paper_full according to seat attendance. The Hummingbot paper profile hides perpetual leverage/position executors, LP executors, Gateway swaps, direct AMM/CLMM operations, and Gateway administration while retaining supported spot-paper executors and read-only research.
+- In live-authorized mode, the existing tick/agent/full profiles retain the full product surface.
+- Agent prompts explain when and how to use the tools they are given.
+- API-side paper guards and Spectra's CapitalGovernor remain the actual enforcement layers. A prompt or tool profile is never a substitute for server-side enforcement.
 
 ## Live-mode preservation
 
