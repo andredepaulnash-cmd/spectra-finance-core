@@ -867,7 +867,6 @@ def test_book_expiring_inside_atomic_commit_rolls_back_cash_and_identity(
     delay,
     error,
 ):
-    import spectra_core.capital_governor as governor_module
     from spectra_core import cash_authority
 
     g, ledger = funded(tmp_path)
