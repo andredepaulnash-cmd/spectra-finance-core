@@ -44,9 +44,20 @@ def validate_capital_policy(policy: CapitalPolicy) -> None:
         policy.max_position_quote,
         policy.max_recovery_quote,
     )
+    if policy.max_entry_quote is not None:
+        if not isinstance(policy.max_entry_quote, Decimal):
+            raise ValueError("max_entry_quote must be Decimal or None")
+        values = (*values, policy.max_entry_quote)
 
+    if any(not value.is_finite() for value in values):
+        raise ValueError("capital policy limits must be finite")
     if any(value < ZERO for value in values):
         raise ValueError("capital policy limits cannot be negative")
+    if (
+        policy.max_entry_quote is not None
+        and policy.max_entry_quote > policy.max_total_committed_quote
+    ):
+        raise ValueError("max_entry_quote cannot exceed max_total_committed_quote")
 
     if policy.max_leverage <= ZERO:
         raise ValueError("max_leverage must be positive")
