@@ -363,7 +363,7 @@ CORE_OPS_SOURCES=(
 )
 declare -A CORE_OPS_NEW_BLOBS=(
   ["scripts/spectra"]="f716e1b6abccc775270fb9c5480d57091e2c202e"
-  ["scripts/spectra-alpha-doctor.sh"]="96ab3e9783b61d69c80cf6efea980157f5f1ed9a"
+  ["scripts/spectra-alpha-doctor.sh"]="13185d2fe40175f2541288e27b6ecb816dcc26e7"
   ["scripts/spectra-alpha-start-api.sh"]="a778ea113f445ab6a70319e400ba16d0f0c33bb3"
   ["scripts/spectra-alpha-core-supervisor.sh"]="e729bab6182fa566cda6b1f3db56f84f589ae3d2"
   ["scripts/systemd/spectra-alpha-core.service"]="9386ab538af54f03129264a7d5134420e5a622bf"
@@ -385,6 +385,8 @@ for source in "${CORE_OPS_SOURCES[@]}"; do
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
     if [[ "$source" == "scripts/spectra" && "$worktree_blob" == "774ae8e7912896d7266fbb06c459b9f5a48a7dc3" ]]; then
       : # Exact previous CLI version; replace it with the aligned release-ref version below.
+    elif [[ "$source" == "scripts/spectra-alpha-doctor.sh" && "$worktree_blob" == "96ab3e9783b61d69c80cf6efea980157f5f1ed9a" ]]; then
+      : # Exact previous doctor version; replace it with the reviewed backup-verification fix below.
     elif [[ "$worktree_blob" != "$expected_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
