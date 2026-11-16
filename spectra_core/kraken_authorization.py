@@ -163,13 +163,36 @@ async def reserve_kraken_capital(
         and economic_position_id is None
     ):
         ledger = get_economic_position_ledger()
-        economic_position_id = f"spectra-position-{uuid4().hex}"
         try:
-            ledger.open_position(
-                position_id=economic_position_id,
-                pair=pair,
-                created_at=authorization_now,
-            )
+            # Reuse only an exact, empty prefill slot that an integration
+            # prepared before asking for authorization. Never attach a new
+            # entry to an existing position with inventory.
+            matching_slots = []
+            base = pair.rsplit("-", 1)[0]
+            for existing_id in ledger.list_active_position_ids():
+                existing = ledger.snapshot(existing_id)
+                if existing.pair.rsplit("-", 1)[0] != base:
+                    continue
+                if existing.pair != pair:
+                    raise ValueError(
+                        "existing economic position uses a different quote pair"
+                    )
+                if existing.active_base != 0 or existing.active_cost_basis_quote != 0:
+                    raise ValueError(
+                        "asset already has active economic inventory"
+                    )
+                matching_slots.append(existing_id)
+            if len(matching_slots) > 1:
+                raise ValueError("multiple empty economic position slots exist for asset")
+            if matching_slots:
+                economic_position_id = matching_slots[0]
+            else:
+                economic_position_id = f"spectra-position-{uuid4().hex}"
+                ledger.open_position(
+                    position_id=economic_position_id,
+                    pair=pair,
+                    created_at=authorization_now,
+                )
         except Exception:
             capital_governor.release(
                 proposal.proposal_id,
