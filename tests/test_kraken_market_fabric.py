@@ -208,6 +208,7 @@ async def test_collect_kraken_universe_requires_live_ticker_and_rule():
         client,
         order_book_pairs=("BTC-USD", "ETH-USD"),
         order_book_depth=5,
+        connector_name="kraken",
     )
 
     assert snapshot.eligible_pairs == ("BTC-USD", "DOGE-USD")
@@ -275,3 +276,101 @@ def test_kraken_xbt_ticker_and_rule_symbols_normalize_to_btc_pair():
     assert set(tickers) == {"BTC-USD"}
     assert set(rules) == {"BTC-USD"}
     assert tickers["BTC-USD"].price == Decimal("65000")
+
+class FakePaperMarketData:
+    def __init__(self):
+        self.order_book_calls = []
+
+    async def get_tickers(self, connector):
+        assert connector == "kraken_paper_trade"
+        return {
+            "tickers": {
+                "kraken_paper_trade": {
+                    "BTC-USD": {
+                        "price": 100,
+                        "base_volume": 50,
+                        "quote_volume": 5000,
+                        "timestamp": 500,
+                    }
+                }
+            },
+            "updated_at": {"kraken_paper_trade": 501},
+        }
+
+    async def get_order_book(self, **kwargs):
+        self.order_book_calls.append(kwargs)
+        return {
+            "trading_pair": kwargs["trading_pair"],
+            "bids": [[99, 2]],
+            "asks": [[101, 2]],
+            "timestamp": 502,
+        }
+
+
+class FakePaperConnectors:
+    async def get_trading_rules(self, connector):
+        assert connector == "kraken_paper_trade"
+        return {
+            "BTC-USD": {
+                "min_order_size": "1",
+                "min_notional_size": "1",
+                "min_order_value": "1",
+                "min_price_increment": "0.01",
+                "min_base_amount_increment": "0.0001",
+                "min_quote_amount_increment": "0.01",
+                "supports_limit_orders": True,
+                "supports_market_orders": True,
+            }
+        }
+
+
+@pytest.mark.asyncio
+async def test_collect_kraken_universe_uses_paper_identity_for_public_market_data(monkeypatch):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    market_data = FakePaperMarketData()
+    client = SimpleNamespace(
+        market_data=market_data,
+        connectors=FakePaperConnectors(),
+    )
+
+    snapshot = await collect_kraken_universe(
+        client,
+        order_book_pairs=("BTC-USD",),
+        order_book_depth=5,
+    )
+
+    assert snapshot.eligible_pairs == ("BTC-USD",)
+    assert snapshot.updated_at == 501.0
+    assert market_data.order_book_calls == [
+        {
+            "connector_name": "kraken_paper_trade",
+            "trading_pair": "BTC-USD",
+            "depth": 5,
+        }
+    ]
+
+
+def test_normalize_kraken_tickers_accepts_paper_connector_identity():
+    payload = {
+        "tickers": {
+            "kraken_paper_trade": {
+                "BTC-USD": {
+                    "price": "100",
+                    "base_volume": "2",
+                    "quote_volume": "200",
+                    "timestamp": 500,
+                }
+            }
+        },
+        "updated_at": {"kraken_paper_trade": 501},
+    }
+
+    tickers, rejected, updated_at = normalize_kraken_tickers(
+        payload,
+        connector_name="kraken_paper_trade",
+    )
+
+    assert set(tickers) == {"BTC-USD"}
+    assert rejected == {}
+    assert updated_at == 501.0
+
