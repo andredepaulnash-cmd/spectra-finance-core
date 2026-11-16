@@ -44,15 +44,15 @@ def configure_spectra_paper_dispatch(monkeypatch, settings, *, agent_slug=True):
     )
     monkeypatch.setattr(settings, "paper_only", True)
     if agent_slug:
-        monkeypatch.setattr(settings, "agent_slug", "spectra")
+        monkeypatch.setattr(settings, "agent_slug", agent_slug)
 
 
 
-def configure_spectra_live_dispatch(monkeypatch, settings):
-    """Opt a fake-client test into the explicitly authorized live code path."""
+def configure_spectra_live_dispatch(monkeypatch, settings, *, agent_slug="spectra"):
+    """Opt a fake-client test into live mode, optionally using generic Condor semantics."""
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "false")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "true")
-    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", agent_slug)
     monkeypatch.setenv(
         "SPECTRA_DISPATCH_PRIVATE_KEY",
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
