@@ -164,6 +164,9 @@ def test_load_capital_policy_is_read_only(monkeypatch, tmp_path):
 
     assert policy.reserve_floor_quote == Decimal("100")
     assert policy.max_leverage == Decimal("1")
+    # Older policy files omit max_entry_quote; paper mode allocates only the
+    # amount left after the configured recovery ceiling.
+    assert policy.max_entry_quote == Decimal("400")
     assert not db_path.exists()
 
     reset_runtime_cache()
