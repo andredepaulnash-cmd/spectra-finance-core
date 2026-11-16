@@ -114,6 +114,57 @@ This conflicts with the latest Architect requirement to use actual Kraken-suppor
 
 **Asset-list discovery contract:** `asset_authority.py` checks an operator-provided `approved_assets.json` first; absent that, it can load a fresh `discovered_assets.json` (maximum age 300 seconds) when automatic asset selection is enabled. The scanner returns candidates but the exact runtime call that persists the discovered list still needs verification. The local doctor log's missing-list warning means the live local state did not have a usable list at that time.
 
+## 4A. Historical GitHub archaeology — PRs #1–#25
+
+The first 25 Core PRs form a deliberate progression, not 25 unrelated features. All were closed at the last repository review; the September handoff treats #1–#24 as aligned infrastructure/research and #25 as a provisional research prototype. Do not discard this work or rebuild it from scratch.
+
+| PR | Recovered capability | Principal source paths |
+|---:|---|---|
+| #1 | Phase-1 CI for Governor, Kraken authorization, executor accounting, position-hold and recovery exposure | `.github/workflows/spectra-phase1.yml` |
+| #2 | Exact account/connector/controller-scoped PositionHold provenance; fail-closed recovery exposure | `mcp_servers/hummingbot_api/tools/executor_create.py`, `spectra_core/capital_governor.py` |
+| #3 | CI efficiency: avoid duplicate feature-branch Actions runs | workflow |
+| #4 | Kraken market fabric: normalize tickers/rules, intersect live tickers with rules, opt-in order books, spread/depth/imbalance/microprice, per-pair rejection reasons; partial stack lock | `spectra_core/kraken_market_fabric.py`, `spectra-stack.lock.json` |
+| #5 | Advance locked Hummingbot API revision and exact PositionHold contract | `spectra-stack.lock.json` |
+| #6 | Per-asset behavioral fingerprints across FAST/SHORT/MEDIUM/LONG horizons, time decay, freshness, cold-start confidence | `spectra_core/asset_fingerprint.py` |
+| #7 | Fingerprint-shaped VCAP recovery planning; exact Decimal position geometry, recovery-to-break-even math, stale-data/depth throttles | `spectra_core/recovery_fingerprint.py` |
+| #8 | Dynamic VCAP tranche planner; up to five normal equal parcels, fewer/heavier reversal-supported parcels, venue-rule quantization and independent sellability | `spectra_core/vcap_tranches.py` |
+| #9 | One-tranche-at-a-time execution/replan loop; deterministic child IDs; atomic parent-envelope carve; EXECUTE/HOLD/STOP | `spectra_core/vcap_execution.py`, `mcp_servers/hummingbot_api/tools/vcap_execution.py` |
+| #10 | Profit-oriented VCAP exits: 174 bps net target, fee-aware gross exit, profit floor/high-water, giveback and stagnation controls, confirmed flat before recycle | `spectra_core/vcap_profit_exit.py` |
+| #11 | Durable VCAP restart continuity; exact proposal/executor ownership; RESUME/RETIRE/HOLD fail-closed | `spectra_core/vcap_state.py` |
+| #12 | Unified VCAP lifecycle; profit exit outranks new recovery; durable checkpoint before external mutation; receipt-required idempotent progression | `spectra_core/vcap_lifecycle.py` |
+| #13 | Economic position ownership ledger with ACTIVE_TRADE / STRATEGIC_RETAINED / UNATTRIBUTED lots and exact basis/fee geometry | `spectra_core/economic_position.py` |
+| #14 | Confirmed Hummingbot trade fills mutate economic ledger; exact order ownership, idempotent trade IDs, no fuzzy matching or wallet-balance inference | `spectra_core/fill_reconciliation.py` |
+| #15 | Automated executor order/fill provenance bridge; exact executor-owned order and trade evidence; pinned API contract | `spectra_core/executor_provenance_bridge.py`, API provenance tools |
+| #16 | Accounting Health supervisor HEALTHY/STALE/HOLD/CONFLICT; preflight all orders/trades before mutation; freshness watermark | `spectra_core/accounting_health.py` |
+| #17 | Restart-safe closed-loop VCAP runtime supervisor; one capital mutation per position cycle; reconcile before and after dispatch | `spectra_core/vcap_runtime.py`, `spectra_core/runtime.py` |
+| #18 | Unified economic-position exit manifest covering exact ENTRY + RECOVERY lots; retained/unattributed inventory excluded; dust and minimum sellability explicit | `spectra_core/economic_exit.py`, `spectra_core/economic_position.py` |
+| #19 | Multi-position VCAP scheduler/watchdog; per-position cycles, sequential bounded fleet ticks, per-position fault isolation | `spectra_core/runtime_scheduler.py` |
+| #20 | Partial recovery-lot recycling; exact recovery ownership, proportional/idempotent reserve release, one recycle mutation per position cycle | `spectra_core/partial_recycle.py` |
+| #21 | Adversarial strategy laboratory and capital auction; transparent opportunity scoring, portfolio/correlation stress, research integrity statistics | `spectra_core/strategy_lab.py`, `strategy_lab_scenarios.py`, `strategy_lab_validation.py` |
+| #22 | Causal offline multi-asset replay with shared cash, later-frame execution, exact lot ownership, fees/slippage/depth/partial fills, comparable baselines | `spectra_core/strategy_replay.py` |
+| #23 | Offline adapter to production fingerprint/recovery/tranche/profit planners plus dataset provenance and auditable train/evaluation campaigns | `spectra_core/strategy_dataset.py`, `strategy_replay_vcap.py` |
+| #24 | Recorded Kraken Tardis ticker/instrument importer; capture-time causal rules, exact Decimal values, no forward-fill | `spectra_core/kraken_tardis_import.py` |
+| #25 | One shared rotating 50-altcoin fleet replay with 83-asset universe and linked replacement rotations; valuable but provisional | `spectra_core/rotating_fleet.py`, `binance_kline_import.py`, protocol/results docs |
+
+### PR #21 research auction defaults — explicitly not production policy
+The lab's default `CapitalAuctionPolicy` uses: reserve fraction 50%; minimum recovery reserve 25 quote units; target fleet min/normal/max 10/20/40; minimum viable position 10 quote units. Its score is:
+- capital-time edge (expected net edge bps / expected holding hours) × 2;
+- reversal score × 40;
+- liquidity score × 25;
+- marginal recovery efficiency × 35;
+- urgency × 10;
+- correlation penalty × -30;
+- dead-money penalty × -45;
+- expected execution cost bps × -1.
+The auction is research-only: it ranks and allocates a simulated proposal but does not reserve or dispatch live capital. These weights and fleet targets are old research defaults, not the November 2026 $25,000 policy or a verified current production ranking formula.
+
+### PR #22–#25 evidence and limitations
+- **PR #22 replay:** five research baselines (cash, fixed DCA, recovery, recovery recycling, capital-time variant). Uses later executable quotes, shared cash, exact Decimal accounting, fee-inclusive basis, spread/slippage, depth and partial-fill caps. It is a research proxy, not a production-controller replica.
+- **PR #23 planner adapter:** invokes production AssetFingerprint, recovery sizing, tranche and profit-exit planners offline. It does not mirror production Governor reservations, full lifecycle/restart behavior, or partial-recycle manifests. Synthetic/estimated data is explicitly adversarial; provenance is caller-declared.
+- **PR #24 Kraken importer:** a one-day BTC/USD pipeline check converted 989,539 messages to 1,434 observations, max gap 68 seconds, excluding 230 tickers without contemporaneous rules. Its 36 fixed-policy trials produced no sells and zero realized P&L. It proves ingestion/causality mechanics, not strategy profitability.
+- **PR #25 rotating fleet:** one shared $2,000 account, 50 target positions, $10.25 entries, 83 non-BTC/non-ETH USDT altcoins, 2026-09-24–26, Binance one-minute data. At the 40 bps fee scenario it reported ending equity $2,093.01 (+$93.01 total), +$110.95 realized, -$17.95 open P&L, 331 rotations, 477 recovery fills, and 2.25% max drawdown. Execution was estimated from next-minute VWAP plus slippage and volume caps; the dataset had no bid/ask, order-book depth, queue position, Kraken rules, or the user's fee tier. It is a three-day Binance proxy experiment, **not proof of a durable edge or Kraken fill behavior**.
+- The exact rotating-fleet result and protocol are preserved in `docs/research-results/rotating-fleet-2026-09-24_26.md` and `docs/research-protocols/rotating-fleet-v1.json`.
+
 ## 4. Hummingbot / Core contracts to preserve
 
 - Hummingbot Strategy V2 uses controllers and self-managing executors; do not rebuild order mechanics that already exist without a measured reason.
