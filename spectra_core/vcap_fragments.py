@@ -57,6 +57,7 @@ class VCAPFragmentRecord:
     envelope_proposal_id: str
     pair: str
     ordinal: int
+    pre_vcap_step: int
     status: VCAPFragmentStatus
     phase: AdaptiveVCAPPhase
     fat1_step: int
@@ -75,6 +76,8 @@ class VCAPFragmentRecord:
     updated_at: float
 
     def step_for(self, phase: AdaptiveVCAPPhase) -> int:
+        if phase is AdaptiveVCAPPhase.PRE_VCAP:
+            return self.pre_vcap_step
         if phase is AdaptiveVCAPPhase.FAT_1:
             return self.fat1_step
         if phase is AdaptiveVCAPPhase.SKINNY:
@@ -117,6 +120,7 @@ class VCAPFragmentManager:
                     ordinal INTEGER NOT NULL,
                     status TEXT NOT NULL,
                     phase TEXT NOT NULL,
+                    pre_vcap_step INTEGER NOT NULL DEFAULT 0,
                     fat1_step INTEGER NOT NULL DEFAULT 0,
                     skinny_step INTEGER NOT NULL DEFAULT 0,
                     fat2_step INTEGER NOT NULL DEFAULT 0,
@@ -143,6 +147,10 @@ class VCAPFragmentManager:
             if "last_completed_at" not in columns:
                 conn.execute(
                     "ALTER TABLE vcap_fragments ADD COLUMN last_completed_at REAL NOT NULL DEFAULT 0"
+                )
+            if "pre_vcap_step" not in columns:
+                conn.execute(
+                    "ALTER TABLE vcap_fragments ADD COLUMN pre_vcap_step INTEGER NOT NULL DEFAULT 0"
                 )
 
     @staticmethod
@@ -270,6 +278,7 @@ class VCAPFragmentManager:
             envelope_proposal_id=str(row["envelope_proposal_id"]),
             pair=str(row["pair"]),
             ordinal=int(row["ordinal"]),
+            pre_vcap_step=int(row["pre_vcap_step"]),
             status=VCAPFragmentStatus(str(row["status"])),
             phase=AdaptiveVCAPPhase(str(row["phase"])),
             fat1_step=int(row["fat1_step"]),
@@ -312,6 +321,7 @@ class VCAPFragmentManager:
         allowed = {
             "status",
             "phase",
+            "pre_vcap_step",
             "fat1_step",
             "skinny_step",
             "fat2_step",
@@ -367,7 +377,8 @@ class VCAPFragmentManager:
 
     def _all_steps_exhausted(self, record: VCAPFragmentRecord) -> bool:
         return (
-            record.fat1_step >= len(self.policy.fat1_multipliers)
+            record.pre_vcap_step >= len(self.policy.pre_vcap_dca_triggers_bps)
+            and record.fat1_step >= len(self.policy.fat1_multipliers)
             and record.skinny_step >= len(self.policy.skinny_multipliers)
             and record.fat2_step >= len(self.policy.fat2_multipliers)
         )
@@ -386,10 +397,17 @@ class VCAPFragmentManager:
         phase: AdaptiveVCAPPhase,
         *,
         now: float,
+        drawdown_bps: int | None = None,
     ) -> tuple[VCAPFragmentRecord, ...]:
         records = self.list_fragments(position_id)
         if not records:
             return ()
+        if drawdown_bps is not None and (
+            isinstance(drawdown_bps, bool)
+            or not isinstance(drawdown_bps, int)
+            or drawdown_bps < 0
+        ):
+            raise ValueError("drawdown_bps must be a non-negative integer")
         candidates: list[VCAPFragmentCandidate] = []
         pending_by_id: dict[str, VCAPRuntimeCycle] = {}
         missing_state_ids: set[str] = set()
@@ -404,11 +422,23 @@ class VCAPFragmentManager:
                 missing_state_ids.add(record.fragment_id)
             elif fragment_state.status is not VCAPLifecycleStatus.ACTIVE:
                 held_state_ids.add(record.fragment_id)
-            step = next_adaptive_vcap_step(
-                phase,
-                record.step_for(phase),
-                self.policy,
-            )
+            if phase is AdaptiveVCAPPhase.PRE_VCAP:
+                step = (
+                    self.policy.pre_vcap_dca_quote
+                    if (
+                        record.ordinal == 0
+                        and drawdown_bps is not None
+                        and record.pre_vcap_step < len(self.policy.pre_vcap_dca_triggers_bps)
+                        and drawdown_bps >= self.policy.pre_vcap_dca_triggers_bps[record.pre_vcap_step]
+                    )
+                    else None
+                )
+            else:
+                step = next_adaptive_vcap_step(
+                    phase,
+                    record.step_for(phase),
+                    self.policy,
+                )
             has_steps = (
                 fragment_state is not None
                 and fragment_state.status is VCAPLifecycleStatus.ACTIVE
@@ -461,10 +491,13 @@ class VCAPFragmentManager:
                 status = VCAPFragmentStatus.RECOVERED
             elif record.fragment_id in held_state_ids:
                 status = VCAPFragmentStatus.PAUSED
-            elif phase in {
-                AdaptiveVCAPPhase.PRE_VCAP,
-                AdaptiveVCAPPhase.DEEP_GOVERNOR,
-            }:
+            elif phase is AdaptiveVCAPPhase.PRE_VCAP:
+                status = (
+                    VCAPFragmentStatus.ACTIVE
+                    if record.fragment_id in selected_ids
+                    else VCAPFragmentStatus.PAUSED
+                )
+            elif phase is AdaptiveVCAPPhase.DEEP_GOVERNOR:
                 status = VCAPFragmentStatus.PAUSED
             elif record.fragment_id in selected_ids:
                 status = VCAPFragmentStatus.ACTIVE
@@ -489,11 +522,19 @@ class VCAPFragmentManager:
         phase: AdaptiveVCAPPhase,
     ) -> Decimal | None:
         record = self.get_fragment(fragment_id)
-        amount = next_adaptive_vcap_step(
-            phase,
-            record.step_for(phase),
-            self.policy,
-        )
+        if phase is AdaptiveVCAPPhase.PRE_VCAP:
+            if (
+                record.ordinal != 0
+                or record.pre_vcap_step >= len(self.policy.pre_vcap_dca_triggers_bps)
+            ):
+                return None
+            amount = self.policy.pre_vcap_dca_quote
+        else:
+            amount = next_adaptive_vcap_step(
+                phase,
+                record.step_for(phase),
+                self.policy,
+            )
         if amount is None or amount > record.remaining_budget_quote:
             return None
         return amount
@@ -597,6 +638,7 @@ class VCAPFragmentManager:
         ):
             completed_phase = record.pending_phase or record.phase
             step_field = {
+                AdaptiveVCAPPhase.PRE_VCAP: "pre_vcap_step",
                 AdaptiveVCAPPhase.FAT_1: "fat1_step",
                 AdaptiveVCAPPhase.SKINNY: "skinny_step",
                 AdaptiveVCAPPhase.FAT_2: "fat2_step",
@@ -688,6 +730,12 @@ class VCAPFragmentManager:
             "status": "READY" if int(total["count"]) else "EMPTY",
             "position_count": int(positions["count"]),
             "fragment_count": int(total["count"]),
+            "pre_vcap_dca_steps_completed": sum(
+                int(row["pre_vcap_step"])
+                for row in self._connect().execute(
+                    "SELECT pre_vcap_step FROM vcap_fragments WHERE ordinal = 0"
+                ).fetchall()
+            ),
             "active_fragments": statuses.get(VCAPFragmentStatus.ACTIVE.value, 0),
             "waiting_fragments": statuses.get(VCAPFragmentStatus.WAITING.value, 0),
             "reconciling_fragments": statuses.get(VCAPFragmentStatus.RECONCILING.value, 0),
