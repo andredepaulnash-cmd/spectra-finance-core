@@ -201,3 +201,66 @@ def test_fragment_manager_refuses_envelope_rebinding(tmp_path):
             max_position_quote=D("25000"),
             now=1001.0,
         )
+
+
+def test_pre_vcap_dca_ladder_executes_only_at_configured_drawdown_triggers(tmp_path):
+    manager = VCAPFragmentManager(tmp_path / "fragments")
+    records = manager.ensure_fragments(
+        position_id="position-btc",
+        envelope_proposal_id="entry-proposal-1",
+        pair="BTC-USD",
+        base_state=base_state(),
+        max_position_quote=D("25000"),
+        now=1000.0,
+    )
+    first = records[0]
+    assert manager.select_active(
+        "position-btc", AdaptiveVCAPPhase.PRE_VCAP, now=1001.0, drawdown_bps=273
+    ) == ()
+    assert manager.select_active(
+        "position-btc", AdaptiveVCAPPhase.PRE_VCAP, now=1002.0, drawdown_bps=274
+    )[0].fragment_id == first.fragment_id
+    assert manager.next_step_quote(first.fragment_id, AdaptiveVCAPPhase.PRE_VCAP) == D("20")
+
+    for step, trigger in enumerate((274, 444, 674), start=1):
+        current = manager.get_fragment(first.fragment_id)
+        manager.select_active(
+            "position-btc",
+            AdaptiveVCAPPhase.PRE_VCAP,
+            now=1010.0 + step,
+            drawdown_bps=trigger,
+        )
+        _, runtime = manager.stores(first.fragment_id)
+        cycle = runtime.begin_or_resume(
+            position_id="position-btc",
+            envelope_proposal_id="entry-proposal-1",
+            now=1020.0 + step,
+        )
+        runtime.transition(
+            cycle.cycle_id,
+            phase=VCAPRuntimePhase.COMPLETED,
+            now=1030.0 + step,
+            expected_phases=(VCAPRuntimePhase.STARTED,),
+            planned_action="EXECUTE_TRANCHE",
+            mutation_proposal_id=f"pre-dca-{step}",
+        )
+        manager.record_cycle_result(
+            first.fragment_id,
+            {"reasons": ["pre-VCAP DCA fill reconciled"]},
+            now=1030.0 + step,
+        )
+        assert manager.get_fragment(first.fragment_id).pre_vcap_step == step
+
+    assert manager.select_active(
+        "position-btc",
+        AdaptiveVCAPPhase.PRE_VCAP,
+        now=1040.0,
+        drawdown_bps=776,
+    ) == ()
+    active = manager.select_active(
+        "position-btc",
+        AdaptiveVCAPPhase.FAT_1,
+        now=1041.0,
+        drawdown_bps=777,
+    )
+    assert len(active) == 2
