@@ -184,7 +184,7 @@ class CapitalGovernor:
                     asset_id TEXT NOT NULL,
                     step_id TEXT NOT NULL,
                     status TEXT NOT NULL,
-                    reservation_id TEXT NOT NULL UNIQUE REFERENCES reservations(reservation_id),
+                    reservation_id TEXT UNIQUE REFERENCES reservations(reservation_id),
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 );
@@ -220,6 +220,22 @@ class CapitalGovernor:
                 );
                 """
             )
+            vcap_columns={row[1]:row for row in conn.execute("PRAGMA table_info(vcap_shards)")}
+            if vcap_columns.get("reservation_id") is not None and vcap_columns["reservation_id"][3] == 1:
+                conn.execute("ALTER TABLE vcap_shards RENAME TO vcap_shards_legacy")
+                conn.execute("""CREATE TABLE vcap_shards (
+                    shard_id TEXT PRIMARY KEY,
+                    position_id TEXT NOT NULL REFERENCES positions(position_id),
+                    asset_id TEXT NOT NULL,
+                    step_id TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    reservation_id TEXT UNIQUE REFERENCES reservations(reservation_id),
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                )""")
+                conn.execute("INSERT INTO vcap_shards SELECT * FROM vcap_shards_legacy")
+                conn.execute("DROP TABLE vcap_shards_legacy")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_vcap_shards_asset_status ON vcap_shards(asset_id,status)")
             position_columns={row[1] for row in conn.execute("PRAGMA table_info(positions)")}
             for column,declaration in (
                 ("manual_review_required","INTEGER NOT NULL DEFAULT 0"),
@@ -284,7 +300,8 @@ class CapitalGovernor:
                 if self._available_pool(conn, CapitalPool.INITIAL) < amount + fee:
                     raise CapitalDenied("initial-entry pool has insufficient available capital")
                 conn.execute(
-                    "INSERT INTO positions VALUES(?,?,?,?,?,?,?)",
+                    """INSERT INTO positions(position_id,asset_id,reference_price,status,gross_committed,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?)""",
                     (position_id, asset_id, str(price), "RESERVED", str(amount), now, now),
                 )
                 conn.execute(
@@ -304,8 +321,15 @@ class CapitalGovernor:
                 )
                 conn.execute(
                     "UPDATE pools SET reserved=? WHERE pool_id=?",
-                    (str(Decimal("0") + (Decimal(conn.execute("SELECT reserved FROM pools WHERE pool_id=?", (CapitalPool.INITIAL.value,)).fetchone()["reserved"]) + amount + fee)), CapitalPool.INITIAL.value),
+                    (str(Decimal(conn.execute("SELECT reserved FROM pools WHERE pool_id=?", (CapitalPool.INITIAL.value,)).fetchone()["reserved"]) + amount + fee), CapitalPool.INITIAL.value),
                 )
+                for step in VCAP_STEPS:
+                    shard_id=f"{position_id}:{step.step_id}"
+                    conn.execute(
+                        """INSERT INTO vcap_shards(shard_id,position_id,asset_id,step_id,status,reservation_id,created_at,updated_at)
+                        VALUES(?,?,?,?,?,?,?,?)""",
+                        (shard_id,position_id,asset_id,step.step_id,"AVAILABLE",None,now,now),
+                    )
                 self._event(conn,"POSITION_RESERVED",position_id,{"asset_id":asset_id,"gross_notional":str(amount),"fee_reserve":str(fee)})
                 conn.commit()
             except Exception:
@@ -386,8 +410,9 @@ class CapitalGovernor:
                     ).fetchone()["n"]
                     if occupied >= MAX_ACTIVE_VCAP_SHARDS_PER_ASSET:
                         raise CapitalDenied("per-asset two-shard concurrency limit reached")
-                    if conn.execute("SELECT 1 FROM vcap_shards WHERE shard_id=?", (shard_id,)).fetchone():
-                        raise CapitalDenied("shard_id already exists")
+                    prior_shard=conn.execute("SELECT status FROM vcap_shards WHERE shard_id=?",(shard_id,)).fetchone()
+                    if prior_shard is None or prior_shard["status"]!="AVAILABLE":
+                        raise CapitalDenied("VCAP shard is not in the Available lifecycle state")
                 if self._available_pool(conn,pool) < amount + fee:
                     raise CapitalDenied(f"{pool.value.lower()} pool has insufficient available capital")
                 conn.execute(
@@ -424,10 +449,13 @@ class CapitalGovernor:
                     (position_id,action_id,action_type,"RESERVED",reservation_id,str(drawdown),now),
                 )
                 if action_type == "VCAP":
-                    conn.execute(
-                        "INSERT INTO vcap_shards VALUES(?,?,?,?,?,?,?,?)",
-                        (shard_id,position_id,position["asset_id"],action_id,"RESERVED",reservation_id,now,now),
-                    )
+                    changed=conn.execute(
+                        """UPDATE vcap_shards SET status='RESERVED',reservation_id=?,updated_at=?
+                        WHERE shard_id=? AND status='AVAILABLE'""",
+                        (reservation_id,now,shard_id),
+                    ).rowcount
+                    if changed!=1:
+                        raise CapitalDenied("VCAP shard could not transition from Available to Reserved")
                 row = conn.execute("SELECT reserved FROM pools WHERE pool_id=?", (pool.value,)).fetchone()
                 conn.execute("UPDATE pools SET reserved=? WHERE pool_id=?", (str(Decimal(row["reserved"])+amount+fee),pool.value))
                 self._event(conn,"CAPITAL_RESERVED",reservation_id,{"position_id":position_id,"action_id":action_id,"action_type":action_type,"gross_notional":str(amount),"fee_reserve":str(fee),"pool":pool.value,"shard_id":shard_id})
@@ -927,7 +955,7 @@ class CapitalGovernor:
                 new_status="CANCELLED" if row["action_id"]=="INITIAL" else pos["status"]
                 conn.execute("UPDATE positions SET gross_committed=?,status=?,updated_at=? WHERE position_id=?",(str(adjusted),new_status,now,row["position_id"]))
                 conn.execute("UPDATE reservations SET status=?,updated_at=? WHERE reservation_id=?",(ReservationStatus.RELEASED.value,now,authorization_id))
-                conn.execute("UPDATE vcap_shards SET status='AVAILABLE',updated_at=? WHERE reservation_id=?",(now,authorization_id))
+                conn.execute("UPDATE vcap_shards SET status='AVAILABLE',reservation_id=NULL,updated_at=? WHERE reservation_id=?",(now,authorization_id))
                 conn.execute("UPDATE position_steps SET status='AVAILABLE',updated_at=? WHERE reservation_id=?",(now,authorization_id))
                 conn.execute("UPDATE position_lots SET status='AVAILABLE',updated_at=? WHERE reservation_id=?",(now,authorization_id))
                 self._event(conn,"RESERVATION_RELEASED",authorization_id,{"confirmed_no_fill":confirmed_no_fill})
