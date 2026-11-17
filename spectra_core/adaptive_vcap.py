@@ -50,6 +50,9 @@ class AdaptiveVCAPPolicy:
     base_quote: Decimal = Decimal("20")
     pre_vcap_dca_triggers_bps: tuple[int, ...] = PRE_VCAP_DCA_TRIGGERS_BPS
     pre_vcap_dca_quote: Decimal = Decimal("20")
+    priority_spread_cap_bps: Decimal = Decimal("100")
+    priority_depth_target_quote: Decimal = Decimal("10000")
+    priority_volatility_cap_bps: Decimal = Decimal("500")
     fat1_multipliers: tuple[Decimal, ...] = (
         Decimal("1"),
         Decimal("2"),
@@ -113,6 +116,14 @@ class AdaptiveVCAPPolicy:
             or self.pre_vcap_dca_quote <= ZERO
         ):
             raise ValueError("pre-VCAP DCA quote must be a positive Decimal")
+        for name in (
+            "priority_spread_cap_bps",
+            "priority_depth_target_quote",
+            "priority_volatility_cap_bps",
+        ):
+            value = getattr(self, name)
+            if not isinstance(value, Decimal) or not value.is_finite() or value <= ZERO:
+                raise ValueError(f"{name} must be a positive Decimal")
         self._validate_ladder(self.fat1_multipliers, "FAT 1")
         self._validate_ladder(self.skinny_multipliers, "SKINNY")
         self._validate_ladder(self.fat2_multipliers, "FAT 2")
@@ -197,6 +208,9 @@ class AdaptiveVCAPPolicy:
             base_quote=base_quote,
             pre_vcap_dca_triggers_bps=pre_vcap_triggers,
             pre_vcap_dca_quote=decimal("SPECTRA_VCAP_PRE_DCA_QUOTE", str(base_quote)),
+            priority_spread_cap_bps=decimal("SPECTRA_VCAP_PRIORITY_SPREAD_CAP_BPS", "100"),
+            priority_depth_target_quote=decimal("SPECTRA_VCAP_PRIORITY_DEPTH_TARGET_QUOTE", "10000"),
+            priority_volatility_cap_bps=decimal("SPECTRA_VCAP_PRIORITY_VOLATILITY_CAP_BPS", "500"),
             fat1_multipliers=ladder(
                 "SPECTRA_VCAP_FAT1_MULTIPLIERS",
                 (Decimal("1"), Decimal("2"), Decimal("4")),
