@@ -22,4 +22,4 @@ jobs:
       - name: Compile Alpha 2.0 package and tests
         run: python -m compileall -q spectra_alpha2 tests
       - name: Run deterministic Alpha 2.0 tests
-        run: python -m unittest discover -s tests -p 'test_alpha2_*.py' -v
+        run: python -m pytest -q tests/test_alpha2_*.py
