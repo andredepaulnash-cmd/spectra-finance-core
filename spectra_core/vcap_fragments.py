@@ -255,7 +255,7 @@ class VCAPFragmentManager:
                         next_sequence=1,
                         remaining_authorized_quote=budget,
                         recovery_proposal_ids=(),
-                        status=VCAPLifecycleStatus.ACTIVE,
+                        status=base_state.status,
                         updated_at=now,
                     )
                 )
@@ -395,13 +395,17 @@ class VCAPFragmentManager:
             pending = self._pending_cycle(record.fragment_id)
             if pending is not None:
                 pending_by_id[record.fragment_id] = pending
+            lifecycle_store, _ = self.stores(record.fragment_id)
+            fragment_state = lifecycle_store.load(record.envelope_proposal_id)
             step = next_adaptive_vcap_step(
                 phase,
                 record.step_for(phase),
                 self.policy,
             )
             has_steps = (
-                step is not None
+                fragment_state is not None
+                and fragment_state.status is VCAPLifecycleStatus.ACTIVE
+                and step is not None
                 and record.remaining_budget_quote > ZERO
                 and step <= record.remaining_budget_quote
             )
@@ -412,7 +416,11 @@ class VCAPFragmentManager:
                     status=(
                         VCAPFragmentStatus.RECONCILING
                         if pending is not None
-                        else record.status
+                        else (
+                            VCAPFragmentStatus.CONFLICT
+                            if fragment_state is None
+                            else record.status
+                        )
                     ),
                     priority_score=record.priority_score,
                     pending_executor=pending is not None,
@@ -520,6 +528,16 @@ class VCAPFragmentManager:
         lifecycle_store, runtime_store = self.stores(fragment_id)
         state = lifecycle_store.load(record.envelope_proposal_id)
         cycle = runtime_store.latest_for_position(record.position_id)
+        if state is None:
+            self._update(
+                fragment_id,
+                now=now,
+                status=VCAPFragmentStatus.CONFLICT,
+                active_mutation_proposal_id=None,
+                pending_phase=None,
+                last_reason="fragment_lifecycle_state_missing",
+            )
+            return self.get_fragment(fragment_id)
         if cycle is None:
             self._update(
                 fragment_id,
