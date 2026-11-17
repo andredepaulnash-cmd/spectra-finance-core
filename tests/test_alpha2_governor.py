@@ -80,6 +80,7 @@ class CapitalGovernorTests(unittest.TestCase):
             )
             self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
             self.gov.settle_fill(auth.authorization_id,actual_gross_notional=amount,actual_fee=amount*Decimal("0.004"))
+            self.gov.activate_vcap_shard(f"shard-{i}")
             shards.append(f"shard-{i}")
         with self.assertRaises(CapitalDenied):
             self.gov.reserve_addition(
