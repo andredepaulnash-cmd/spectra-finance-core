@@ -666,6 +666,40 @@ class VCAPFragmentManager:
                 pending.append(position_id)
         return tuple(pending[:limit])
 
+    def summary(self) -> dict[str, object]:
+        """Return aggregate fragment counts without exposing account-level secrets."""
+        with self._connect() as conn:
+            total = conn.execute(
+                "SELECT COUNT(*) AS count FROM vcap_fragments"
+            ).fetchone()
+            positions = conn.execute(
+                "SELECT COUNT(DISTINCT position_id) AS count FROM vcap_fragments"
+            ).fetchone()
+            status_rows = conn.execute(
+                "SELECT status, COUNT(*) AS count FROM vcap_fragments GROUP BY status"
+            ).fetchall()
+            phase_rows = conn.execute(
+                "SELECT phase, COUNT(*) AS count FROM vcap_fragments GROUP BY phase"
+            ).fetchall()
+        statuses = {str(row["status"]): int(row["count"]) for row in status_rows}
+        phases = {str(row["phase"]): int(row["count"]) for row in phase_rows}
+        return {
+            "status": "READY" if int(total["count"]) else "EMPTY",
+            "position_count": int(positions["count"]),
+            "fragment_count": int(total["count"]),
+            "active_fragments": statuses.get(VCAPFragmentStatus.ACTIVE.value, 0),
+            "waiting_fragments": statuses.get(VCAPFragmentStatus.WAITING.value, 0),
+            "reconciling_fragments": statuses.get(VCAPFragmentStatus.RECONCILING.value, 0),
+            "paused_fragments": statuses.get(VCAPFragmentStatus.PAUSED.value, 0),
+            "recovered_fragments": statuses.get(VCAPFragmentStatus.RECOVERED.value, 0),
+            "exhausted_fragments": statuses.get(VCAPFragmentStatus.EXHAUSTED.value, 0),
+            "conflict_fragments": statuses.get(VCAPFragmentStatus.CONFLICT.value, 0),
+            "by_status": statuses,
+            "by_phase": phases,
+            "fragments_per_position": self.policy.fragment_count,
+            "max_active_per_position": self.policy.max_active_fragments_per_position,
+        }
+
     def all_active_position_ids(self, *, limit: int = 1000) -> tuple[str, ...]:
         with self._connect() as conn:
             rows = conn.execute(
