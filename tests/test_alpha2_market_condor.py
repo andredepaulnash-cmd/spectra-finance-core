@@ -24,7 +24,8 @@ class FakeClient:
         }
     async def get_trading_rules(self):
         return {
-            pair:{"supports_limit_orders":True,"min_order_size":"0.00001","min_notional_size":"5"}
+            pair:{"supports_limit_orders":True,"min_order_size":"0.00001","min_notional_size":"5",
+                  "min_base_amount_increment":"0.00001","min_price_increment":"0.1"}
             for pair in ("BTC-USDT","ETH-USDT","USDC-USDT","DOGE-USDT","OLD-USDT")
         }
     async def get_order_book(self,pair,depth=5):
@@ -50,6 +51,7 @@ def test_condor_ranks_liquid_tight_spread_candidates_and_explains_score():
             quote_volume_24h=Decimal(str(volume)),base_volume_24h=Decimal("100"),
             spread_fraction=Decimal(str(spread)),ticker_timestamp=time.time(),
             min_order_size=Decimal("0.001"),min_notional_size=Decimal("5"),
+            base_amount_increment=Decimal("0.001"),price_increment=Decimal("0.01"),
         )
     ranked=CondorAnalyzer().recommend([
         candidate("LOW-USDT",100000,0.0025),
