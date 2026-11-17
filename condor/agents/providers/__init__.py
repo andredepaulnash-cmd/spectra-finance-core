@@ -11,14 +11,19 @@ log = logging.getLogger(__name__)
 
 # Python provider registry
 _REGISTRY: dict[str, BaseProvider] = {}
+_BUILTINS_LOADED = False
 
 
 def _auto_register() -> None:
-    """Import built-in provider modules."""
+    """Import built-in provider modules exactly once, even after manual imports."""
+    global _BUILTINS_LOADED
+    if _BUILTINS_LOADED:
+        return
     from . import drift  # noqa: F401
     from . import executors  # noqa: F401
     from . import positions  # noqa: F401
     from . import spectra_runtime  # noqa: F401
+    _BUILTINS_LOADED = True
 
 
 def register_provider(provider: BaseProvider) -> None:
@@ -27,7 +32,7 @@ def register_provider(provider: BaseProvider) -> None:
 
 
 def get_provider(name: str) -> BaseProvider | None:
-    if not _REGISTRY:
+    if not _BUILTINS_LOADED:
         _auto_register()
     return _REGISTRY.get(name)
 
