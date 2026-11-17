@@ -23,6 +23,17 @@ class FakeGovernor:
         self.calls.append(("bind",args,kwargs))
     def settle_fill(self,*args,**kwargs):
         self.calls.append(("settle",args,kwargs))
+    def consume_exit_authorization(self,*args,**kwargs):
+        self.calls.append(("consume_exit",args,kwargs))
+    def issue_exit_dispatch_receipt(self,*args,**kwargs):
+        self.calls.append(("exit_receipt",args,kwargs))
+        return type("Receipt",(),{"token":"signed-paper-receipt"})()
+    def bind_exit_order_id(self,*args,**kwargs):
+        self.calls.append(("bind_exit",args,kwargs))
+    def settle_exit_fill(self,*args,**kwargs):
+        self.calls.append(("settle_exit",args,kwargs))
+    def release_exit_authorization(self,*args,**kwargs):
+        self.calls.append(("release_exit",args,kwargs))
     def activate_vcap_shard(self,*args,**kwargs):
         self.calls.append(("activate",args,kwargs))
     def release_unfilled_reservation(self,*args,**kwargs):
@@ -73,9 +84,32 @@ async def test_executor_submits_only_governor_signed_order_and_settles_fill():
     assert result.order_id=="paper-order-1"
     assert result.status=="FILLED"
     assert result.gross_quote_notional==Decimal("20")
-    assert result.estimated_buy_fee==Decimal("0.080")
+    assert result.estimated_fee==Decimal("0.080")
     assert [x[0] for x in governor.calls]==["consume","receipt","bind","settle"]
     assert requests[0].url.path=="/trading/orders"
+    await client.close()
+
+
+
+@pytest.mark.asyncio
+async def test_executor_submits_governor_authorized_spot_sell_and_reconciles_net_fee():
+    requests=[]
+    governor=FakeGovernor()
+    sell_body={
+        "account_name":"master_account","connector_name":"kraken_paper_trade",
+        "trading_pair":"BTC-USDT","trade_type":"SELL","amount":"0.2",
+        "order_type":"LIMIT","price":"105","position_action":"OPEN",
+    }
+    exit_auth=type("ExitAuth",(),{"authorization_id":"exit-123","idempotency_key":"exit-idem"})()
+    client=HummingbotPaperExecutionClient(
+        "http://hummingbot",api_username="local-core",api_password="internal-only",
+        environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests)),poll_interval_seconds=0,
+    )
+    result=await client.submit_authorized_sell(governor,exit_auth,sell_body,timeout_seconds=1)
+    assert result.order_id=="paper-order-1"
+    assert result.gross_quote_notional==Decimal("20")
+    assert result.estimated_fee==Decimal("0.080")
+    assert [x[0] for x in governor.calls]==["consume_exit","exit_receipt","bind_exit","settle_exit"]
     await client.close()
 
 
