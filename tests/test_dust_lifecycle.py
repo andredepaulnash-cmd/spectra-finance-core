@@ -1087,17 +1087,17 @@ def test_post_commit_race_holds_capital_without_creating_executor(
 ):
     adapter, client, authorization = prepare_real_entry(environment, monkeypatch)
     governor = environment[1]
-    original = governor.commit_if_matches
+    original = governor.commit_entry_submission_if_matches
 
-    def commit(proposal):
-        result = original(proposal)
+    def commit(*args, **kwargs):
+        result = original(*args, **kwargs)
         governor.reserve(
             CapitalProposal("after-commit", "XRP-USD", IntentKind.ENTRY, D("5")),
             CapitalSnapshot(D("5000")),
         )
         return result
 
-    monkeypatch.setattr(governor, "commit_if_matches", commit)
+    monkeypatch.setattr(governor, "commit_entry_submission_if_matches", commit)
     result = dispatch_real_entry(adapter, client, authorization)
     assert "changed durable state" in result["error"]
     assert client.calls == []
