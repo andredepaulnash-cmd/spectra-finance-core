@@ -162,6 +162,25 @@ class CapitalGovernorTests(unittest.TestCase):
         )
         self.assertEqual(realized,Decimal("0.418"))
 
+
+    def test_outer_boundary_flags_manual_review_without_resetting_reference_or_patching(self):
+        self.open_position()
+        before=self.gov.get_position_state("p1")
+        self.assertEqual(before["reference_price"],Decimal("100"))
+        self.gov.flag_manual_review(
+            "p1",drawdown=Decimal("-0.24"),reason="vcap_outer_boundary_reached"
+        )
+        after=self.gov.get_position_state("p1")
+        self.assertTrue(after["manual_review_required"])
+        self.assertEqual(after["reference_price"],Decimal("100"))
+        with self.assertRaises(CapitalDenied):
+            self.gov.reserve_addition(
+                position_id="p1",action_id="DCA_1",gross_notional=Decimal("20"),
+                current_price=Decimal("97.26"),idempotency_key="manual-review-dca",action_type="DCA"
+            )
+        self.assertEqual(self.gov.snapshot()["manual_review_positions"],1)
+        self.assertEqual(self.gov.snapshot()["open_positions"],1)
+
     def test_pool_budgets_are_exact(self):
         snap = self.gov.snapshot()
         self.assertEqual(snap["pools"][CapitalPool.INITIAL.value]["budget"], Decimal("6250"))
