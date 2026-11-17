@@ -70,6 +70,7 @@ class VCAPFragmentRecord:
     last_cycle_id: str | None
     last_cycle_phase: str | None
     last_reason: str | None
+    last_completed_at: float
     created_at: float
     updated_at: float
 
@@ -135,6 +136,14 @@ class VCAPFragmentManager:
                 ON vcap_fragments(position_id, status, priority_score);
                 """
             )
+            columns = {
+                str(row[1])
+                for row in conn.execute("PRAGMA table_info(vcap_fragments)")
+            }
+            if "last_completed_at" not in columns:
+                conn.execute(
+                    "ALTER TABLE vcap_fragments ADD COLUMN last_completed_at REAL NOT NULL DEFAULT 0"
+                )
 
     @staticmethod
     def _fragment_id(position_id: str, ordinal: int) -> str:
@@ -275,6 +284,7 @@ class VCAPFragmentManager:
             last_cycle_id=row["last_cycle_id"],
             last_cycle_phase=row["last_cycle_phase"],
             last_reason=row["last_reason"],
+            last_completed_at=float(row["last_completed_at"]),
             created_at=float(row["created_at"]),
             updated_at=float(row["updated_at"]),
         )
@@ -311,6 +321,7 @@ class VCAPFragmentManager:
             "last_cycle_id",
             "last_cycle_phase",
             "last_reason",
+            "last_completed_at",
         }
         if not fields or set(fields) - allowed:
             raise ValueError("unsupported or empty fragment update")
@@ -338,8 +349,13 @@ class VCAPFragmentManager:
         *,
         now: float,
     ) -> None:
-        if not isinstance(score, Decimal) or not score.is_finite() or score < ZERO:
-            raise ValueError("priority score must be a finite non-negative Decimal")
+        if (
+            not isinstance(score, Decimal)
+            or not score.is_finite()
+            or score < ZERO
+            or score > Decimal("1")
+        ):
+            raise ValueError("priority score must be a Decimal between zero and one")
         with self._connect() as conn:
             conn.execute(
                 """UPDATE vcap_fragments
@@ -347,6 +363,13 @@ class VCAPFragmentManager:
                    WHERE position_id = ?""",
                 (str(score), _time(now, "now"), position_id),
             )
+
+    def _all_steps_exhausted(self, record: VCAPFragmentRecord) -> bool:
+        return (
+            record.fat1_step >= len(self.policy.fat1_multipliers)
+            and record.skinny_step >= len(self.policy.skinny_multipliers)
+            and record.fat2_step >= len(self.policy.fat2_multipliers)
+        )
 
     def _pending_cycle(self, fragment_id: str) -> VCAPRuntimeCycle | None:
         record = self.get_fragment(fragment_id)
@@ -394,6 +417,7 @@ class VCAPFragmentManager:
                     priority_score=record.priority_score,
                     pending_executor=pending is not None,
                     has_phase_steps=has_steps,
+                    last_completed_at=record.last_completed_at,
                 )
             )
 
@@ -405,7 +429,10 @@ class VCAPFragmentManager:
         selected_ids = {candidate.fragment_id for candidate in selected}
         pending_ids = set(pending_by_id)
         for record in records:
-            if record.remaining_budget_quote <= ZERO:
+            if (
+                record.remaining_budget_quote <= ZERO
+                or self._all_steps_exhausted(record)
+            ):
                 status = VCAPFragmentStatus.EXHAUSTED
             elif record.fragment_id in pending_ids:
                 status = VCAPFragmentStatus.RECONCILING
@@ -506,11 +533,17 @@ class VCAPFragmentManager:
             if state is None
             else state.remaining_authorized_quote
         )
+        reasons = result.get("reasons", [])
+        reason_text = (
+            " | ".join(str(value) for value in reasons)
+            if isinstance(reasons, (list, tuple))
+            else str(reasons)
+        )
         fields: dict[str, object] = {
             "remaining_budget_quote": remaining,
             "last_cycle_id": cycle.cycle_id,
             "last_cycle_phase": cycle.phase.value,
-            "last_reason": " | ".join(str(value) for value in result.get("reasons", []))[:1000],
+            "last_reason": reason_text[:1000],
         }
         if cycle.phase in _PENDING_PHASES:
             fields.update(
@@ -545,6 +578,7 @@ class VCAPFragmentManager:
                 status=VCAPFragmentStatus.WAITING,
                 active_mutation_proposal_id=None,
                 pending_phase=None,
+                last_completed_at=now,
             )
         elif cycle.phase is VCAPRuntimePhase.HOLD:
             fields.update(
@@ -561,7 +595,7 @@ class VCAPFragmentManager:
 
         self._update(fragment_id, now=now, **fields)
         updated = self.get_fragment(fragment_id)
-        if updated.remaining_budget_quote <= ZERO:
+        if updated.remaining_budget_quote <= ZERO or self._all_steps_exhausted(updated):
             self._update(
                 fragment_id,
                 now=now,
