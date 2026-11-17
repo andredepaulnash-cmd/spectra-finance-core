@@ -35,6 +35,15 @@ class PaperOnlySafetyTests(unittest.TestCase):
         with self.assertRaises(PaperSafetyError):
             PaperSafetySettings.from_environment(env)
 
+    def test_live_connector_override_is_rejected(self):
+        env = {
+            "SPECTRA_PAPER_ONLY": "true",
+            "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
+            "SPECTRA_PAPER_CONNECTOR": "kraken",
+        }
+        with self.assertRaises(PaperSafetyError):
+            PaperSafetySettings.from_environment(env)
+
     def test_order_boundary_requires_paper_connector_and_governor_auth(self):
         settings = PaperSafetySettings.from_environment({
             "SPECTRA_PAPER_ONLY": "true",
