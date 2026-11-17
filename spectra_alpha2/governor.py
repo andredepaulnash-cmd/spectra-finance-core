@@ -342,6 +342,8 @@ class CapitalGovernor:
                 position = conn.execute("SELECT * FROM positions WHERE position_id=?", (position_id,)).fetchone()
                 if position is None or position["status"] != "OPEN":
                     raise CapitalDenied("position must be OPEN before adding capital")
+                if position["manual_review_required"]:
+                    raise CapitalDenied("manual-review position is permanently excluded from automatic patching")
                 price = self._positive(current_price, "current_price")
                 drawdown = calculate_drawdown(Decimal(position["reference_price"]), price)
                 step_rows = conn.execute(
