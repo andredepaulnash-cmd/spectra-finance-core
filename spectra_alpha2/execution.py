@@ -66,6 +66,29 @@ class HummingbotPaperExecutionClient:
         response.raise_for_status()
         return response.json()
 
+    async def _get(self,path:str):
+        self.safety.assert_paper_mode()
+        response=await self._client.get(path)
+        response.raise_for_status()
+        return response.json()
+
+    async def _recover_order_id(self,governor:CapitalGovernor,authorization_id:str) -> str | None:
+        try:
+            result=await self._get(f"/spectra/dispatch-receipts/{authorization_id}")
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code==404:
+                return None
+            raise ExecutionUncertain("could not query the durable Hummingbot dispatch receipt") from exc
+        order_id=result.get("order_id")
+        if order_id:
+            governor.bind_order_id(authorization_id,order_id=str(order_id))
+            return str(order_id)
+        response_status=result.get("response_status")
+        if isinstance(response_status,int) and 400<=response_status<500:
+            governor.release_unfilled_reservation(authorization_id,confirmed_no_fill=True)
+            return ""
+        return None
+
     async def submit_authorized_buy(
         self,
         governor: CapitalGovernor,
@@ -101,14 +124,28 @@ class HummingbotPaperExecutionClient:
                     confirmed_no_fill=True,
                 )
                 raise ExecutionUncertain(f"Hummingbot rejected the authorized paper order: HTTP {exc.response.status_code}") from exc
-            raise ExecutionUncertain("Hummingbot order submission outcome is uncertain; authorization remains reserved") from exc
+            recovered=await self._recover_order_id(governor,authorization.authorization_id)
+            if recovered=="":
+                raise ExecutionUncertain("Hummingbot rejected the order before submission; capital reservation released") from exc
+            if recovered is None:
+                raise ExecutionUncertain("Hummingbot order submission outcome is uncertain; authorization remains reserved") from exc
+            order_id=recovered
         except httpx.HTTPError as exc:
-            raise ExecutionUncertain("Hummingbot order submission outcome is uncertain; authorization remains reserved") from exc
-
-        order_id=str(response.get("order_id") or "").strip()
-        if not order_id:
-            raise ExecutionUncertain("Hummingbot response did not include an order ID; authorization remains reserved")
-        governor.bind_order_id(authorization.authorization_id,order_id=order_id)
+            recovered=await self._recover_order_id(governor,authorization.authorization_id)
+            if recovered=="":
+                raise ExecutionUncertain("Hummingbot rejected the order before submission; capital reservation released") from exc
+            if recovered is None:
+                raise ExecutionUncertain("Hummingbot order submission outcome is uncertain; authorization remains reserved") from exc
+            order_id=recovered
+        else:
+            order_id=str(response.get("order_id") or "").strip()
+            if not order_id:
+                recovered=await self._recover_order_id(governor,authorization.authorization_id)
+                if recovered in (None,""):
+                    raise ExecutionUncertain("Hummingbot response did not include a recoverable order ID")
+                order_id=recovered
+            else:
+                governor.bind_order_id(authorization.authorization_id,order_id=order_id)
         return await self._wait_and_settle(
             governor,
             authorization.authorization_id,
@@ -189,9 +226,14 @@ class HummingbotPaperExecutionClient:
         for pending in governor.list_pending_authorizations():
             order_id=pending["order_id"]
             if not order_id:
-                raise ExecutionUncertain(
-                    f"authorization {pending['authorization_id']} has no persisted Hummingbot order ID; manual reconciliation required"
-                )
+                recovered=await self._recover_order_id(governor,pending["authorization_id"])
+                if recovered=="":
+                    continue
+                if recovered is None:
+                    raise ExecutionUncertain(
+                        f"authorization {pending['authorization_id']} has no recoverable Hummingbot order ID; manual reconciliation required"
+                    )
+                order_id=recovered
             results.append(await self._wait_and_settle(
                 governor,
                 pending["authorization_id"],
