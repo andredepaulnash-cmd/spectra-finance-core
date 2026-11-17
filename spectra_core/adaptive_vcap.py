@@ -342,7 +342,11 @@ def select_active_vcap_fragments(
             and candidate.status in {VCAPFragmentStatus.WAITING, VCAPFragmentStatus.PAUSED}
             and candidate.has_phase_steps
         ),
-        key=lambda candidate: (-candidate.priority_score, candidate.ordinal),
+        key=lambda candidate: (
+            -candidate.priority_score,
+            candidate.last_completed_at,
+            candidate.ordinal,
+        ),
     )
     activated = waiting[:slots]
     return tuple((*pending, *keep_active, *activated))
