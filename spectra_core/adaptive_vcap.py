@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
+from math import isfinite
 
 
 ZERO = Decimal("0")
@@ -99,11 +100,11 @@ class AdaptiveVCAPPolicy:
             raise ValueError("FAT 2 ladder must double at each step")
         if self.fat2_multipliers[0] != self.fat1_multipliers[-1] * Decimal("2"):
             raise ValueError("FAT 2 must continue the FAT 1 doubling sequence")
-        if all(
-            right == left * Decimal("2")
+        if any(
+            right >= left * Decimal("2")
             for left, right in zip(self.skinny_multipliers, self.skinny_multipliers[1:])
         ):
-            raise ValueError("SKINNY ladder must be graduated, not doubling")
+            raise ValueError("SKINNY ladder steps must remain below doubling")
 
     @staticmethod
     def _validate_ladder(values: tuple[Decimal, ...], name: str) -> None:
@@ -123,6 +124,7 @@ class VCAPFragmentCandidate:
     priority_score: Decimal = ZERO
     pending_executor: bool = False
     has_phase_steps: bool = True
+    last_completed_at: float = 0.0
 
     def __post_init__(self) -> None:
         if not isinstance(self.fragment_id, str) or not self.fragment_id.strip():
@@ -133,8 +135,15 @@ class VCAPFragmentCandidate:
             raise TypeError("fragment status must be VCAPFragmentStatus")
         if not isinstance(self.priority_score, Decimal):
             raise TypeError("fragment priority_score must be Decimal")
-        if not self.priority_score.is_finite():
-            raise ValueError("fragment priority_score must be finite")
+        if not self.priority_score.is_finite() or not ZERO <= self.priority_score <= Decimal("1"):
+            raise ValueError("fragment priority_score must be between zero and one")
+        if (
+            isinstance(self.last_completed_at, bool)
+            or not isinstance(self.last_completed_at, (int, float))
+            or not isfinite(float(self.last_completed_at))
+            or self.last_completed_at < 0
+        ):
+            raise ValueError("last_completed_at must be a finite non-negative timestamp")
 
 
 def drawdown_bps_from_prices(entry_price: Decimal, current_price: Decimal) -> int:
@@ -317,7 +326,11 @@ def select_active_vcap_fragments(
             and candidate.status in {VCAPFragmentStatus.ACTIVE, VCAPFragmentStatus.RECONCILING}
             and candidate.has_phase_steps
         ),
-        key=lambda candidate: (-candidate.priority_score, candidate.ordinal),
+        key=lambda candidate: (
+            -candidate.priority_score,
+            candidate.last_completed_at,
+            candidate.ordinal,
+        ),
     )
     keep_active = active[:slots]
     slots -= len(keep_active)
