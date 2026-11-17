@@ -95,13 +95,15 @@ class CapitalGovernor:
                 );
                 CREATE TABLE IF NOT EXISTS positions (
                     position_id TEXT PRIMARY KEY,
-                    asset_id TEXT NOT NULL UNIQUE,
+                    asset_id TEXT NOT NULL,
                     reference_price TEXT NOT NULL,
                     status TEXT NOT NULL,
                     gross_committed TEXT NOT NULL,
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 );
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_positions_one_active_asset
+                    ON positions(asset_id) WHERE status IN ('RESERVED','OPEN');
                 CREATE TABLE IF NOT EXISTS reservations (
                     reservation_id TEXT PRIMARY KEY,
                     idempotency_key TEXT NOT NULL UNIQUE,
@@ -191,7 +193,7 @@ class CapitalGovernor:
                 ).fetchone()["n"]
                 if count >= MAX_OPEN_POSITIONS:
                     raise CapitalDenied("74-position hard ceiling reached")
-                if conn.execute("SELECT 1 FROM positions WHERE asset_id=?", (asset_id,)).fetchone():
+                if conn.execute("SELECT 1 FROM positions WHERE asset_id=? AND status IN ('RESERVED','OPEN')", (asset_id,)).fetchone():
                     raise CapitalDenied("asset already has a position")
                 if self._available_pool(conn, CapitalPool.INITIAL) < amount + fee:
                     raise CapitalDenied("initial-entry pool has insufficient available capital")
@@ -421,6 +423,44 @@ class CapitalGovernor:
                 conn.execute("UPDATE reservations SET status=?,updated_at=? WHERE reservation_id=?",(ReservationStatus.RELEASED.value,now,authorization_id))
                 conn.execute("UPDATE vcap_shards SET status='AVAILABLE',updated_at=? WHERE reservation_id=?",(now,authorization_id))
                 self._event(conn,"RESERVATION_RELEASED",authorization_id,{"confirmed_no_fill":confirmed_no_fill})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+
+
+    def close_position(
+        self,
+        position_id: str,
+        *,
+        realized_pnl_quote: Decimal,
+        confirmed_all_exits_reconciled: bool = False,
+    ) -> None:
+        """Close a position only after every exit and shard is reconciled.
+
+        Sale proceeds are not credited to a capital pool by this method. A
+        separate settlement operation must reconcile actual proceeds first.
+        """
+        self._assert_paper()
+        if not confirmed_all_exits_reconciled:
+            raise CapitalDenied("position closure requires confirmed exit reconciliation")
+        if not isinstance(realized_pnl_quote, Decimal) or not realized_pnl_quote.is_finite():
+            raise ValueError("realized_pnl_quote must be a finite Decimal")
+        now=time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                position=conn.execute("SELECT status FROM positions WHERE position_id=?",(position_id,)).fetchone()
+                if position is None or position["status"] != "OPEN":
+                    raise CapitalDenied("only an OPEN position can be closed")
+                active=conn.execute(
+                    "SELECT COUNT(*) AS n FROM vcap_shards WHERE position_id=? AND status IN ('RESERVED','SUBMITTED','FILLED','ACTIVE')",
+                    (position_id,),
+                ).fetchone()["n"]
+                if active:
+                    raise CapitalDenied("all VCAP shards must be resolved before position closure")
+                conn.execute("UPDATE positions SET status='CLOSED',updated_at=? WHERE position_id=?",(now,position_id))
+                self._event(conn,"POSITION_CLOSED",position_id,{"realized_pnl_quote":str(realized_pnl_quote),"exit_reconciled":True})
                 conn.commit()
             except Exception:
                 conn.rollback()
