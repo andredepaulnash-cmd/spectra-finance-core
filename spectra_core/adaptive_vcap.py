@@ -420,8 +420,24 @@ def select_active_vcap_fragments(
     )
     if len(pending) >= selected.max_active_fragments_per_position:
         return tuple(pending)
+    if phase is AdaptiveVCAPPhase.PRE_VCAP:
+        if pending:
+            return tuple(pending)
+        pre_vcap = sorted(
+            (
+                candidate
+                for candidate in candidates
+                if candidate.has_phase_steps
+                and candidate.status in {
+                    VCAPFragmentStatus.ACTIVE,
+                    VCAPFragmentStatus.WAITING,
+                    VCAPFragmentStatus.PAUSED,
+                }
+            ),
+            key=lambda candidate: candidate.ordinal,
+        )
+        return tuple(pre_vcap[:1])
     if phase in {
-        AdaptiveVCAPPhase.PRE_VCAP,
         AdaptiveVCAPPhase.RECOVERED,
         AdaptiveVCAPPhase.DEEP_GOVERNOR,
     }:
