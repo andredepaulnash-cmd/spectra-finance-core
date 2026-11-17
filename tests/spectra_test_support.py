@@ -23,7 +23,7 @@ def _attach_fake_session_headers(client):
     return session.headers
 
 
-def configure_spectra_paper_dispatch(monkeypatch, settings, *, agent_slug=True):
+def configure_spectra_paper_dispatch(monkeypatch, settings, *, agent_slug="spectra"):
     """Provide a deterministic local signing key and enforce paper-only settings."""
     private = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
     private_raw = private.private_bytes(
@@ -62,4 +62,4 @@ def configure_spectra_live_dispatch(monkeypatch, settings, *, agent_slug="spectr
     from mcp_servers.hummingbot_api.tools import dispatch_receipts
     monkeypatch.setattr(dispatch_receipts, "_session_headers", _attach_fake_session_headers)
     monkeypatch.setattr(settings, "paper_only", False)
-    monkeypatch.setattr(settings, "agent_slug", "spectra")
+    monkeypatch.setattr(settings, "agent_slug", agent_slug)
