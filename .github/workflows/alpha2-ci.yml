@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install Alpha 2.0 package dependencies
+        run: python -m pip install -e .
       - name: Compile Alpha 2.0 package and tests
         run: python -m compileall -q spectra_alpha2 tests
       - name: Run deterministic Alpha 2.0 tests
