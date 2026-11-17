@@ -70,7 +70,7 @@ def validate_dispatch_signing_key() -> None:
     _private_key()
 
 
-def issue_executor_dispatch_receipt(
+def _issue_executor_dispatch_receipt(
     *,
     request_body: dict[str, Any],
     proposal_id: str,
@@ -172,8 +172,8 @@ def issue_executor_dispatch_receipt(
     issued_at = float(now)
     expires_at = issued_at + ttl_seconds
     policy = str(policy_version or os.getenv("SPECTRA_DISPATCH_POLICY_VERSION", "")).strip()
-    if not policy:
-        raise ValueError("SPECTRA_DISPATCH_POLICY_VERSION is required")
+    if policy != "spectra-alpha2-v1":
+        raise ValueError("Alpha 2.0 requires SPECTRA_DISPATCH_POLICY_VERSION=spectra-alpha2-v1")
     payload = {
         "version": 1,
         "receipt_id": uuid.uuid4().hex,
