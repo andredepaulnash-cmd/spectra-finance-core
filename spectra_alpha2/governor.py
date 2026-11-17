@@ -997,6 +997,23 @@ class CapitalGovernor:
         )
         return result
 
+
+    def list_positions(self) -> list[dict]:
+        """List reserved/open positions so pending entries occupy the 74-position ceiling."""
+        self._assert_paper()
+        with self._connect() as conn:
+            rows=conn.execute(
+                "SELECT position_id,asset_id,reference_price,status,gross_committed,created_at,updated_at FROM positions WHERE status IN ('RESERVED','OPEN') ORDER BY created_at"
+            ).fetchall()
+        return [
+            {
+                "position_id":row["position_id"],"asset_id":row["asset_id"],
+                "reference_price":Decimal(row["reference_price"]),
+                "status":row["status"],"gross_committed":Decimal(row["gross_committed"]),
+                "created_at":row["created_at"],"updated_at":row["updated_at"],
+            } for row in rows
+        ]
+
     def snapshot(self) -> dict:
         self._assert_paper()
         with self._connect() as conn:
