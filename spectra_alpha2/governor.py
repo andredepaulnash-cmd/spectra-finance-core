@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .safety import PaperSafetySettings
+from .strategy import PlannedActionType, calculate_drawdown, plan_next_action
 from .policy import (
     BUY_FEE_RATE,
     INITIAL_ENTRY_BUDGET,
@@ -120,6 +121,16 @@ class CapitalGovernor:
                     actual_fee TEXT,
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS position_steps (
+                    position_id TEXT NOT NULL REFERENCES positions(position_id),
+                    step_id TEXT NOT NULL,
+                    action_type TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    reservation_id TEXT,
+                    drawdown TEXT NOT NULL,
+                    updated_at REAL NOT NULL,
+                    PRIMARY KEY(position_id,step_id)
                 );
                 CREATE TABLE IF NOT EXISTS vcap_shards (
                     shard_id TEXT PRIMARY KEY,
@@ -249,6 +260,37 @@ class CapitalGovernor:
                 position = conn.execute("SELECT * FROM positions WHERE position_id=?", (position_id,)).fetchone()
                 if position is None or position["status"] != "OPEN":
                     raise CapitalDenied("position must be OPEN before adding capital")
+                price = self._positive(current_price, "current_price")
+                drawdown = calculate_drawdown(Decimal(position["reference_price"]), price)
+                step_rows = conn.execute(
+                    "SELECT step_id,action_type,status FROM position_steps WHERE position_id=?",
+                    (position_id,),
+                ).fetchall()
+                completed_dca = {
+                    row["step_id"] for row in step_rows
+                    if row["action_type"] == "DCA" and row["status"] == "FILLED"
+                }
+                completed_vcap = {
+                    row["step_id"] for row in step_rows
+                    if row["action_type"] == "VCAP"
+                    and row["status"] in {"SUBMITTED","FILLED","ACTIVE","RESOLVED","RECYCLED"}
+                }
+                planned = plan_next_action(
+                    drawdown,
+                    completed_dca_steps=completed_dca,
+                    completed_vcap_steps=completed_vcap,
+                )
+                expected_type = PlannedActionType.DCA if action_type == "DCA" else PlannedActionType.VCAP
+                if planned.action_type != expected_type or planned.step is None:
+                    raise CapitalDenied("no automatic capital addition is eligible at the current drawdown")
+                if planned.step.step_id != action_id or planned.step.addition != amount:
+                    raise CapitalDenied("action does not match the next exact DCA/VCAP ladder step")
+                prior = conn.execute(
+                    "SELECT status FROM position_steps WHERE position_id=? AND step_id=?",
+                    (position_id,action_id),
+                ).fetchone()
+                if prior is not None and prior["status"] != "AVAILABLE":
+                    raise CapitalDenied("this ladder step already has an outstanding or completed reservation")
                 committed = Decimal(position["gross_committed"])
                 if committed + amount > MAX_ASSET_GROSS_NOTIONAL:
                     raise CapitalDenied("per-asset $1,000 gross-notional cap exceeded")
@@ -275,6 +317,14 @@ class CapitalGovernor:
                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (reservation_id,idempotency_key,position_id,position["asset_id"],action_id,pool.value,
                      str(amount),str(fee),ReservationStatus.RESERVED.value,now+self.reservation_ttl_seconds,now,now),
+                )
+                conn.execute(
+                    """INSERT INTO position_steps(position_id,step_id,action_type,status,reservation_id,drawdown,updated_at)
+                    VALUES(?,?,?,?,?,?,?)
+                    ON CONFLICT(position_id,step_id) DO UPDATE SET
+                    status='RESERVED',reservation_id=excluded.reservation_id,
+                    drawdown=excluded.drawdown,updated_at=excluded.updated_at""",
+                    (position_id,action_id,action_type,"RESERVED",reservation_id,str(drawdown),now),
                 )
                 if action_type == "VCAP":
                     conn.execute(
@@ -321,6 +371,10 @@ class CapitalGovernor:
                     "UPDATE vcap_shards SET status='SUBMITTED',updated_at=? WHERE reservation_id=?",
                     (now,authorization_id),
                 )
+                conn.execute(
+                    "UPDATE position_steps SET status='SUBMITTED',updated_at=? WHERE reservation_id=?",
+                    (now,authorization_id),
+                )
                 self._event(conn,"AUTHORIZATION_CONSUMED",authorization_id,{"connector":connector,"idempotency_key":idempotency_key})
                 conn.commit()
             except Exception:
@@ -360,6 +414,7 @@ class CapitalGovernor:
                     (ReservationStatus.SETTLED.value,str(actual),str(actual_fee),now,authorization_id),
                 )
                 conn.execute("UPDATE vcap_shards SET status='FILLED',updated_at=? WHERE reservation_id=?",(now,authorization_id))
+                conn.execute("UPDATE position_steps SET status='FILLED',updated_at=? WHERE reservation_id=?",(now,authorization_id))
                 self._event(conn,"FILL_SETTLED",authorization_id,{"actual_gross_notional":str(actual),"actual_fee":str(actual_fee),"pool":pool.value})
                 conn.commit()
             except Exception:
@@ -378,6 +433,7 @@ class CapitalGovernor:
                 if row is None or row["status"] != "FILLED":
                     raise CapitalDenied("only a filled shard can become active")
                 conn.execute("UPDATE vcap_shards SET status='ACTIVE',updated_at=? WHERE shard_id=?",(now,shard_id))
+                conn.execute("UPDATE position_steps SET status='ACTIVE',updated_at=? WHERE reservation_id=(SELECT reservation_id FROM vcap_shards WHERE shard_id=?)",(now,shard_id))
                 self._event(conn,"VCAP_SHARD_ACTIVATED",shard_id,{"status":"ACTIVE"})
                 conn.commit()
             except Exception:
@@ -395,6 +451,7 @@ class CapitalGovernor:
                 if row is None or row["status"] != "ACTIVE":
                     raise CapitalDenied("only an active shard can be resolved")
                 conn.execute("UPDATE vcap_shards SET status='RESOLVED',updated_at=? WHERE shard_id=?",(now,shard_id))
+                conn.execute("UPDATE position_steps SET status='RESOLVED',updated_at=? WHERE reservation_id=(SELECT reservation_id FROM vcap_shards WHERE shard_id=?)",(now,shard_id))
                 self._event(conn,"VCAP_SHARD_RESOLVED",shard_id,{"slot_released":True})
                 conn.commit()
             except Exception:
@@ -422,6 +479,7 @@ class CapitalGovernor:
                 conn.execute("UPDATE positions SET gross_committed=?,status=?,updated_at=? WHERE position_id=?",(str(adjusted),new_status,now,row["position_id"]))
                 conn.execute("UPDATE reservations SET status=?,updated_at=? WHERE reservation_id=?",(ReservationStatus.RELEASED.value,now,authorization_id))
                 conn.execute("UPDATE vcap_shards SET status='AVAILABLE',updated_at=? WHERE reservation_id=?",(now,authorization_id))
+                conn.execute("UPDATE position_steps SET status='AVAILABLE',updated_at=? WHERE reservation_id=?",(now,authorization_id))
                 self._event(conn,"RESERVATION_RELEASED",authorization_id,{"confirmed_no_fill":confirmed_no_fill})
                 conn.commit()
             except Exception:
