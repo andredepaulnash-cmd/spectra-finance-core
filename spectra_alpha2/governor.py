@@ -774,8 +774,14 @@ class CapitalGovernor:
                     (ReservationStatus.SETTLED.value,str(qty),str(gross),str(actual_fee),now,authorization_id),
                 )
                 if lot_status=="RESOLVED":
-                    conn.execute("UPDATE vcap_shards SET status='RESOLVED',updated_at=? WHERE shard_id=?",(now,auth["lot_id"]))
-                    conn.execute("UPDATE position_steps SET status='RESOLVED',updated_at=? WHERE position_id=? AND step_id=?",(now,lot["position_id"],lot["action_id"]))
+                    shard=conn.execute("SELECT shard_id FROM vcap_shards WHERE shard_id=?",(auth["lot_id"],)).fetchone()
+                    if shard is not None:
+                        conn.execute("UPDATE vcap_shards SET status='RESOLVED',updated_at=? WHERE shard_id=?",(now,auth["lot_id"]))
+                        conn.execute("UPDATE position_steps SET status='RESOLVED',updated_at=? WHERE position_id=? AND step_id=?",(now,lot["position_id"],lot["action_id"]))
+                        self._event(conn,"VCAP_SHARD_RESOLVED",auth["lot_id"],{"remaining_quantity":"0"})
+                        conn.execute("UPDATE vcap_shards SET status='RECYCLED',updated_at=? WHERE shard_id=?",(now,auth["lot_id"]))
+                        conn.execute("UPDATE position_steps SET status='RECYCLED',updated_at=? WHERE position_id=? AND step_id=?",(now,lot["position_id"],lot["action_id"]))
+                        self._event(conn,"VCAP_SHARD_RECYCLED",auth["lot_id"],{"reusable_capital_credited":str(net)})
                 self._event(conn,"AUTHORIZED_EXIT_SETTLED",authorization_id,{
                     "lot_id":auth["lot_id"],"quantity":str(qty),"gross_proceeds":str(gross),
                     "sell_fee_quote":str(actual_fee),"net_proceeds_credited":str(net),
@@ -898,8 +904,8 @@ class CapitalGovernor:
                 WHERE s.shard_id=?""",
                 (shard_id,),
             ).fetchone()
-        if row is None or row["status"] != "RESOLVED" or Decimal(row["remaining_quantity"]) != ZERO:
-            raise CapitalDenied("VCAP slot can only be released by a fully reconciled lot exit")
+        if row is None or row["status"] != "RECYCLED" or Decimal(row["remaining_quantity"]) != ZERO:
+            raise CapitalDenied("VCAP shard can only be recycled after its fully reconciled exit")
 
     def release_unfilled_reservation(self, authorization_id: str, *, confirmed_no_fill: bool = False) -> None:
         self._assert_paper()
