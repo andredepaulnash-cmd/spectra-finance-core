@@ -2491,6 +2491,18 @@ class CapitalGovernor:
         """
         if owner["executor_id"] is None:
             return False
+        provenance = conn.execute(
+            "SELECT * FROM execution_provenance WHERE proposal_id = ?",
+            (owner["proposal_id"],),
+        ).fetchone()
+        if (
+            provenance is None
+            or provenance["executor_id"] != owner["executor_id"]
+            or provenance["pair"] != owner["pair"]
+            or not provenance["account_name"]
+            or not provenance["connector_name"]
+        ):
+            return False
         tables = {
             row[0]
             for row in conn.execute(
@@ -2516,7 +2528,7 @@ class CapitalGovernor:
         ).fetchone()
         if (
             admission is None
-            or admission["account_name"] != owner["account_name"]
+            or admission["account_name"] != provenance["account_name"]
             or admission["pair"] != owner["pair"]
         ):
             return False
@@ -2580,9 +2592,9 @@ class CapitalGovernor:
                 or checkpoint["position_status"] != "DUST"
                 or checkpoint["position_pair"] != owner["pair"]
                 or checkpoint["market_pair"] != owner["pair"]
-                or checkpoint["account_name"] != owner["account_name"]
+                or checkpoint["account_name"] != provenance["account_name"]
                 or str(checkpoint["connector_name"]).lower()
-                != str(owner["connector_name"]).lower()
+                != str(provenance["connector_name"]).lower()
                 or float(checkpoint["expires_at"]) <= now
                 or float(checkpoint["observed_at"]) > now
                 or not isinstance(checkpoint["source_digest"], str)
