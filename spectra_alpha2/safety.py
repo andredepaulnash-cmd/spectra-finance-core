@@ -28,7 +28,7 @@ class PaperSafetySettings:
                 forbidden.append(key)
         if forbidden:
             raise PaperSafetyError("exchange credential environment variables are forbidden")
-        return cls(paper_only=True, allow_live_execution=False)
+        configured_connector = env.get("SPECTRA_PAPER_CONNECTOR", "kraken_paper_trade")\n        if configured_connector != "kraken_paper_trade":\n            raise PaperSafetyError("SPECTRA_PAPER_CONNECTOR must be kraken_paper_trade")\n        return cls(paper_only=True, allow_live_execution=False)
 
     def validate_order_boundary(self, connector: str, authorization_id: str | None) -> None:
         if not self.paper_only or self.allow_live_execution:
