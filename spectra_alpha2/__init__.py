@@ -1,3 +1,2 @@
-"""Spectra Finance Alpha 2.0 deterministic paper-trading domain."""
-
-__version__ = "2.0.0-alpha.1"
+"""Spectra Finance Alpha 2.0 paper-only engine."""
+__version__ = "2.0.0a1"
