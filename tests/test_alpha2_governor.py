@@ -115,6 +115,17 @@ class CapitalGovernorTests(unittest.TestCase):
                 idempotency_key="too-much",action_type="DCA"
             )
 
+
+    def test_asset_replacement_requires_reconciled_close(self):
+        self.open_position()
+        with self.assertRaises(CapitalDenied):
+            self.gov.close_position("p1",realized_pnl_quote=Decimal("1"))
+        self.gov.close_position("p1",realized_pnl_quote=Decimal("1"),confirmed_all_exits_reconciled=True)
+        replacement=self.gov.reserve_initial_position(
+            position_id="p2",asset_id="BTC-USDT",reference_price=Decimal("101"),idempotency_key="initial-p2"
+        )
+        self.assertEqual(replacement.asset_id,"BTC-USDT")
+
     def test_submitted_reservation_cannot_be_released_without_cancel_confirmation(self):
         auth=self.gov.reserve_initial_position(
             position_id="p1",asset_id="BTC-USDT",reference_price=Decimal("100"),idempotency_key="i1"
