@@ -23,6 +23,8 @@ from .policy import (
     MAX_ASSET_GROSS_NOTIONAL,
     MAX_OPEN_POSITIONS,
     VCAP_RECOVERY_POOL,
+    DCA_STEPS,
+    VCAP_STEPS,
 )
 
 
@@ -117,6 +119,9 @@ class CapitalGovernor:
                     reference_price TEXT NOT NULL,
                     status TEXT NOT NULL,
                     gross_committed TEXT NOT NULL,
+                    manual_review_required INTEGER NOT NULL DEFAULT 0,
+                    manual_review_reason TEXT,
+                    manual_review_at REAL,
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 );
@@ -215,6 +220,14 @@ class CapitalGovernor:
                 );
                 """
             )
+            position_columns={row[1] for row in conn.execute("PRAGMA table_info(positions)")}
+            for column,declaration in (
+                ("manual_review_required","INTEGER NOT NULL DEFAULT 0"),
+                ("manual_review_reason","TEXT"),
+                ("manual_review_at","REAL"),
+            ):
+                if column not in position_columns:
+                    conn.execute(f"ALTER TABLE positions ADD COLUMN {column} {declaration}")
             conn.execute(
                 "INSERT OR IGNORE INTO pools(pool_id,budget,reserved,spent,recovered) VALUES(?,?,?,?,?)",
                 (CapitalPool.INITIAL.value, str(INITIAL_ENTRY_BUDGET), "0", "0", "0"),
@@ -319,7 +332,7 @@ class CapitalGovernor:
             raise ValueError("position_id, action_id and idempotency_key are required")
         if action_type == "VCAP" and not shard_id:
             raise ValueError("VCAP additions require an independent shard_id")
-        pool = CapitalPool.INITIAL if action_type == "DCA" else CapitalPool.RECOVERY
+        pool = CapitalPool.RECOVERY
         fee = amount * BUY_FEE_RATE
         now = time.time()
         reservation_id = str(uuid.uuid4())
@@ -337,7 +350,7 @@ class CapitalGovernor:
                 ).fetchall()
                 completed_dca = {
                     row["step_id"] for row in step_rows
-                    if row["action_type"] == "DCA" and row["status"] == "FILLED"
+                    if row["action_type"] == "DCA" and row["status"] in {"SUBMITTED","FILLED","ACTIVE","RESOLVED","RECYCLED"}
                 }
                 completed_vcap = {
                     row["step_id"] for row in step_rows
