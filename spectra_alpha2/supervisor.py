@@ -22,6 +22,7 @@ class CycleReport:
     existing_positions: int
     available_slots: int
     admitted_positions: int
+    pending_orders: int
     skipped_existing_assets: int
     skipped_capital_or_rule_limits: int
     active_positions_after_cycle: int
@@ -71,6 +72,7 @@ class PortfolioSupervisor:
         slots=max(0,self.target_positions-len(positions))
         admission_budget=min(slots,self.max_new_positions_per_cycle)
         admitted=0
+        pending_orders=sum(1 for result in reconciled if result.status=="PENDING")
         skipped_existing=0
         skipped_limits=0
 
@@ -85,6 +87,7 @@ class PortfolioSupervisor:
                 continue
             position_id=str(uuid.uuid4())
             idempotency_key=f"alpha2-initial-{position_id}"
+            authorization=None
             try:
                 authorization=self.governor.reserve_initial_position(
                     position_id=position_id,
@@ -98,6 +101,10 @@ class PortfolioSupervisor:
                     max_slippage_fraction=self.max_slippage_fraction,
                 )
             except (CapitalDenied,ValueError):
+                if authorization is not None:
+                    self.governor.release_unfilled_reservation(
+                        authorization.authorization_id,confirmed_no_fill=True
+                    )
                 skipped_limits+=1
                 continue
             try:
@@ -113,6 +120,9 @@ class PortfolioSupervisor:
             if result.filled_quantity>0:
                 admitted+=1
                 existing_assets.add(candidate.trading_pair)
+            elif result.status=="PENDING":
+                pending_orders+=1
+                existing_assets.add(candidate.trading_pair)
             else:
                 skipped_limits+=1
 
@@ -123,6 +133,7 @@ class PortfolioSupervisor:
             existing_positions=len(positions),
             available_slots=slots,
             admitted_positions=admitted,
+            pending_orders=pending_orders,
             skipped_existing_assets=skipped_existing,
             skipped_capital_or_rule_limits=skipped_limits,
             active_positions_after_cycle=active_after,
