@@ -68,10 +68,10 @@ class CapitalGovernorTests(unittest.TestCase):
 
     def test_dca_uses_initial_pool_and_asset_cap_includes_reservations(self):
         self.open_position()
-        for i in range(3):
+        for i, price in enumerate((Decimal("97.26"),Decimal("95.56"),Decimal("93.26"))):
             auth=self.gov.reserve_addition(
                 position_id="p1",action_id=f"DCA_{i+1}",gross_notional=Decimal("20"),
-                idempotency_key=f"dca-{i}",action_type="DCA"
+                current_price=price,idempotency_key=f"dca-{i}",action_type="DCA"
             )
             self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
             self.gov.settle_fill(auth.authorization_id,actual_gross_notional=Decimal("20"),actual_fee=Decimal("0.08"))
@@ -81,10 +81,13 @@ class CapitalGovernorTests(unittest.TestCase):
     def test_vcap_uses_recovery_pool_and_enforces_two_shards_per_asset(self):
         self.open_position()
         shards=[]
-        for i,amount in enumerate((Decimal("20"),Decimal("40"))):
+        for i,(amount,price,step_id) in enumerate((
+            (Decimal("20"),Decimal("92.23"),"VCAP_FAT1_1"),
+            (Decimal("40"),Decimal("90.26"),"VCAP_FAT1_2"),
+        )):
             auth=self.gov.reserve_addition(
-                position_id="p1",action_id=f"VCAP_{i+1}",gross_notional=amount,
-                idempotency_key=f"vcap-{i}",action_type="VCAP",shard_id=f"shard-{i}"
+                position_id="p1",action_id=step_id,gross_notional=amount,
+                current_price=price,idempotency_key=f"vcap-{i}",action_type="VCAP",shard_id=f"shard-{i}"
             )
             self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
             self.gov.settle_fill(auth.authorization_id,actual_gross_notional=amount,actual_fee=amount*Decimal("0.004"))
@@ -92,8 +95,8 @@ class CapitalGovernorTests(unittest.TestCase):
             shards.append(f"shard-{i}")
         with self.assertRaises(CapitalDenied):
             self.gov.reserve_addition(
-                position_id="p1",action_id="VCAP_3",gross_notional=Decimal("80"),
-                idempotency_key="vcap-3",action_type="VCAP",shard_id="shard-2"
+                position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
+                current_price=Decimal("89.26"),idempotency_key="vcap-3",action_type="VCAP",shard_id="shard-2"
             )
         self.gov.resolve_vcap_shard(shards[0])
         allowed=self.gov.reserve_addition(
@@ -106,13 +109,13 @@ class CapitalGovernorTests(unittest.TestCase):
         self.open_position()
         auth=self.gov.reserve_addition(
             position_id="p1",action_id="DCA_1",gross_notional=Decimal("20"),
-            idempotency_key="dca-1",action_type="DCA"
+            current_price=Decimal("97.26"),idempotency_key="dca-1",action_type="DCA"
         )
         self.assertIsNotNone(auth.authorization_id)
         with self.assertRaises(CapitalDenied):
             self.gov.reserve_addition(
                 position_id="p1",action_id="too-much",gross_notional=Decimal("961"),
-                idempotency_key="too-much",action_type="DCA"
+                current_price=Decimal("97.26"),idempotency_key="too-much",action_type="DCA"
             )
 
 
