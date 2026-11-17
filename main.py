@@ -850,6 +850,19 @@ async def startup(application: Application) -> None:
         # Keep the Condor application available if optional portfolio startup fails.
         logger.exception("Spectra portfolio supervisor could not start")
 
+    # The LLM monitor is a separate Condor loop. It is read-only, uses a
+    # PydanticAI tool allowlist, and cannot bypass the Spectra CapitalGovernor.
+    # The deterministic paper supervisor above remains able to run without an
+    # LLM API key.
+    try:
+        from condor.runtime.spectra_agent_bootstrap import (
+            start_spectra_monitor_if_enabled,
+        )
+
+        await start_spectra_monitor_if_enabled(bot=outbound_bot)
+    except Exception:
+        logger.exception("Spectra Condor monitor bootstrap failed (continuing without it)")
+
     # Start file watcher
     asyncio.create_task(watch_and_reload(application))
 
