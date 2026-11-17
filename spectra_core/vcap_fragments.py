@@ -376,8 +376,12 @@ class VCAPFragmentManager:
             )
 
     def _all_steps_exhausted(self, record: VCAPFragmentRecord) -> bool:
+        pre_vcap_complete = (
+            record.ordinal != 0
+            or record.pre_vcap_step >= len(self.policy.pre_vcap_dca_triggers_bps)
+        )
         return (
-            record.pre_vcap_step >= len(self.policy.pre_vcap_dca_triggers_bps)
+            pre_vcap_complete
             and record.fat1_step >= len(self.policy.fat1_multipliers)
             and record.skinny_step >= len(self.policy.skinny_multipliers)
             and record.fat2_step >= len(self.policy.fat2_multipliers)
@@ -724,6 +728,9 @@ class VCAPFragmentManager:
             phase_rows = conn.execute(
                 "SELECT phase, COUNT(*) AS count FROM vcap_fragments GROUP BY phase"
             ).fetchall()
+            pre_vcap_rows = conn.execute(
+                "SELECT pre_vcap_step FROM vcap_fragments WHERE ordinal = 0"
+            ).fetchall()
         statuses = {str(row["status"]): int(row["count"]) for row in status_rows}
         phases = {str(row["phase"]): int(row["count"]) for row in phase_rows}
         return {
@@ -731,10 +738,7 @@ class VCAPFragmentManager:
             "position_count": int(positions["count"]),
             "fragment_count": int(total["count"]),
             "pre_vcap_dca_steps_completed": sum(
-                int(row["pre_vcap_step"])
-                for row in self._connect().execute(
-                    "SELECT pre_vcap_step FROM vcap_fragments WHERE ordinal = 0"
-                ).fetchall()
+                int(row["pre_vcap_step"]) for row in pre_vcap_rows
             ),
             "active_fragments": statuses.get(VCAPFragmentStatus.ACTIVE.value, 0),
             "waiting_fragments": statuses.get(VCAPFragmentStatus.WAITING.value, 0),
