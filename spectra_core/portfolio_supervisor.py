@@ -162,6 +162,7 @@ class PortfolioSupervisorDependencies:
     scheduler_policy: Callable[..., Any]
     clock: Callable[[], float] = time.time
     sleep: Callable[..., Any] = asyncio.sleep
+    get_vcap_fragment_manager: Callable[..., Any] | None = None
 
 
 def portfolio_autorun_enabled() -> bool:
@@ -183,6 +184,7 @@ def default_dependencies() -> PortfolioSupervisorDependencies:
     from mcp_servers.hummingbot_api.tools.executor_create import create_order_executor
     from mcp_servers.hummingbot_api.tools.runtime_scheduler import run_vcap_scheduler_tick
     from spectra_core.market_discovery import scan_kraken_universe
+    from spectra_core.runtime import get_vcap_fragment_manager
     from spectra_core.runtime_scheduler import RuntimeSchedulerPolicy
 
     async def scan_candidates(client: Any, **kwargs: Any) -> dict[str, Any]:
@@ -209,6 +211,7 @@ def default_dependencies() -> PortfolioSupervisorDependencies:
         get_breaker_mode=get_breaker_mode,
         is_paper=spectra_paper_only_enabled,
         scheduler_policy=RuntimeSchedulerPolicy,
+        get_vcap_fragment_manager=get_vcap_fragment_manager,
     )
 
 
@@ -328,6 +331,9 @@ async def run_portfolio_cycle(
     vcap_result: Any = None
     vcap_error: str | None = None
     try:
+        vcap_kwargs: dict[str, Any] = {}
+        if deps.get_vcap_fragment_manager is not None:
+            vcap_kwargs["fragment_manager"] = deps.get_vcap_fragment_manager()
         vcap_result = await deps.run_vcap_tick(
             client,
             governor=governor,
@@ -346,6 +352,7 @@ async def run_portfolio_cycle(
             controller_id=cfg.controller_id,
             buy_max_price_slippage_bps=cfg.buy_max_price_slippage_bps,
             buy_fee_allowance_bps=cfg.buy_fee_allowance_bps,
+            **vcap_kwargs,
         )
     except Exception as exc:
         vcap_error = f"{type(exc).__name__}: {exc}"
