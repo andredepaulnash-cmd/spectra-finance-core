@@ -144,6 +144,8 @@ class CapitalGovernor:
                 );
                 CREATE INDEX IF NOT EXISTS idx_position_lots_position_status
                     ON position_lots(position_id,status);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_reservations_unique_order
+                    ON reservations(order_id) WHERE order_id IS NOT NULL;
                 CREATE TABLE IF NOT EXISTS position_steps (
                     position_id TEXT NOT NULL REFERENCES positions(position_id),
                     step_id TEXT NOT NULL,
@@ -727,6 +729,37 @@ class CapitalGovernor:
             except Exception:
                 conn.rollback()
                 raise
+
+
+    def list_pending_authorizations(self) -> list[dict]:
+        """Return submitted orders that require fill/status reconciliation after restart."""
+        self._assert_paper()
+        with self._connect() as conn:
+            rows=conn.execute(
+                """SELECT r.*,l.lot_id,s.shard_id
+                FROM reservations r
+                LEFT JOIN position_lots l ON l.reservation_id=r.reservation_id
+                LEFT JOIN vcap_shards s ON s.reservation_id=r.reservation_id
+                WHERE r.status=? ORDER BY r.created_at""",
+                (ReservationStatus.SUBMITTED.value,),
+            ).fetchall()
+        return [
+            {
+                "authorization_id":row["reservation_id"],
+                "idempotency_key":row["idempotency_key"],
+                "position_id":row["position_id"],
+                "asset_id":row["asset_id"],
+                "action_id":row["action_id"],
+                "pool":CapitalPool(row["pool_id"]),
+                "gross_notional":Decimal(row["gross_notional"]),
+                "fee_reserve":Decimal(row["fee_reserve"]),
+                "order_id":row["order_id"],
+                "lot_id":row["lot_id"],
+                "shard_id":row["shard_id"],
+                "expires_at":row["expires_at"],
+            }
+            for row in rows
+        ]
 
     def snapshot(self) -> dict:
         self._assert_paper()
