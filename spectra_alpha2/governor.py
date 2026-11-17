@@ -204,6 +204,8 @@ class CapitalGovernor:
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 );
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_exit_authorizations_unique_order
+                    ON exit_authorizations(order_id) WHERE order_id IS NOT NULL;
                 CREATE TABLE IF NOT EXISTS events (
                     event_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     event_type TEXT NOT NULL,
@@ -731,8 +733,8 @@ class CapitalGovernor:
                 minimum_gross=gross_sell_notional_for_net_target(allocated_basis)
                 if gross<minimum_gross:
                     raise CapitalDenied("settled sell fill does not meet the +1.74% net take-profit")
-                if actual_fee>Decimal(auth["fee_reserve"]):
-                    raise CapitalDenied("actual sell fee exceeds reserved fee allowance")
+                if actual_fee>gross*SELL_FEE_RATE*Decimal("1.05"):
+                    raise CapitalDenied("actual sell fee exceeds the estimated Kraken fee allowance")
                 reserved_exit=Decimal(lot["reserved_exit_quantity"])-authorized_qty
                 remaining_qty=remaining-qty
                 remaining_basis=basis-allocated_basis
@@ -866,67 +868,6 @@ class CapitalGovernor:
                 conn.execute("UPDATE position_lots SET status='ACTIVE',updated_at=? WHERE lot_id=?",(now,shard_id))
                 self._event(conn,"VCAP_SHARD_ACTIVATED",shard_id,{"status":"ACTIVE"})
                 conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
-
-
-    def record_sell_fill(
-        self,
-        lot_id: str,
-        *,
-        quantity: Decimal,
-        price: Decimal,
-        fee_quote: Decimal,
-    ) -> Decimal:
-        """Reconcile a partial/full lot exit and credit only settled net proceeds."""
-        self._assert_paper()
-        sold=self._positive(quantity,"quantity")
-        sale_price=self._positive(price,"price")
-        if not isinstance(fee_quote,Decimal) or not fee_quote.is_finite() or fee_quote < ZERO:
-            raise ValueError("fee_quote must be a finite non-negative Decimal")
-        gross=sold*sale_price
-        if fee_quote > gross:
-            raise CapitalDenied("sell fee cannot exceed gross sale proceeds")
-        net=gross-fee_quote
-        now=time.time()
-        with self._connect() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                lot=conn.execute("SELECT * FROM position_lots WHERE lot_id=?",(lot_id,)).fetchone()
-                if lot is None or lot["status"] != "ACTIVE":
-                    raise CapitalDenied("only an active lot can be sold")
-                old_qty=Decimal(lot["remaining_quantity"])
-                old_basis=Decimal(lot["remaining_cost_basis_quote"])
-                if sold > old_qty:
-                    raise CapitalDenied("sell quantity exceeds the lot's remaining quantity")
-                allocated_basis=old_basis*sold/old_qty
-                remaining_qty=old_qty-sold
-                remaining_basis=old_basis-allocated_basis
-                realized=net-allocated_basis
-                new_status="RESOLVED" if remaining_qty == ZERO else "ACTIVE"
-                conn.execute(
-                    """UPDATE position_lots SET status=?,remaining_quantity=?,remaining_cost_basis_quote=?,
-                    gross_sell_proceeds=?,sell_fee_quote=?,realized_pnl_quote=?,updated_at=? WHERE lot_id=?""",
-                    (new_status,str(remaining_qty),str(remaining_basis),
-                     str(Decimal(lot["gross_sell_proceeds"])+gross),
-                     str(Decimal(lot["sell_fee_quote"])+fee_quote),
-                     str(Decimal(lot["realized_pnl_quote"])+realized),now,lot_id),
-                )
-                pool=CapitalPool(lot["pool_id"])
-                poolrow=conn.execute("SELECT recovered FROM pools WHERE pool_id=?",(pool.value,)).fetchone()
-                conn.execute("UPDATE pools SET recovered=? WHERE pool_id=?",(str(Decimal(poolrow["recovered"])+net),pool.value))
-                if new_status == "RESOLVED":
-                    conn.execute("UPDATE vcap_shards SET status='RESOLVED',updated_at=? WHERE shard_id=?",(now,lot_id))
-                    conn.execute("UPDATE position_steps SET status='RESOLVED',updated_at=? WHERE position_id=? AND step_id=?",(now,lot["position_id"],lot["action_id"]))
-                self._event(conn,"LOT_SELL_FILL_RECONCILED",lot_id,{
-                    "quantity":str(sold),"price":str(sale_price),"gross_proceeds":str(gross),
-                    "sell_fee_quote":str(fee_quote),"allocated_cost_basis":str(allocated_basis),
-                    "realized_pnl_quote":str(realized),"net_proceeds_credited":str(net),
-                    "remaining_quantity":str(remaining_qty),
-                })
-                conn.commit()
-                return realized
             except Exception:
                 conn.rollback()
                 raise
