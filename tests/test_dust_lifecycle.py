@@ -1004,6 +1004,9 @@ def dispatch_real_entry(adapter, client, authorization, *, account="owner-accoun
             end_price=11,
             limit_price=9,
             total_amount_quote=20,
+            min_order_amount_quote=20,
+            max_open_orders=1,
+            max_orders_per_batch=1,
             account_name=account,
             spectra_proposal_id=authorization.proposal.proposal_id,
             spectra_intent="ENTRY",
@@ -1147,6 +1150,9 @@ def test_legacy_executor_caller_cannot_skip_dust_admission(environment, monkeypa
             end_price=11,
             limit_price=9,
             total_amount_quote=20,
+            min_order_amount_quote=20,
+            max_open_orders=1,
+            max_orders_per_batch=1,
             account_name="owner-account",
             spectra_proposal_id=proposal.proposal_id,
             spectra_intent="ENTRY",
@@ -1333,7 +1339,7 @@ def test_dust_route_does_not_accept_incomplete_rules_that_legacy_route_accepts(
 
     monkeypatch.setattr(client, "get_trading_rules", incomplete)
     result = dispatch_real_entry(adapter, client, authorization)
-    assert "complete fresh venue rules" in result["error"]
+    assert "incomplete or lack LIMIT support" in result["error"]
     assert client.calls == []
 
 
@@ -1354,6 +1360,9 @@ def test_enabled_real_entry_concurrent_dispatch_consumes_admission_once(
             end_price=11,
             limit_price=9,
             total_amount_quote=20,
+            min_order_amount_quote=20,
+            max_open_orders=1,
+            max_orders_per_batch=1,
             account_name="owner-account",
             spectra_proposal_id=authorization.proposal.proposal_id,
             spectra_intent="ENTRY",
@@ -1678,6 +1687,9 @@ def test_inflight_external_create_keeps_single_use_claim_across_real_await(
                 end_price=11,
                 limit_price=9,
                 total_amount_quote=20,
+            min_order_amount_quote=20,
+            max_open_orders=1,
+            max_orders_per_batch=1,
                 account_name="owner-account",
                 spectra_proposal_id=authorization.proposal.proposal_id,
                 spectra_intent="ENTRY",
