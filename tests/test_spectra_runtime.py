@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from decimal import Decimal
 from pathlib import Path
 
@@ -379,45 +380,62 @@ class FakeClient:
         self._session = FakeSession(response)
 
 
-def test_fetch_spectra_runtime_returns_paper_only_status():
-    payload = {
-        "mode": "PAPER_ONLY",
-        "paper_only": True,
-        "live_dispatch_available": False,
-        "paper_connector_count": 1,
-        "paper_connectors": ["paper-account/kraken_paper_trade"],
-    }
-    client = FakeClient(FakeResponse(200, payload))
+def test_fetch_spectra_runtime_reports_local_paper_supervisor_status(monkeypatch):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_PAPER_CONNECTORS", "kraken_paper_trade")
+    monkeypatch.setattr("condor.fetchers.spectra_runtime.time.time", lambda: 1000.0)
+    monkeypatch.setattr(
+        "spectra_core.portfolio_supervisor.get_portfolio_supervisor_status",
+        lambda: {"supervisor_state": "RUNNING", "updated_at": 1000.0},
+    )
 
-    result = asyncio.run(fetch_spectra_runtime(client))
+    result = asyncio.run(fetch_spectra_runtime(FakeClient(FakeResponse(404))))
 
-    assert result == payload
-    assert client._session.calls == [
-        ("http://127.0.0.1:8000/spectra/runtime", 5)
-    ]
-
-
-def test_missing_runtime_endpoint_is_explicitly_unsupported():
-    client = FakeClient(FakeResponse(404))
-
-    result = asyncio.run(fetch_spectra_runtime(client))
-
-    assert result["mode"] == "UNSUPPORTED"
-    assert result["paper_only"] is False
-    assert result["live_dispatch_available"] is False
+    assert result["mode"] == "PAPER"
+    assert result["paper_only"] is True
+    assert result["live_dispatch_available"] is True
+    assert result["live_dispatch_authorized"] is False
+    assert result["paper_connectors"] == ["kraken_paper_trade"]
+    assert result["healthy"] is True
+    assert result["portfolio_supervisor"]["supervisor_state"] == "RUNNING"
 
 
-def test_uninitialized_client_fails_closed():
+def test_missing_supervisor_heartbeat_keeps_paper_mode_but_reports_unhealthy(monkeypatch):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setattr(
+        "spectra_core.portfolio_supervisor.get_portfolio_supervisor_status",
+        lambda: {
+            "supervisor_state": "NOT_STARTED",
+            "updated_at": None,
+            "error": "portfolio supervisor has not published a status yet",
+        },
+    )
+
+    result = asyncio.run(fetch_spectra_runtime(FakeClient(FakeResponse(404))))
+
+    assert result["mode"] == "PAPER"
+    assert result["paper_only"] is True
+    assert result["live_dispatch_authorized"] is False
+    assert result["healthy"] is False
+    assert result["portfolio_supervisor"]["supervisor_state"] == "NOT_STARTED"
+
+
+def test_runtime_status_does_not_require_initialized_hummingbot_api_session(monkeypatch):
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setattr(
+        "spectra_core.portfolio_supervisor.get_portfolio_supervisor_status",
+        lambda: {"supervisor_state": "NOT_STARTED", "updated_at": None},
+    )
+
     class Uninitialized:
         base_url = "http://127.0.0.1:8000"
         _session = None
 
-    try:
-        asyncio.run(fetch_spectra_runtime(Uninitialized()))
-    except RuntimeError as exc:
-        assert "not initialized" in str(exc)
-    else:
-        raise AssertionError("uninitialized Hummingbot client was accepted")
+    result = asyncio.run(fetch_spectra_runtime(Uninitialized()))
+
+    assert result["mode"] == "PAPER"
+    assert result["healthy"] is False
+    assert result["live_dispatch_authorized"] is False
 
 
 
