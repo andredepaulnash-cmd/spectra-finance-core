@@ -1,6 +1,13 @@
+import base64
+import json
+import os
 import tempfile
+import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from decimal import Decimal
 from pathlib import Path
 
@@ -34,6 +41,63 @@ class CapitalGovernorTests(unittest.TestCase):
     def test_governor_refuses_missing_or_live_execution_environment(self):
         with self.assertRaises(PaperSafetyError):
             CapitalGovernor(self.db, environment={"SPECTRA_PAPER_ONLY": "true", "SPECTRA_ALLOW_LIVE_EXECUTION": "true"})
+
+
+    def test_only_submitted_governor_reservation_can_sign_exact_paper_order(self):
+        auth=self.gov.reserve_initial_position(
+            position_id="p1",asset_id="BTC-USDT",reference_price=Decimal("100"),idempotency_key="receipt-i1"
+        )
+        body={
+            "account_name":"master_account",
+            "connector_name":"kraken_paper_trade",
+            "trading_pair":"BTC-USDT",
+            "trade_type":"BUY",
+            "amount":"0.0003",
+            "order_type":"LIMIT",
+            "price":"65000",
+            "position_action":"OPEN",
+        }
+        with self.assertRaises(CapitalDenied):
+            self.gov.issue_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
+        self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
+        private=Ed25519PrivateKey.generate()
+        raw=private.private_bytes(serialization.Encoding.Raw,serialization.PrivateFormat.Raw,serialization.NoEncryption())
+        encoded=base64.urlsafe_b64encode(raw).decode().rstrip("=")
+        env={
+            "SPECTRA_PAPER_ONLY":"true",
+            "SPECTRA_ALLOW_LIVE_EXECUTION":"false",
+            "SPECTRA_DISPATCH_POLICY_VERSION":"spectra-alpha2-v1",
+            "SPECTRA_DISPATCH_PRIVATE_KEY":encoded,
+        }
+        with patch.dict(os.environ,env,clear=True):
+            receipt=self.gov.issue_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
+        token_payload,signature=receipt.token.split(".")
+        decode=lambda value: base64.urlsafe_b64decode(value+"="*(-len(value)%4))
+        payload=json.loads(decode(token_payload))
+        private.public_key().verify(decode(signature),__import__("spectra_alpha2.dispatch_receipt",fromlist=["canonical_json"]).canonical_json(payload))
+        self.assertEqual(payload["proposal_id"],auth.authorization_id)
+        self.assertEqual(payload["amount"],"20")
+        self.assertEqual(payload["connector_name"],"kraken_paper_trade")
+
+    def test_governor_refuses_to_sign_order_above_reserved_quote_amount(self):
+        auth=self.gov.reserve_initial_position(
+            position_id="p1",asset_id="BTC-USDT",reference_price=Decimal("100"),idempotency_key="receipt-i2"
+        )
+        self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
+        body={
+            "account_name":"master_account","connector_name":"kraken_paper_trade",
+            "trading_pair":"BTC-USDT","trade_type":"BUY","amount":"0.0004",
+            "order_type":"LIMIT","price":"65000","position_action":"OPEN",
+        }
+        private=Ed25519PrivateKey.generate()
+        raw=private.private_bytes(serialization.Encoding.Raw,serialization.PrivateFormat.Raw,serialization.NoEncryption())
+        env={
+            "SPECTRA_PAPER_ONLY":"true","SPECTRA_ALLOW_LIVE_EXECUTION":"false",
+            "SPECTRA_DISPATCH_POLICY_VERSION":"spectra-alpha2-v1",
+            "SPECTRA_DISPATCH_PRIVATE_KEY":base64.urlsafe_b64encode(raw).decode().rstrip("="),
+        }
+        with patch.dict(os.environ,env,clear=True), self.assertRaises(CapitalDenied):
+            self.gov.issue_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
 
     def test_pool_budgets_are_exact(self):
         snap = self.gov.snapshot()
