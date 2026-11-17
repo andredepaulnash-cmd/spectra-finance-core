@@ -1016,16 +1016,91 @@ class CapitalGovernor:
         self._assert_paper()
         with self._connect() as conn:
             rows=conn.execute(
-                "SELECT position_id,asset_id,reference_price,status,gross_committed,created_at,updated_at FROM positions WHERE status IN ('RESERVED','OPEN') ORDER BY created_at"
+                "SELECT position_id,asset_id,reference_price,status,gross_committed,manual_review_required,manual_review_reason,manual_review_at,created_at,updated_at FROM positions WHERE status IN ('RESERVED','OPEN') ORDER BY created_at"
             ).fetchall()
         return [
             {
                 "position_id":row["position_id"],"asset_id":row["asset_id"],
                 "reference_price":Decimal(row["reference_price"]),
                 "status":row["status"],"gross_committed":Decimal(row["gross_committed"]),
+                "manual_review_required":bool(row["manual_review_required"]),
+                "manual_review_reason":row["manual_review_reason"],"manual_review_at":row["manual_review_at"],
                 "created_at":row["created_at"],"updated_at":row["updated_at"],
             } for row in rows
         ]
+
+
+    def get_position_state(self,position_id:str) -> dict | None:
+        """Return immutable reference, completed ladder steps, and independent active lots."""
+        self._assert_paper()
+        with self._connect() as conn:
+            position=conn.execute("SELECT * FROM positions WHERE position_id=?",(position_id,)).fetchone()
+            if position is None:
+                return None
+            steps=conn.execute("SELECT step_id,action_type,status FROM position_steps WHERE position_id=?",(position_id,)).fetchall()
+            lots=conn.execute(
+                """SELECT lot_id,action_id,pool_id,status,remaining_quantity,
+                remaining_cost_basis_quote,reserved_exit_quantity,realized_pnl_quote
+                FROM position_lots WHERE position_id=? AND status IN ('ACTIVE','FILLED')
+                ORDER BY created_at""",
+                (position_id,),
+            ).fetchall()
+        completed_dca={
+            row["step_id"] for row in steps
+            if row["action_type"]=="DCA" and row["status"] in {"SUBMITTED","FILLED","ACTIVE","RESOLVED","RECYCLED"}
+        }
+        completed_vcap={
+            row["step_id"] for row in steps
+            if row["action_type"]=="VCAP" and row["status"] in {"SUBMITTED","FILLED","ACTIVE","RESOLVED","RECYCLED"}
+        }
+        active_lots=[
+            {
+                "lot_id":row["lot_id"],"action_id":row["action_id"],"pool_id":CapitalPool(row["pool_id"]),
+                "status":row["status"],"remaining_quantity":Decimal(row["remaining_quantity"]),
+                "remaining_cost_basis_quote":Decimal(row["remaining_cost_basis_quote"]),
+                "reserved_exit_quantity":Decimal(row["reserved_exit_quantity"]),
+                "realized_pnl_quote":Decimal(row["realized_pnl_quote"]),
+            } for row in lots if Decimal(row["remaining_quantity"])>ZERO
+        ]
+        return {
+            "position_id":position["position_id"],"asset_id":position["asset_id"],
+            "reference_price":Decimal(position["reference_price"]),
+            "status":position["status"],"gross_committed":Decimal(position["gross_committed"]),
+            "manual_review_required":bool(position["manual_review_required"]),
+            "manual_review_reason":position["manual_review_reason"],
+            "completed_dca_steps":completed_dca,"completed_vcap_steps":completed_vcap,
+            "active_lots":active_lots,
+            "total_quantity":sum((lot["remaining_quantity"] for lot in active_lots),ZERO),
+            "total_cost_basis_quote":sum((lot["remaining_cost_basis_quote"] for lot in active_lots),ZERO),
+        }
+
+    def flag_manual_review(self,position_id:str,*,drawdown:Decimal,reason:str) -> None:
+        """Stop all automatic additions without closing or repricing the position."""
+        self._assert_paper()
+        if not isinstance(drawdown,Decimal) or not drawdown.is_finite():
+            raise ValueError("drawdown must be a finite Decimal")
+        if not reason:
+            raise ValueError("manual-review reason is required")
+        now=time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                row=conn.execute("SELECT status,manual_review_required FROM positions WHERE position_id=?",(position_id,)).fetchone()
+                if row is None or row["status"]!="OPEN":
+                    raise CapitalDenied("only an open position can be flagged for manual review")
+                conn.execute(
+                    "UPDATE positions SET manual_review_required=1,manual_review_reason=?,manual_review_at=?,updated_at=? WHERE position_id=?",
+                    (reason,now,now,position_id),
+                )
+                if not row["manual_review_required"]:
+                    self._event(conn,"POSITION_FLAGGED_MANUAL_REVIEW",position_id,{
+                        "drawdown":str(drawdown),"reason":reason,"reference_price_reset":False,
+                        "automatic_patching_disabled":True,
+                    })
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
 
     def snapshot(self) -> dict:
         self._assert_paper()
@@ -1043,7 +1118,8 @@ class CapitalGovernor:
             positions=conn.execute("SELECT COUNT(*) AS n FROM positions").fetchone()["n"]
             open_lots=conn.execute("SELECT COUNT(*) AS n FROM position_lots WHERE status IN ('ACTIVE','FILLED')").fetchone()["n"]
             active_shards=conn.execute("SELECT COUNT(*) AS n FROM vcap_shards WHERE status IN ('RESERVED','SUBMITTED','FILLED','ACTIVE')").fetchone()["n"]
+            manual_review_count=conn.execute("SELECT COUNT(*) AS n FROM positions WHERE manual_review_required=1 AND status='OPEN'").fetchone()["n"]
             realized_rows=conn.execute("SELECT realized_pnl_quote FROM position_lots").fetchall()
             realized_pnl=sum((Decimal(row["realized_pnl_quote"]) for row in realized_rows),ZERO)
-            return {"pools":pools,"open_positions":open_count,"total_positions":positions,"open_lots":open_lots,"active_vcap_shards":active_shards,"realized_pnl_quote":realized_pnl}
+            return {"pools":pools,"open_positions":open_count,"total_positions":positions,"open_lots":open_lots,"active_vcap_shards":active_shards,"manual_review_positions":manual_review_count,"realized_pnl_quote":realized_pnl}
 
