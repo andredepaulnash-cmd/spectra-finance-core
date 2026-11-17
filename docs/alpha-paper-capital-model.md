@@ -16,9 +16,9 @@ The capital policy also keeps a $100 quote-currency liquidity floor. Consequentl
 
 The default fleet target is 83 positions. The initial-entry amount is calculated as:
 
-`initial_entry_quote = floor_to_cent(6250 / target_active_positions)`
+`initial_entry_quote = SPECTRA_INITIAL_ENTRY_QUOTE`, default **$20 per asset**.
 
-That is **$75.30 per position at 83 positions** or **$125.00 at 50 positions**. The existing `SPECTRA_TARGET_ACTIVE_POSITIONS` setting selects the target; the entry budget itself remains a single policy value.
+The $6,250 initial-entry budget is a portfolio-wide ceiling, not a target to spend immediately. The default target of 83 (or an optional target of 50) controls concurrency only; it does not inflate the first entry. Unused entry budget remains unallocated.
 
 ## Enforcement
 
@@ -34,7 +34,7 @@ The recovery pool is deliberately **not** modeled as parked cash. The separate c
 
 ## Position sizing and VCAP
 
-Initial entries are evenly sized against the configured target count. VCAP recovery remains independently sharded at the existing **$20 per recovery shard** default. Initial-entry sizing does not change recovery shard size.
+Initial entries use a fixed **$20 per asset** default, configurable through `SPECTRA_INITIAL_ENTRY_QUOTE` and always bounded by the $6,250 initial-entry budget. VCAP recovery remains separately authorized and independently sharded at the existing **$20 per recovery shard** default. Changing the number of target positions does not change either seed amount.
 
 The supervisor opens no more than its configured number of new positions per cycle and still requires a fresh market-discovery candidate, the paper asset allowlist, valid Kraken USD trading rules, and a successful Governor reservation.
 
