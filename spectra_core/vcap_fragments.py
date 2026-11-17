@@ -409,6 +409,10 @@ class VCAPFragmentManager:
                 status = VCAPFragmentStatus.EXHAUSTED
             elif record.fragment_id in pending_ids:
                 status = VCAPFragmentStatus.RECONCILING
+            elif record.status is VCAPFragmentStatus.CONFLICT:
+                status = VCAPFragmentStatus.CONFLICT
+            elif record.status is VCAPFragmentStatus.EXHAUSTED:
+                status = VCAPFragmentStatus.EXHAUSTED
             elif phase is AdaptiveVCAPPhase.RECOVERED:
                 status = VCAPFragmentStatus.RECOVERED
             elif phase in {
@@ -462,7 +466,10 @@ class VCAPFragmentManager:
         if state is None:
             return None
         latest = runtime_store.latest_for_position(record.position_id)
-        if latest is not None and not latest.terminal:
+        if latest is not None and (
+            latest.phase in _PENDING_PHASES
+            or latest.phase is VCAPRuntimePhase.CONFLICT
+        ):
             return state
         if snapshot_base <= ZERO or snapshot_cost_basis_quote <= ZERO:
             return state
@@ -521,7 +528,10 @@ class VCAPFragmentManager:
             cycle.phase is VCAPRuntimePhase.COMPLETED
             and cycle.planned_action == "EXECUTE_TRANCHE"
             and cycle.mutation_proposal_id is not None
-            and record.last_cycle_id != cycle.cycle_id
+            and not (
+                record.last_cycle_id == cycle.cycle_id
+                and record.last_cycle_phase == VCAPRuntimePhase.COMPLETED.value
+            )
         ):
             completed_phase = record.pending_phase or record.phase
             step_field = {
