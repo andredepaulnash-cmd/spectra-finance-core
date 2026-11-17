@@ -152,8 +152,11 @@ class ResearchScanner:
 
         async def inspect(row: tuple[str, dict, dict]) -> MarketCandidate | None:
             pair,ticker,rule=row
-            async with semaphore:
-                book=await self.client.get_order_book(pair,depth=5)
+            try:
+                async with semaphore:
+                    book=await self.client.get_order_book(pair,depth=5)
+            except (httpx.HTTPError, RuntimeError, ValueError):
+                return None
             bids=book.get("bids") or []
             asks=book.get("asks") or []
             if not bids or not asks:
