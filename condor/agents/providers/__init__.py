@@ -18,6 +18,7 @@ def _auto_register() -> None:
     from . import drift  # noqa: F401
     from . import executors  # noqa: F401
     from . import positions  # noqa: F401
+    from . import spectra_runtime  # noqa: F401
 
 
 def register_provider(provider: BaseProvider) -> None:
