@@ -1272,10 +1272,10 @@ def test_full_flow_confirmed_sell_dust_admission_create_and_successor_fill(
     order = ExecutorOrderEvidence(
         "successor-executor",
         "new-buy-order",
-        "LIMIT",
+        "MARKET",
         "BUY",
         D("2"),
-        D("10"),
+        None,
         "FILLED",
         D("2"),
         D("10"),
@@ -1540,6 +1540,7 @@ def test_expired_reserved_entry_can_recover_after_restart_with_fresh_evidence(
         ),
     )
     checkpoint(environment, refreshed_orders, cid="fresh", mid="refresh")
+    lifecycle.classify(checkpoint_id="fresh", now=clock[0])
     _, authorization = configure_entry_runtime(environment, monkeypatch)
     retry = asyncio.run(
         authorization.reserve_kraken_capital(
