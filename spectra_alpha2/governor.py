@@ -954,11 +954,12 @@ class CapitalGovernor:
                 raise
 
 
+
     def list_pending_authorizations(self) -> list[dict]:
-        """Return submitted orders that require fill/status reconciliation after restart."""
+        """Return submitted buy and exit orders requiring restart reconciliation."""
         self._assert_paper()
         with self._connect() as conn:
-            rows=conn.execute(
+            buys=conn.execute(
                 """SELECT r.*,l.lot_id,s.shard_id
                 FROM reservations r
                 LEFT JOIN position_lots l ON l.reservation_id=r.reservation_id
@@ -966,23 +967,35 @@ class CapitalGovernor:
                 WHERE r.status=? ORDER BY r.created_at""",
                 (ReservationStatus.SUBMITTED.value,),
             ).fetchall()
-        return [
+            exits=conn.execute(
+                """SELECT x.*,s.shard_id
+                FROM exit_authorizations x
+                LEFT JOIN vcap_shards s ON s.shard_id=x.lot_id
+                WHERE x.status=? ORDER BY x.created_at""",
+                (ReservationStatus.SUBMITTED.value,),
+            ).fetchall()
+        result=[
             {
-                "authorization_id":row["reservation_id"],
-                "idempotency_key":row["idempotency_key"],
-                "position_id":row["position_id"],
-                "asset_id":row["asset_id"],
-                "action_id":row["action_id"],
-                "pool":CapitalPool(row["pool_id"]),
-                "gross_notional":Decimal(row["gross_notional"]),
-                "fee_reserve":Decimal(row["fee_reserve"]),
-                "order_id":row["order_id"],
-                "lot_id":row["lot_id"],
-                "shard_id":row["shard_id"],
-                "expires_at":row["expires_at"],
-            }
-            for row in rows
+                "kind":"BUY","authorization_id":row["reservation_id"],
+                "idempotency_key":row["idempotency_key"],"position_id":row["position_id"],
+                "asset_id":row["asset_id"],"action_id":row["action_id"],
+                "pool":CapitalPool(row["pool_id"]),"gross_notional":Decimal(row["gross_notional"]),
+                "fee_reserve":Decimal(row["fee_reserve"]),"order_id":row["order_id"],
+                "lot_id":row["lot_id"],"shard_id":row["shard_id"],"expires_at":row["expires_at"],
+            } for row in buys
         ]
+        result.extend(
+            {
+                "kind":"EXIT","authorization_id":row["authorization_id"],
+                "idempotency_key":row["idempotency_key"],"position_id":row["position_id"],
+                "asset_id":row["asset_id"],"action_id":"EXIT","pool":None,
+                "gross_notional":Decimal(row["expected_gross_proceeds"]),
+                "fee_reserve":Decimal(row["fee_reserve"]),"order_id":row["order_id"],
+                "lot_id":row["lot_id"],"shard_id":row["shard_id"],"expires_at":row["expires_at"],
+                "quantity":Decimal(row["quantity"]),"minimum_price":Decimal(row["minimum_price"]),
+            } for row in exits
+        )
+        return result
 
     def snapshot(self) -> dict:
         self._assert_paper()
