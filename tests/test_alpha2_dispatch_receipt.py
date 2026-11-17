@@ -45,7 +45,7 @@ def trade_body():
 def test_signed_trade_receipt_binds_exact_paper_order_and_governor_id(monkeypatch):
     private=setup_signing(monkeypatch)
     body=trade_body()
-    receipt=receipts.issue_executor_dispatch_receipt(
+    receipt=receipts._issue_executor_dispatch_receipt(
         request_body=body,
         proposal_id="capital-reservation-123",
         intent="ENTRY",
