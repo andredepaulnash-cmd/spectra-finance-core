@@ -121,6 +121,39 @@ class CapitalGovernorTests(unittest.TestCase):
         with patch.dict(os.environ,env,clear=True), self.assertRaises(CapitalDenied):
             self.gov.issue_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
 
+
+    def test_exit_authorization_enforces_net_target_and_prevents_double_selling(self):
+        self.open_position()
+        with self.assertRaises(CapitalDenied):
+            self.gov.authorize_exit("p1:INITIAL",quantity=Decimal("0.1"),limit_price=Decimal("100"),idempotency_key="bad-price")
+        with self.assertRaises(CapitalDenied):
+            self.gov.authorize_exit("p1:INITIAL",quantity=Decimal("0.3"),limit_price=Decimal("110"),idempotency_key="too-much")
+        auth=self.gov.authorize_exit(
+            "p1:INITIAL",quantity=Decimal("0.1"),limit_price=Decimal("105"),idempotency_key="exit-one"
+        )
+        with self.assertRaises(CapitalDenied):
+            self.gov.authorize_exit(
+                "p1:INITIAL",quantity=Decimal("0.2"),limit_price=Decimal("105"),idempotency_key="exit-two"
+            )
+        self.gov.consume_exit_authorization(
+            auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade"
+        )
+        body={
+            "account_name":"master_account","connector_name":"kraken_paper_trade",
+            "trading_pair":"BTC-USDT","trade_type":"SELL","amount":"0.1",
+            "order_type":"LIMIT","price":"105","position_action":"OPEN",
+        }
+        with self.assertRaises(CapitalDenied):
+            self.gov.issue_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
+        receipt=self.gov.issue_exit_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
+        self.assertTrue(receipt.token)
+        self.gov.bind_exit_order_id(auth.authorization_id,order_id="paper-exit-one")
+        realized=self.gov.settle_exit_fill(
+            auth.authorization_id,actual_quantity=Decimal("0.1"),
+            average_price=Decimal("105"),actual_fee=Decimal("0.042"),
+        )
+        self.assertEqual(realized,Decimal("0.418"))
+
     def test_pool_budgets_are_exact(self):
         snap = self.gov.snapshot()
         self.assertEqual(snap["pools"][CapitalPool.INITIAL.value]["budget"], Decimal("6250"))
