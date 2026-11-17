@@ -58,7 +58,7 @@ class CapitalGovernor:
     """Single-writer transactional capital and order-authorization boundary."""
 
     def __init__(self, database_path: str | Path, *, reservation_ttl_seconds: int = 90):
-        if isinstance(reservation_ttl_seconds, bool) or reservation_ttl_seconds <= 0:
+        if isinstance(reservation_ttl_seconds, bool) or not isinstance(reservation_ttl_seconds, int) or reservation_ttl_seconds <= 0:
             raise ValueError("reservation_ttl_seconds must be a positive integer")
         self.database_path = str(database_path)
         self.reservation_ttl_seconds = reservation_ttl_seconds
@@ -267,7 +267,7 @@ class CapitalGovernor:
                 )
                 if action_type == "VCAP":
                     conn.execute(
-                        "INSERT INTO vcap_shards VALUES(?,?,?,?,?,?,?)",
+                        "INSERT INTO vcap_shards VALUES(?,?,?,?,?,?,?,?)",
                         (shard_id,position_id,position["asset_id"],action_id,"RESERVED",reservation_id,now,now),
                     )
                 row = conn.execute("SELECT reserved FROM pools WHERE pool_id=?", (pool.value,)).fetchone()
@@ -342,8 +342,25 @@ class CapitalGovernor:
                     "UPDATE reservations SET status=?,actual_gross=?,actual_fee=?,updated_at=? WHERE reservation_id=?",
                     (ReservationStatus.SETTLED.value,str(actual),str(actual_fee),now,authorization_id),
                 )
-                conn.execute("UPDATE vcap_shards SET status='ACTIVE',updated_at=? WHERE reservation_id=?",(now,authorization_id))
+                conn.execute("UPDATE vcap_shards SET status='FILLED',updated_at=? WHERE reservation_id=?",(now,authorization_id))
                 self._event(conn,"FILL_SETTLED",authorization_id,{"actual_gross_notional":str(actual),"actual_fee":str(actual_fee),"pool":pool.value})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+
+
+    def activate_vcap_shard(self, shard_id: str) -> None:
+        """Move a reconciled filled shard into the active position lifecycle."""
+        now=time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                row=conn.execute("SELECT status FROM vcap_shards WHERE shard_id=?",(shard_id,)).fetchone()
+                if row is None or row["status"] != "FILLED":
+                    raise CapitalDenied("only a filled shard can become active")
+                conn.execute("UPDATE vcap_shards SET status='ACTIVE',updated_at=? WHERE shard_id=?",(now,shard_id))
+                self._event(conn,"VCAP_SHARD_ACTIVATED",shard_id,{"status":"ACTIVE"})
                 conn.commit()
             except Exception:
                 conn.rollback()
