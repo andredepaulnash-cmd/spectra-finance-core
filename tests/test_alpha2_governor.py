@@ -5,13 +5,17 @@ from decimal import Decimal
 from pathlib import Path
 
 from spectra_alpha2.governor import CapitalDenied, CapitalGovernor, CapitalPool
+from spectra_alpha2.safety import PaperSafetyError
+
+
+SAFE_ENV = {"SPECTRA_PAPER_ONLY": "true", "SPECTRA_ALLOW_LIVE_EXECUTION": "false"}
 
 
 class CapitalGovernorTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Path(self.tmp.name) / "governor.sqlite3"
-        self.gov = CapitalGovernor(self.db)
+        self.gov = CapitalGovernor(self.db, environment=SAFE_ENV)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -26,6 +30,10 @@ class CapitalGovernorTests(unittest.TestCase):
         self.gov.consume_authorization(auth.authorization_id, idempotency_key=auth.idempotency_key, connector="kraken_paper_trade")
         self.gov.settle_fill(auth.authorization_id, actual_gross_notional=Decimal("20"), actual_fee=Decimal("0.08"))
         return position
+
+    def test_governor_refuses_missing_or_live_execution_environment(self):
+        with self.assertRaises(PaperSafetyError):
+            CapitalGovernor(self.db, environment={"SPECTRA_PAPER_ONLY": "true", "SPECTRA_ALLOW_LIVE_EXECUTION": "true"})
 
     def test_pool_budgets_are_exact(self):
         snap = self.gov.snapshot()
