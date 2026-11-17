@@ -49,7 +49,7 @@ def main()->int:
     for entry in api.get("environment",[]):
         if isinstance(entry,str):
             key=entry.split("=",1)[0]
-            if key in {"HOST_PROC","HOST_DISK_PATH"}:
+            if key in {"HOST_PROC","HOST_DISK_PATH","GATEWAY_URL"}:
                 continue
             if key=="DATABASE_URL":
                 environment.append("DATABASE_URL=postgresql+asyncpg://hbot:${POSTGRES_PASSWORD}@postgres:5432/hummingbot_api")
