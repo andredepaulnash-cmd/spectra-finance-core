@@ -3721,7 +3721,9 @@ class CapitalGovernor:
                     COALESCE(
                         (SELECT MAX(refreshes.observed_at)
                          FROM executor_accounting_refresh_receipts AS refreshes
-                         WHERE refreshes.observation_id = observations.observation_id),
+                         WHERE refreshes.observation_id = observations.observation_id
+                           AND refreshes.proposal_id = observations.proposal_id
+                           AND refreshes.executor_id = observations.executor_id),
                         observations.observed_at
                     ) AS freshness_at
                     FROM executor_accounting_observations AS observations
