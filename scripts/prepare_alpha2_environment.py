@@ -88,10 +88,18 @@ def main()->int:
 
     credential_dir=api_root/"bots/credentials/master_account"
     credential_dir.mkdir(parents=True,exist_ok=True)
-    unexpected=[p.name for p in credential_dir.iterdir() if p.name!="conf_client.yml"]
+    allowed_files={
+        "conf_client.yml","conf_fee_overrides.yml","hummingbot_logs.yml",
+        "connectors/.gitignore","connectors/.dockerignore",
+    }
+    unexpected=[
+        p.relative_to(credential_dir).as_posix()
+        for p in credential_dir.rglob("*")
+        if p.is_file() and p.relative_to(credential_dir).as_posix() not in allowed_files
+    ]
     if unexpected:
         raise SystemExit(
-            "Refusing to overwrite or inspect exchange credential files in master_account: "
+            "Refusing to continue because unexpected exchange credential/config files exist: "
             + ", ".join(sorted(unexpected))
             + ". Use a fresh Alpha 2.0 API checkout."
         )
@@ -106,7 +114,11 @@ def main()->int:
         [sys.executable,str(connector_script),"--config",str(credential_dir/"conf_client.yml")],
         check=True,env=env,
     )
-    remaining=[p.name for p in credential_dir.iterdir() if p.name!="conf_client.yml"]
+    remaining=[
+        p.relative_to(credential_dir).as_posix()
+        for p in credential_dir.rglob("*")
+        if p.is_file() and p.relative_to(credential_dir).as_posix() not in allowed_files
+    ]
     if remaining:
         raise SystemExit("Unexpected credential files appeared during paper connector setup: "+", ".join(remaining))
     write_env(core_root/".env",{
