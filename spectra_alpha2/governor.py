@@ -15,6 +15,8 @@ from .safety import PaperSafetySettings
 from .strategy import PlannedActionType, calculate_drawdown, plan_next_action
 from .policy import (
     BUY_FEE_RATE,
+    SELL_FEE_RATE,
+    gross_sell_notional_for_net_target,
     INITIAL_ENTRY_BUDGET,
     INITIAL_ENTRY_NOTIONAL,
     MAX_ACTIVE_VCAP_SHARDS_PER_ASSET,
@@ -53,6 +55,20 @@ class CapitalAuthorization:
     action_id: str
     pool: CapitalPool
     gross_notional: Decimal
+    fee_reserve: Decimal
+    connector: str = PAPER_CONNECTOR
+
+
+@dataclass(frozen=True, slots=True)
+class ExitAuthorization:
+    authorization_id: str
+    idempotency_key: str
+    position_id: str
+    asset_id: str
+    lot_id: str
+    quantity: Decimal
+    minimum_price: Decimal
+    expected_gross_proceeds: Decimal
     fee_reserve: Decimal
     connector: str = PAPER_CONNECTOR
 
@@ -136,6 +152,7 @@ class CapitalGovernor:
                     filled_quantity TEXT NOT NULL DEFAULT '0',
                     remaining_quantity TEXT NOT NULL DEFAULT '0',
                     remaining_cost_basis_quote TEXT NOT NULL DEFAULT '0',
+                    reserved_exit_quantity TEXT NOT NULL DEFAULT '0',
                     gross_sell_proceeds TEXT NOT NULL DEFAULT '0',
                     sell_fee_quote TEXT NOT NULL DEFAULT '0',
                     realized_pnl_quote TEXT NOT NULL DEFAULT '0',
@@ -168,6 +185,25 @@ class CapitalGovernor:
                 );
                 CREATE INDEX IF NOT EXISTS idx_vcap_shards_asset_status
                     ON vcap_shards(asset_id, status);
+                CREATE TABLE IF NOT EXISTS exit_authorizations (
+                    authorization_id TEXT PRIMARY KEY,
+                    idempotency_key TEXT NOT NULL UNIQUE,
+                    position_id TEXT NOT NULL REFERENCES positions(position_id),
+                    asset_id TEXT NOT NULL,
+                    lot_id TEXT NOT NULL REFERENCES position_lots(lot_id),
+                    quantity TEXT NOT NULL,
+                    minimum_price TEXT NOT NULL,
+                    expected_gross_proceeds TEXT NOT NULL,
+                    fee_reserve TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    expires_at REAL NOT NULL,
+                    order_id TEXT,
+                    actual_quantity TEXT,
+                    actual_gross TEXT,
+                    actual_fee TEXT,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS events (
                     event_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     event_type TEXT NOT NULL,
