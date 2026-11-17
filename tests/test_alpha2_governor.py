@@ -205,7 +205,16 @@ class CapitalGovernorTests(unittest.TestCase):
         self.open_position()
         with self.assertRaises(CapitalDenied):
             self.gov.close_position("p1")
-        self.gov.record_sell_fill("p1:INITIAL",quantity=Decimal("0.2"),price=Decimal("105"),fee_quote=Decimal("0.084"))
+        before=self.gov.snapshot()["pools"]["INITIAL"]["available"]
+        self.assertEqual(before,Decimal("6250")-Decimal("20.08"))
+        first=self.gov.record_sell_fill("p1:INITIAL",quantity=Decimal("0.1"),price=Decimal("105"),fee_quote=Decimal("0.042"))
+        self.assertEqual(first,Decimal("0.418"))
+        after_first=self.gov.snapshot()["pools"]["INITIAL"]["available"]
+        self.assertEqual(after_first,before+Decimal("10.458"))
+        with self.assertRaises(CapitalDenied):
+            self.gov.close_position("p1",confirmed_all_exits_reconciled=True)
+        second=self.gov.record_sell_fill("p1:INITIAL",quantity=Decimal("0.1"),price=Decimal("105"),fee_quote=Decimal("0.042"))
+        self.assertEqual(second,Decimal("0.418"))
         realized=self.gov.close_position("p1",confirmed_all_exits_reconciled=True)
         self.assertEqual(realized,Decimal("0.836"))
         replacement=self.gov.reserve_initial_position(
