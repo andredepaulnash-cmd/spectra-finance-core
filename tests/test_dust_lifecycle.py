@@ -934,8 +934,11 @@ def configure_entry_runtime(env, monkeypatch):
     )
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
     monkeypatch.setattr(executor_create.settings, "paper_only", True)
+    # Keep the synthetic venue timestamp and the protected BUY validator on the same clock.
+    monkeypatch.setattr(executor_create, "time", time)
     monkeypatch.setattr(executor_create, "get_breaker_mode", lambda: BreakerMode.NORMAL)
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: env[1])
+    monkeypatch.setattr(executor_create, "get_economic_position_ledger", lambda: env[0])
     monkeypatch.setattr(executor_create, "get_dust_lifecycle", lambda **kwargs: env[3])
     monkeypatch.setattr(
         kraken_authorization, "get_dust_lifecycle", lambda **kwargs: env[3]
@@ -1002,6 +1005,9 @@ def dispatch_real_entry(adapter, client, authorization, *, account="owner-accoun
             end_price=11,
             limit_price=9,
             total_amount_quote=20,
+            min_order_amount_quote=20,
+            max_open_orders=1,
+            max_orders_per_batch=1,
             account_name=account,
             spectra_proposal_id=authorization.proposal.proposal_id,
             spectra_intent="ENTRY",
@@ -1081,17 +1087,17 @@ def test_post_commit_race_holds_capital_without_creating_executor(
 ):
     adapter, client, authorization = prepare_real_entry(environment, monkeypatch)
     governor = environment[1]
-    original = governor.commit_if_matches
+    original = governor.commit_entry_submission_if_matches
 
-    def commit(proposal):
-        result = original(proposal)
+    def commit(*args, **kwargs):
+        result = original(*args, **kwargs)
         governor.reserve(
             CapitalProposal("after-commit", "XRP-USD", IntentKind.ENTRY, D("5")),
             CapitalSnapshot(D("5000")),
         )
         return result
 
-    monkeypatch.setattr(governor, "commit_if_matches", commit)
+    monkeypatch.setattr(governor, "commit_entry_submission_if_matches", commit)
     result = dispatch_real_entry(adapter, client, authorization)
     assert "changed durable state" in result["error"]
     assert client.calls == []
@@ -1145,6 +1151,9 @@ def test_legacy_executor_caller_cannot_skip_dust_admission(environment, monkeypa
             end_price=11,
             limit_price=9,
             total_amount_quote=20,
+            min_order_amount_quote=20,
+            max_open_orders=1,
+            max_orders_per_batch=1,
             account_name="owner-account",
             spectra_proposal_id=proposal.proposal_id,
             spectra_intent="ENTRY",
@@ -1263,10 +1272,10 @@ def test_full_flow_confirmed_sell_dust_admission_create_and_successor_fill(
     order = ExecutorOrderEvidence(
         "successor-executor",
         "new-buy-order",
-        "LIMIT",
+        "MARKET",
         "BUY",
         D("2"),
-        D("10"),
+        None,
         "FILLED",
         D("2"),
         D("10"),
@@ -1331,7 +1340,7 @@ def test_dust_route_does_not_accept_incomplete_rules_that_legacy_route_accepts(
 
     monkeypatch.setattr(client, "get_trading_rules", incomplete)
     result = dispatch_real_entry(adapter, client, authorization)
-    assert "complete fresh venue rules" in result["error"]
+    assert "incomplete or lack LIMIT support" in result["error"]
     assert client.calls == []
 
 
@@ -1352,6 +1361,9 @@ def test_enabled_real_entry_concurrent_dispatch_consumes_admission_once(
             end_price=11,
             limit_price=9,
             total_amount_quote=20,
+            min_order_amount_quote=20,
+            max_open_orders=1,
+            max_orders_per_batch=1,
             account_name="owner-account",
             spectra_proposal_id=authorization.proposal.proposal_id,
             spectra_intent="ENTRY",
@@ -1528,6 +1540,7 @@ def test_expired_reserved_entry_can_recover_after_restart_with_fresh_evidence(
         ),
     )
     checkpoint(environment, refreshed_orders, cid="fresh", mid="refresh")
+    lifecycle.classify(checkpoint_id="fresh", now=clock[0])
     _, authorization = configure_entry_runtime(environment, monkeypatch)
     retry = asyncio.run(
         authorization.reserve_kraken_capital(
@@ -1676,6 +1689,9 @@ def test_inflight_external_create_keeps_single_use_claim_across_real_await(
                 end_price=11,
                 limit_price=9,
                 total_amount_quote=20,
+            min_order_amount_quote=20,
+            max_open_orders=1,
+            max_orders_per_batch=1,
                 account_name="owner-account",
                 spectra_proposal_id=authorization.proposal.proposal_id,
                 spectra_intent="ENTRY",
@@ -1684,11 +1700,27 @@ def test_inflight_external_create_keeps_single_use_claim_across_real_await(
             )
 
         first = asyncio.create_task(create())
-        await entered.wait()
-        second = await create()
-        assert "already claimed" in second["error"]
-        finish.set()
-        return await first
+        try:
+            try:
+                await asyncio.wait_for(entered.wait(), timeout=10)
+            except asyncio.TimeoutError as exc:
+                if first.done():
+                    early = await first
+                    raise AssertionError(
+                        "create returned before reaching the external mutation boundary: "
+                        f"{early}"
+                    ) from exc
+                raise AssertionError(
+                    "create stalled before reaching the external mutation boundary"
+                ) from exc
+            second = await asyncio.wait_for(create(), timeout=10)
+            assert "already claimed" in second["error"]
+            finish.set()
+            return await asyncio.wait_for(first, timeout=10)
+        finally:
+            finish.set()
+            if not first.done():
+                first.cancel()
 
     assert "error" not in asyncio.run(run())
     assert len(client.calls) == 1

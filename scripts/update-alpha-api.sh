@@ -121,7 +121,7 @@ for source in "${API_SOURCES[@]}"; do
   fi
 
   approved_blob="${APPROVED_LEGACY_BLOBS[$source]:-}"
-  if [[ "$source" == "services/unified_connector_service.py" && "$worktree_blob" == "a35c432e74d829b02c8c153b334e20abcd10dd2b" ]]; then
+  if [[ "$source" == "services/unified_connector_service.py" && ( "$worktree_blob" == "a35c432e74d829b02c8c153b334e20abcd10dd2b" || "$worktree_blob" == "5cb201c8b8c3a3abf958832a8f92107636850a37" ) ]]; then
     approved_blob="$worktree_blob"
   fi
   if [[ -n "$approved_blob" && "$worktree_blob" == "$approved_blob" ]]; then
@@ -135,7 +135,7 @@ done
 # Verify the exact reviewed API source blobs. This is deterministic and avoids
 # shell text-search, pager, locale, and pipefail behavior entirely.
 declare -A EXPECTED_UPSTREAM_BLOBS=(
-  ["services/unified_connector_service.py"]="5cb201c8b8c3a3abf958832a8f92107636850a37"
+  ["services/unified_connector_service.py"]="bb80be12269c8bb185302b05c5cf16f7e5ac258d"
   ["services/market_data_service.py"]="95e8e31c5e9be5bb2945b80038419b88b35ba41f"
   ["services/orders_recorder.py"]="b0812c513c7a393cc825a732450c60a6617fe659"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
@@ -333,7 +333,7 @@ declare -A CORE_SHELL_OLD_BLOBS=(
   ["frontend/src/lib/api.ts"]="dfdc7867012c37de2e0c1fc0ea1ee8cffbbccf10"
 )
 declare -A CORE_SHELL_NEW_BLOBS=(
-  ["frontend/src/components/layout/AppShell.tsx"]="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
+  ["frontend/src/components/layout/AppShell.tsx"]="01aaa6684de84427937870d3dd8ddf7eaf160634"
   ["frontend/src/index.css"]="6d79e7a5111d423be6bf260a65e238c0344a4f5e"
   ["frontend/src/pages/SpectraOverview.tsx"]="31a9fe01decc24a7067da27e575552186dc98988"
   ["frontend/src/lib/api.ts"]="93d2e82aa4f1e9905f95f66c52842a53f81ca0af"
@@ -346,6 +346,13 @@ for source in "${CORE_SHELL_SOURCES[@]}"; do
   fi
   worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
   old_blob="${CORE_SHELL_OLD_BLOBS[$source]}"
+  # Accept the immediately preceding reviewed integration shell as well as
+  # the older Alpha shell so an incremental update preserves local edits.
+  if [[ "$source" == "frontend/src/components/layout/AppShell.tsx" \
+    && ( "$worktree_blob" == "776e421f5ab1312ab97a09756bc82df8e4da0fc5" \
+      || "$worktree_blob" == "a17454c86670e8f5b49fc2a6e9e8d377a63aea63" ) ]]; then
+    old_blob="$worktree_blob"
+  fi
   if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
     die "Unrecognized local changes in $source. They were preserved; review them before updating."
   fi
@@ -420,6 +427,7 @@ CORE_PYTHON_SOURCES=(
   "spectra_core/market_discovery.py"
   "spectra_core/portfolio_supervisor.py"
   "mcp_servers/hummingbot_api/tools/executor_create.py"
+  "mcp_servers/hummingbot_api/tools/vcap_execution.py"
   "mcp_servers/hummingbot_api/tools/runtime_scheduler.py"
   "spectra_core/execution_policy.py"
   "spectra_core/capital_governor.py"
@@ -430,13 +438,14 @@ CORE_PYTHON_SOURCES=(
 declare -A CORE_PYTHON_NEW_BLOBS=(
   ["spectra_core/asset_authority.py"]="26b65d413e9dffde2464e20945b3e7755c6491e6"
   ["spectra_core/kraken_authorization.py"]="199bd1d7c4ef0940e8531c9f020f21c7a2ba43e6"
-  ["spectra_core/market_discovery.py"]="43191679ac7027354406d32ec312a5f3dadb433e"
-  ["spectra_core/portfolio_supervisor.py"]="148cb2516cf029f84d5e8d82b4ea623891323149"
+  ["spectra_core/market_discovery.py"]="6064053d3fb9fe0e5139f9795a0d3c7275033071"
+  ["spectra_core/portfolio_supervisor.py"]="b3339640d53200bb862e18b1910b5f51edb0e860"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="274c68d8dd7a6e7419f018bed21305c89eaaaf0e"
+  ["mcp_servers/hummingbot_api/tools/vcap_execution.py"]="84ab7c1f38bde055f67210cff1337b9930c775e4"
   ["mcp_servers/hummingbot_api/tools/runtime_scheduler.py"]="3481b486fc820eef7fff9381212dfa8e72627efd"
   ["spectra_core/execution_policy.py"]="1e37a51dea7a0634a5c1a2e89dd5c9ff08c44592"
-  ["spectra_core/capital_governor.py"]="feaf6eeb85afc4f8c43e20fe6f34ffa4540389ac"
-  ["spectra_core/economic_position.py"]="e7fbbdf56cead43c186fa8be923795442fa0e289"
+  ["spectra_core/capital_governor.py"]="f12de53bf86bb38d4ebc60d802eda45a0cf1e540"
+  ["spectra_core/economic_position.py"]="69a36c98fc53f66208f160c5076bcb9ed06c34fe"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"
 )
@@ -446,10 +455,11 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["spectra_core/market_discovery.py"]="5222e752f46f56bc58e4acd8bdd80f940ae1ce36"
   ["spectra_core/portfolio_supervisor.py"]="1200fa1698bf3dcb58a9c8ae9b315babb7cfedab"
   ["mcp_servers/hummingbot_api/tools/executor_create.py"]="14b8d4a98cb1cd6ab1243f1a794b658204cb26fa"
+  ["mcp_servers/hummingbot_api/tools/vcap_execution.py"]="6b2cb75cc451c769a09ac8f0e21e3e3b3a9c021d"
   ["mcp_servers/hummingbot_api/tools/runtime_scheduler.py"]="1709bebcbefc326c19c9d403857cff937144f900"
   ["spectra_core/execution_policy.py"]="403f0e7d229d36231a1fdd88f21eb809aacae2e8"
   ["spectra_core/capital_governor.py"]="d100fc52c8bab80aebf49e1b7a51da21d4d1750e"
-  ["spectra_core/economic_position.py"]="3d63e76d57081c5a9b232d3966b7ef20f975ca8a"
+  ["spectra_core/economic_position.py"]="e7fbbdf56cead43c186fa8be923795442fa0e289"
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
@@ -470,6 +480,12 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
       && "$worktree_blob" == "2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a" ]]; then
       old_blob="$worktree_blob"
     fi
+    # Also accept the immediately preceding reviewed Kraken paper-routing
+    # revision so existing Alpha installs can advance without a manual reset.
+    if [[ "$source" == "spectra_core/market_discovery.py" \
+      && "$worktree_blob" == "43191679ac7027354406d32ec312a5f3dadb433e" ]]; then
+      old_blob="$worktree_blob"
+    fi
     if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
@@ -487,6 +503,7 @@ done
   "$CORE_DIR/spectra_core/market_discovery.py" \
   "$CORE_DIR/spectra_core/portfolio_supervisor.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/executor_create.py" \
+  "$CORE_DIR/mcp_servers/hummingbot_api/tools/vcap_execution.py" \
   "$CORE_DIR/mcp_servers/hummingbot_api/tools/runtime_scheduler.py" \
   "$CORE_DIR/spectra_core/execution_policy.py" \
   "$CORE_DIR/spectra_core/capital_governor.py" \

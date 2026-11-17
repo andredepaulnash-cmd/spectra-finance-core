@@ -158,6 +158,24 @@ async def _refresh_market(
     )
 
 
+async def refresh_vcap_market_snapshot(
+    client: Any,
+    *,
+    pair: str,
+    runtime_store: VCAPRuntimeStore,
+    now: float,
+    policy: VCAPRuntimePolicy | None = None,
+) -> tuple[AssetFingerprint, KrakenTradingRule, Decimal]:
+    """Refresh one market snapshot for reuse by a position's active fragments."""
+    return await _refresh_market(
+        client,
+        pair=pair,
+        runtime_store=runtime_store,
+        policy=policy or VCAPRuntimePolicy(),
+        now=now,
+    )
+
+
 def _proposal_scope(
     *,
     position_id: str,
@@ -855,6 +873,7 @@ async def run_vcap_runtime_cycle(
     runtime_policy: VCAPRuntimePolicy | None = None,
     buy_max_price_slippage_bps: Decimal | None = None,
     buy_fee_allowance_bps: Decimal | None = None,
+    market_snapshot: tuple[AssetFingerprint, KrakenTradingRule, Decimal] | None = None,
     account_name: str = "master_account",
     controller_id: str = "spectra",
     allow_new_dispatch: bool = True,
@@ -1013,13 +1032,25 @@ async def run_vcap_runtime_cycle(
     )
 
     try:
-        fingerprint, trading_rule, current_price = await _refresh_market(
-            client,
-            pair=state.pair,
-            runtime_store=runtime_store,
-            policy=policy,
-            now=now,
-        )
+        if market_snapshot is None:
+            fingerprint, trading_rule, current_price = await _refresh_market(
+                client,
+                pair=state.pair,
+                runtime_store=runtime_store,
+                policy=policy,
+                now=now,
+            )
+        else:
+            fingerprint, trading_rule, current_price = market_snapshot
+            if fingerprint.pair != state.pair:
+                raise ValueError("shared market snapshot pair does not match VCAP envelope")
+            if fingerprint.last_seen_at > float(now) + 5.0:
+                raise ValueError("shared market snapshot timestamp is ahead of runtime clock")
+            if float(now) - fingerprint.last_seen_at > policy.market_max_age_seconds:
+                raise ValueError("shared market snapshot is stale")
+            if not isinstance(current_price, Decimal) or not current_price.is_finite() or current_price <= 0:
+                raise ValueError("shared market snapshot price must be a positive Decimal")
+            runtime_store.save_fingerprint(fingerprint, now=now)
     except Exception as exc:
         hold = runtime_store.transition(
             cycle.cycle_id,

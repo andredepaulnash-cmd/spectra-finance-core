@@ -410,6 +410,7 @@ def test_confirmed_fresh_entry_is_bootstrapped_into_governed_vcap_runtime(
     monkeypatch, tmp_path
 ):
     import mcp_servers.hummingbot_api.tools.accounting_health as accounting_tool
+    from spectra_core.accounting_health import AccountingHealthState
 
     g = CapitalGovernor(
         tmp_path / "bootstrap-governor.sqlite3",
@@ -485,7 +486,7 @@ def test_confirmed_fresh_entry_is_bootstrapped_into_governed_vcap_runtime(
 
     async def healthy_sync(*args, **kwargs):
         return SimpleNamespace(
-            state=accounting_tool.AccountingHealthState.HEALTHY,
+            state=AccountingHealthState.HEALTHY,
             fully_reconciled=True,
         )
 

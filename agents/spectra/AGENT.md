@@ -42,10 +42,11 @@ Spectra Intelligence may reason. The Execution Engine may execute. Only Spectra 
 The default paper portfolio has $25,000 USD total simulated capital:
 - $6,250 maximum for initial non-recovery entries (25%).
 - $18,750 maximum for VCAP recovery (75%).
+- $20 per initial asset position by default.
 - $20 per independently tracked VCAP recovery shard by default.
 - A $100 quote-currency reserve floor remains protected.
 
-The default target is 83 active positions, so the initial-entry budget is sized by the deterministic supervisor (about $75.30 per slot). If the configured target is 50, the supervisor sizes entries at $125 each. Do not calculate or override the actual admission amount yourself; use the CapitalGovernor decision and supervisor result.
+The default target is 83 active positions. Each first entry is $20 regardless of target count; the $6,250 initial-entry budget is a ceiling, and any unused portion remains unallocated rather than inflating the first position. Do not calculate or override the actual admission amount yourself; use the CapitalGovernor decision and supervisor result.
 
 Kraken paper trading is USD-quoted only. Never request USDT quote conversion or USDT-quoted Kraken pairs.
 

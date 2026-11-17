@@ -194,7 +194,7 @@ async def test_supervisor_does_not_force_entries_when_no_candidate_is_eligible()
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("target_positions", "expected_entry_quote"),
-    [(83, "75.30"), (50, "125.00")],
+    [(83, "20"), (50, "20")],
 )
 async def test_supervisor_evenly_distributes_initial_entry_budget(
     target_positions, expected_entry_quote

@@ -76,6 +76,9 @@ function AppShellBody() {
   const isFullBleed =
     FULL_BLEED_ROUTES.includes(pathname) ||
     FULL_BLEED_PATTERNS.some((re) => re.test(pathname));
+  // Overview is listed as full-bleed for historical layout reasons, but its
+  // current content is a long document that must scroll in the app shell.
+  const isFullBleedContent = isFullBleed && isSpectraSafeRoute && pathname !== "/overview";
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -179,8 +182,8 @@ function AppShellBody() {
       <RelaunchBanner />
       <TelemetryConsentBanner />
       <main
-        className={`spectra-main relative flex-1 ${
-          isFullBleed && isSpectraSafeRoute ? "overflow-hidden" : "overflow-auto p-6"
+        className={`spectra-main relative min-h-0 flex-1 ${
+          isFullBleedContent ? "overflow-hidden" : "overflow-y-auto p-6"
         }`}
       >
         <ErrorBoundary resetKey={pathname + server}>

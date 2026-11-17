@@ -158,6 +158,7 @@ jobs:
             tests/test_recovery_exposure_governor.py \
             tests/test_vcap_runtime_supervisor.py \
             tests/test_vcap_execution_loop.py \
+            tests/test_vcap_market_shard_dispatch.py \
             tests/test_portfolio_supervisor.py \
             tests/test_vcap_entry.py \
             tests/test_vcap_restart_continuity.py \

@@ -13,6 +13,8 @@ from .economic_position import EconomicPositionLedger
 from .models import BreakerMode, CapitalPolicy
 from .module_lifecycle import ModuleLifecycleStore
 from .runtime_scheduler import RuntimeSchedulerStore
+from .adaptive_vcap import AdaptiveVCAPPolicy
+from .vcap_fragments import VCAPFragmentManager
 from .vcap_runtime import VCAPRuntimeStore
 from .vcap_state import VCAPStateStore
 
@@ -306,6 +308,14 @@ def get_vcap_runtime_store() -> VCAPRuntimeStore:
 
 
 @lru_cache(maxsize=1)
+def get_vcap_fragment_manager() -> VCAPFragmentManager:
+    return VCAPFragmentManager(
+        spectra_state_dir() / "vcap-fragments",
+        policy=AdaptiveVCAPPolicy.from_env(),
+    )
+
+
+@lru_cache(maxsize=1)
 def get_runtime_scheduler_store() -> RuntimeSchedulerStore:
     return RuntimeSchedulerStore(
         spectra_state_dir() / "runtime_scheduler.sqlite3"
@@ -340,4 +350,5 @@ def reset_runtime_cache() -> None:
     get_spectra_module_lifecycle_store.cache_clear()
     get_vcap_state_store.cache_clear()
     get_vcap_runtime_store.cache_clear()
+    get_vcap_fragment_manager.cache_clear()
     get_runtime_scheduler_store.cache_clear()

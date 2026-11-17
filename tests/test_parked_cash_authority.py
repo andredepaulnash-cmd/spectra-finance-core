@@ -42,7 +42,7 @@ from tests.test_protected_recovery_exit import protected_case
 from tests.test_protected_whole_exit import whole_case
 
 D = Decimal
-SCOPE = dict(account_name="master_account", connector_name="kraken", quote_asset="USD")
+SCOPE = dict(account_name="master_account", connector_name="kraken_paper_trade", quote_asset="USD")
 PAPER_CONNECTOR = "kraken_paper_trade"
 
 
@@ -769,6 +769,7 @@ def test_real_bound_buy_fill_preserves_inventory_and_cash_truth_with_fee_buffer(
         price="0.5",
         fee=fee,
         fee_currency="USD",
+        connector_name=SCOPE["connector_name"],
         timestamp="1970-01-01T00:33:22+00:00",
     )
     applied = reconciler.reconcile_trade_fill(confirmed, reconciled_at=2003)
