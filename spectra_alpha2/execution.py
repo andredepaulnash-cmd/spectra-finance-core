@@ -202,7 +202,7 @@ class HummingbotPaperExecutionClient:
                 break
             await asyncio.sleep(self.poll_interval_seconds)
         if order is None or str(order.get("status","")).upper() not in TERMINAL_ORDER_STATES:
-            raise ExecutionUncertain("paper order remains non-terminal; its order ID and capital reservation are persisted")
+            return ExecutionResult(authorization_id,order_id,"PENDING",Decimal("0"),Decimal("0"),Decimal("0"))
 
         end=datetime.now(timezone.utc)
         trades=await self._search_trades(trading_pair,start_time=started-timedelta(minutes=2),end_time=end+timedelta(seconds=2))
@@ -292,7 +292,7 @@ class HummingbotPaperExecutionClient:
                 break
             await asyncio.sleep(self.poll_interval_seconds)
         if order is None or str(order.get("status","")).upper() not in TERMINAL_ORDER_STATES:
-            raise ExecutionUncertain("paper exit remains non-terminal; exit quantity stays reserved")
+            return ExecutionResult(authorization_id,order_id,"PENDING",Decimal("0"),Decimal("0"),Decimal("0"))
         end=datetime.now(timezone.utc)
         trades=await self._search_trades(trading_pair,start_time=started-timedelta(minutes=2),end_time=end+timedelta(seconds=2))
         fills=[item for item in trades.get("data",[]) if str(item.get("order_id"))==order_id]
