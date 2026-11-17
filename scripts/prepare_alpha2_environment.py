@@ -109,6 +109,10 @@ def main()->int:
     remaining=[p.name for p in credential_dir.iterdir() if p.name!="conf_client.yml"]
     if remaining:
         raise SystemExit("Unexpected credential files appeared during paper connector setup: "+", ".join(remaining))
+    write_env(core_root/".env",{
+        "POSTGRES_PASSWORD":api_values["POSTGRES_PASSWORD"],
+        "BROKER_DASHBOARD_PASSWORD":api_values["BROKER_DASHBOARD_PASSWORD"],
+    })
     core_env=core_root/".env.core"
     subprocess.run(
         [
