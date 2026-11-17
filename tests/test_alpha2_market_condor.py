@@ -93,6 +93,8 @@ async def test_paper_data_client_uses_only_paper_connector_and_public_data():
     await client.get_tickers()
     await client.get_trading_rules()
     await client.get_order_book("BTC-USDT")
-    assert all("kraken_paper_trade" in request.url.path or request.url.path=="/market-data/order-book" for request in requests)
+    assert requests[0].url.path=="/market-data/tickers"
     assert requests[0].url.params["connectors"]=="kraken_paper_trade"
+    assert requests[1].url.path=="/connectors/kraken_paper_trade/trading-rules"
+    assert requests[2].url.path=="/market-data/order-book"
     await client.close()
