@@ -406,6 +406,17 @@ class VCAPFragmentManager:
         records = self.list_fragments(position_id)
         if not records:
             return ()
+        if (
+            phase in {
+                AdaptiveVCAPPhase.FAT_1,
+                AdaptiveVCAPPhase.SKINNY,
+                AdaptiveVCAPPhase.FAT_2,
+            }
+            and records[0].pre_vcap_step < len(self.policy.pre_vcap_dca_triggers_bps)
+        ):
+            # Complete the conventional DCA ladder before activating VCAP
+            # fragments, including when price gaps through earlier triggers.
+            phase = AdaptiveVCAPPhase.PRE_VCAP
         if drawdown_bps is not None and (
             isinstance(drawdown_bps, bool)
             or not isinstance(drawdown_bps, int)
