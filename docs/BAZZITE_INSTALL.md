@@ -25,11 +25,8 @@ The Hummingbot API uses public Kraken market data and its isolated paper connect
 From a fresh terminal:
 
 ```bash
-git clone --branch spectra-finance-alpha-2.0 --depth 1 \
-  https://github.com/andredepaulnash-cmd/spectra-finance-core.git \
-  "$HOME/SpectraFinance-Alpha2-bootstrap"
-cd "$HOME/SpectraFinance-Alpha2-bootstrap"
-bash scripts/install_bazzite_alpha2.sh
+bash <(curl -fsSL \
+  https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/spectra-finance-alpha-2.0/scripts/install_bazzite_alpha2.sh)
 ```
 
 The installer creates `$HOME/SpectraFinance-Alpha2` with separate Core and Hummingbot API checkouts, creates a host-side virtual environment, generates keyless paper configuration, builds an isolated Compose file, and starts the services.
