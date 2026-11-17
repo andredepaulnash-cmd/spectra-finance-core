@@ -74,15 +74,17 @@ class SpectraRuntimeProvider(BaseProvider):
         healthy = bool(data.get("healthy", mode not in {"UNAVAILABLE", "UNSUPPORTED"}))
         lines = [
             f"Spectra Runtime: mode={mode} | healthy={healthy}",
-            f"  Paper-only={paper_only} | live dispatch available={live_available}",
-            f"  Paper connectors={connectors}",
+            f"  Paper-only={paper_only} | live dispatch available={live_available} "
+            f"| live authorized={bool(data.get('live_dispatch_authorized', False))}",
+            f"  Paper connectors={connectors} "
+            f"| connector status={data.get('paper_connector_status', 'unknown')}",
         ]
         supervisor = data.get("portfolio_supervisor")
         if isinstance(supervisor, dict):
             lines.append(
                 "  Portfolio supervisor: "
-                f"status={supervisor.get('status', 'unknown')} "
-                f"running={supervisor.get('running', False)}"
+                f"state={supervisor.get('supervisor_state', 'unknown')} "
+                f"status_age_seconds={supervisor.get('status_age_seconds', 'unknown')}"
             )
         vcap = data.get("adaptive_vcap")
         if isinstance(vcap, dict):
