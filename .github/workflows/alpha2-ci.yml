@@ -1,0 +1,23 @@
+name: Spectra Alpha 2.0 CI
+
+on:
+  push:
+    branches: [spectra-finance-alpha-2.0]
+  pull_request:
+    branches: [spectra-finance-alpha-2.0]
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-domain-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Alpha 2.0 package and tests
+        run: python -m compileall -q spectra_alpha2 tests
+      - name: Run deterministic Alpha 2.0 tests
+        run: python -m unittest discover -s tests -p 'test_alpha2_*.py' -v
