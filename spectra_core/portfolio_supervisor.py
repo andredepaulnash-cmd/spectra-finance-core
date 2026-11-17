@@ -96,6 +96,7 @@ class PortfolioSupervisorConfig:
     discovery_show_n: int = 100
     account_name: str = "master_account"
     controller_id: str = DEFAULT_CONTROLLER_ID
+    initial_entry_quote: Decimal = PAPER_INITIAL_ENTRY_QUOTE
     vcap_seed_quote: Decimal = PAPER_VCAP_SHARD_QUOTE
     expected_exit_fee_bps: Decimal = Decimal("60")
     slippage_allowance_bps: Decimal = Decimal("10")
@@ -131,6 +132,7 @@ class PortfolioSupervisorConfig:
             or "master_account",
             controller_id=os.getenv("SPECTRA_PORTFOLIO_CONTROLLER_ID", DEFAULT_CONTROLLER_ID).strip()
             or DEFAULT_CONTROLLER_ID,
+            initial_entry_quote=_env_decimal("SPECTRA_INITIAL_ENTRY_QUOTE", "20"),
             vcap_seed_quote=_env_decimal("SPECTRA_VCAP_SEED_QUOTE", "20"),
             expected_exit_fee_bps=_env_decimal("SPECTRA_EXPECTED_EXIT_FEE_BPS", "60"),
             slippage_allowance_bps=_env_decimal("SPECTRA_SLIPPAGE_ALLOWANCE_BPS", "10"),
@@ -410,9 +412,7 @@ async def run_portfolio_cycle(
         "scan_candidate_count": 0,
         "new_entries_this_cycle": 0,
         "initial_entry_budget_quote": None,
-        "initial_entry_quote": (
-            None if paper_only else str(PAPER_INITIAL_ENTRY_QUOTE)
-        ),
+        "initial_entry_quote": str(cfg.initial_entry_quote),
         "vcap_recovery_shard_quote": str(cfg.vcap_seed_quote),
         "entries": [],
         "vcap": _json_summary(vcap_result),
@@ -437,7 +437,7 @@ async def run_portfolio_cycle(
         status["blocked_reason"] = "market_discovery_unavailable"
         return status
 
-    initial_entry_quote = PAPER_INITIAL_ENTRY_QUOTE
+    initial_entry_quote = cfg.initial_entry_quote
     if paper_only:
         initial_entry_budget = getattr(
             getattr(governor, "policy", None),
@@ -451,11 +451,8 @@ async def run_portfolio_cycle(
         ):
             status["blocked_reason"] = "paper_initial_entry_budget_unconfigured"
             return status
-        initial_entry_quote = (
-            initial_entry_budget / Decimal(cfg.target_active_positions)
-        ).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
-        if initial_entry_quote <= 0:
-            status["blocked_reason"] = "paper_initial_entry_quote_below_precision"
+        if initial_entry_quote > initial_entry_budget:
+            status["blocked_reason"] = "paper_initial_entry_quote_exceeds_entry_budget"
             return status
         status["initial_entry_budget_quote"] = str(initial_entry_budget)
     status["initial_entry_quote"] = str(initial_entry_quote)
