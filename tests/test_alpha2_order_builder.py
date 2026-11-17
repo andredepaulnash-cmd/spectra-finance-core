@@ -42,7 +42,7 @@ class PaperOrderBuilderTests(unittest.TestCase):
         net=order.gross_quote_notional*Decimal("0.996")
         self.assertGreaterEqual(net,cost*Decimal("1.0174"))
         self.assertEqual(order.request_body["trade_type"],"SELL")
-        self.assertEqual(order.request_body["position_action"],"CLOSE")
+        self.assertEqual(order.request_body["position_action"],"OPEN")
 
 
 if __name__=="__main__":
