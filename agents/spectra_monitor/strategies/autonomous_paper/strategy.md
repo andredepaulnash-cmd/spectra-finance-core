@@ -24,7 +24,7 @@ Run a durable five-minute monitoring cycle for Spectra Finance. This strategy is
 
 At each tick, inspect the provider data before making any recommendation:
 
-- spectra_runtime: verify PAPER mode, paper_only=true, supervisor health, connector count, and Adaptive VCAP summary.
+- spectra_runtime: verify PAPER mode, paper_only=true, a fresh supervisor heartbeat, configured paper connector count, live authorization=false, and Adaptive VCAP summary when available.
 - positions: compare active position count and current P&L with the previous tick.
 - executors: inspect running, completed, failed, and orphaned executors; distinguish pending orders from confirmed fills.
 - drift: treat an untrusted or unavailable venue comparison as a safety exception, not as zero exposure.
