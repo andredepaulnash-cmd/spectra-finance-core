@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 import time
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_DOWN
+from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Mapping
 
 from .asset_authority import (
