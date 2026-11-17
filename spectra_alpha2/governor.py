@@ -647,23 +647,19 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
+
     def resolve_vcap_shard(self, shard_id: str) -> None:
+        """Verify a VCAP slot was released by a fully reconciled sell fill."""
         self._assert_paper()
-        """Release a shard slot only after the caller has reconciled its full exit."""
-        now=time.time()
         with self._connect() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                row=conn.execute("SELECT status FROM vcap_shards WHERE shard_id=?",(shard_id,)).fetchone()
-                if row is None or row["status"] != "ACTIVE":
-                    raise CapitalDenied("only an active shard can be resolved")
-                conn.execute("UPDATE vcap_shards SET status='RESOLVED',updated_at=? WHERE shard_id=?",(now,shard_id))
-                conn.execute("UPDATE position_steps SET status='RESOLVED',updated_at=? WHERE reservation_id=(SELECT reservation_id FROM vcap_shards WHERE shard_id=?)",(now,shard_id))
-                self._event(conn,"VCAP_SHARD_RESOLVED",shard_id,{"slot_released":True})
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
+            row=conn.execute(
+                """SELECT s.status,l.remaining_quantity
+                FROM vcap_shards s JOIN position_lots l ON l.lot_id=s.shard_id
+                WHERE s.shard_id=?""",
+                (shard_id,),
+            ).fetchone()
+        if row is None or row["status"] != "RESOLVED" or Decimal(row["remaining_quantity"]) != ZERO:
+            raise CapitalDenied("VCAP slot can only be released by a fully reconciled lot exit")
 
     def release_unfilled_reservation(self, authorization_id: str, *, confirmed_no_fill: bool = False) -> None:
         self._assert_paper()
@@ -725,6 +721,9 @@ class CapitalGovernor:
                 ).fetchone()["n"]
                 if active:
                     raise CapitalDenied("all VCAP shards must be resolved before position closure")
+                lots=conn.execute("SELECT remaining_quantity FROM position_lots WHERE position_id=?",(position_id,)).fetchall()
+                if any(Decimal(lot["remaining_quantity"]) > ZERO for lot in lots):
+                    raise CapitalDenied("all initial, DCA, and VCAP lots must be fully exited before position closure")
                 conn.execute("UPDATE positions SET status='CLOSED',updated_at=? WHERE position_id=?",(now,position_id))
                 self._event(conn,"POSITION_CLOSED",position_id,{"realized_pnl_quote":str(realized_pnl_quote),"exit_reconciled":True})
                 conn.commit()
@@ -741,7 +740,8 @@ class CapitalGovernor:
                     "budget":Decimal(row["budget"]),
                     "reserved":Decimal(row["reserved"]),
                     "spent":Decimal(row["spent"]),
-                    "available":Decimal(row["budget"])-Decimal(row["reserved"])-Decimal(row["spent"]),
+                    "recovered":Decimal(row["recovered"]),
+                    "available":Decimal(row["budget"])-Decimal(row["reserved"])-Decimal(row["spent"])+Decimal(row["recovered"]),
                 }
             open_count=conn.execute("SELECT COUNT(*) AS n FROM positions WHERE status IN ('RESERVED','OPEN')").fetchone()["n"]
             positions=conn.execute("SELECT COUNT(*) AS n FROM positions").fetchone()["n"]
