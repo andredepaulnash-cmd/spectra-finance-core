@@ -70,6 +70,7 @@ def test_fragment_manager_activates_only_two_and_respects_priority(tmp_path):
     scores = (D("0.1"), D("0.9"), D("0.8"), D("0.7"), D("0.6"))
     for record, score in zip(records, scores):
         manager._update(record.fragment_id, now=1001.0, priority_score=score)
+    manager._update(records[0].fragment_id, now=1001.0, pre_vcap_step=3)
 
     active = manager.select_active(
         "position-btc",
@@ -92,6 +93,7 @@ def test_fragment_ladder_advances_only_after_completed_fill_cycle(tmp_path):
     )
     fragment = records[0]
     assert manager.next_step_quote(fragment.fragment_id, AdaptiveVCAPPhase.FAT_1) == D("20.00")
+    manager._update(fragment.fragment_id, now=1000.4, pre_vcap_step=3)
     manager.select_active("position-btc", AdaptiveVCAPPhase.FAT_1, now=1000.5)
     fragment = manager.get_fragment(fragment.fragment_id)
 
@@ -223,7 +225,6 @@ def test_pre_vcap_dca_ladder_executes_only_at_configured_drawdown_triggers(tmp_p
     assert manager.next_step_quote(first.fragment_id, AdaptiveVCAPPhase.PRE_VCAP) == D("20")
 
     for step, trigger in enumerate((274, 444, 674), start=1):
-        current = manager.get_fragment(first.fragment_id)
         manager.select_active(
             "position-btc",
             AdaptiveVCAPPhase.PRE_VCAP,
