@@ -24,11 +24,24 @@ class PaperSafetySettings:
         forbidden = []
         for key in env:
             upper = key.upper()
-            if any(token in upper for token in ("KRAKEN_API_KEY", "KRAKEN_API_SECRET", "EXCHANGE_API_KEY", "EXCHANGE_API_SECRET", "EXCHANGE_PRIVATE_KEY", "EXCHANGE_PASSPHRASE")):
+            if any(
+                token in upper
+                for token in (
+                    "KRAKEN_API_KEY",
+                    "KRAKEN_API_SECRET",
+                    "EXCHANGE_API_KEY",
+                    "EXCHANGE_API_SECRET",
+                    "EXCHANGE_PRIVATE_KEY",
+                    "EXCHANGE_PASSPHRASE",
+                )
+            ):
                 forbidden.append(key)
         if forbidden:
             raise PaperSafetyError("exchange credential environment variables are forbidden")
-        configured_connector = env.get("SPECTRA_PAPER_CONNECTOR", "kraken_paper_trade")\n        if configured_connector != "kraken_paper_trade":\n            raise PaperSafetyError("SPECTRA_PAPER_CONNECTOR must be kraken_paper_trade")\n        return cls(paper_only=True, allow_live_execution=False)
+        configured_connector = env.get("SPECTRA_PAPER_CONNECTOR", "kraken_paper_trade")
+        if configured_connector != "kraken_paper_trade":
+            raise PaperSafetyError("SPECTRA_PAPER_CONNECTOR must be kraken_paper_trade")
+        return cls(paper_only=True, allow_live_execution=False)
 
     def validate_order_boundary(self, connector: str, authorization_id: str | None) -> None:
         if not self.paper_only or self.allow_live_execution:
