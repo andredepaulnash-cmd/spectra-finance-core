@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Generate the internal Core/API Ed25519 receipt keypair (not exchange credentials)."""
+from __future__ import annotations
+
+import argparse
+import base64
+import os
+from pathlib import Path
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+
+def encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def update_env(path: Path, values: dict[str, str], mode: int = 0o600) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    output = []
+    seen = set()
+    for line in lines:
+        key = line.split("=", 1)[0].strip() if "=" in line else ""
+        if key in values:
+            if key not in seen:
+                output.append(f"{key}={values[key]}")
+                seen.add(key)
+        else:
+            output.append(line)
+    output.extend(f"{key}={value}" for key, value in values.items() if key not in seen)
+    path.write_text("\n".join(output).rstrip() + "\n", encoding="utf-8")
+    os.chmod(path, mode)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--core-env", type=Path, default=Path(".env"))
+    parser.add_argument("--api-env", type=Path, default=Path("../spectra-hummingbot-api/.env"))
+    args = parser.parse_args()
+
+    private = Ed25519PrivateKey.generate()
+    private_raw = private.private_bytes(
+        serialization.Encoding.Raw,
+        serialization.PrivateFormat.Raw,
+        serialization.NoEncryption(),
+    )
+    public_raw = private.public_key().public_bytes(
+        serialization.Encoding.Raw,
+        serialization.PublicFormat.Raw,
+    )
+    policy = "spectra-alpha2-v1"
+    update_env(args.core_env, {
+        "SPECTRA_PAPER_ONLY": "true",
+        "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
+        "SPECTRA_DISPATCH_POLICY_VERSION": policy,
+        "SPECTRA_DISPATCH_PRIVATE_KEY": encode(private_raw),
+    })
+    update_env(args.api_env, {
+        "SPECTRA_PAPER_ONLY": "true",
+        "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
+        "SPECTRA_PAPER_CONNECTORS": "kraken_paper_trade",
+        "SPECTRA_REQUIRE_CORE_RECEIPTS": "true",
+        "SPECTRA_DISPATCH_POLICY_VERSION": policy,
+        "SPECTRA_DISPATCH_PUBLIC_KEY": encode(public_raw),
+        "SPECTRA_DISPATCH_RECEIPT_DB": "bots/data/spectra_dispatch_receipts.sqlite3",
+    })
+    print(f"Core signing configuration written to {args.core_env}")
+    print(f"API verification configuration written to {args.api_env}")
+    print("Private signing key was not printed. It is not an exchange credential.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spectra-finance-alpha2"
+version = "2.0.0a1"
+description = "Paper-only deterministic portfolio engine for Spectra Finance Alpha 2.0"
+requires-python = ">=3.12"
+dependencies = [
+  "cryptography>=44,<47",
+  "PyYAML>=6.0.2,<7",
+]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1"]
+test = ["pytest>=8.3,<9", "pytest-asyncio>=0.25,<1"]
+
+[tool.setuptools.packages.find]
+include = ["spectra_alpha2*"]
