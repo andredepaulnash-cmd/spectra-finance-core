@@ -37,6 +37,18 @@ class CapitalGovernorTests(unittest.TestCase):
             average_price=price,
         )
 
+    def sell_lot(self,lot_id,*,quantity,price,fee,idempotency_key,order_id):
+        auth=self.gov.authorize_exit(
+            lot_id,quantity=quantity,limit_price=price,idempotency_key=idempotency_key
+        )
+        self.gov.consume_exit_authorization(
+            auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade"
+        )
+        self.gov.bind_exit_order_id(auth.authorization_id,order_id=order_id)
+        return self.gov.settle_exit_fill(
+            auth.authorization_id,actual_quantity=quantity,average_price=price,actual_fee=fee
+        )
+
     def open_position(self, asset="BTC-USDT", position="p1"):
         auth = self.gov.reserve_initial_position(
             position_id=position,
@@ -179,7 +191,7 @@ class CapitalGovernorTests(unittest.TestCase):
                 position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
                 current_price=Decimal("89.26"),idempotency_key="vcap-3",action_type="VCAP",shard_id="shard-2"
             )
-        self.gov.record_sell_fill(shards[0],quantity=Decimal("0.2"),price=Decimal("110"),fee_quote=Decimal("0.088"))
+        self.sell_lot(shards[0],quantity=Decimal("0.2"),price=Decimal("110"),fee=Decimal("0.088"),idempotency_key="sell-vcap-0",order_id="paper-sell-vcap-0")
         self.gov.resolve_vcap_shard(shards[0])
         allowed=self.gov.reserve_addition(
             position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
@@ -207,13 +219,13 @@ class CapitalGovernorTests(unittest.TestCase):
             self.gov.close_position("p1")
         before=self.gov.snapshot()["pools"]["INITIAL"]["available"]
         self.assertEqual(before,Decimal("6250")-Decimal("20.08"))
-        first=self.gov.record_sell_fill("p1:INITIAL",quantity=Decimal("0.1"),price=Decimal("105"),fee_quote=Decimal("0.042"))
+        first=self.sell_lot("p1:INITIAL",quantity=Decimal("0.1"),price=Decimal("105"),fee=Decimal("0.042"),idempotency_key="sell-initial-1",order_id="paper-sell-initial-1")
         self.assertEqual(first,Decimal("0.418"))
         after_first=self.gov.snapshot()["pools"]["INITIAL"]["available"]
         self.assertEqual(after_first,before+Decimal("10.458"))
         with self.assertRaises(CapitalDenied):
             self.gov.close_position("p1",confirmed_all_exits_reconciled=True)
-        second=self.gov.record_sell_fill("p1:INITIAL",quantity=Decimal("0.1"),price=Decimal("105"),fee_quote=Decimal("0.042"))
+        second=self.sell_lot("p1:INITIAL",quantity=Decimal("0.1"),price=Decimal("105"),fee=Decimal("0.042"),idempotency_key="sell-initial-2",order_id="paper-sell-initial-2")
         self.assertEqual(second,Decimal("0.418"))
         realized=self.gov.close_position("p1",confirmed_all_exits_reconciled=True)
         self.assertEqual(realized,Decimal("0.836"))
