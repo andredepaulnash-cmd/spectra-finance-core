@@ -20,8 +20,6 @@ The 74-position ceiling counts both RESERVED and OPEN positions. A partial uniqu
 
 This is the first durable reservation/governance layer, not the final ledger. Before executor integration it still needs:
 - persisted order outbox and order-ID binding before network submission;
-- actual sale proceeds and fee settlement;
-- complete per-shard fill/exit ledger and realized P&L;
 - expiration/reconciliation recovery for reservations left behind by process failure;
 - schema versioning and backup/restore;
 - end-to-end idempotency across API, Hummingbot, and Core.
