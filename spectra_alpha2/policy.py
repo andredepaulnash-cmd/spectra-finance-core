@@ -23,7 +23,8 @@ MAX_ACTIVE_VCAP_SHARDS_PER_ASSET = 2
 
 
 class VCAPPhase(StrEnum):
-    DCA = "DCA"\n    FAT_1 = "FAT_1"
+    DCA = "DCA"
+    FAT_1 = "FAT_1"
     SKINNY = "SKINNY"
     FAT_2 = "FAT_2"
     MANUAL_REVIEW = "MANUAL_REVIEW"
@@ -39,8 +40,8 @@ class LadderStep:
 
 DCA_STEPS: tuple[LadderStep, ...] = (
     LadderStep("DCA_1", Decimal("-0.0274"), DCA_ADDITION_NOTIONAL, VCAPPhase.DCA),
-    LadderStep("DCA_2", Decimal("-0.0444"), DCA_ADDITION_NOTIONAL, VCAPPhase.FAT_1),
-    LadderStep("DCA_3", Decimal("-0.0674"), DCA_ADDITION_NOTIONAL, VCAPPhase.FAT_1),
+    LadderStep("DCA_2", Decimal("-0.0444"), DCA_ADDITION_NOTIONAL, VCAPPhase.DCA),
+    LadderStep("DCA_3", Decimal("-0.0674"), DCA_ADDITION_NOTIONAL, VCAPPhase.DCA),
 )
 
 VCAP_STEPS: tuple[LadderStep, ...] = (
@@ -70,12 +71,18 @@ def validate_portfolio_policy() -> None:
         raise ValueError("DCA additions must total $60 per asset")
     if sum((step.addition for step in VCAP_STEPS), ZERO) != Decimal("920"):
         raise ValueError("VCAP ladder must total $920 per asset")
-    scheduled = INITIAL_ENTRY_NOTIONAL + sum((s.addition for s in DCA_STEPS), ZERO) + sum((s.addition for s in VCAP_STEPS), ZERO)
+    scheduled = (
+        INITIAL_ENTRY_NOTIONAL
+        + sum((s.addition for s in DCA_STEPS), ZERO)
+        + sum((s.addition for s in VCAP_STEPS), ZERO)
+    )
     if scheduled != MAX_ASSET_GROSS_NOTIONAL:
         raise ValueError("scheduled per-asset notional must equal the $1,000 cap")
 
 
-def next_eligible_vcap_step(drawdown: Decimal, completed_step_ids: set[str] | frozenset[str]) -> LadderStep | None:
+def next_eligible_vcap_step(
+    drawdown: Decimal, completed_step_ids: set[str] | frozenset[str]
+) -> LadderStep | None:
     """Return the next sequential ladder step; never skip an unfunded step."""
     drawdown = _require_decimal(drawdown, "drawdown")
     if drawdown <= VCAP_OUTER_BOUNDARY:
@@ -106,7 +113,9 @@ def can_admit_position(open_positions: int) -> bool:
     return open_positions < MAX_OPEN_POSITIONS
 
 
-def validate_asset_exposure(committed_gross_notional: Decimal, proposed_addition: Decimal) -> Decimal:
+def validate_asset_exposure(
+    committed_gross_notional: Decimal, proposed_addition: Decimal
+) -> Decimal:
     committed = _require_decimal(committed_gross_notional, "committed_gross_notional")
     addition = _require_decimal(proposed_addition, "proposed_addition")
     if committed < ZERO or addition <= ZERO:
@@ -118,11 +127,7 @@ def validate_asset_exposure(committed_gross_notional: Decimal, proposed_addition
 
 
 def gross_sell_notional_for_net_target(fee_inclusive_cost_basis: Decimal) -> Decimal:
-    """Gross sale quote needed to net +1.74% after the estimated sell fee.
-
-    The supplied cost basis must already include buy fees. Sell fees are then
-    removed from gross proceeds before comparing against the net target.
-    """
+    """Gross sale quote needed to net +1.74% after the estimated sell fee."""
     cost = _require_decimal(fee_inclusive_cost_basis, "fee_inclusive_cost_basis")
     if cost <= ZERO:
         raise ValueError("fee-inclusive cost basis must be positive")
