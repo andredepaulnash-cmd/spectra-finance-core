@@ -146,3 +146,20 @@ def test_fragment_policy_rejects_more_than_two_active_by_default():
     assert policy.max_active_fragments_per_position == 2
     with pytest.raises(ValueError):
         AdaptiveVCAPPolicy(fragment_count=5, max_active_fragments_per_position=3)
+
+
+
+def test_adaptive_vcap_policy_loads_validated_environment(monkeypatch):
+    monkeypatch.setenv("SPECTRA_VCAP_FRAGMENT_COUNT", "4")
+    monkeypatch.setenv("SPECTRA_VCAP_MAX_ACTIVE_FRAGMENTS_PER_POSITION", "2")
+    monkeypatch.setenv("SPECTRA_VCAP_BASE_QUOTE", "25")
+    policy = AdaptiveVCAPPolicy.from_env()
+    assert policy.fragment_count == 4
+    assert policy.max_active_fragments_per_position == 2
+    assert policy.base_quote == D("25")
+
+
+def test_adaptive_vcap_policy_rejects_more_than_two_active_fragments(monkeypatch):
+    monkeypatch.setenv("SPECTRA_VCAP_MAX_ACTIVE_FRAGMENTS_PER_POSITION", "3")
+    with pytest.raises(ValueError):
+        AdaptiveVCAPPolicy.from_env()
