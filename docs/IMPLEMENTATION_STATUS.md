@@ -17,12 +17,13 @@
 
 | Run | Commit | Result | Evidence |
 |---|---|---|---|
+| 44184832806 | `b8eaf1a7bae8251bdf5018177144ecf6fc860574` | PASS — compileall plus 20 unit tests | https://github.com/andredepaulnash-cmd/spectra-finance-core/actions/runs/44184832806 |
 | 44184622202 | `0bf11d0ba2d7ebccfc4972c1edb5278d25dcb175` | PASS — compileall plus 14 unit tests | https://github.com/andredepaulnash-cmd/spectra-finance-core/actions/runs/44184622202 |
 | 44184585173 | intermediate edit | FAIL | superseded; malformed intermediate source edit |
 | 44184599895 | intermediate edit | FAIL | superseded; malformed intermediate source edit |
 | 44184608546 | `7ff1a43232c2806dafa9725ea9ccc72d5a9d438d` | PASS — initial policy/safety tests | https://github.com/andredepaulnash-cmd/spectra-finance-core/actions/runs/44184608546 |
 
-The 14-test passing run predates the shard module. The shard module and `test_alpha2_shards.py` have been committed after that run; their CI status is **NOT YET VERIFIED**. No shard test is counted as passing yet.
+The later run 44184832806 includes the shard module and all current Alpha 2.0 tests: **20 tests passed, 0 failed, 0 skipped**. The exact names are recorded in the workflow log. This is still unit-level evidence only.
 
 ## Not yet implemented or verified
 - Durable, transactional CapitalGovernor and authorization receipts.
