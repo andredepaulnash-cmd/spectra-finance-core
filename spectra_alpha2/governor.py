@@ -545,6 +545,252 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
+
+    def authorize_exit(
+        self,
+        lot_id: str,
+        *,
+        quantity: Decimal,
+        limit_price: Decimal,
+        idempotency_key: str,
+    ) -> ExitAuthorization:
+        """Reserve a lot quantity for a fee-aware +1.74% net take-profit sell."""
+        self._assert_paper()
+        qty=self._positive(quantity,"quantity")
+        price=self._positive(limit_price,"limit_price")
+        if not idempotency_key:
+            raise ValueError("idempotency_key is required")
+        now=time.time()
+        authorization_id=str(uuid.uuid4())
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                lot=conn.execute("SELECT * FROM position_lots WHERE lot_id=?",(lot_id,)).fetchone()
+                if lot is None or lot["status"] != "ACTIVE":
+                    raise CapitalDenied("only an active lot can receive an exit authorization")
+                remaining=Decimal(lot["remaining_quantity"])
+                reserved_exit=Decimal(lot["reserved_exit_quantity"])
+                available=remaining-reserved_exit
+                if qty>available:
+                    raise CapitalDenied("exit quantity exceeds unreserved remaining lot quantity")
+                basis=Decimal(lot["remaining_cost_basis_quote"])*qty/remaining
+                required_gross=gross_sell_notional_for_net_target(basis)
+                minimum_price=required_gross/qty
+                if price<minimum_price:
+                    raise CapitalDenied("sell limit price does not achieve the +1.74% net take-profit after fees")
+                expected_gross=qty*price
+                fee_reserve=expected_gross*SELL_FEE_RATE*Decimal("1.05")
+                conn.execute(
+                    "UPDATE position_lots SET reserved_exit_quantity=?,updated_at=? WHERE lot_id=?",
+                    (str(reserved_exit+qty),now,lot_id),
+                )
+                conn.execute(
+                    """INSERT INTO exit_authorizations
+                    (authorization_id,idempotency_key,position_id,asset_id,lot_id,quantity,
+                     minimum_price,expected_gross_proceeds,fee_reserve,status,expires_at,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (authorization_id,idempotency_key,lot["position_id"],lot["asset_id"],lot_id,
+                     str(qty),str(minimum_price),str(expected_gross),str(fee_reserve),
+                     ReservationStatus.RESERVED.value,now+self.reservation_ttl_seconds,now,now),
+                )
+                self._event(conn,"EXIT_QUANTITY_RESERVED",authorization_id,{
+                    "lot_id":lot_id,"quantity":str(qty),"minimum_price":str(minimum_price),
+                    "expected_gross_proceeds":str(expected_gross),
+                })
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return ExitAuthorization(
+            authorization_id,idempotency_key,lot["position_id"],lot["asset_id"],lot_id,
+            qty,minimum_price,expected_gross,fee_reserve,
+        )
+
+    def consume_exit_authorization(
+        self,
+        authorization_id: str,
+        *,
+        idempotency_key: str,
+        connector: str,
+    ) -> ExitAuthorization:
+        self._assert_paper()
+        try:
+            self.safety.validate_order_boundary(connector,authorization_id)
+        except Exception as exc:
+            raise CapitalDenied(str(exc)) from exc
+        if connector != PAPER_CONNECTOR:
+            raise CapitalDenied("only kraken_paper_trade is permitted")
+        now=time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                row=conn.execute("SELECT * FROM exit_authorizations WHERE authorization_id=?",(authorization_id,)).fetchone()
+                if row is None or row["status"] != ReservationStatus.RESERVED.value:
+                    raise CapitalDenied("exit authorization is unknown or already consumed")
+                if row["idempotency_key"] != idempotency_key:
+                    raise CapitalDenied("exit authorization idempotency key mismatch")
+                if row["expires_at"]<now:
+                    raise CapitalDenied("exit authorization expired")
+                conn.execute("UPDATE exit_authorizations SET status=?,updated_at=? WHERE authorization_id=?",(ReservationStatus.SUBMITTED.value,now,authorization_id))
+                self._event(conn,"EXIT_AUTHORIZATION_CONSUMED",authorization_id,{"connector":connector})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return ExitAuthorization(
+            row["authorization_id"],row["idempotency_key"],row["position_id"],row["asset_id"],
+            row["lot_id"],Decimal(row["quantity"]),Decimal(row["minimum_price"]),
+            Decimal(row["expected_gross_proceeds"]),Decimal(row["fee_reserve"]),connector,
+        )
+
+    def issue_exit_dispatch_receipt(
+        self,
+        authorization_id: str,
+        *,
+        request_body: dict,
+        now: float,
+        ttl_seconds: int=30,
+    ):
+        self._assert_paper()
+        from .dispatch_receipt import _issue_executor_dispatch_receipt
+        with self._connect() as conn:
+            row=conn.execute("SELECT * FROM exit_authorizations WHERE authorization_id=?",(authorization_id,)).fetchone()
+        if row is None or row["status"] != ReservationStatus.SUBMITTED.value:
+            raise CapitalDenied("a submitted CapitalGovernor exit authorization is required")
+        if request_body.get("account_name")!="master_account" or request_body.get("connector_name")!=PAPER_CONNECTOR:
+            raise CapitalDenied("exit order is restricted to the master Kraken paper account")
+        if request_body.get("trading_pair")!=row["asset_id"]:
+            raise CapitalDenied("exit market does not match the authorized lot")
+        if request_body.get("trade_type")!="SELL" or request_body.get("position_action")!="OPEN":
+            raise CapitalDenied("exit authorization requires a Kraken spot SELL order")
+        if request_body.get("order_type")!="LIMIT":
+            raise CapitalDenied("exit authorization requires a LIMIT order")
+        amount=Decimal(str(request_body.get("amount")))
+        price=Decimal(str(request_body.get("price")))
+        if amount != Decimal(row["quantity"]) or price < Decimal(row["minimum_price"]):
+            raise CapitalDenied("sell quantity or limit price differs from the authorized take-profit")
+        return _issue_executor_dispatch_receipt(
+            request_body=request_body,proposal_id=authorization_id,intent="EXIT",
+            amount_quote=Decimal(row["expected_gross_proceeds"]),now=now,
+            ttl_seconds=ttl_seconds,operation="place_trade",method="POST",
+            path="/trading/orders",account_name="master_account",
+            connector_name=PAPER_CONNECTOR,trading_pair=row["asset_id"],
+        )
+
+    def bind_exit_order_id(self, authorization_id: str, *, order_id: str) -> None:
+        self._assert_paper()
+        if not order_id:
+            raise ValueError("order_id is required")
+        now=time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                row=conn.execute("SELECT status,order_id FROM exit_authorizations WHERE authorization_id=?",(authorization_id,)).fetchone()
+                if row is None or row["status"] != ReservationStatus.SUBMITTED.value:
+                    raise CapitalDenied("exit order ID can only bind to a submitted exit authorization")
+                if row["order_id"] and row["order_id"]!=order_id:
+                    raise CapitalDenied("exit authorization is already bound to another order")
+                conn.execute("UPDATE exit_authorizations SET order_id=?,updated_at=? WHERE authorization_id=?",(order_id,now,authorization_id))
+                self._event(conn,"EXIT_ORDER_ID_BOUND",authorization_id,{"order_id":order_id})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+
+    def settle_exit_fill(
+        self,
+        authorization_id: str,
+        *,
+        actual_quantity: Decimal,
+        average_price: Decimal,
+        actual_fee: Decimal,
+    ) -> Decimal:
+        """Settle a terminal sell order and credit only actual net proceeds."""
+        self._assert_paper()
+        qty=self._positive(actual_quantity,"actual_quantity")
+        price=self._positive(average_price,"average_price")
+        if not isinstance(actual_fee,Decimal) or not actual_fee.is_finite() or actual_fee<ZERO:
+            raise ValueError("actual_fee must be a finite non-negative Decimal")
+        gross=qty*price
+        if actual_fee>gross:
+            raise CapitalDenied("sell fee exceeds gross proceeds")
+        now=time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                auth=conn.execute("SELECT * FROM exit_authorizations WHERE authorization_id=?",(authorization_id,)).fetchone()
+                if auth is None or auth["status"] != ReservationStatus.SUBMITTED.value or not auth["order_id"]:
+                    raise CapitalDenied("submitted exit authorization with bound order ID is required")
+                authorized_qty=Decimal(auth["quantity"])
+                if qty>authorized_qty:
+                    raise CapitalDenied("actual sell quantity exceeds authorized quantity")
+                lot=conn.execute("SELECT * FROM position_lots WHERE lot_id=?",(auth["lot_id"],)).fetchone()
+                remaining=Decimal(lot["remaining_quantity"])
+                basis=Decimal(lot["remaining_cost_basis_quote"])
+                allocated_basis=basis*qty/remaining
+                minimum_gross=gross_sell_notional_for_net_target(allocated_basis)
+                if gross<minimum_gross:
+                    raise CapitalDenied("settled sell fill does not meet the +1.74% net take-profit")
+                if actual_fee>Decimal(auth["fee_reserve"]):
+                    raise CapitalDenied("actual sell fee exceeds reserved fee allowance")
+                reserved_exit=Decimal(lot["reserved_exit_quantity"])-authorized_qty
+                remaining_qty=remaining-qty
+                remaining_basis=basis-allocated_basis
+                net=gross-actual_fee
+                realized=net-allocated_basis
+                lot_status="RESOLVED" if remaining_qty==ZERO else "ACTIVE"
+                conn.execute(
+                    """UPDATE position_lots SET status=?,reserved_exit_quantity=?,remaining_quantity=?,
+                    remaining_cost_basis_quote=?,gross_sell_proceeds=?,sell_fee_quote=?,realized_pnl_quote=?,updated_at=?
+                    WHERE lot_id=?""",
+                    (lot_status,str(reserved_exit),str(remaining_qty),str(remaining_basis),
+                     str(Decimal(lot["gross_sell_proceeds"])+gross),
+                     str(Decimal(lot["sell_fee_quote"])+actual_fee),
+                     str(Decimal(lot["realized_pnl_quote"])+realized),now,auth["lot_id"]),
+                )
+                pool=CapitalPool(lot["pool_id"])
+                poolrow=conn.execute("SELECT recovered FROM pools WHERE pool_id=?",(pool.value,)).fetchone()
+                conn.execute("UPDATE pools SET recovered=? WHERE pool_id=?",(str(Decimal(poolrow["recovered"])+net),pool.value))
+                conn.execute(
+                    """UPDATE exit_authorizations SET status=?,actual_quantity=?,actual_gross=?,actual_fee=?,updated_at=?
+                    WHERE authorization_id=?""",
+                    (ReservationStatus.SETTLED.value,str(qty),str(gross),str(actual_fee),now,authorization_id),
+                )
+                if lot_status=="RESOLVED":
+                    conn.execute("UPDATE vcap_shards SET status='RESOLVED',updated_at=? WHERE shard_id=?",(now,auth["lot_id"]))
+                    conn.execute("UPDATE position_steps SET status='RESOLVED',updated_at=? WHERE position_id=? AND step_id=?",(now,lot["position_id"],lot["action_id"]))
+                self._event(conn,"AUTHORIZED_EXIT_SETTLED",authorization_id,{
+                    "lot_id":auth["lot_id"],"quantity":str(qty),"gross_proceeds":str(gross),
+                    "sell_fee_quote":str(actual_fee),"net_proceeds_credited":str(net),
+                    "realized_pnl_quote":str(realized),"remaining_quantity":str(remaining_qty),
+                })
+                conn.commit()
+                return realized
+            except Exception:
+                conn.rollback()
+                raise
+
+    def release_exit_authorization(self,authorization_id: str,*,confirmed_no_fill: bool=False) -> None:
+        self._assert_paper()
+        now=time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                auth=conn.execute("SELECT * FROM exit_authorizations WHERE authorization_id=?",(authorization_id,)).fetchone()
+                if auth is None or auth["status"] not in {ReservationStatus.RESERVED.value,ReservationStatus.SUBMITTED.value}:
+                    raise CapitalDenied("exit authorization is not releasable")
+                if auth["status"]==ReservationStatus.SUBMITTED.value and not confirmed_no_fill:
+                    raise CapitalDenied("submitted exit order must be confirmed unfilled/cancelled before release")
+                lot=conn.execute("SELECT reserved_exit_quantity FROM position_lots WHERE lot_id=?",(auth["lot_id"],)).fetchone()
+                new_reserved=Decimal(lot["reserved_exit_quantity"])-Decimal(auth["quantity"])
+                conn.execute("UPDATE position_lots SET reserved_exit_quantity=?,updated_at=? WHERE lot_id=?",(str(new_reserved),now,auth["lot_id"]))
+                conn.execute("UPDATE exit_authorizations SET status=?,updated_at=? WHERE authorization_id=?",(ReservationStatus.RELEASED.value,now,authorization_id))
+                self._event(conn,"EXIT_AUTHORIZATION_RELEASED",authorization_id,{"confirmed_no_fill":confirmed_no_fill})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+
     def settle_fill(
         self,
         authorization_id: str,
