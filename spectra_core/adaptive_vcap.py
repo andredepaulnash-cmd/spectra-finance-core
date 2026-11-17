@@ -48,6 +48,8 @@ class AdaptiveVCAPPolicy:
     fragment_count: int = 5
     max_active_fragments_per_position: int = 2
     base_quote: Decimal = Decimal("20")
+    pre_vcap_dca_triggers_bps: tuple[int, ...] = PRE_VCAP_DCA_TRIGGERS_BPS
+    pre_vcap_dca_quote: Decimal = Decimal("20")
     fat1_multipliers: tuple[Decimal, ...] = (
         Decimal("1"),
         Decimal("2"),
@@ -84,8 +86,33 @@ class AdaptiveVCAPPolicy:
             or not 1 <= self.max_active_fragments_per_position <= self.fragment_count
         ):
             raise ValueError("VCAP active fragment limit must fit the fragment count")
-        if not isinstance(self.base_quote, Decimal) or self.base_quote <= ZERO:
+        if not isinstance(self.base_quote, Decimal) or not self.base_quote.is_finite() or self.base_quote <= ZERO:
             raise ValueError("VCAP base_quote must be a positive Decimal")
+        if (
+            not isinstance(self.pre_vcap_dca_triggers_bps, tuple)
+            or not self.pre_vcap_dca_triggers_bps
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value <= 0
+                or value >= self.activation_drawdown_bps
+                for value in self.pre_vcap_dca_triggers_bps
+            )
+            or any(
+                right <= left
+                for left, right in zip(
+                    self.pre_vcap_dca_triggers_bps,
+                    self.pre_vcap_dca_triggers_bps[1:],
+                )
+            )
+        ):
+            raise ValueError("pre-VCAP DCA triggers must be increasing and below VCAP activation")
+        if (
+            not isinstance(self.pre_vcap_dca_quote, Decimal)
+            or not self.pre_vcap_dca_quote.is_finite()
+            or self.pre_vcap_dca_quote <= ZERO
+        ):
+            raise ValueError("pre-VCAP DCA quote must be a positive Decimal")
         self._validate_ladder(self.fat1_multipliers, "FAT 1")
         self._validate_ladder(self.skinny_multipliers, "SKINNY")
         self._validate_ladder(self.fat2_multipliers, "FAT 2")
@@ -140,6 +167,16 @@ class AdaptiveVCAPPolicy:
             except Exception as exc:
                 raise ValueError(f"{name} must be a comma-separated Decimal ladder") from exc
 
+        base_quote = decimal("SPECTRA_VCAP_BASE_QUOTE", "20")
+        raw_triggers = os.getenv(
+            "SPECTRA_VCAP_PRE_DCA_TRIGGERS_BPS",
+            ",".join(str(value) for value in PRE_VCAP_DCA_TRIGGERS_BPS),
+        )
+        try:
+            pre_vcap_triggers = tuple(int(item.strip()) for item in raw_triggers.split(",") if item.strip())
+        except ValueError as exc:
+            raise ValueError("SPECTRA_VCAP_PRE_DCA_TRIGGERS_BPS must be comma-separated integers") from exc
+
         return cls(
             activation_drawdown_bps=integer(
                 "SPECTRA_VCAP_ACTIVATION_DRAWDOWN_BPS", 777, 1, 10000
@@ -157,7 +194,9 @@ class AdaptiveVCAPPolicy:
             max_active_fragments_per_position=integer(
                 "SPECTRA_VCAP_MAX_ACTIVE_FRAGMENTS_PER_POSITION", 2, 1, 2
             ),
-            base_quote=decimal("SPECTRA_VCAP_BASE_QUOTE", "20"),
+            base_quote=base_quote,
+            pre_vcap_dca_triggers_bps=pre_vcap_triggers,
+            pre_vcap_dca_quote=decimal("SPECTRA_VCAP_PRE_DCA_QUOTE", str(base_quote)),
             fat1_multipliers=ladder(
                 "SPECTRA_VCAP_FAT1_MULTIPLIERS",
                 (Decimal("1"), Decimal("2"), Decimal("4")),
