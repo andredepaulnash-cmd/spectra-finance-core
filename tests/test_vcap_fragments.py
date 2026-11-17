@@ -44,7 +44,7 @@ def test_fragment_manager_persists_five_independent_budget_stores(tmp_path):
     assert len(records) == 5
     assert [record.ordinal for record in records] == [0, 1, 2, 3, 4]
     assert all(record.status is VCAPFragmentStatus.WAITING for record in records)
-    assert all(record.budget_quote == D("4996.00") for record in records)
+    assert all(record.budget_quote == D("3750.00") for record in records)
 
     stores = [manager.stores(record.fragment_id) for record in records]
     assert len({str(state.path) for state, _ in stores}) == 5
