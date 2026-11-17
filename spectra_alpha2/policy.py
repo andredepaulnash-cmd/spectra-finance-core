@@ -23,7 +23,7 @@ MAX_ACTIVE_VCAP_SHARDS_PER_ASSET = 2
 
 
 class VCAPPhase(StrEnum):
-    FAT_1 = "FAT_1"
+    DCA = "DCA"\n    FAT_1 = "FAT_1"
     SKINNY = "SKINNY"
     FAT_2 = "FAT_2"
     MANUAL_REVIEW = "MANUAL_REVIEW"
@@ -38,7 +38,7 @@ class LadderStep:
 
 
 DCA_STEPS: tuple[LadderStep, ...] = (
-    LadderStep("DCA_1", Decimal("-0.0274"), DCA_ADDITION_NOTIONAL, VCAPPhase.FAT_1),
+    LadderStep("DCA_1", Decimal("-0.0274"), DCA_ADDITION_NOTIONAL, VCAPPhase.DCA),
     LadderStep("DCA_2", Decimal("-0.0444"), DCA_ADDITION_NOTIONAL, VCAPPhase.FAT_1),
     LadderStep("DCA_3", Decimal("-0.0674"), DCA_ADDITION_NOTIONAL, VCAPPhase.FAT_1),
 )
@@ -91,9 +91,9 @@ def vcap_phase_for_drawdown(drawdown: Decimal) -> VCAPPhase | None:
     drawdown = _require_decimal(drawdown, "drawdown")
     if drawdown <= VCAP_OUTER_BOUNDARY:
         return VCAPPhase.MANUAL_REVIEW
-    if drawdown <= Decimal("-0.1724"):
+    if drawdown <= Decimal("-0.1777"):
         return VCAPPhase.FAT_2
-    if drawdown <= Decimal("-0.1174"):
+    if drawdown < Decimal("-0.1174"):
         return VCAPPhase.SKINNY
     if drawdown <= Decimal("-0.0777"):
         return VCAPPhase.FAT_1
