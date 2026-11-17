@@ -934,6 +934,8 @@ def configure_entry_runtime(env, monkeypatch):
     )
     monkeypatch.setattr(executor_create.settings, "agent_slug", "spectra")
     monkeypatch.setattr(executor_create.settings, "paper_only", True)
+    # Keep the synthetic venue timestamp and the protected BUY validator on the same clock.
+    monkeypatch.setattr(executor_create, "time", time)
     monkeypatch.setattr(executor_create, "get_breaker_mode", lambda: BreakerMode.NORMAL)
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: env[1])
     monkeypatch.setattr(executor_create, "get_dust_lifecycle", lambda **kwargs: env[3])
