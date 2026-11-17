@@ -938,6 +938,7 @@ def configure_entry_runtime(env, monkeypatch):
     monkeypatch.setattr(executor_create, "time", time)
     monkeypatch.setattr(executor_create, "get_breaker_mode", lambda: BreakerMode.NORMAL)
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: env[1])
+    monkeypatch.setattr(executor_create, "get_economic_position_ledger", lambda: env[0])
     monkeypatch.setattr(executor_create, "get_dust_lifecycle", lambda **kwargs: env[3])
     monkeypatch.setattr(
         kraken_authorization, "get_dust_lifecycle", lambda **kwargs: env[3]
