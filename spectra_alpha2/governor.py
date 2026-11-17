@@ -485,11 +485,45 @@ class CapitalGovernor:
             trading_pair=row["asset_id"],
         )
 
-    def settle_fill(self, authorization_id: str, *, actual_gross_notional: Decimal, actual_fee: Decimal) -> None:
+
+    def bind_order_id(self, authorization_id: str, *, order_id: str) -> None:
+        """Persist the Hummingbot order ID before any fill reconciliation."""
         self._assert_paper()
-        actual = self._positive(actual_gross_notional,"actual_gross_notional")
+        if not order_id or not str(order_id).strip():
+            raise ValueError("order_id is required")
+        now=time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                row=conn.execute("SELECT status,order_id FROM reservations WHERE reservation_id=?",(authorization_id,)).fetchone()
+                if row is None or row["status"] != ReservationStatus.SUBMITTED.value:
+                    raise CapitalDenied("order ID can only be bound to a submitted authorization")
+                if row["order_id"] and row["order_id"] != order_id:
+                    raise CapitalDenied("authorization is already bound to a different Hummingbot order")
+                conn.execute("UPDATE reservations SET order_id=?,updated_at=? WHERE reservation_id=?",(order_id,now,authorization_id))
+                self._event(conn,"ORDER_ID_BOUND",authorization_id,{"order_id":order_id})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+
+    def settle_fill(
+        self,
+        authorization_id: str,
+        *,
+        actual_gross_notional: Decimal,
+        actual_fee: Decimal,
+        actual_quantity: Decimal,
+        average_price: Decimal,
+    ) -> None:
+        self._assert_paper()
+        actual=self._positive(actual_gross_notional,"actual_gross_notional")
+        quantity=self._positive(actual_quantity,"actual_quantity")
+        price=self._positive(average_price,"average_price")
         if not isinstance(actual_fee,Decimal) or not actual_fee.is_finite() or actual_fee < ZERO:
             raise ValueError("actual_fee must be a finite non-negative Decimal")
+        if abs(quantity*price-actual) > max(Decimal("0.00000001"),actual*Decimal("0.00000001")):
+            raise CapitalDenied("fill quantity and average price do not reconcile to gross notional")
         now=time.time()
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -497,6 +531,8 @@ class CapitalGovernor:
                 row=conn.execute("SELECT * FROM reservations WHERE reservation_id=?",(authorization_id,)).fetchone()
                 if row is None or row["status"] != ReservationStatus.SUBMITTED.value:
                     raise CapitalDenied("only a submitted authorization can be settled")
+                if not row["order_id"]:
+                    raise CapitalDenied("Hummingbot order ID must be persisted before fill settlement")
                 reserved_gross=Decimal(row["gross_notional"])
                 fee_reserve=Decimal(row["fee_reserve"])
                 if actual > reserved_gross or actual_fee > fee_reserve:
@@ -509,18 +545,27 @@ class CapitalGovernor:
                 position=conn.execute("SELECT gross_committed FROM positions WHERE position_id=?",(row["position_id"],)).fetchone()
                 adjusted=Decimal(position["gross_committed"])-reserved_gross+actual
                 conn.execute("UPDATE positions SET gross_committed=?,status=CASE WHEN ?='INITIAL' THEN 'OPEN' ELSE status END,updated_at=? WHERE position_id=?",(str(adjusted),row["action_id"],now,row["position_id"]))
+                lot=conn.execute("SELECT lot_id FROM position_lots WHERE reservation_id=?",(authorization_id,)).fetchone()
+                if lot is None:
+                    raise CapitalDenied("independent position lot is missing for this reservation")
+                lot_status="FILLED" if row["action_id"].startswith("VCAP_") else "ACTIVE"
+                conn.execute(
+                    """UPDATE position_lots SET status=?,gross_buy_notional=?,buy_fee_quote=?,
+                    filled_quantity=?,remaining_quantity=?,remaining_cost_basis_quote=?,updated_at=?
+                    WHERE reservation_id=?""",
+                    (lot_status,str(actual),str(actual_fee),str(quantity),str(quantity),str(actual+actual_fee),now,authorization_id),
+                )
                 conn.execute(
                     "UPDATE reservations SET status=?,actual_gross=?,actual_fee=?,updated_at=? WHERE reservation_id=?",
                     (ReservationStatus.SETTLED.value,str(actual),str(actual_fee),now,authorization_id),
                 )
                 conn.execute("UPDATE vcap_shards SET status='FILLED',updated_at=? WHERE reservation_id=?",(now,authorization_id))
                 conn.execute("UPDATE position_steps SET status='FILLED',updated_at=? WHERE reservation_id=?",(now,authorization_id))
-                self._event(conn,"FILL_SETTLED",authorization_id,{"actual_gross_notional":str(actual),"actual_fee":str(actual_fee),"pool":pool.value})
+                self._event(conn,"FILL_SETTLED",authorization_id,{"actual_gross_notional":str(actual),"actual_fee":str(actual_fee),"actual_quantity":str(quantity),"average_price":str(price),"pool":pool.value})
                 conn.commit()
             except Exception:
                 conn.rollback()
                 raise
-
 
     def activate_vcap_shard(self, shard_id: str) -> None:
         self._assert_paper()
