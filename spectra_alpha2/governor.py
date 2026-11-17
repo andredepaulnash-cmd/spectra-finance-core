@@ -386,6 +386,64 @@ class CapitalGovernor:
             row["action_id"],CapitalPool(row["pool_id"]),Decimal(row["gross_notional"]),Decimal(row["fee_reserve"]),connector
         )
 
+
+    def issue_dispatch_receipt(
+        self,
+        authorization_id: str,
+        *,
+        request_body: dict,
+        now: float,
+        ttl_seconds: int = 30,
+    ):
+        """Sign an order only after its matching Governor reservation is submitted."""
+        self._assert_paper()
+        from .dispatch_receipt import issue_executor_dispatch_receipt
+
+        if not isinstance(request_body, dict):
+            raise CapitalDenied("paper order body must be an object")
+        with self._connect() as conn:
+            row=conn.execute(
+                "SELECT * FROM reservations WHERE reservation_id=?",
+                (authorization_id,),
+            ).fetchone()
+        if row is None or row["status"] != ReservationStatus.SUBMITTED.value:
+            raise CapitalDenied("a submitted CapitalGovernor reservation is required to sign an order")
+        if request_body.get("account_name") != "master_account":
+            raise CapitalDenied("only the master paper account is authorized")
+        if request_body.get("connector_name") != PAPER_CONNECTOR:
+            raise CapitalDenied("only kraken_paper_trade is authorized")
+        if request_body.get("trading_pair") != row["asset_id"]:
+            raise CapitalDenied("order market does not match the reserved asset")
+        if request_body.get("trade_type") != "BUY" or request_body.get("position_action") != "OPEN":
+            raise CapitalDenied("this reservation authorizes only an opening paper buy")
+        if request_body.get("order_type") != "LIMIT" or request_body.get("price") in (None, ""):
+            raise CapitalDenied("Alpha 2.0 entries/recovery must use a marketable LIMIT order")
+        try:
+            base_amount=Decimal(str(request_body.get("amount")))
+            limit_price=Decimal(str(request_body.get("price")))
+        except Exception as exc:
+            raise CapitalDenied("order amount and limit price must be decimal values") from exc
+        if not base_amount.is_finite() or base_amount <= ZERO or not limit_price.is_finite() or limit_price <= ZERO:
+            raise CapitalDenied("order amount and limit price must be positive")
+        quote_notional=base_amount*limit_price
+        if quote_notional > Decimal(row["gross_notional"]):
+            raise CapitalDenied("order quote notional exceeds the reserved CapitalGovernor amount")
+        intent="ENTRY" if row["action_id"] == "INITIAL" else "RECOVERY"
+        return issue_executor_dispatch_receipt(
+            request_body=request_body,
+            proposal_id=authorization_id,
+            intent=intent,
+            amount_quote=Decimal(row["gross_notional"]),
+            now=now,
+            ttl_seconds=ttl_seconds,
+            operation="place_trade",
+            method="POST",
+            path="/trading/orders",
+            account_name="master_account",
+            connector_name=PAPER_CONNECTOR,
+            trading_pair=row["asset_id"],
+        )
+
     def settle_fill(self, authorization_id: str, *, actual_gross_notional: Decimal, actual_fee: Decimal) -> None:
         self._assert_paper()
         actual = self._positive(actual_gross_notional,"actual_gross_notional")
