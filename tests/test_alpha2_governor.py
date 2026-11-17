@@ -145,7 +145,15 @@ class CapitalGovernorTests(unittest.TestCase):
         }
         with self.assertRaises(CapitalDenied):
             self.gov.issue_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
-        receipt=self.gov.issue_exit_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
+        private=Ed25519PrivateKey.generate()
+        raw=private.private_bytes(serialization.Encoding.Raw,serialization.PrivateFormat.Raw,serialization.NoEncryption())
+        env={
+            "SPECTRA_PAPER_ONLY":"true","SPECTRA_ALLOW_LIVE_EXECUTION":"false",
+            "SPECTRA_DISPATCH_POLICY_VERSION":"spectra-alpha2-v1",
+            "SPECTRA_DISPATCH_PRIVATE_KEY":base64.urlsafe_b64encode(raw).decode().rstrip("="),
+        }
+        with patch.dict(os.environ,env,clear=True):
+            receipt=self.gov.issue_exit_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
         self.assertTrue(receipt.token)
         self.gov.bind_exit_order_id(auth.authorization_id,order_id="paper-exit-one")
         realized=self.gov.settle_exit_fill(
