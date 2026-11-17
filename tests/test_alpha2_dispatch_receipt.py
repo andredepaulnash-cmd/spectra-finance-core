@@ -69,7 +69,7 @@ def test_dispatch_signing_fails_closed_without_paper_flags(monkeypatch):
     setup_signing(monkeypatch)
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION","true")
     with pytest.raises(RuntimeError,match="SPECTRA_ALLOW_LIVE_EXECUTION must be exactly"):
-        receipts.issue_executor_dispatch_receipt(
+        receipts._issue_executor_dispatch_receipt(
             request_body=trade_body(),proposal_id="reservation-1",intent="ENTRY",
             amount_quote="20",now=time.time(),operation="place_trade",
         )
@@ -80,14 +80,14 @@ def test_live_connector_and_non_usdt_market_receipts_are_rejected(monkeypatch):
     body=trade_body()
     body["connector_name"]="kraken"
     with pytest.raises(ValueError,match="restricted to kraken_paper_trade"):
-        receipts.issue_executor_dispatch_receipt(
+        receipts._issue_executor_dispatch_receipt(
             request_body=body,proposal_id="reservation-1",intent="ENTRY",
             amount_quote="20",now=time.time(),operation="place_trade",
         )
     body=trade_body()
     body["trading_pair"]="BTC-USD"
     with pytest.raises(ValueError,match="USDT-quoted"):
-        receipts.issue_executor_dispatch_receipt(
+        receipts._issue_executor_dispatch_receipt(
             request_body=body,proposal_id="reservation-1",intent="ENTRY",
             amount_quote="20",now=time.time(),operation="place_trade",
         )
@@ -95,7 +95,7 @@ def test_live_connector_and_non_usdt_market_receipts_are_rejected(monkeypatch):
 
 def test_cancel_receipt_binds_account_connector_order_and_intent(monkeypatch):
     private=setup_signing(monkeypatch)
-    receipt=receipts.issue_executor_dispatch_receipt(
+    receipt=receipts._issue_executor_dispatch_receipt(
         request_body={},proposal_id="reservation-cancel-1",intent="CANCEL",
         amount_quote="20",now=time.time(),operation="cancel_order",
         method="POST",
@@ -113,7 +113,7 @@ def test_cancel_receipt_binds_account_connector_order_and_intent(monkeypatch):
 def test_cancel_receipt_rejects_wrong_connector(monkeypatch):
     setup_signing(monkeypatch)
     with pytest.raises(ValueError,match="only Kraken paper orders"):
-        receipts.issue_executor_dispatch_receipt(
+        receipts._issue_executor_dispatch_receipt(
             request_body={},proposal_id="reservation-cancel-1",intent="CANCEL",
             amount_quote="20",now=time.time(),operation="cancel_order",
             method="POST",
