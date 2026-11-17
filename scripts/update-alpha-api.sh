@@ -121,7 +121,7 @@ for source in "${API_SOURCES[@]}"; do
   fi
 
   approved_blob="${APPROVED_LEGACY_BLOBS[$source]:-}"
-  if [[ "$source" == "services/unified_connector_service.py" && "$worktree_blob" == "a35c432e74d829b02c8c153b334e20abcd10dd2b" ]]; then
+  if [[ "$source" == "services/unified_connector_service.py" && ( "$worktree_blob" == "a35c432e74d829b02c8c153b334e20abcd10dd2b" || "$worktree_blob" == "5cb201c8b8c3a3abf958832a8f92107636850a37" ) ]]; then
     approved_blob="$worktree_blob"
   fi
   if [[ -n "$approved_blob" && "$worktree_blob" == "$approved_blob" ]]; then
@@ -135,7 +135,7 @@ done
 # Verify the exact reviewed API source blobs. This is deterministic and avoids
 # shell text-search, pager, locale, and pipefail behavior entirely.
 declare -A EXPECTED_UPSTREAM_BLOBS=(
-  ["services/unified_connector_service.py"]="5cb201c8b8c3a3abf958832a8f92107636850a37"
+  ["services/unified_connector_service.py"]="bb80be12269c8bb185302b05c5cf16f7e5ac258d"
   ["services/market_data_service.py"]="95e8e31c5e9be5bb2945b80038419b88b35ba41f"
   ["services/orders_recorder.py"]="b0812c513c7a393cc825a732450c60a6617fe659"
   ["deps.py"]="254ee28a495ef2354b40b5f4118b854b28d1b67b"
@@ -445,7 +445,7 @@ declare -A CORE_PYTHON_NEW_BLOBS=(
   ["mcp_servers/hummingbot_api/tools/runtime_scheduler.py"]="3481b486fc820eef7fff9381212dfa8e72627efd"
   ["spectra_core/execution_policy.py"]="1e37a51dea7a0634a5c1a2e89dd5c9ff08c44592"
   ["spectra_core/capital_governor.py"]="feaf6eeb85afc4f8c43e20fe6f34ffa4540389ac"
-  ["spectra_core/economic_position.py"]="e7fbbdf56cead43c186fa8be923795442fa0e289"
+  ["spectra_core/economic_position.py"]="69a36c98fc53f66208f160c5076bcb9ed06c34fe"
   ["routines/mean_reversion_scanner.py"]="48282fd0a1b616b00c3715de4ee55a3c1c569fdf"
   ["condor/web/routes/market.py"]="bebac174109a7c91a33e5a0698201ffd2ac037b0"
 )
@@ -459,7 +459,7 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["mcp_servers/hummingbot_api/tools/runtime_scheduler.py"]="1709bebcbefc326c19c9d403857cff937144f900"
   ["spectra_core/execution_policy.py"]="403f0e7d229d36231a1fdd88f21eb809aacae2e8"
   ["spectra_core/capital_governor.py"]="d100fc52c8bab80aebf49e1b7a51da21d4d1750e"
-  ["spectra_core/economic_position.py"]="3d63e76d57081c5a9b232d3966b7ef20f975ca8a"
+  ["spectra_core/economic_position.py"]="e7fbbdf56cead43c186fa8be923795442fa0e289"
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
