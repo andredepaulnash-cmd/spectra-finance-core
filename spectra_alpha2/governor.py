@@ -696,12 +696,9 @@ class CapitalGovernor:
         position_id: str,
         *,
         confirmed_all_exits_reconciled: bool = False,
-    ) -> None:
-        """Close a position only after every exit and shard is reconciled.
+    ) -> Decimal:
+        """Close a position only after every lot exit has been reconciled."""
 
-        Sale proceeds are not credited to a capital pool by this method. A
-        separate settlement operation must reconcile actual proceeds first.
-        """
         self._assert_paper()
         if not confirmed_all_exits_reconciled:
             raise CapitalDenied("position closure requires confirmed exit reconciliation")
@@ -745,5 +742,9 @@ class CapitalGovernor:
                 }
             open_count=conn.execute("SELECT COUNT(*) AS n FROM positions WHERE status IN ('RESERVED','OPEN')").fetchone()["n"]
             positions=conn.execute("SELECT COUNT(*) AS n FROM positions").fetchone()["n"]
-            return {"pools":pools,"open_positions":open_count,"total_positions":positions}
+            open_lots=conn.execute("SELECT COUNT(*) AS n FROM position_lots WHERE status IN ('ACTIVE','FILLED')").fetchone()["n"]
+            active_shards=conn.execute("SELECT COUNT(*) AS n FROM vcap_shards WHERE status IN ('RESERVED','SUBMITTED','FILLED','ACTIVE')").fetchone()["n"]
+            realized_rows=conn.execute("SELECT realized_pnl_quote FROM position_lots").fetchall()
+            realized_pnl=sum((Decimal(row["realized_pnl_quote"]) for row in realized_rows),ZERO)
+            return {"pools":pools,"open_positions":open_count,"total_positions":positions,"open_lots":open_lots,"active_vcap_shards":active_shards,"realized_pnl_quote":realized_pnl}
 
