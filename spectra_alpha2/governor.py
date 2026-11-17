@@ -92,7 +92,8 @@ class CapitalGovernor:
                     pool_id TEXT PRIMARY KEY,
                     budget TEXT NOT NULL,
                     reserved TEXT NOT NULL DEFAULT '0',
-                    spent TEXT NOT NULL DEFAULT '0'
+                    spent TEXT NOT NULL DEFAULT '0',
+                    recovered TEXT NOT NULL DEFAULT '0'
                 );
                 CREATE TABLE IF NOT EXISTS positions (
                     position_id TEXT PRIMARY KEY,
@@ -122,6 +123,27 @@ class CapitalGovernor:
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS position_lots (
+                    lot_id TEXT PRIMARY KEY,
+                    position_id TEXT NOT NULL REFERENCES positions(position_id),
+                    asset_id TEXT NOT NULL,
+                    action_id TEXT NOT NULL,
+                    pool_id TEXT NOT NULL REFERENCES pools(pool_id),
+                    reservation_id TEXT NOT NULL UNIQUE REFERENCES reservations(reservation_id),
+                    status TEXT NOT NULL,
+                    gross_buy_notional TEXT NOT NULL DEFAULT '0',
+                    buy_fee_quote TEXT NOT NULL DEFAULT '0',
+                    filled_quantity TEXT NOT NULL DEFAULT '0',
+                    remaining_quantity TEXT NOT NULL DEFAULT '0',
+                    remaining_cost_basis_quote TEXT NOT NULL DEFAULT '0',
+                    gross_sell_proceeds TEXT NOT NULL DEFAULT '0',
+                    sell_fee_quote TEXT NOT NULL DEFAULT '0',
+                    realized_pnl_quote TEXT NOT NULL DEFAULT '0',
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_position_lots_position_status
+                    ON position_lots(position_id,status);
                 CREATE TABLE IF NOT EXISTS position_steps (
                     position_id TEXT NOT NULL REFERENCES positions(position_id),
                     step_id TEXT NOT NULL,
@@ -154,12 +176,12 @@ class CapitalGovernor:
                 """
             )
             conn.execute(
-                "INSERT OR IGNORE INTO pools(pool_id,budget,reserved,spent) VALUES(?,?,?,?)",
-                (CapitalPool.INITIAL.value, str(INITIAL_ENTRY_BUDGET), "0", "0"),
+                "INSERT OR IGNORE INTO pools(pool_id,budget,reserved,spent,recovered) VALUES(?,?,?,?,?)",
+                (CapitalPool.INITIAL.value, str(INITIAL_ENTRY_BUDGET), "0", "0", "0"),
             )
             conn.execute(
-                "INSERT OR IGNORE INTO pools(pool_id,budget,reserved,spent) VALUES(?,?,?,?)",
-                (CapitalPool.RECOVERY.value, str(VCAP_RECOVERY_POOL), "0", "0"),
+                "INSERT OR IGNORE INTO pools(pool_id,budget,reserved,spent,recovered) VALUES(?,?,?,?,?)",
+                (CapitalPool.RECOVERY.value, str(VCAP_RECOVERY_POOL), "0", "0", "0"),
             )
 
     @staticmethod
@@ -177,8 +199,8 @@ class CapitalGovernor:
 
     @staticmethod
     def _available_pool(conn: sqlite3.Connection, pool: CapitalPool) -> Decimal:
-        row = conn.execute("SELECT budget,reserved,spent FROM pools WHERE pool_id=?", (pool.value,)).fetchone()
-        return Decimal(row["budget"]) - Decimal(row["reserved"]) - Decimal(row["spent"])
+        row = conn.execute("SELECT budget,reserved,spent,recovered FROM pools WHERE pool_id=?", (pool.value,)).fetchone()
+        return Decimal(row["budget"]) - Decimal(row["reserved"]) - Decimal(row["spent"]) + Decimal(row["recovered"])
 
     def reserve_initial_position(
         self,
