@@ -16,6 +16,7 @@ class Alpha2PolicyTests(unittest.TestCase):
         self.assertEqual(sum((x.addition for x in DCA_STEPS), Decimal("0")), Decimal("60"))
         self.assertEqual(sum((x.addition for x in VCAP_STEPS), Decimal("0")), Decimal("920"))
         self.assertEqual(MAX_ASSET_GROSS_NOTIONAL, Decimal("1000"))
+        self.assertTrue(all(x.phase == VCAPPhase.DCA for x in DCA_STEPS))
 
     def test_position_target_is_74_and_hard_ceiling_rejects_75th(self):
         self.assertEqual(MAX_OPEN_POSITIONS, 74)
@@ -47,10 +48,13 @@ class Alpha2PolicyTests(unittest.TestCase):
         self.assertIsNone(next_eligible_vcap_step(Decimal("-0.25"), set()))
         self.assertEqual(vcap_phase_for_drawdown(VCAP_OUTER_BOUNDARY), VCAPPhase.MANUAL_REVIEW)
 
-    def test_skinny_and_fat2_boundaries_are_exact(self):
-        self.assertEqual(vcap_phase_for_drawdown(Decimal("-0.1174")), VCAPPhase.SKINNY)
-        self.assertEqual(vcap_phase_for_drawdown(Decimal("-0.1724")), VCAPPhase.FAT_2)
+    def test_phase_boundaries_are_exact(self):
         self.assertEqual(vcap_phase_for_drawdown(Decimal("-0.0777")), VCAPPhase.FAT_1)
+        self.assertEqual(vcap_phase_for_drawdown(Decimal("-0.1174")), VCAPPhase.FAT_1)
+        self.assertEqual(vcap_phase_for_drawdown(Decimal("-0.1175")), VCAPPhase.SKINNY)
+        self.assertEqual(vcap_phase_for_drawdown(Decimal("-0.1724")), VCAPPhase.SKINNY)
+        self.assertEqual(vcap_phase_for_drawdown(Decimal("-0.1777")), VCAPPhase.FAT_2)
+        self.assertEqual(vcap_phase_for_drawdown(Decimal("-0.24")), VCAPPhase.MANUAL_REVIEW)
 
     def test_per_asset_exposure_counts_reservations_and_never_exceeds_cap(self):
         self.assertEqual(validate_asset_exposure(Decimal("980"), Decimal("20")), Decimal("1000"))
