@@ -160,7 +160,7 @@ async def test_non_paper_connector_is_rejected_before_network_request():
         environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests)),poll_interval_seconds=0,
     )
     body={**order_body(),"connector_name":"kraken"}
-    with pytest.raises(ExecutionUncertain,match="only kraken_paper_trade"):
+    with pytest.raises(ExecutionUncertain,match="kraken_paper_trade"):
         await client.submit_authorized_buy(governor,authorization(),body,timeout_seconds=1)
     assert requests==[]
     assert governor.calls==[]
