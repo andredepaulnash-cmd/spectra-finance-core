@@ -238,6 +238,7 @@ class CapitalGovernor:
         position_id: str,
         action_id: str,
         gross_notional: Decimal,
+        current_price: Decimal,
         idempotency_key: str,
         action_type: str,
         shard_id: str | None = None,
