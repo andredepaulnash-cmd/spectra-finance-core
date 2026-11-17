@@ -3613,9 +3613,15 @@ class CapitalGovernor:
                         # evidence, even when counters and terminal state are
                         # unchanged. Keep one observation and zero deltas.
                         conn.execute(
-                            "UPDATE executor_accounting_observations SET observed_at = ? "
-                            "WHERE observation_id = ?",
-                            (self._now(), previous["observation_id"]),
+                            """INSERT INTO executor_accounting_refresh_receipts (
+                                observation_id, proposal_id, executor_id, observed_at
+                            ) VALUES (?, ?, ?, ?)""",
+                            (
+                                previous["observation_id"],
+                                provenance["proposal_id"],
+                                executor_id,
+                                self._now(),
+                            ),
                         )
                         conn.commit()
                         return ExecutorAccountingDelta(
@@ -3711,8 +3717,16 @@ class CapitalGovernor:
     ) -> tuple[ExecutorAccountingObservation, float] | None:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT * FROM executor_accounting_observations WHERE executor_id = ? "
-                "ORDER BY observation_id DESC LIMIT 1",
+                """SELECT observations.*,
+                    COALESCE(
+                        (SELECT MAX(refreshes.observed_at)
+                         FROM executor_accounting_refresh_receipts AS refreshes
+                         WHERE refreshes.observation_id = observations.observation_id),
+                        observations.observed_at
+                    ) AS freshness_at
+                    FROM executor_accounting_observations AS observations
+                    WHERE executor_id = ?
+                    ORDER BY observation_id DESC LIMIT 1""",
                 (executor_id,),
             ).fetchone()
         if row is None:
@@ -3729,7 +3743,7 @@ class CapitalGovernor:
             net_pnl_quote=optional("net_pnl_quote"),
             realized_pnl_quote=optional("realized_pnl_quote"),
         )
-        return observation, float(row["observed_at"])
+        return observation, float(row["freshness_at"])
 
     @staticmethod
     def _position_hold_scope(
