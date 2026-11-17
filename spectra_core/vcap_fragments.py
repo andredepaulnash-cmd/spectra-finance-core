@@ -391,12 +391,18 @@ class VCAPFragmentManager:
             return ()
         candidates: list[VCAPFragmentCandidate] = []
         pending_by_id: dict[str, VCAPRuntimeCycle] = {}
+        missing_state_ids: set[str] = set()
+        held_state_ids: set[str] = set()
         for record in records:
             pending = self._pending_cycle(record.fragment_id)
             if pending is not None:
                 pending_by_id[record.fragment_id] = pending
             lifecycle_store, _ = self.stores(record.fragment_id)
             fragment_state = lifecycle_store.load(record.envelope_proposal_id)
+            if fragment_state is None:
+                missing_state_ids.add(record.fragment_id)
+            elif fragment_state.status is not VCAPLifecycleStatus.ACTIVE:
+                held_state_ids.add(record.fragment_id)
             step = next_adaptive_vcap_step(
                 phase,
                 record.step_for(phase),
@@ -444,12 +450,16 @@ class VCAPFragmentManager:
                 status = VCAPFragmentStatus.EXHAUSTED
             elif record.fragment_id in pending_ids:
                 status = VCAPFragmentStatus.RECONCILING
+            elif record.fragment_id in missing_state_ids:
+                status = VCAPFragmentStatus.CONFLICT
             elif record.status is VCAPFragmentStatus.CONFLICT:
                 status = VCAPFragmentStatus.CONFLICT
             elif record.status is VCAPFragmentStatus.EXHAUSTED:
                 status = VCAPFragmentStatus.EXHAUSTED
             elif phase is AdaptiveVCAPPhase.RECOVERED:
                 status = VCAPFragmentStatus.RECOVERED
+            elif record.fragment_id in held_state_ids:
+                status = VCAPFragmentStatus.PAUSED
             elif phase in {
                 AdaptiveVCAPPhase.PRE_VCAP,
                 AdaptiveVCAPPhase.DEEP_GOVERNOR,
