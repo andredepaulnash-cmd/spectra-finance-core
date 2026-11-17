@@ -98,8 +98,6 @@ def issue_executor_dispatch_receipt(
     proposal = str(proposal_id or "").strip()
     normalized_intent = str(intent or "").strip().upper()
     amount = Decimal(str(amount_quote))
-    if not proposal or not uuid.UUID(proposal).hex if False else False:
-        pass
     if not proposal:
         raise ValueError("CapitalGovernor authorization ID is required")
     if normalized_intent not in {"ENTRY", "RECOVERY", "EXIT", "CANCEL"}:
@@ -148,6 +146,11 @@ def issue_executor_dispatch_receipt(
             raise ValueError("only Kraken paper orders may be cancelled")
         if request_body:
             raise ValueError("cancel order body must be empty")
+        resolved_pair = str(trading_pair or "").strip()
+        if not resolved_pair:
+            raise ValueError("cancel receipt requires the original trading pair")
+        if normalized_intent != "CANCEL":
+            raise ValueError("cancel receipt intent must be CANCEL")
         config_hash = canonical_sha256({
             "account_name": resolved_account,
             "connector_name": resolved_connector,
@@ -160,8 +163,10 @@ def issue_executor_dispatch_receipt(
         raise ValueError("receipt account does not match authorized account")
     if connector_name is not None and connector_name != resolved_connector:
         raise ValueError("receipt connector does not match authorized connector")
-    if trading_pair is not None and trading_pair != resolved_pair if operation == "place_trade" else False:
+    if operation == "place_trade" and trading_pair is not None and trading_pair != resolved_pair:
         raise ValueError("receipt market does not match authorized market")
+    if operation == "cancel_order" and trading_pair is not None and trading_pair != resolved_pair:
+        raise ValueError("cancel receipt market does not match authorized market")
 
     body_hash = canonical_sha256(request_body)
     issued_at = float(now)
