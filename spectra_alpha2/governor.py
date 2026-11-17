@@ -244,6 +244,12 @@ class CapitalGovernor:
                      now+self.reservation_ttl_seconds,now,now),
                 )
                 conn.execute(
+                    """INSERT INTO position_lots
+                    (lot_id,position_id,asset_id,action_id,pool_id,reservation_id,status,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (f"{position_id}:INITIAL",position_id,asset_id,"INITIAL",CapitalPool.INITIAL.value,reservation_id,"RESERVED",now,now),
+                )
+                conn.execute(
                     "UPDATE pools SET reserved=? WHERE pool_id=?",
                     (str(Decimal("0") + (Decimal(conn.execute("SELECT reserved FROM pools WHERE pool_id=?", (CapitalPool.INITIAL.value,)).fetchone()["reserved"]) + amount + fee)), CapitalPool.INITIAL.value),
                 )
@@ -340,6 +346,19 @@ class CapitalGovernor:
                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (reservation_id,idempotency_key,position_id,position["asset_id"],action_id,pool.value,
                      str(amount),str(fee),ReservationStatus.RESERVED.value,now+self.reservation_ttl_seconds,now,now),
+                )
+                lot_id = shard_id if action_type == "VCAP" else f"{position_id}:{action_id}"
+                conn.execute(
+                    """INSERT INTO position_lots
+                    (lot_id,position_id,asset_id,action_id,pool_id,reservation_id,status,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(lot_id) DO UPDATE SET
+                    reservation_id=excluded.reservation_id,status='RESERVED',
+                    gross_buy_notional='0',buy_fee_quote='0',filled_quantity='0',
+                    remaining_quantity='0',remaining_cost_basis_quote='0',
+                    gross_sell_proceeds='0',sell_fee_quote='0',realized_pnl_quote='0',
+                    updated_at=excluded.updated_at""",
+                    (lot_id,position_id,position["asset_id"],action_id,pool.value,reservation_id,"RESERVED",now,now),
                 )
                 conn.execute(
                     """INSERT INTO position_steps(position_id,step_id,action_type,status,reservation_id,drawdown,updated_at)
