@@ -30,6 +30,8 @@ class MarketCandidate:
     ticker_timestamp: float
     min_order_size: Decimal
     min_notional_size: Decimal
+    base_amount_increment: Decimal
+    price_increment: Decimal
 
 
 class HummingbotPaperDataClient:
@@ -142,7 +144,9 @@ class ResearchScanner:
                 continue
             min_notional = _decimal(rule.get("min_notional_size"))
             min_order = _decimal(rule.get("min_order_size"))
-            if min_notional > Decimal("20") or min_order <= ZERO:
+            base_increment=_decimal(rule.get("min_base_amount_increment"))
+            price_increment=_decimal(rule.get("min_price_increment"))
+            if min_notional > Decimal("20") or min_order <= ZERO or base_increment <= ZERO or price_increment <= ZERO:
                 continue
             preliminary.append((pair,ticker,rule))
         preliminary.sort(key=lambda row: _decimal(row[1].get("quote_volume")), reverse=True)
@@ -183,6 +187,8 @@ class ResearchScanner:
                 ticker_timestamp=float(ticker["timestamp"]),
                 min_order_size=_decimal(rule.get("min_order_size")),
                 min_notional_size=_decimal(rule.get("min_notional_size")),
+                base_amount_increment=_decimal(rule.get("min_base_amount_increment")),
+                price_increment=_decimal(rule.get("min_price_increment")),
             )
 
         inspected=await asyncio.gather(*(inspect(row) for row in preliminary))
