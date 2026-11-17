@@ -193,7 +193,7 @@ class CapitalGovernorTests(unittest.TestCase):
         self.assertEqual(sum(results),74)
         self.assertEqual(self.gov.snapshot()["open_positions"],74)
 
-    def test_dca_uses_initial_pool_and_asset_cap_includes_reservations(self):
+    def test_dca_uses_recovery_pool_and_asset_cap_includes_reservations(self):
         self.open_position()
         for i, price in enumerate((Decimal("97.26"),Decimal("95.56"),Decimal("93.26"))):
             auth=self.gov.reserve_addition(
@@ -202,8 +202,8 @@ class CapitalGovernorTests(unittest.TestCase):
             )
             self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
             self.settle(auth,order_id=f"paper-dca-{i}")
-        self.assertEqual(self.gov.snapshot()["pools"]["INITIAL"]["spent"],Decimal("80.32"))
-        self.assertEqual(self.gov.snapshot()["pools"]["RECOVERY"]["spent"],Decimal("0"))
+        self.assertEqual(self.gov.snapshot()["pools"]["INITIAL"]["spent"],Decimal("20.08"))
+        self.assertEqual(self.gov.snapshot()["pools"]["RECOVERY"]["spent"],Decimal("60.24"))
 
     def test_vcap_uses_recovery_pool_and_enforces_two_shards_per_asset(self):
         self.open_position()
