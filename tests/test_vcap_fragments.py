@@ -92,6 +92,8 @@ def test_fragment_ladder_advances_only_after_completed_fill_cycle(tmp_path):
     )
     fragment = records[0]
     assert manager.next_step_quote(fragment.fragment_id, AdaptiveVCAPPhase.FAT_1) == D("20.00")
+    manager.select_active("position-btc", AdaptiveVCAPPhase.FAT_1, now=1000.5)
+    fragment = manager.get_fragment(fragment.fragment_id)
 
     _, runtime = manager.stores(fragment.fragment_id)
     cycle = runtime.begin_or_resume(
