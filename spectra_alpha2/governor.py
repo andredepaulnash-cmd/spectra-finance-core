@@ -168,7 +168,6 @@ class CapitalGovernor:
         return Decimal(row["budget"]) - Decimal(row["reserved"]) - Decimal(row["spent"])
 
     def reserve_initial_position(
-        self._assert_paper()
         self,
         *,
         position_id: str,
@@ -176,6 +175,7 @@ class CapitalGovernor:
         reference_price: Decimal,
         idempotency_key: str,
     ) -> CapitalAuthorization:
+        self._assert_paper()
         price = self._positive(reference_price, "reference_price")
         if not all((position_id, asset_id, idempotency_key)):
             raise ValueError("position_id, asset_id and idempotency_key are required")
@@ -220,7 +220,6 @@ class CapitalGovernor:
         return CapitalAuthorization(reservation_id,idempotency_key,position_id,asset_id,"INITIAL",CapitalPool.INITIAL,amount,fee)
 
     def reserve_addition(
-        self._assert_paper()
         self,
         *,
         position_id: str,
@@ -230,6 +229,7 @@ class CapitalGovernor:
         action_type: str,
         shard_id: str | None = None,
     ) -> CapitalAuthorization:
+        self._assert_paper()
         amount = self._positive(gross_notional, "gross_notional")
         if action_type not in {"DCA","VCAP"}:
             raise ValueError("action_type must be DCA or VCAP")
@@ -289,9 +289,9 @@ class CapitalGovernor:
         return CapitalAuthorization(reservation_id,idempotency_key,position_id,position["asset_id"],action_id,pool,amount,fee)
 
     def consume_authorization(
-        self._assert_paper()
         self, authorization_id: str, *, idempotency_key: str, connector: str
     ) -> CapitalAuthorization:
+        self._assert_paper()
         try:
             self.safety.validate_order_boundary(connector, authorization_id)
         except Exception as exc:
