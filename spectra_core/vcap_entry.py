@@ -1,8 +1,8 @@
 """Governor-gated admission from the fresh Kraken mean-reversion shortlist.
 
 The autonomous portfolio supervisor calls this for each eligible fleet
-vacancy. The initial entry amount is evenly derived from the configured
-non-recovery budget and target position count. This function reserves through
+vacancy. The initial entry amount is a fixed configured per-asset seed (default $20),
+subject to the portfolio-wide non-recovery budget ceiling. This function reserves through
 CapitalGovernor; it never creates an executor or dispatches an order. It
 accepts only a fresh scanner candidate and the separate paper asset allowlist.
 """
@@ -20,7 +20,7 @@ from .kraken_authorization import reserve_kraken_capital
 from .models import DecisionStatus, IntentKind
 from .runtime import spectra_paper_only_enabled
 
-PAPER_INITIAL_ENTRY_QUOTE = Decimal("20")  # legacy live-mode fallback only
+PAPER_INITIAL_ENTRY_QUOTE = Decimal("20")  # default initial per-asset paper entry
 PAPER_VCAP_SHARD_QUOTE = Decimal("20")
 # Backwards-compatible name for the independent VCAP recovery shard size.
 PAPER_VCAP_SEED_QUOTE = PAPER_VCAP_SHARD_QUOTE
