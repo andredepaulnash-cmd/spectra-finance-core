@@ -695,7 +695,6 @@ class CapitalGovernor:
         self,
         position_id: str,
         *,
-        realized_pnl_quote: Decimal,
         confirmed_all_exits_reconciled: bool = False,
     ) -> None:
         """Close a position only after every exit and shard is reconciled.
@@ -706,8 +705,6 @@ class CapitalGovernor:
         self._assert_paper()
         if not confirmed_all_exits_reconciled:
             raise CapitalDenied("position closure requires confirmed exit reconciliation")
-        if not isinstance(realized_pnl_quote, Decimal) or not realized_pnl_quote.is_finite():
-            raise ValueError("realized_pnl_quote must be a finite Decimal")
         now=time.time()
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -724,9 +721,12 @@ class CapitalGovernor:
                 lots=conn.execute("SELECT remaining_quantity FROM position_lots WHERE position_id=?",(position_id,)).fetchall()
                 if any(Decimal(lot["remaining_quantity"]) > ZERO for lot in lots):
                     raise CapitalDenied("all initial, DCA, and VCAP lots must be fully exited before position closure")
+                lot_rows=conn.execute("SELECT realized_pnl_quote FROM position_lots WHERE position_id=?",(position_id,)).fetchall()
+                realized_pnl=sum((Decimal(lot["realized_pnl_quote"]) for lot in lot_rows),ZERO)
                 conn.execute("UPDATE positions SET status='CLOSED',updated_at=? WHERE position_id=?",(now,position_id))
-                self._event(conn,"POSITION_CLOSED",position_id,{"realized_pnl_quote":str(realized_pnl_quote),"exit_reconciled":True})
+                self._event(conn,"POSITION_CLOSED",position_id,{"realized_pnl_quote":str(realized_pnl),"exit_reconciled":True})
                 conn.commit()
+                return realized_pnl
             except Exception:
                 conn.rollback()
                 raise
