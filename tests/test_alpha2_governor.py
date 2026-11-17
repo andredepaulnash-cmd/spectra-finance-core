@@ -27,6 +27,16 @@ class CapitalGovernorTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def settle(self, auth, *, gross=Decimal("20"), fee=Decimal("0.08"), quantity=Decimal("0.2"), price=Decimal("100"), order_id="paper-order"):
+        self.gov.bind_order_id(auth.authorization_id,order_id=order_id)
+        self.gov.settle_fill(
+            auth.authorization_id,
+            actual_gross_notional=gross,
+            actual_fee=fee,
+            actual_quantity=quantity,
+            average_price=price,
+        )
+
     def open_position(self, asset="BTC-USDT", position="p1"):
         auth = self.gov.reserve_initial_position(
             position_id=position,
@@ -35,7 +45,7 @@ class CapitalGovernorTests(unittest.TestCase):
             idempotency_key=f"initial-{position}",
         )
         self.gov.consume_authorization(auth.authorization_id, idempotency_key=auth.idempotency_key, connector="kraken_paper_trade")
-        self.gov.settle_fill(auth.authorization_id, actual_gross_notional=Decimal("20"), actual_fee=Decimal("0.08"))
+        self.settle(auth,order_id=f"paper-order-{position}-initial")
         return position
 
     def test_governor_refuses_missing_or_live_execution_environment(self):
@@ -112,7 +122,7 @@ class CapitalGovernorTests(unittest.TestCase):
         with self.assertRaises(CapitalDenied):
             self.gov.consume_authorization(auth.authorization_id, idempotency_key="i1", connector="kraken")
         self.gov.consume_authorization(auth.authorization_id, idempotency_key="i1", connector="kraken_paper_trade")
-        self.gov.settle_fill(auth.authorization_id, actual_gross_notional=Decimal("20"), actual_fee=Decimal("0.08"))
+        self.settle(auth,order_id="paper-order-initial-test")
         self.assertEqual(self.gov.snapshot()["open_positions"], 1)
 
     def test_74_position_limit_is_atomic_under_concurrent_admission(self):
@@ -138,7 +148,7 @@ class CapitalGovernorTests(unittest.TestCase):
                 current_price=price,idempotency_key=f"dca-{i}",action_type="DCA"
             )
             self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
-            self.gov.settle_fill(auth.authorization_id,actual_gross_notional=Decimal("20"),actual_fee=Decimal("0.08"))
+            self.settle(auth,order_id=f"paper-dca-{i}")
         self.assertEqual(self.gov.snapshot()["pools"]["INITIAL"]["spent"],Decimal("80.32"))
         self.assertEqual(self.gov.snapshot()["pools"]["RECOVERY"]["spent"],Decimal("0"))
 
@@ -150,7 +160,7 @@ class CapitalGovernorTests(unittest.TestCase):
                 current_price=price,idempotency_key=f"pre-vcap-dca-{i}",action_type="DCA"
             )
             self.gov.consume_authorization(dca.authorization_id,idempotency_key=dca.idempotency_key,connector="kraken_paper_trade")
-            self.gov.settle_fill(dca.authorization_id,actual_gross_notional=Decimal("20"),actual_fee=Decimal("0.08"))
+            self.settle(dca,order_id=f"paper-pre-vcap-dca-{i}")
         shards=[]
         for i,(amount,price,step_id) in enumerate((
             (Decimal("20"),Decimal("92.23"),"VCAP_FAT1_1"),
@@ -161,7 +171,7 @@ class CapitalGovernorTests(unittest.TestCase):
                 current_price=price,idempotency_key=f"vcap-{i}",action_type="VCAP",shard_id=f"shard-{i}"
             )
             self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
-            self.gov.settle_fill(auth.authorization_id,actual_gross_notional=amount,actual_fee=amount*Decimal("0.004"))
+            self.settle(auth,gross=amount,fee=amount*Decimal("0.004"),quantity=amount/Decimal("100"),price=Decimal("100"),order_id=f"paper-vcap-{i}")
             self.gov.activate_vcap_shard(f"shard-{i}")
             shards.append(f"shard-{i}")
         with self.assertRaises(CapitalDenied):
@@ -169,6 +179,7 @@ class CapitalGovernorTests(unittest.TestCase):
                 position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
                 current_price=Decimal("89.26"),idempotency_key="vcap-3",action_type="VCAP",shard_id="shard-2"
             )
+        self.gov.record_sell_fill(shards[0],quantity=Decimal("0.2"),price=Decimal("110"),fee_quote=Decimal("0.088"))
         self.gov.resolve_vcap_shard(shards[0])
         allowed=self.gov.reserve_addition(
             position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
@@ -194,6 +205,7 @@ class CapitalGovernorTests(unittest.TestCase):
         self.open_position()
         with self.assertRaises(CapitalDenied):
             self.gov.close_position("p1",realized_pnl_quote=Decimal("1"))
+        self.gov.record_sell_fill("p1:INITIAL",quantity=Decimal("0.2"),price=Decimal("105"),fee_quote=Decimal("0.084"))
         self.gov.close_position("p1",realized_pnl_quote=Decimal("1"),confirmed_all_exits_reconciled=True)
         replacement=self.gov.reserve_initial_position(
             position_id="p2",asset_id="BTC-USDT",reference_price=Decimal("101"),idempotency_key="initial-p2"
