@@ -208,7 +208,8 @@ class VCAPFragmentManager:
                     raise RuntimeError("persisted VCAP fragment ownership does not match position")
                 return records
 
-            available = max_position_quote - base_state.cost_basis_quote
+            position_headroom = max_position_quote - base_state.cost_basis_quote
+            available = min(base_state.remaining_authorized_quote, position_headroom)
             if available <= ZERO:
                 raise ValueError("position has no remaining governed recovery capacity")
             budget = (available / Decimal(self.policy.fragment_count)).quantize(
