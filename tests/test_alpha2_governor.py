@@ -204,9 +204,10 @@ class CapitalGovernorTests(unittest.TestCase):
     def test_asset_replacement_requires_reconciled_close(self):
         self.open_position()
         with self.assertRaises(CapitalDenied):
-            self.gov.close_position("p1",realized_pnl_quote=Decimal("1"))
+            self.gov.close_position("p1")
         self.gov.record_sell_fill("p1:INITIAL",quantity=Decimal("0.2"),price=Decimal("105"),fee_quote=Decimal("0.084"))
-        self.gov.close_position("p1",realized_pnl_quote=Decimal("1"),confirmed_all_exits_reconciled=True)
+        realized=self.gov.close_position("p1",confirmed_all_exits_reconciled=True)
+        self.assertEqual(realized,Decimal("0.836"))
         replacement=self.gov.reserve_initial_position(
             position_id="p2",asset_id="BTC-USDT",reference_price=Decimal("101"),idempotency_key="initial-p2"
         )
