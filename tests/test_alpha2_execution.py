@@ -58,7 +58,7 @@ def order_body():
     }
 
 
-def handler_for(requests,*,status="FILLED"):
+def handler_for(requests,*,status="FILLED",trade_price="100"):
     def handler(request):
         requests.append(request)
         if request.url.path=="/trading/orders":
@@ -67,7 +67,7 @@ def handler_for(requests,*,status="FILLED"):
         if request.url.path=="/trading/orders/search":
             return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","status":status}]})
         if request.url.path=="/trading/trades":
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":"100","fee":"0.2"}]})
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":trade_price,"fee":"0.2"}]})
         raise AssertionError(request.url.path)
     return handler
 
@@ -103,12 +103,12 @@ async def test_executor_submits_governor_authorized_spot_sell_and_reconciles_net
     exit_auth=type("ExitAuth",(),{"authorization_id":"exit-123","idempotency_key":"exit-idem"})()
     client=HummingbotPaperExecutionClient(
         "http://hummingbot",api_username="local-core",api_password="internal-only",
-        environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests)),poll_interval_seconds=0,
+        environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests,trade_price="105")),poll_interval_seconds=0,
     )
     result=await client.submit_authorized_sell(governor,exit_auth,sell_body,timeout_seconds=1)
     assert result.order_id=="paper-order-1"
-    assert result.gross_quote_notional==Decimal("20")
-    assert result.estimated_fee==Decimal("0.080")
+    assert result.gross_quote_notional==Decimal("21")
+    assert result.estimated_fee==Decimal("0.084")
     assert [x[0] for x in governor.calls]==["consume_exit","exit_receipt","bind_exit","settle_exit"]
     await client.close()
 
