@@ -80,6 +80,13 @@ class CapitalGovernorTests(unittest.TestCase):
 
     def test_vcap_uses_recovery_pool_and_enforces_two_shards_per_asset(self):
         self.open_position()
+        for i, price in enumerate((Decimal("97.26"),Decimal("95.56"),Decimal("93.26"))):
+            dca=self.gov.reserve_addition(
+                position_id="p1",action_id=f"DCA_{i+1}",gross_notional=Decimal("20"),
+                current_price=price,idempotency_key=f"pre-vcap-dca-{i}",action_type="DCA"
+            )
+            self.gov.consume_authorization(dca.authorization_id,idempotency_key=dca.idempotency_key,connector="kraken_paper_trade")
+            self.gov.settle_fill(dca.authorization_id,actual_gross_notional=Decimal("20"),actual_fee=Decimal("0.08"))
         shards=[]
         for i,(amount,price,step_id) in enumerate((
             (Decimal("20"),Decimal("92.23"),"VCAP_FAT1_1"),
