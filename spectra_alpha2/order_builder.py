@@ -86,6 +86,6 @@ def build_take_profit_limit_order(
         "amount":str(quantity),
         "order_type":"LIMIT",
         "price":str(target_price),
-        "position_action":"CLOSE",
+        "position_action":"OPEN",
     }
     return PaperOrderDraft(body,gross_proceeds,target_price,quantity)
