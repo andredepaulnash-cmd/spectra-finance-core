@@ -440,7 +440,7 @@ class CapitalGovernor:
     ):
         """Sign an order only after its matching Governor reservation is submitted."""
         self._assert_paper()
-        from .dispatch_receipt import issue_executor_dispatch_receipt
+        from .dispatch_receipt import _issue_executor_dispatch_receipt
 
         if not isinstance(request_body, dict):
             raise CapitalDenied("paper order body must be an object")
@@ -472,7 +472,7 @@ class CapitalGovernor:
         if quote_notional > Decimal(row["gross_notional"]):
             raise CapitalDenied("order quote notional exceeds the reserved CapitalGovernor amount")
         intent="ENTRY" if row["action_id"] == "INITIAL" else "RECOVERY"
-        return issue_executor_dispatch_receipt(
+        return _issue_executor_dispatch_receipt(
             request_body=request_body,
             proposal_id=authorization_id,
             intent=intent,
