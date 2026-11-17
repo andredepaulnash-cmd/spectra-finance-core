@@ -1,0 +1,108 @@
+name: Spectra Alpha 2.0 Clean Install
+
+on:
+  push:
+    branches: [spectra-finance-alpha-2.0]
+  pull_request:
+    branches: [spectra-finance-alpha-2.0]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alpha2-domain-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: spectra-finance-core
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: spectra-finance-core/pyproject.toml
+      - name: Install Core and test dependencies
+        working-directory: spectra-finance-core
+        run: python -m pip install -e ".[test]"
+      - name: Run all Alpha 2.0 deterministic tests
+        working-directory: spectra-finance-core
+        run: python -m pytest -q tests/test_alpha2_*.py
+      - name: Compile Alpha 2.0 modules and scripts
+        working-directory: spectra-finance-core
+        run: python -m compileall -q spectra_alpha2 scripts
+
+  alpha2-clean-compose-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: spectra-finance-core
+      - uses: actions/checkout@v4
+        with:
+          repository: andredepaulnash-cmd/spectra-hummingbot-api
+          ref: spectra-finance-alpha-2.0
+          path: spectra-hummingbot-api
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: spectra-finance-core/pyproject.toml
+      - name: Install Core build tools
+        working-directory: spectra-finance-core
+        run: python -m pip install -e .
+      - name: Prepare keyless paper environment
+        working-directory: spectra-finance-core
+        run: |
+          python scripts/prepare_alpha2_environment.py --api-repo ../spectra-hummingbot-api
+          printf '\nSPECTRA_MAX_POSITIONS=1\nSPECTRA_MAX_NEW_POSITIONS_PER_CYCLE=1\n' >> .env.core
+          chmod 600 .env .env.core ../spectra-hummingbot-api/.env
+      - name: Generate and validate isolated Alpha 2.0 Compose stack
+        working-directory: spectra-finance-core
+        run: |
+          python scripts/build_alpha2_compose.py --api-repo ../spectra-hummingbot-api
+          docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml config -q
+          ! grep -E 'docker.sock|host.docker.internal|host-gateway|/proc:/host/proc|/etc/hostname:' docker-compose.alpha2.yml
+      - name: Build and start clean paper-only stack
+        working-directory: spectra-finance-core
+        run: |
+          docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml up -d --build
+      - name: Wait for authenticated paper API and Core service
+        working-directory: spectra-finance-core
+        run: |
+          set -euo pipefail
+          API_USER="$(sed -n 's/^USERNAME=//p' ../spectra-hummingbot-api/.env | tail -n1)"
+          API_PASS="$(sed -n 's/^PASSWORD=//p' ../spectra-hummingbot-api/.env | tail -n1)"
+          ready=0
+          for attempt in $(seq 1 180); do
+            if curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8002/spectra/health >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" -eq 1
+          for attempt in $(seq 1 90); do
+            health="$(docker inspect --format '{{.State.Health.Status}}' spectra-alpha2-core 2>/dev/null || true)"
+            if [ "$health" = "healthy" ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml ps -a
+          docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml logs --tail=200
+          exit 1
+      - name: Run clean-install market-data doctor and persistent status
+        working-directory: spectra-finance-core
+        run: |
+          docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 doctor
+          docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 status
+      - name: Capture clean-install logs on failure
+        if: failure()
+        working-directory: spectra-finance-core
+        run: docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml logs --tail=250 || true
+      - name: Stop and remove CI-only stack and volumes
+        if: always()
+        working-directory: spectra-finance-core
+        run: docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml down -v || true
