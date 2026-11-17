@@ -154,7 +154,7 @@ case "${1:-status}" in
     compose down
     ;;
   *)
-    echo "Usage: spectra-alpha2 {start|stop|restart|status|logs|doctor|once|backup|uninstall}" >&2
+    echo "Usage: spectra-alpha2 {start|stop|restart|status|logs|doctor|backup|uninstall}" >&2
     exit 2
     ;;
 esac
@@ -171,8 +171,8 @@ After=default.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=$WRAPPER start
-ExecStop=$WRAPPER stop
+ExecStart="$WRAPPER" start
+ExecStop="$WRAPPER" stop
 TimeoutStartSec=0
 
 [Install]
@@ -187,6 +187,6 @@ printf 'Install directory: %s\n' "$INSTALL_DIR"
 printf 'Pinned source commits:\n'
 cat "$INSTALL_DIR/installed-commits.txt"
 printf '\nCommands: %s {status|doctor|logs|backup|stop|start}\n' "$WRAPPER"
-printf 'Dashboard/API: http://127.0.0.1:8002 (authenticated)\n'
+printf 'Hummingbot API: http://127.0.0.1:8002 (authenticated)\n'
 printf 'MQTT: 127.0.0.1:1884; EMQX dashboard: http://127.0.0.1:18084\n'
 printf 'Paper-only flags are enforced. No exchange credentials are configured or accepted.\n'
