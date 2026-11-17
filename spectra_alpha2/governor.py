@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
+from typing import Mapping
 
+from .safety import PaperSafetySettings
 from .policy import (
     BUY_FEE_RATE,
     INITIAL_ENTRY_BUDGET,
@@ -57,14 +59,19 @@ class CapitalAuthorization:
 class CapitalGovernor:
     """Single-writer transactional capital and order-authorization boundary."""
 
-    def __init__(self, database_path: str | Path, *, reservation_ttl_seconds: int = 90):
+    def __init__(self, database_path: str | Path, *, environment: Mapping[str, str], reservation_ttl_seconds: int = 90):
         if isinstance(reservation_ttl_seconds, bool) or not isinstance(reservation_ttl_seconds, int) or reservation_ttl_seconds <= 0:
             raise ValueError("reservation_ttl_seconds must be a positive integer")
+        self.safety = PaperSafetySettings.from_environment(environment)
+        self.safety.assert_paper_mode()
         self.database_path = str(database_path)
         self.reservation_ttl_seconds = reservation_ttl_seconds
         if self.database_path != ":memory:":
             Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
+
+    def _assert_paper(self) -> None:
+        self.safety.assert_paper_mode()
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.database_path, timeout=30, isolation_level=None)
@@ -161,6 +168,7 @@ class CapitalGovernor:
         return Decimal(row["budget"]) - Decimal(row["reserved"]) - Decimal(row["spent"])
 
     def reserve_initial_position(
+        self._assert_paper()
         self,
         *,
         position_id: str,
@@ -212,6 +220,7 @@ class CapitalGovernor:
         return CapitalAuthorization(reservation_id,idempotency_key,position_id,asset_id,"INITIAL",CapitalPool.INITIAL,amount,fee)
 
     def reserve_addition(
+        self._assert_paper()
         self,
         *,
         position_id: str,
@@ -280,8 +289,13 @@ class CapitalGovernor:
         return CapitalAuthorization(reservation_id,idempotency_key,position_id,position["asset_id"],action_id,pool,amount,fee)
 
     def consume_authorization(
+        self._assert_paper()
         self, authorization_id: str, *, idempotency_key: str, connector: str
     ) -> CapitalAuthorization:
+        try:
+            self.safety.validate_order_boundary(connector, authorization_id)
+        except Exception as exc:
+            raise CapitalDenied(str(exc)) from exc
         if connector != PAPER_CONNECTOR:
             raise CapitalDenied("only kraken_paper_trade is permitted")
         now = time.time()
@@ -316,6 +330,7 @@ class CapitalGovernor:
         )
 
     def settle_fill(self, authorization_id: str, *, actual_gross_notional: Decimal, actual_fee: Decimal) -> None:
+        self._assert_paper()
         actual = self._positive(actual_gross_notional,"actual_gross_notional")
         if not isinstance(actual_fee,Decimal) or not actual_fee.is_finite() or actual_fee < ZERO:
             raise ValueError("actual_fee must be a finite non-negative Decimal")
@@ -351,6 +366,7 @@ class CapitalGovernor:
 
 
     def activate_vcap_shard(self, shard_id: str) -> None:
+        self._assert_paper()
         """Move a reconciled filled shard into the active position lifecycle."""
         now=time.time()
         with self._connect() as conn:
@@ -367,6 +383,7 @@ class CapitalGovernor:
                 raise
 
     def resolve_vcap_shard(self, shard_id: str) -> None:
+        self._assert_paper()
         """Release a shard slot only after the caller has reconciled its full exit."""
         now=time.time()
         with self._connect() as conn:
@@ -383,6 +400,7 @@ class CapitalGovernor:
                 raise
 
     def release_unfilled_reservation(self, authorization_id: str, *, confirmed_no_fill: bool = False) -> None:
+        self._assert_paper()
         now=time.time()
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -409,6 +427,7 @@ class CapitalGovernor:
                 raise
 
     def snapshot(self) -> dict:
+        self._assert_paper()
         with self._connect() as conn:
             pools={}
             for row in conn.execute("SELECT * FROM pools").fetchall():
