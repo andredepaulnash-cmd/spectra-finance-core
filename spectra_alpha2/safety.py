@@ -43,9 +43,12 @@ class PaperSafetySettings:
             raise PaperSafetyError("SPECTRA_PAPER_CONNECTOR must be kraken_paper_trade")
         return cls(paper_only=True, allow_live_execution=False)
 
-    def validate_order_boundary(self, connector: str, authorization_id: str | None) -> None:
+    def assert_paper_mode(self) -> None:
         if not self.paper_only or self.allow_live_execution:
             raise PaperSafetyError("paper-only invariant violated")
+
+    def validate_order_boundary(self, connector: str, authorization_id: str | None) -> None:
+        self.assert_paper_mode()
         if connector != self.connector:
             raise PaperSafetyError("only the configured paper connector is permitted")
         if not authorization_id or not authorization_id.strip():
