@@ -50,12 +50,6 @@ def main() -> int:
         serialization.PublicFormat.Raw,
     )
     policy = "spectra-alpha2-v1"
-    update_env(args.core_env, {
-        "SPECTRA_PAPER_ONLY": "true",
-        "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
-        "SPECTRA_DISPATCH_POLICY_VERSION": policy,
-        "SPECTRA_DISPATCH_PRIVATE_KEY": encode(private_raw),
-    })
     update_env(args.api_env, {
         "SPECTRA_PAPER_ONLY": "true",
         "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
@@ -64,6 +58,24 @@ def main() -> int:
         "SPECTRA_DISPATCH_POLICY_VERSION": policy,
         "SPECTRA_DISPATCH_PUBLIC_KEY": encode(public_raw),
         "SPECTRA_DISPATCH_RECEIPT_DB": "bots/data/spectra_dispatch_receipts.sqlite3",
+    })
+    api_values = {}
+    for line in args.api_env.read_text(encoding="utf-8").splitlines():
+        if "=" in line and not line.lstrip().startswith("#"):
+            key,value=line.split("=",1)
+            api_values[key.strip()]=value.strip()
+    if not api_values.get("USERNAME") or not api_values.get("PASSWORD"):
+        raise SystemExit("API .env must contain generated USERNAME and PASSWORD for internal service authentication.")
+    update_env(args.core_env, {
+        "SPECTRA_PAPER_ONLY": "true",
+        "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
+        "SPECTRA_PAPER_CONNECTORS": "kraken_paper_trade",
+        "SPECTRA_DISPATCH_POLICY_VERSION": policy,
+        "SPECTRA_DISPATCH_PRIVATE_KEY": encode(private_raw),
+        "SPECTRA_HB_API_URL": "http://hummingbot-api:8000",
+        "SPECTRA_HB_API_USERNAME": api_values["USERNAME"],
+        "SPECTRA_HB_API_PASSWORD": api_values["PASSWORD"],
+        "SPECTRA_DB_PATH": "/data/spectra_alpha2.sqlite3",
     })
     print(f"Core signing configuration written to {args.core_env}")
     print(f"API verification configuration written to {args.api_env}")
