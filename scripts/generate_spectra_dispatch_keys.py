@@ -39,16 +39,41 @@ def main() -> int:
     parser.add_argument("--api-env", type=Path, default=Path("../spectra-hummingbot-api/.env"))
     args = parser.parse_args()
 
-    private = Ed25519PrivateKey.generate()
-    private_raw = private.private_bytes(
-        serialization.Encoding.Raw,
-        serialization.PrivateFormat.Raw,
-        serialization.NoEncryption(),
-    )
-    public_raw = private.public_key().public_bytes(
-        serialization.Encoding.Raw,
-        serialization.PublicFormat.Raw,
-    )
+    def read_env(path: Path) -> dict[str,str]:
+        values={}
+        if path.exists():
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if "=" in line and not line.lstrip().startswith("#"):
+                    key,value=line.split("=",1)
+                    values[key.strip()]=value.strip()
+        return values
+
+    core_values=read_env(args.core_env)
+    api_values=read_env(args.api_env)
+    existing_private=core_values.get("SPECTRA_DISPATCH_PRIVATE_KEY")
+    existing_public=api_values.get("SPECTRA_DISPATCH_PUBLIC_KEY")
+    if bool(existing_private) != bool(existing_public):
+        raise SystemExit("Core/API dispatch keys are incomplete; refusing to rotate or overwrite a one-sided keypair.")
+    if existing_private and existing_public:
+        try:
+            private_raw=base64.urlsafe_b64decode(existing_private+"="*((4-len(existing_private)%4)%4))
+            public_raw=base64.urlsafe_b64decode(existing_public+"="*((4-len(existing_public)%4)%4))
+            private=Ed25519PrivateKey.from_private_bytes(private_raw)
+            derived_public=private.public_key().public_bytes(
+                serialization.Encoding.Raw,serialization.PublicFormat.Raw
+            )
+        except Exception as exc:
+            raise SystemExit(f"Existing Alpha 2.0 dispatch keypair is invalid: {exc}") from exc
+        if derived_public!=public_raw:
+            raise SystemExit("Existing Core private key does not match API public key; refusing automatic rotation.")
+    else:
+        private=Ed25519PrivateKey.generate()
+        private_raw=private.private_bytes(
+            serialization.Encoding.Raw,serialization.PrivateFormat.Raw,serialization.NoEncryption()
+        )
+        public_raw=private.public_key().public_bytes(
+            serialization.Encoding.Raw,serialization.PublicFormat.Raw
+        )
     policy = "spectra-alpha2-v1"
     update_env(args.api_env, {
         "SPECTRA_PAPER_ONLY": "true",
