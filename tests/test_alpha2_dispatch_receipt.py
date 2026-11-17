@@ -68,7 +68,7 @@ def test_signed_trade_receipt_binds_exact_paper_order_and_governor_id(monkeypatc
 def test_dispatch_signing_fails_closed_without_paper_flags(monkeypatch):
     setup_signing(monkeypatch)
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION","true")
-    with pytest.raises(RuntimeError,match="SPECTRA_ALLOW_LIVE_EXECUTION=false"):
+    with pytest.raises(RuntimeError,match="SPECTRA_ALLOW_LIVE_EXECUTION must be exactly"):
         receipts.issue_executor_dispatch_receipt(
             request_body=trade_body(),proposal_id="reservation-1",intent="ENTRY",
             amount_quote="20",now=time.time(),operation="place_trade",
