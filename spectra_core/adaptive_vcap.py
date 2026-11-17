@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
 from math import isfinite
+import os
 
 
 ZERO = Decimal("0")
@@ -105,6 +106,76 @@ class AdaptiveVCAPPolicy:
             for left, right in zip(self.skinny_multipliers, self.skinny_multipliers[1:])
         ):
             raise ValueError("SKINNY ladder steps must remain below doubling")
+
+    @classmethod
+    def from_env(cls) -> "AdaptiveVCAPPolicy":
+        """Load the governed paper policy from explicit, validated environment values."""
+
+        def integer(name: str, default: int, minimum: int, maximum: int) -> int:
+            raw = os.getenv(name, str(default)).strip()
+            try:
+                value = int(raw)
+            except ValueError as exc:
+                raise ValueError(f"{name} must be an integer") from exc
+            if not minimum <= value <= maximum:
+                raise ValueError(f"{name} must be between {minimum} and {maximum}")
+            return value
+
+        def decimal(name: str, default: str) -> Decimal:
+            raw = os.getenv(name, default).strip()
+            try:
+                value = Decimal(raw)
+            except Exception as exc:
+                raise ValueError(f"{name} must be a decimal number") from exc
+            if not value.is_finite() or value <= ZERO:
+                raise ValueError(f"{name} must be finite and positive")
+            return value
+
+        def ladder(name: str, default: tuple[Decimal, ...]) -> tuple[Decimal, ...]:
+            raw = os.getenv(name)
+            if raw is None or not raw.strip():
+                return default
+            try:
+                return tuple(Decimal(item.strip()) for item in raw.split(",") if item.strip())
+            except Exception as exc:
+                raise ValueError(f"{name} must be a comma-separated Decimal ladder") from exc
+
+        return cls(
+            activation_drawdown_bps=integer(
+                "SPECTRA_VCAP_ACTIVATION_DRAWDOWN_BPS", 777, 1, 10000
+            ),
+            fat1_end_drawdown_bps=integer(
+                "SPECTRA_VCAP_FAT1_END_DRAWDOWN_BPS", 1174, 2, 10000
+            ),
+            skinny_end_drawdown_bps=integer(
+                "SPECTRA_VCAP_SKINNY_END_DRAWDOWN_BPS", 1777, 3, 10000
+            ),
+            fat2_end_drawdown_bps=integer(
+                "SPECTRA_VCAP_FAT2_END_DRAWDOWN_BPS", 2400, 4, 10000
+            ),
+            fragment_count=integer("SPECTRA_VCAP_FRAGMENT_COUNT", 5, 4, 5),
+            max_active_fragments_per_position=integer(
+                "SPECTRA_VCAP_MAX_ACTIVE_FRAGMENTS_PER_POSITION", 2, 1, 2
+            ),
+            base_quote=decimal("SPECTRA_VCAP_BASE_QUOTE", "20"),
+            fat1_multipliers=ladder(
+                "SPECTRA_VCAP_FAT1_MULTIPLIERS",
+                (Decimal("1"), Decimal("2"), Decimal("4")),
+            ),
+            skinny_multipliers=ladder(
+                "SPECTRA_VCAP_SKINNY_MULTIPLIERS",
+                (
+                    Decimal("0.25"),
+                    Decimal("0.375"),
+                    Decimal("0.5"),
+                    Decimal("0.625"),
+                ),
+            ),
+            fat2_multipliers=ladder(
+                "SPECTRA_VCAP_FAT2_MULTIPLIERS",
+                (Decimal("8"), Decimal("16"), Decimal("32")),
+            ),
+        )
 
     @staticmethod
     def _validate_ladder(values: tuple[Decimal, ...], name: str) -> None:
