@@ -2404,7 +2404,12 @@ class CapitalGovernor:
                     if normalized_base_asset(owner["pair"]) != base:
                         continue
                     if not self._capital_submission_retirement_proven(
-                        conn, schema, str(path), owner
+                        conn,
+                        schema,
+                        str(path),
+                        owner,
+                        successor_proposal_id=proposal.proposal_id.strip(),
+                        successor_position_id=pid,
                     ):
                         raise ValueError(
                             "canonical asset has an uncertified protected submission"
@@ -2468,12 +2473,143 @@ class CapitalGovernor:
                 conn.rollback()
                 raise
 
+    def _dust_successor_retirement_proven(
+        self,
+        conn: sqlite3.Connection,
+        schema: str,
+        owner: sqlite3.Row,
+        *,
+        successor_proposal_id: str,
+        successor_position_id: str,
+        predecessor_position_id: str | None = None,
+    ) -> bool:
+        """Accept an exact, fresh DUST checkpoint as predecessor retirement proof.
+
+        A dust predecessor is intentionally not marked CLOSED: its residual
+        inventory remains tracked. The successor admission and checkpoint prove
+        that the old entry is no longer an active executable position.
+        """
+        if owner["executor_id"] is None:
+            return False
+        tables = {
+            row[0]
+            for row in conn.execute(
+                f"SELECT name FROM {schema}.sqlite_master WHERE type = 'table'"
+            )
+        }
+        required = {
+            "economic_positions",
+            "economic_lots",
+            "economic_dust_markets",
+            "economic_dust_checkpoints",
+            "economic_dust_transitions",
+            "economic_dust_entry_admissions",
+            "economic_dust_successors",
+        }
+        if not required.issubset(tables):
+            return False
+
+        admission = conn.execute(
+            f"""SELECT * FROM {schema}.economic_dust_entry_admissions
+            WHERE proposal_id = ? AND successor_id = ? AND status = 'ADMITTED'""",
+            (successor_proposal_id, successor_position_id),
+        ).fetchone()
+        if (
+            admission is None
+            or admission["account_name"] != owner["account_name"]
+            or admission["pair"] != owner["pair"]
+        ):
+            return False
+        try:
+            checkpoint_ids = json.loads(admission["checkpoint_ids_json"])
+        except (TypeError, ValueError):
+            return False
+        if (
+            not isinstance(checkpoint_ids, list)
+            or not checkpoint_ids
+            or any(not isinstance(value, str) or not value for value in checkpoint_ids)
+        ):
+            return False
+
+        all_links = conn.execute(
+            f"""SELECT predecessor_id, checkpoint_id
+            FROM {schema}.economic_dust_successors WHERE successor_id = ?""",
+            (successor_position_id,),
+        ).fetchall()
+        if {str(row["checkpoint_id"]) for row in all_links} != set(checkpoint_ids):
+            return False
+
+        if predecessor_position_id is None:
+            predecessors = conn.execute(
+                f"""SELECT DISTINCT position_id FROM {schema}.economic_lots
+                WHERE proposal_id = ? AND executor_id = ? AND pair = ?""",
+                (owner["proposal_id"], owner["executor_id"], owner["pair"]),
+            ).fetchall()
+            if len(predecessors) != 1:
+                return False
+            predecessor_position_id = str(predecessors[0]["position_id"])
+
+        linked_ids = {
+            str(row["checkpoint_id"])
+            for row in all_links
+            if str(row["predecessor_id"]) == predecessor_position_id
+        }
+        if not linked_ids:
+            return False
+
+        now = self._now()
+        for checkpoint_id in linked_ids:
+            checkpoint = conn.execute(
+                f"""SELECT c.*, t.to_status, t.position_id AS transition_position_id,
+                           m.account_name, m.connector_name, m.pair AS market_pair,
+                           p.status AS position_status, p.pair AS position_pair
+                    FROM {schema}.economic_dust_checkpoints AS c
+                    JOIN {schema}.economic_dust_transitions AS t
+                      ON t.checkpoint_id = c.checkpoint_id
+                    JOIN {schema}.economic_dust_markets AS m
+                      ON m.market_id = c.market_id
+                    JOIN {schema}.economic_positions AS p
+                      ON p.position_id = c.position_id
+                    WHERE c.checkpoint_id = ? AND c.position_id = ?""",
+                (checkpoint_id, predecessor_position_id),
+            ).fetchone()
+            if (
+                checkpoint is None
+                or checkpoint["to_status"] != "DUST"
+                or checkpoint["transition_position_id"] != predecessor_position_id
+                or checkpoint["position_status"] != "DUST"
+                or checkpoint["position_pair"] != owner["pair"]
+                or checkpoint["market_pair"] != owner["pair"]
+                or checkpoint["account_name"] != owner["account_name"]
+                or str(checkpoint["connector_name"]).lower()
+                != str(owner["connector_name"]).lower()
+                or float(checkpoint["expires_at"]) <= now
+                or float(checkpoint["observed_at"]) > now
+                or not isinstance(checkpoint["source_digest"], str)
+                or len(checkpoint["source_digest"]) != 64
+            ):
+                continue
+            try:
+                snapshots = json.loads(checkpoint["orders_json"])
+            except (TypeError, ValueError):
+                continue
+            if isinstance(snapshots, list) and any(
+                isinstance(snapshot, dict)
+                and snapshot.get("executor_id") == owner["executor_id"]
+                for snapshot in snapshots
+            ):
+                return True
+        return False
+
     def _capital_submission_retirement_proven(
         self,
         conn: sqlite3.Connection,
         schema: str,
         ledger_path: str,
         owner: sqlite3.Row,
+        *,
+        successor_proposal_id: str,
+        successor_position_id: str,
     ) -> bool:
         """Cover legacy/RECOVERY owners as well as canonical ENTRY claims."""
         from .economic_position import normalized_base_asset
@@ -2486,12 +2622,30 @@ class CapitalGovernor:
             (owner["proposal_id"], owner["proposal_id"]),
         ).fetchone()
         if binding is not None:
-            return (
-                binding["ledger_path"] == ledger_path
-                and binding["pair"] == owner["pair"]
-                and binding["executor_id"] == owner["executor_id"]
-                and self._entry_retirement_proven(conn, schema, binding)
-            )
+            if (
+                binding["ledger_path"] != ledger_path
+                or binding["pair"] != owner["pair"]
+                or binding["executor_id"] != owner["executor_id"]
+            ):
+                return False
+            if self._dust_successor_retirement_proven(
+                conn,
+                schema,
+                owner,
+                successor_proposal_id=successor_proposal_id,
+                successor_position_id=successor_position_id,
+                predecessor_position_id=binding["position_id"],
+            ):
+                return True
+            return self._entry_retirement_proven(conn, schema, binding)
+        if self._dust_successor_retirement_proven(
+            conn,
+            schema,
+            owner,
+            successor_proposal_id=successor_proposal_id,
+            successor_position_id=successor_position_id,
+        ):
+            return True
         exists = conn.execute(
             f"SELECT 1 FROM {schema}.sqlite_master WHERE type = 'table' "
             "AND name = 'economic_position_retirements'"
