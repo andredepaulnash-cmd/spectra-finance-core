@@ -118,7 +118,7 @@ jobs:
         run: |
           bash -n install-alpha.sh
           bash -n scripts/update-alpha-api.sh
-          for script in scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra-alpha-backup.sh scripts/spectra; do
+          for script in scripts/spectra-alpha-doctor.sh scripts/spectra-alpha-start-api.sh scripts/spectra-alpha-core-supervisor.sh scripts/spectra-alpha-backup.sh scripts/spectra scripts/spectra-desktop; do
             bash -n "$script"
           done
           ! grep -q 'compose down' scripts/spectra
