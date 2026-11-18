@@ -106,6 +106,7 @@ on:
       - tests/test_configure_alpha_paper_state.py
       - tests/test_hummingbot_mcp_config_dir.py
       - frontend/**
+      - packaging/**
       - .github/workflows/alpha-installer.yml
 
 jobs:
