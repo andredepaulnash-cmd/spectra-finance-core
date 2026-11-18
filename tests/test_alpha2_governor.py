@@ -240,16 +240,16 @@ class CapitalGovernorTests(unittest.TestCase):
         )):
             auth=self.gov.reserve_addition(
                 position_id="p1",action_id=step_id,gross_notional=amount,
-                current_price=price,idempotency_key=f"vcap-{i}",action_type="VCAP",shard_id=f"shard-{i}"
+                current_price=price,idempotency_key=f"vcap-{i}",action_type="VCAP",shard_id=f"p1:{step_id}"
             )
             self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
             self.settle(auth,gross=amount,fee=amount*Decimal("0.004"),quantity=amount/Decimal("100"),price=Decimal("100"),order_id=f"paper-vcap-{i}")
-            self.gov.activate_vcap_shard(f"shard-{i}")
-            shards.append(f"shard-{i}")
+            self.gov.activate_vcap_shard(f"p1:{step_id}")
+            shards.append(f"p1:{step_id}")
         with self.assertRaises(CapitalDenied):
             self.gov.reserve_addition(
                 position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
-                current_price=Decimal("89.26"),idempotency_key="vcap-3",action_type="VCAP",shard_id="shard-2"
+                current_price=Decimal("89.26"),idempotency_key="vcap-3",action_type="VCAP",shard_id="p1:VCAP_FAT1_3"
             )
         self.sell_lot(shards[0],quantity=Decimal("0.2"),price=Decimal("110"),fee=Decimal("0.088"),idempotency_key="sell-vcap-0",order_id="paper-sell-vcap-0")
         self.gov.resolve_vcap_shard(shards[0])
