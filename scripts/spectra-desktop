@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Launch the installed Spectra Finance Alpha dashboard from the desktop menu.
+set -Eeuo pipefail
+
+SPECTRA_CLI="$HOME/.local/bin/spectra"
+if [[ ! -x "$SPECTRA_CLI" ]]; then
+  echo "Spectra Finance is not installed. Run the Alpha 2.0 Bazzite installer first." >&2
+  exit 1
+fi
+
+exec "$SPECTRA_CLI" start
