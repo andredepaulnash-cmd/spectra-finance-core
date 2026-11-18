@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 CORE_REPO="https://github.com/andredepaulnash-cmd/spectra-finance-core.git"
-CORE_REF="${SPECTRA_ALPHA_CORE_REF:-integration/condor-hummingbot-spectra-runtime-20261115}"
+CORE_REF="${SPECTRA_ALPHA_CORE_REF:-release/alpha-2.0-bazzite-desktop-20261117}"
 API_REPO="https://github.com/andredepaulnash-cmd/spectra-hummingbot-api.git"
 API_REF="main"
 INSTALL_ROOT="${SPECTRA_ALPHA_HOME:-$HOME/SpectraFinance-Alpha}"
@@ -572,6 +572,34 @@ install -m 700 "$CORE_DIR/scripts/spectra-alpha-start-api.sh" "$LOCAL_BIN/spectr
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-core-supervisor.sh" "$LOCAL_BIN/spectra-alpha-core-supervisor"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-backup.sh" "$LOCAL_BIN/spectra-alpha-backup"
 install -m 700 "$CORE_DIR/scripts/verify-alpha-paper-market-data.sh" "$LOCAL_BIN/spectra-verify-alpha-paper-market-data"
+
+# Install a native desktop-menu launcher and the Spectra Finance application icon.
+install -m 700 "$CORE_DIR/scripts/spectra-desktop" "$LOCAL_BIN/spectra-desktop"
+DESKTOP_DIR="$HOME/.local/share/applications"
+ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
+mkdir -p "$DESKTOP_DIR" "$ICON_DIR"
+install -m 644 "$CORE_DIR/frontend/src/assets/spectra-finance-logo.svg" "$ICON_DIR/spectra-finance.svg"
+"$CORE_DIR/.venv/bin/python" - "$CORE_DIR/packaging/linux/spectra-finance.desktop.in" "$DESKTOP_DIR/spectra-finance-alpha.desktop" "$LOCAL_BIN" <<'PYDESKTOP'
+from pathlib import Path
+import sys
+
+template_path, output_path, local_bin = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
+template = template_path.read_text(encoding="utf-8")
+
+def quote_exec(value: str) -> str:
+    return '"' + value.replace("\\\\", "\\\\\\\\").replace('"', '\\"') + '"'
+
+template = template.replace("@SPECTRA_EXEC@", quote_exec(str(local_bin / "spectra-desktop")))
+template = template.replace("@SPECTRA_ICON@", "spectra-finance")
+if "@SPECTRA_" in template:
+    raise SystemExit("Unresolved desktop-entry template variable.")
+output_path.write_text(template, encoding="utf-8")
+output_path.chmod(0o644)
+PYDESKTOP
+if command -v update-desktop-database >/dev/null 2>&1; then
+  update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
+fi
+
 
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 mkdir -p "$SYSTEMD_USER_DIR"
