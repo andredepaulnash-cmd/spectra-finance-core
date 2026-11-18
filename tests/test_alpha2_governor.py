@@ -255,7 +255,7 @@ class CapitalGovernorTests(unittest.TestCase):
         self.gov.resolve_vcap_shard(shards[0])
         allowed=self.gov.reserve_addition(
             position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
-            current_price=Decimal("89.26"),idempotency_key="vcap-3",action_type="VCAP",shard_id="shard-2"
+            current_price=Decimal("89.26"),idempotency_key="vcap-3",action_type="VCAP",shard_id="p1:VCAP_FAT1_3"
         )
         self.assertEqual(allowed.pool,CapitalPool.RECOVERY)
 
