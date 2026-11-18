@@ -20,6 +20,8 @@ on:
       - scripts/spectra-alpha-doctor.sh
       - scripts/spectra-alpha-start-api.sh
       - scripts/spectra
+      - scripts/spectra-desktop
+      - packaging/**
       - scripts/systemd/**
       - ALPHA-TEST.md
       - README.md
@@ -214,6 +216,10 @@ jobs:
           assert runtime["live_dispatch_available"] is False, runtime
           print("Clean Linux install verified: Spectra dashboard and Kraken paper connector are running.")
           PY
+          test -x "$HOME/.local/bin/spectra-desktop"
+          test -f "$HOME/.local/share/applications/spectra-finance-alpha.desktop"
+          grep -q "Name=Spectra Finance Alpha 2.0" "$HOME/.local/share/applications/spectra-finance-alpha.desktop"
+          test -f "$HOME/.local/share/icons/hicolor/scalable/apps/spectra-finance.svg"
           "$HOME/.local/bin/spectra" status
       - name: Export isolated paper API test environment
         shell: bash
