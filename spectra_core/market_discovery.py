@@ -33,6 +33,48 @@ def _rsi_from_prices(prices: list[float]) -> float | None:
     return 100.0 - (100.0 / (1.0 + gains / losses))
 
 
+def _bollinger_bandwidth_series(prices: list[float], period: int = 20) -> list[float]:
+    """Return rolling population-standard-deviation Bollinger bandwidth values."""
+    if period < 2:
+        raise ValueError("BBWP period must be at least two")
+    widths: list[float] = []
+    for end in range(period, len(prices) + 1):
+        window = prices[end - period:end]
+        middle = sum(window) / period
+        if middle <= 0:
+            continue
+        variance = sum((value - middle) ** 2 for value in window) / period
+        widths.append((4.0 * variance ** 0.5) / middle)
+    return widths
+
+
+def _bbwp_observation(prices: list[float]) -> dict[str, Any]:
+    """Describe Bollinger bandwidth percentile and direction without a hard entry gate."""
+    widths = _bollinger_bandwidth_series(prices)
+    if len(widths) < 20:
+        return {"bbwp_percentile": None, "bbwp_previous_percentile": None,
+                "bbwp_bandwidth": None, "bbwp_bandwidth_change_pct": None,
+                "bbwp_state": "UNAVAILABLE", "bbwp_signal_reasons": []}
+    history = widths[-70:]
+    current, prior = widths[-1], widths[-2]
+    percentile = 100.0 * sum(value <= current for value in history) / len(history)
+    prior_history = widths[-71:-1] if len(widths) > 20 else widths[:-1]
+    prior_percentile = (100.0 * sum(value <= prior for value in prior_history) / len(prior_history)) if prior_history else None
+    change_pct = ((current / prior) - 1.0) * 100.0 if prior > 0 else None
+    if percentile <= 35.0 and change_pct is not None and change_pct > 0:
+        state, reasons = "COMPRESSION_TO_EXPANSION", ["BBWP shows relatively compressed volatility beginning to expand"]
+    elif percentile <= 35.0:
+        state, reasons = "COMPRESSION", ["BBWP shows relatively compressed volatility"]
+    elif change_pct is not None and change_pct > 0:
+        state, reasons = "EXPANSION", ["BBWP bandwidth is expanding versus its prior observation"]
+    else:
+        state, reasons = "NEUTRAL", []
+    return {"bbwp_percentile": round(percentile, 2),
+            "bbwp_previous_percentile": None if prior_percentile is None else round(prior_percentile, 2),
+            "bbwp_bandwidth": round(current, 8),
+            "bbwp_bandwidth_change_pct": None if change_pct is None else round(change_pct, 2),
+            "bbwp_state": state, "bbwp_signal_reasons": reasons}
+
 def analyze_daily_history(
     *,
     symbol: str,
@@ -122,6 +164,8 @@ def analyze_daily_history(
         reversal_signal_reasons.append("price is at least 0.5% above the 5-day average")
     if price >= max(closes[-3:]) * 1.01:
         reversal_signal_reasons.append("price reclaimed at least 1% above recent 3-day closes")
+    bbwp = _bbwp_observation(closes)
+    reversal_signal_reasons.extend(bbwp["bbwp_signal_reasons"])
     reversal_signal_count = len(reversal_signal_reasons)
 
     # Medians and active-day frequency reward persistent movement, not one pump.
@@ -217,6 +261,12 @@ def analyze_daily_history(
         "rsi_14d_change": None if rsi_14d_change is None else round(rsi_14d_change, 2),
         "reversal_signal_count": reversal_signal_count,
         "reversal_signal_reasons": reversal_signal_reasons,
+        "bbwp_percentile": bbwp["bbwp_percentile"],
+        "bbwp_previous_percentile": bbwp["bbwp_previous_percentile"],
+        "bbwp_bandwidth": bbwp["bbwp_bandwidth"],
+        "bbwp_bandwidth_change_pct": bbwp["bbwp_bandwidth_change_pct"],
+        "bbwp_state": bbwp["bbwp_state"],
+        "bbwp_signal_reasons": bbwp["bbwp_signal_reasons"],
         "median_daily_range_30d_pct": round(median_daily_range_30d, 3),
         "active_range_days_30d": active_days_30d,
         "active_day_ratio_30d": round(active_day_ratio_30d, 3),
@@ -310,6 +360,18 @@ def build_dynamic_market_lists(
     recovery = [
         row for row in losers if int(row.get("reversal_signal_count") or 0) >= 2
     ]
+    # Dedicated pathway: measured 24h losers only, all existing quality guards
+    # passed, entry-liquidity floor retained, and multiple reversal observations.
+    top_loser_reversal_candidates = [
+        row for row in known_change
+        if row.get("change_24h_pct") < 0
+        and row.get("eligible") is True
+        and row.get("entry_liquidity_eligible") is True
+        and int(row.get("reversal_signal_count") or 0) >= 2
+    ]
+    for row in top_loser_reversal_candidates:
+        row["reversal_pathway_eligible"] = True
+        row["capital_authorized"] = False
 
     return {
         "mean_reversion_watchlist": sorted(
@@ -324,6 +386,15 @@ def build_dynamic_market_lists(
         )[:show_n],
         "recovery_watchlist": sorted(
             recovery,
+            key=lambda row: (
+                int(row.get("reversal_signal_count") or 0),
+                row.get("selection_score") or 0,
+                row.get("volume_24h_usd") or 0,
+            ),
+            reverse=True,
+        )[:show_n],
+        "top_loser_reversal_candidates": sorted(
+            top_loser_reversal_candidates,
             key=lambda row: (
                 int(row.get("reversal_signal_count") or 0),
                 row.get("selection_score") or 0,
@@ -568,6 +639,12 @@ async def scan_kraken_universe(
             "rsi_14d": analysis.get("rsi_14d"),
             "reversal_signal_count": analysis.get("reversal_signal_count", 0),
             "reversal_signal_reasons": analysis.get("reversal_signal_reasons", []),
+            "bbwp_percentile": analysis.get("bbwp_percentile"),
+            "bbwp_previous_percentile": analysis.get("bbwp_previous_percentile"),
+            "bbwp_bandwidth_change_pct": analysis.get("bbwp_bandwidth_change_pct"),
+            "bbwp_state": analysis.get("bbwp_state", "UNAVAILABLE"),
+            "bbwp_signal_reasons": analysis.get("bbwp_signal_reasons", []),
+            "reversal_pathway_eligible": False,
             "median_daily_range_30d_pct": analysis.get("median_daily_range_30d_pct"),
             "selection_reasons": analysis.get("selection_reasons", []),
             "rejection_reasons": analysis.get("rejection_reasons", []),
@@ -596,6 +673,8 @@ async def scan_kraken_universe(
             "24h_change": "hourly candle close nearest at/before the 24h reference; stale/missing values omitted",
             "3d_change": "current price versus the close three completed daily candles earlier",
             "recovery_watchlist": "losers with at least two independent reversal observations; research only",
+            "top_loser_reversal_candidates": "measured 24h losers passing all quality guards, $10M entry liquidity, and at least two reversal observations",
+            "bbwp": "20-period Bollinger bandwidth percentile and direction; contextual evidence, not a standalone numeric gate",
         },
         "counts": {
             "eligible_kraken_markets": len(snapshot.eligible_pairs),
@@ -617,6 +696,7 @@ async def scan_kraken_universe(
             "without_measured_24h_change": sum(row.get("change_24h_pct") is None for row in market_rows),
             "mean_reversion_watchlist": len(dynamic_lists["mean_reversion_watchlist"]),
             "recovery_watchlist": len(dynamic_lists["recovery_watchlist"]),
+            "top_loser_reversal_candidates": len(dynamic_lists["top_loser_reversal_candidates"]),
             "rejected_candidate_rows": len(rejected_candidates),
         },
         # The supervisor, VCAP entry and asset-authority writer continue to consume
