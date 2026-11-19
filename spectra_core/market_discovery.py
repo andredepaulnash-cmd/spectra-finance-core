@@ -116,12 +116,12 @@ def analyze_daily_history(
         reversal_signal_reasons.append("RSI improving versus prior 14-day window")
     if previous_return_3d is not None and return_3d > previous_return_3d:
         reversal_signal_reasons.append("3-day return improving versus prior 3-day window")
-    if change_24h_pct is not None and change_24h_pct > 0:
-        reversal_signal_reasons.append("positive measured 24-hour rebound")
-    if price >= sma_5d:
-        reversal_signal_reasons.append("price recovered above 5-day average")
-    if distance_from_3d_low >= 2.0:
-        reversal_signal_reasons.append("price moved at least 2% above recent 3-day low")
+    if change_24h_pct is not None and change_24h_pct >= 0.5:
+        reversal_signal_reasons.append("measured 24-hour rebound of at least 0.5%")
+    if price >= sma_5d * 1.005:
+        reversal_signal_reasons.append("price is at least 0.5% above the 5-day average")
+    if price >= max(closes[-3:]) * 1.01:
+        reversal_signal_reasons.append("price reclaimed at least 1% above recent 3-day closes")
     reversal_signal_count = len(reversal_signal_reasons)
 
     # Medians and active-day frequency reward persistent movement, not one pump.
