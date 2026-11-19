@@ -12,6 +12,7 @@ from .economic_position import (
     EconomicPositionStatus,
 )
 from .kraken_market_fabric import KrakenTradingRule
+from .models import EntryStrategySource
 from .partial_attempt import (
     PartialAttemptDisposition,
     PartialAttemptPolicy,
@@ -40,6 +41,7 @@ from .vcap_profit_exit import (
     VCAPProfitExitDecision,
     VCAPProfitExitPolicy,
     plan_vcap_profit_exit,
+    plan_top_loser_adaptive_exit,
 )
 from .vcap_state import (
     VCAPLifecycleState,
@@ -157,14 +159,23 @@ def plan_vcap_lifecycle(
         store.save(state)
         return decision
 
-    profit = plan_vcap_profit_exit(
-        position,
-        costs=costs,
-        now=now,
-        fingerprint=fingerprint,
-        previous_state=state.profit_state,
-        policy=profit_policy,
-    )
+    if snapshot.strategy_source == EntryStrategySource.TOP_LOSER_REVERSAL:
+        profit = plan_top_loser_adaptive_exit(
+            position,
+            costs=costs,
+            now=now,
+            fingerprint=fingerprint,
+            previous_state=state.profit_state,
+        )
+    else:
+        profit = plan_vcap_profit_exit(
+            position,
+            costs=costs,
+            now=now,
+            fingerprint=fingerprint,
+            previous_state=state.profit_state,
+            policy=profit_policy,
+        )
 
     checkpoint = _checkpoint_state(
         state,
