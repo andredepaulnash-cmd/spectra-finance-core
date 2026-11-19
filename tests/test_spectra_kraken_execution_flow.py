@@ -217,7 +217,7 @@ def governor(tmp_path):
         (True, "kraken_paper_trade"),
     ],
 )
-def test_kraken_snapshot_to_authorization_to_hummingbot(
+def test_kraken_grid_purchase_is_refused_under_market_only_policy(
     monkeypatch, tmp_path, paper_mode, connector_name
 ):
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
@@ -329,76 +329,16 @@ def test_kraken_snapshot_to_authorization_to_hummingbot(
         )
     )
 
-    assert result.get("executor_id") == "spectra-e2e-1", result
-
-    assert len(client.connectors.calls) == 1
-    assert client.connectors.calls[0] == {
-        "connector_name": connector_name,
-        "trading_pairs": ["BTC-USD"],
-    }
-
-    assert len(client.executors.calls) == 1
-
-    call = client.executors.calls[0]
-
-    assert call["account_name"] == "master_account"
-    assert call["executor_config"]["connector_name"] == connector_name
-    assert call["executor_config"]["trading_pair"] == "BTC-USD"
-    assert call["executor_config"]["type"] == "order_executor"
-    assert call["executor_config"]["execution_strategy"] == "LIMIT"
-    assert D(call["executor_config"]["price"]) == D("94")
-    assert D(call["executor_config"]["amount"]) * D("94") <= D("50")
-    assert D(
-        g.get_protected_buy_submission(proposal.proposal_id)["authorized_quote_budget"]
-    ) == D("50")
-
+    assert result.get("executor_id") is None
+    assert "all purchases must use a governed MARKET BUY order" in result["error"]
+    assert client.executors.calls == []
+    # Grid/DCA are not allowed to place purchase orders. The funded proposal
+    # remains RESERVED and no execution receipt or protected BUY is created.
     final_decision = g.get_decision(proposal.proposal_id)
-
     assert final_decision is not None
-    assert final_decision.status == DecisionStatus.RECONCILED
-    assert g.get_execution_receipt(proposal.proposal_id) == "spectra-e2e-1"
-
-    provenance = g.get_execution_provenance(proposal.proposal_id)
-    assert provenance is not None
-    assert provenance.account_name == "master_account"
-    assert provenance.connector_name == connector_name
-    assert provenance.controller_id == "spectra"
-
-    # Reconcile the exact executor's authoritative order + confirmed fill
-    # evidence back into the Core economic ledger after the API receipt.
-    accounting = asyncio.run(
-        synchronize_position_accounting_health(
-            client,
-            position_id="e2e-entry",
-            proposal_ids=(proposal.proposal_id,),
-            governor=g,
-            ledger=ledger,
-            supervisor=health,
-            now=2_000,
-        )
-    )
-
-    assert accounting.state == AccountingHealthState.HEALTHY
-    assert accounting.fully_reconciled
-    assert accounting.ledgered_fills == 1
-    assert ledger.snapshot("e2e-entry").active_base == D(call["executor_config"]["amount"])
-    assert ledger.snapshot("e2e-entry").active_cost_basis_quote == D(call["executor_config"]["amount"]) * D("94")
-    assert ledger.snapshot("e2e-entry").active_entry_fees_quote == D("0.01")
-
-    # The exact same position becomes stale after its health watermark expires.
-    # A second buy-side authorization must fail before any new capital reservation.
-    monkeypatch.setattr(kraken_authorization.time, "time", lambda: 2_031)
-    with pytest.raises(ValueError, match="accounting health gate blocks new exposure"):
-        asyncio.run(
-            reserve_kraken_capital(
-                client,
-                account_name="master_account",
-                trading_pair="BTC-USD",
-                intent="ENTRY",
-                amount_quote="10",
-                governor=g,
-            )
-        )
+    assert final_decision.status == DecisionStatus.RESERVED
+    assert g.get_execution_receipt(proposal.proposal_id) is None
+    assert g.get_protected_buy_submission(proposal.proposal_id) is None
 
 
 @pytest.mark.asyncio
