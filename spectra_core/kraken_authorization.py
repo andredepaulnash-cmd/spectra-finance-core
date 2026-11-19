@@ -13,6 +13,7 @@ from .models import (
     CapitalProposal,
     CapitalSnapshot,
     DecisionStatus,
+    EntryStrategySource,
     IntentKind,
 )
 from .runtime import (
