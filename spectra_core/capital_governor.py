@@ -2692,6 +2692,7 @@ class CapitalGovernor:
                         and Decimal(child["amount_quote"])
                         == tranche_proposal.amount_quote
                         and Decimal(child["leverage"]) == tranche_proposal.leverage
+                        and str(child["strategy_source"]) == tranche_proposal.strategy_source.value
                     )
                     if cash.binding(conn) is not None:
                         exact_replay = (
@@ -2743,6 +2744,7 @@ class CapitalGovernor:
                     and parent["intent"] == IntentKind.RECOVERY.value
                     and parent["pair"] == pair
                     and Decimal(parent["leverage"]) == tranche_proposal.leverage
+                    and str(parent["strategy_source"]) == tranche_proposal.strategy_source.value
                     and parent_amount >= tranche_proposal.amount_quote
                 )
                 if not matches:
@@ -2767,9 +2769,9 @@ class CapitalGovernor:
                         available_after_quote,
                         created_at,
                         updated_at
-                        , account_name, connector_name, quote_asset
+                        , account_name, connector_name, quote_asset, strategy_source
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         child_id,
@@ -2797,6 +2799,7 @@ class CapitalGovernor:
                             if not isinstance(tranche_proposal.quote_asset, str)
                             else tranche_proposal.quote_asset.strip().upper()
                         ),
+                        tranche_proposal.strategy_source.value,
                     ),
                 )
 
