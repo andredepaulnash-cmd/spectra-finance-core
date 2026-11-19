@@ -53,6 +53,24 @@ A recovery-watchlist row must be a 24-hour or 3-day loser and show at least two
 of those observations. These observations are descriptive research evidence,
 not a buy signal or a bypass around existing rejection rules.
 
+## Top-loser reversal pathway research
+
+A distinct `top_loser_reversal_candidates` list is now produced for measured
+24-hour losers only. A row must pass the existing historical quality and
+downside guardrails, the existing $10,000,000 24-hour entry-liquidity floor,
+and show at least two reversal observations. A negative three-day return alone
+does not qualify a market as a 24-hour loser.
+
+Reversal observations include RSI/price context and BBWP (20-period Bollinger
+bandwidth percentile plus bandwidth direction). BBWP is descriptive context:
+compression and expansion are observations, not a standalone numeric entry
+gate. The candidate list remains informational and sets
+`reversal_pathway_eligible=true` while keeping `capital_authorized=false`.
+
+The portfolio supervisor, VCAP admission, durable position provenance, and
+adaptive DTTP/DTSL exit lifecycle are separate implementation stages. This
+research-list change does not yet authorize orders or activate those exits.
+
 ## Safety and compatibility invariants
 
 - The flat candidates key remains the eligible-only mean-reversion shortlist.
