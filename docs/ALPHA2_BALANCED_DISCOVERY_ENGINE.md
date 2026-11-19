@@ -82,6 +82,23 @@ The adaptive DTTP/DTSL exit manager and its protected SELL execution contract
 remain a separate unfinished stage. They must be implemented and tested before
 the pathway is considered complete or enabled.
 
+## Order execution policy
+
+All purchases use MARKET BUY execution for immediate matching, including
+initial entries and every authorized VCAP recovery patch. VCAP still plans and
+authorizes one recovery tranche at a time; its tranche sizing and recovery
+sequence do not turn the BUY into a resting DCA limit order. The protected
+market-buy adapter sizes the base quantity from the exact reserved quote budget
+and a fresh, depth-checked Kraken ask book, while retaining venue-minimum and
+paper-only safeguards. Live market execution remains separately gated until
+quote-denominated spend bounds can be enforced by the connector.
+
+LIMIT orders are reserved for adaptive DTTP/DTSL SELL exits after the
+corresponding position-scoped exit trigger activates. Those protected sell
+prices are dynamically recalculated from the adaptive exit decision and fresh
+market evidence. No ordinary position inherits the top-loser-specific exit
+behavior.
+
 ## Safety and compatibility invariants
 
 - The flat candidates key remains the eligible-only mean-reversion shortlist.
