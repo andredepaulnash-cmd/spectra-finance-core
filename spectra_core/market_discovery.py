@@ -96,7 +96,8 @@ def analyze_daily_history(
     range_position = ((price - low_90d) / (high_90d - low_90d) * 100) if high_90d > low_90d else 50.0
     distance_from_low = (price / low_90d - 1) * 100 if low_90d > 0 else 0.0
 
-    rsi_14d = _rsi_from_prices(closes[-15:]) or 50.0
+    current_rsi = _rsi_from_prices(closes[-15:])
+    rsi_14d = 50.0 if current_rsi is None else current_rsi
     rsi_14d_previous = _rsi_from_prices(closes[-29:-14]) if len(closes) >= 29 else None
     rsi_14d_change = (
         rsi_14d - rsi_14d_previous if rsi_14d_previous is not None else None
@@ -460,6 +461,9 @@ async def scan_kraken_universe(
                     current_price=item["price"],
                     now=timestamp,
                 )
+                item["change_24h_pct"] = hourly_change
+                item["change_24h_window_seconds"] = hourly_window
+                item["change_24h_source"] = "hourly_candles" if hourly_change is not None else None
             except Exception:
                 # A missing hourly reference removes a pair from 24h leaderboards,
                 # but does not invalidate its independent daily mean-reversion analysis.
@@ -546,9 +550,9 @@ async def scan_kraken_universe(
             "current_price": item["price"],
             "volume_24h_usd": round(item["volume"], 2),
             "volume_rank_24h": item["volume_rank_24h"],
-            "change_24h_pct": analysis.get("change_24h_pct"),
-            "change_24h_window_seconds": analysis.get("change_24h_window_seconds"),
-            "change_24h_source": analysis.get("change_24h_source"),
+            "change_24h_pct": analysis.get("change_24h_pct", item.get("change_24h_pct")),
+            "change_24h_window_seconds": analysis.get("change_24h_window_seconds", item.get("change_24h_window_seconds")),
+            "change_24h_source": analysis.get("change_24h_source", item.get("change_24h_source")),
             "entry_liquidity_eligible": item["entry_liquidity_eligible"],
             "eligible": analysis.get("eligible", False),
             "selection_score": analysis.get("selection_score"),
@@ -614,7 +618,7 @@ async def scan_kraken_universe(
         "lists": dynamic_lists,
         "list_scope": (
             f"top {top_n} liquid Kraken spot markets by 24h quote volume; "
-            f"research floor \${research_floor:,.0f}; entry floor \${min_volume_usd:,.0f}"
+            f"research floor {chr(36)}{research_floor:,.0f}; entry floor {chr(36)}{min_volume_usd:,.0f}"
         ),
         "rejected_candidates": rejected_candidates,
         "rejected_data": rejected_data,
