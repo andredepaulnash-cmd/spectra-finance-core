@@ -519,6 +519,9 @@ def synchronize_executor_evidence(
                 )
             if not market_buy and (order.price is None or Fraction(order.price) > price_cap):
                 breaches.append(f"protected_buy_order_price_above_cap:{order.order_id}")
+            # Keep both base-denominated quantities in the durable conflict
+            # detail so live executor/API representation mismatches can be
+            # distinguished from actual over-ordering without weakening the gate.
             observed_amount = Fraction(order.amount)
             if observed_amount != authorized_amount:
                 policy_amount = (
