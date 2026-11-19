@@ -349,6 +349,16 @@ def test_policy_only_health_tag_survives_restart_but_not_missing_volume(tmp_path
 
 def test_market_buy_fill_reconciles_without_limit_price_and_respects_quote_budget(tmp_path):
     governor, ledger, reconciler, _, trade = setup_buy(tmp_path, market=True)
+    reconciler.bind_executor_order(
+        order_id=trade.order_id,
+        position_id="position",
+        role=__import__("spectra_core.fill_reconciliation", fromlist=["EconomicFillRole"]).EconomicFillRole.BASE_ENTRY,
+        proposal_id="buy",
+        account_name="offline",
+        connector_name="kraken",
+        pair="XRP-USD",
+        created_at=1100,
+    )
     trade = replace(trade, amount_base=D("2"), price=D("1"))
     result = reconciler.reconcile_trade_fill(
         {
@@ -373,7 +383,17 @@ def test_market_buy_fill_reconciles_without_limit_price_and_respects_quote_budge
 
 def test_market_buy_fill_spend_over_quote_budget_is_durable_conflict(tmp_path):
     governor, ledger, reconciler, _, trade = setup_buy(tmp_path, market=True)
-    trade = replace(trade, amount_base=D("9"), price=D("1.2"))
+    reconciler.bind_executor_order(
+        order_id=trade.order_id,
+        position_id="position",
+        role=__import__("spectra_core.fill_reconciliation", fromlist=["EconomicFillRole"]).EconomicFillRole.BASE_ENTRY,
+        proposal_id="buy",
+        account_name="offline",
+        connector_name="kraken",
+        pair="XRP-USD",
+        created_at=1100,
+    )
+    trade = replace(trade, amount_base=D("9"), price=D("1.1"), fee_paid=D(".2"), fee_currency="USD")
     result = reconciler.reconcile_trade_fill(
         {
             "trade_id": trade.trade_id,
