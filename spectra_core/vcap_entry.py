@@ -38,6 +38,7 @@ class VCAPPaperEntryAdmission:
     paper_only: bool = True
     position_slot_opened: bool = False
     order_dispatched: bool = False
+    strategy_source: str = "MEAN_REVERSION"
 
 
 def _finite_number(value: Any, field: str) -> float:
@@ -60,6 +61,7 @@ async def reserve_vcap_candidate_entry(
     account_name: str,
     governor=None,
     now: float | None = None,
+    strategy_source: str = "MEAN_REVERSION",
 ) -> VCAPPaperEntryAdmission:
     """Reserve one $20 ENTRY for a fresh scanner candidate.
 
@@ -97,11 +99,15 @@ async def reserve_vcap_candidate_entry(
     if age < -5.0 or age > MAX_DISCOVERY_AGE_SECONDS:
         raise ValueError("mean-reversion shortlist is stale or has a future timestamp")
 
+    source = str(strategy_source).strip().upper()
+    if source not in {"MEAN_REVERSION", "TOP_LOSER_REVERSAL"}:
+        raise ValueError("unsupported entry strategy source")
     pair = canonical_kraken_usd_pair(trading_pair)
     lists = scan_result.get("lists")
-    candidates = lists.get("mean_reversion_candidates") if isinstance(lists, Mapping) else None
+    list_key = "top_loser_reversal_candidates" if source == "TOP_LOSER_REVERSAL" else "mean_reversion_candidates"
+    candidates = lists.get(list_key) if isinstance(lists, Mapping) else None
     if not isinstance(candidates, list):
-        raise ValueError("market discovery has no mean-reversion candidate list")
+        raise ValueError(f"market discovery has no {list_key} list")
 
     candidate = next(
         (
@@ -117,12 +123,24 @@ async def reserve_vcap_candidate_entry(
         raise ValueError(f"{pair} no longer passes mean-reversion eligibility")
     if candidate.get("capital_authorized") is not False:
         raise ValueError("scanner candidates must remain informational, not pre-authorized")
+    if source == "TOP_LOSER_REVERSAL":
+        change = candidate.get("change_24h_pct")
+        if (
+            candidate.get("reversal_pathway_eligible") is not True
+            or candidate.get("entry_liquidity_eligible") is not True
+            or change is None
+            or _finite_number(change, "change_24h_pct") >= 0
+            or int(candidate.get("reversal_signal_count") or 0) < 2
+        ):
+            raise ValueError("top-loser reversal candidate no longer passes its pathway evidence")
 
     selection_score = _finite_number(candidate.get("selection_score"), "selection_score")
     current_price = _finite_number(candidate.get("current_price"), "current_price")
     volume = _finite_number(candidate.get("volume_24h_usd"), "volume_24h_usd")
     if current_price <= 0 or volume <= 0:
         raise ValueError("candidate price and 24h USD volume must be positive")
+    if source == "TOP_LOSER_REVERSAL" and volume < 10_000_000:
+        raise ValueError("top-loser reversal entry requires at least $10M 24h quote volume")
     if str(candidate.get("quote_asset") or "USD").strip().upper() != "USD":
         raise ValueError("VCAP entries are restricted to Kraken USD spot pairs")
 
@@ -159,6 +177,7 @@ async def reserve_vcap_candidate_entry(
         intent=IntentKind.ENTRY,
         amount_quote=PAPER_VCAP_SEED_QUOTE,
         governor=governor,
+        strategy_source=source,
     )
     position_id = (
         authorization.economic_position_id
@@ -180,4 +199,5 @@ async def reserve_vcap_candidate_entry(
             and authorization.economic_position_id is not None
         ),
         paper_only=paper_only,
+        strategy_source=source,
     )
