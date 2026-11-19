@@ -393,6 +393,21 @@ class CapitalGovernor:
                         "ALTER TABLE execution_provenance "
                         f"ADD COLUMN {column_name} TEXT"
                     )
+            conn.execute(
+                """
+                UPDATE execution_provenance
+                SET strategy_source = COALESCE(
+                    (
+                        SELECT strategy_source
+                        FROM capital_reservations
+                        WHERE capital_reservations.proposal_id =
+                              execution_provenance.proposal_id
+                    ),
+                    'STANDARD'
+                )
+                WHERE strategy_source IS NULL OR strategy_source = ''
+                """
+            )
 
             # Upgrade existing reconciled receipts deterministically. This is
             # provenance of authorization/executor ownership, not fill data.
