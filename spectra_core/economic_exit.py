@@ -19,7 +19,7 @@ from .economic_position import (
     EconomicPositionStatus,
 )
 from .kraken_market_fabric import KrakenTradingRule
-from .models import IntentKind
+from .models import EntryStrategySource, IntentKind
 from .partial_recycle import protected_partial_recycle_price
 
 ZERO = Decimal("0")
@@ -120,6 +120,7 @@ class EconomicPositionExitManifest:
     protected_limit_price: Decimal | None = None
     sell_executor_id: str | None = None
     cash_proceeds_route: str | None = None
+    exit_mode: str = "PROFIT_PROTECTED"
 
     @property
     def proposal_ids(self) -> tuple[str, ...]:
@@ -190,6 +191,11 @@ class EconomicExitManifestStore:
                     conn.execute(
                         f"ALTER TABLE economic_exit_manifests ADD COLUMN {column} TEXT"
                     )
+            if "exit_mode" not in columns:
+                conn.execute(
+                    "ALTER TABLE economic_exit_manifests "
+                    "ADD COLUMN exit_mode TEXT NOT NULL DEFAULT 'PROFIT_PROTECTED'"
+                )
             conn.executescript("""
                 CREATE TABLE IF NOT EXISTS economic_exit_dispatch_claims (
                     manifest_id TEXT PRIMARY KEY, claimed_at REAL NOT NULL
@@ -320,6 +326,7 @@ class EconomicExitManifestStore:
             ),
             sell_executor_id=row["sell_executor_id"],
             cash_proceeds_route=row["cash_proceeds_route"],
+            exit_mode=str(row["exit_mode"] or "PROFIT_PROTECTED"),
         )
 
     def load(self, manifest_id: str) -> EconomicPositionExitManifest | None:
@@ -524,9 +531,9 @@ class EconomicExitManifestStore:
                         created_at,
                         completed_at,
                         target_net_profit_bps, expected_exit_cost_bps,
-                        protected_limit_price, sell_executor_id, cash_proceeds_route
+                        protected_limit_price, sell_executor_id, cash_proceeds_route, exit_mode
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         manifest.manifest_id,
@@ -561,6 +568,7 @@ class EconomicExitManifestStore:
                         ),
                         manifest.sell_executor_id,
                         manifest.cash_proceeds_route,
+                        manifest.exit_mode,
                     ),
                 )
                 conn.commit()
