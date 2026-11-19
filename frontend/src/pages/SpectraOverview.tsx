@@ -10,24 +10,12 @@ import {
 } from "lucide-react";
 
 import { useServer } from "@/hooks/useServer";
-import { api, type MarketDiscoveryCandidate, type MarketDiscoveryListKey, type SpectraModuleControl, type SpectraModuleStatus } from "@/lib/api";
+import { api, type MarketDiscoveryCandidate, type SpectraModuleControl, type SpectraModuleStatus } from "@/lib/api";
 
 type DailyCandidateSnapshot = Pick<MarketDiscoveryCandidate, "symbol" | "base_asset" | "selection_score" | "current_price"> & { rank: number };
 type DailyMarketSnapshot = { date: string; as_of: number; candidates: DailyCandidateSnapshot[] };
 type DailyMarketHistory = { current: DailyMarketSnapshot | null; previous: DailyMarketSnapshot | null };
 const DAILY_MARKET_HISTORY_KEY = "spectra.daily-market-shortlist.v1";
-
-const marketListLabels: Record<MarketDiscoveryListKey, string> = {
-  mean_reversion_watchlist: "Mean-reversion research",
-  mean_reversion_candidates: "Eligible mean-reversion",
-  recovery_watchlist: "Recovery watchlist",
-  top_24h_gainers: "24h gainers",
-  top_24h_losers: "24h losers",
-  top_3d_losers: "3d losers",
-  top_24h_volume: "24h volume",
-  volatility_leaders: "Volatility leaders",
-  rejected_candidates: "Rejected candidates",
-};
 
 function formatUsd(value: number) {
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(value);
@@ -119,7 +107,6 @@ export function SpectraOverview() {
       api.setSpectraModuleTrigger(server!, moduleId, enabled),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["spectra-modules", server] }),
   });
-  const [activeMarketList, setActiveMarketList] = useState<MarketDiscoveryListKey>("mean_reversion_watchlist");
   const [dailyMarketHistory, setDailyMarketHistory] = useState<DailyMarketHistory>(() => {
     try {
       const saved = window.localStorage.getItem(DAILY_MARKET_HISTORY_KEY);
@@ -196,9 +183,6 @@ export function SpectraOverview() {
   const exitedDailyCandidates = (dailyMarketHistory.previous?.candidates ?? []).filter(
     (candidate) => !currentSymbols.has(candidate.symbol),
   );
-  const activeMarketRows =
-    marketDiscovery.data?.lists?.[activeMarketList] ??
-    (activeMarketList === "mean_reversion_candidates" ? marketDiscovery.data?.candidates ?? [] : []);
 
   // Only query account/executor data after the selected server proves it is
   // paper-only and has initialized the exact Kraken paper connector.
@@ -481,128 +465,188 @@ export function SpectraOverview() {
             <div>
               <h3 className="mb-2 text-sm font-semibold">Recent paper executors</h3>
               {krakenPaperActivity.length ? (
-                <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Dynamic market research lists">
-              {(Object.keys(marketListLabels) as MarketDiscoveryListKey[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeMarketList === key}
-                  onClick={() => setActiveMarketList(key)}
-                  className={"rounded-lg border px-3 py-2 text-xs font-medium transition-colors " + (activeMarketList === key ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]" : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]")}
-                >
-                  {marketListLabels[key]}
-                  <span className="ml-2 tabular-nums opacity-70">
-                    {marketDiscovery.data?.lists?.[key]?.length ?? 0}
-                  </span>
-                </button>
-              ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[560px] text-left text-sm">
+                    <thead className="text-xs text-[var(--color-text-muted)]">
+                      <tr>
+                        <th className="pb-2 pr-3 font-medium">Pair</th>
+                        <th className="pb-2 pr-3 font-medium">Side</th>
+                        <th className="pb-2 pr-3 font-medium">Status</th>
+                        <th className="pb-2 pr-3 text-right font-medium">PnL (quote)</th>
+                        <th className="pb-2 text-right font-medium">Fees (quote)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {krakenPaperActivity.slice(0, 8).map((executor) => (
+                        <tr key={executor.id} className="border-t border-[var(--color-border)]">
+                          <td className="py-2 pr-3 font-medium">{executor.trading_pair}</td>
+                          <td className="py-2 pr-3">{executor.side}</td>
+                          <td className="py-2 pr-3">{executor.status}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums">{executor.pnl.toFixed(2)}</td>
+                          <td className="py-2 text-right tabular-nums">{executor.cum_fees_quote.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  No Kraken paper executors have been reported yet.
+                </p>
+              )}
             </div>
-            <p className="mb-3 text-xs text-[var(--color-text-muted)]">
-              {activeMarketList === "mean_reversion_watchlist"
-                ? "Mean-reversion research includes analyzed markets whether they pass entry guardrails or not. Rejection reasons remain visible."
-                : activeMarketList === "mean_reversion_candidates"
-                  ? "Only eligible mean-reversion candidates appear here. This is the only discovery list consumed by the existing approved-asset writer."
-                  : activeMarketList === "recovery_watchlist"
-                    ? "Losers with at least two independent reversal observations. Research only; this does not activate VCAP, DTTP, DTSL, or authorize an entry."
-                    : activeMarketList === "top_24h_gainers" || activeMarketList === "top_24h_losers"
-                      ? "Measured from hourly candles. Missing or stale hourly references are omitted rather than estimated."
-                      : activeMarketList === "top_3d_losers"
-                        ? "Three-day return is measured against the close three completed daily candles earlier."
-                        : "Research rankings only. No market list grants capital authority."}
+            <p className="mt-3 text-xs text-[var(--color-text-muted)]">
+              These simulated account and execution values are reported by the connected paper-trading service. Capital reconciliation health is shown separately.
             </p>
+          </>
+        )}
+      </section>
+
+
+      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 md:p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-[var(--color-text-muted)]" />
+              <h2 className="font-semibold">Market discovery</h2>
+            </div>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              Kraken USD spot markets ranked for mean-reversion research — no orders are created.
+            </p>
+          </div>
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 py-1 text-[11px] font-medium text-emerald-500">
+            RESEARCH ONLY · NO ORDERS
+          </span>
+        </div>
+        {marketDiscovery.isLoading ? (
+          <p className="text-sm text-[var(--color-text-muted)]">Scanning liquid markets and loading daily history…</p>
+        ) : marketDiscovery.isError ? (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+            <CircleAlert className="mb-2 h-4 w-4 text-amber-500" />
+            Kraken spot discovery is unavailable. The system will not substitute simulated prices or stale results.
+          </div>
+        ) : marketDiscovery.data ? (
+          <>
+            <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Liquid Kraken USD spot pairs</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.liquid_markets_found}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Historical samples analyzed</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.analyzed}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Eligible candidates</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.eligible}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--color-border)] p-3">
+                <p className="text-xs text-[var(--color-text-muted)]">Rejected for downside risk</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{marketDiscovery.data.counts.rejected_by_guardrails}</p>
+              </div>
+            </div>
+            <div className={`mb-4 rounded-lg border p-3 text-sm ${marketDiscovery.data.governor_approved_list_loaded ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-medium">Governor asset authority</p>
+                <span className={marketDiscovery.data.governor_approved_list_loaded ? "text-emerald-500" : "text-amber-500"}>
+                  {marketDiscovery.data.governor_approved_list_loaded
+                    ? `Allowlist loaded · ${marketDiscovery.data.counts.governor_approved} matching candidates`
+                    : "Not configured · paper BUY-side intents blocked"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-muted)]">
+                {marketDiscovery.data.governor_approved_list_loaded
+                  ? `Source: ${marketDiscovery.data.approved_asset_list_source ?? "unreported"}. Asset approval is not capital authorization; risk, accounting, and signed Core dispatch checks still apply.`
+                  : "No approved assets are inferred from market rankings. Add the Architect-approved list to the isolated paper-state configuration before any new paper BUY exposure can be authorized."}
+              </p>
+            </div>
+            <div className="mb-4 rounded-lg border border-[var(--color-border)] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium">Daily shortlist movement</p>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  {dailyMarketHistory.previous
+                    ? `Compared with ${dailyMarketHistory.previous.date}`
+                    : "Building first daily baseline"}
+                </span>
+              </div>
+              {dailyMarketHistory.previous ? (
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+                  <span className="text-emerald-500">New: {newDailyCandidates.length}</span>
+                  <span className="text-rose-500">Exited: {exitedDailyCandidates.length}</span>
+                  <span className="text-[var(--color-text-muted)]">Still listed: {marketDiscovery.data.candidates.length - newDailyCandidates.length}</span>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                  Spectra will compare tomorrow's shortlist with today's first scan. The baseline stays in this browser.
+                </p>
+              )}
+              {dailyMarketHistory.previous && (newDailyCandidates.length > 0 || exitedDailyCandidates.length > 0) ? (
+                <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-muted)]">
+                  {newDailyCandidates.length ? `New: ${newDailyCandidates.slice(0, 8).map((item) => item.base_asset).join(", ")}. ` : ""}
+                  {exitedDailyCandidates.length ? `Exited: ${exitedDailyCandidates.slice(0, 8).map((item) => item.base_asset).join(", ")}.` : ""}
+                </p>
+              ) : null}
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1120px] text-left text-sm">
+              <table className="w-full min-w-[1040px] text-left text-sm">
                 <thead className="text-xs text-[var(--color-text-muted)]">
                   <tr>
                     <th className="pb-2 pr-3 font-medium">Rank / Asset</th>
                     <th className="pb-2 pr-3 text-right font-medium">Price</th>
                     <th className="pb-2 pr-3 text-right font-medium">24h Volume</th>
-                    <th className="pb-2 pr-3 text-right font-medium">24h</th>
-                    <th className="pb-2 pr-3 text-right font-medium">3d</th>
                     <th className="pb-2 pr-3 text-right font-medium">vs 90d VWAP</th>
+                    <th className="pb-2 pr-3 text-right font-medium">7d Change</th>
                     <th className="pb-2 pr-3 text-right font-medium">RSI</th>
-                    <th className="pb-2 pr-3 font-medium">Status / reversal evidence</th>
+                    <th className="pb-2 pr-3 font-medium">Governor authority</th>
                     <th className="pb-2 text-right font-medium">Score</th>
                     <th className="pb-2 pl-3 text-right font-medium">1d Δ</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {activeMarketRows.map((candidate, index) => {
-                    const rejection = candidate.rejection_reasons ?? [];
-                    const rationale = candidate.selection_reasons ?? [];
-                    const reversal = candidate.reversal_signal_reasons ?? [];
-                    const status = candidate.selection_score == null
-                      ? "History unavailable"
-                      : candidate.eligible
-                        ? "Eligible"
-                        : candidate.entry_liquidity_eligible === false
-                          ? "Below entry liquidity floor"
-                          : "Research only · guardrail rejected";
-                    return (
-                      <tr key={candidate.trading_pair} className="border-t border-[var(--color-border)] align-top">
-                        <td className="py-3 pr-3">
-                          <div className="font-semibold">{index + 1}. {candidate.base_asset}</div>
-                          <div className="mt-1 text-xs text-[var(--color-text-muted)]">{candidate.trading_pair}</div>
-                          <div className="mt-1 max-w-[280px] text-xs text-[var(--color-text-muted)]">
-                            {[...rationale, ...rejection].join(" · ") || "Live Kraken research market"}
-                          </div>
-                        </td>
-                        <td className="py-3 pr-3 text-right tabular-nums">{formatMarketPrice(candidate.current_price)}</td>
-                        <td className="py-3 pr-3 text-right tabular-nums">{formatCompactUsd(candidate.volume_24h_usd)}</td>
-                        <td className={"py-3 pr-3 text-right tabular-nums " + (candidate.change_24h_pct == null ? "text-[var(--color-text-muted)]" : candidate.change_24h_pct >= 0 ? "text-emerald-500" : "text-rose-500")}>
-                          {candidate.change_24h_pct == null ? "—" : (candidate.change_24h_pct >= 0 ? "+" : "") + candidate.change_24h_pct.toFixed(2) + "%"}
-                        </td>
-                        <td className={"py-3 pr-3 text-right tabular-nums " + (candidate.return_3d_pct == null ? "text-[var(--color-text-muted)]" : candidate.return_3d_pct >= 0 ? "text-emerald-500" : "text-rose-500")}>
-                          {candidate.return_3d_pct == null ? "—" : (candidate.return_3d_pct >= 0 ? "+" : "") + candidate.return_3d_pct.toFixed(2) + "%"}
-                        </td>
-                        <td className="py-3 pr-3 text-right tabular-nums">
-                          {candidate.discount_to_vwap_pct == null ? "—" : (candidate.discount_to_vwap_pct > 0 ? "+" : "") + candidate.discount_to_vwap_pct.toFixed(1) + "%"}
-                        </td>
-                        <td className="py-3 pr-3 text-right tabular-nums">{candidate.rsi_14d == null ? "—" : candidate.rsi_14d.toFixed(0)}</td>
-                        <td className="py-3 pr-3">
-                          <div className={candidate.eligible ? "text-xs font-medium text-emerald-500" : "text-xs font-medium text-amber-500"}>{status}</div>
-                          {reversal.length ? (
-                            <div className="mt-1 max-w-[300px] text-[11px] text-[var(--color-text-muted)]">
-                              {reversal.join(" · ")}
-                            </div>
-                          ) : null}
-                          <div className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-                            {candidate.governor_approved ? "Governor allowlist match" : "Not on Governor allowlist"} · no capital authorization
-                          </div>
-                        </td>
-                        <td className="py-3 text-right font-semibold tabular-nums">
-                          {candidate.selection_score == null ? "—" : candidate.selection_score.toFixed(0) + "/100"}
-                        </td>
-                        <td className="py-3 pl-3 text-right tabular-nums">
-                          {activeMarketList !== "mean_reversion_candidates" || candidate.selection_score == null
-                            ? <span className="text-[var(--color-text-muted)]">—</span>
-                            : (() => {
-                                const previous = previousDailyCandidates.get(candidate.symbol);
-                                if (!previous) return <span className="text-[var(--color-text-muted)]">NEW</span>;
-                                const delta = candidate.selection_score - previous.selection_score;
-                                return <span className={delta > 0 ? "text-emerald-500" : delta < 0 ? "text-rose-500" : "text-[var(--color-text-muted)]"}>
-                                  {delta > 0 ? "+" : ""}{delta.toFixed(0)}
-                                </span>;
-                              })()}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {marketDiscovery.data.candidates.map((candidate, index) => (
+                    <tr key={candidate.symbol} className="border-t border-[var(--color-border)] align-top">
+                      <td className="py-3 pr-3">
+                        <div className="font-semibold">{index + 1}. {candidate.base_asset}</div>
+                        <div className="mt-1 max-w-[260px] text-xs text-[var(--color-text-muted)]">
+                          {candidate.selection_reasons.join(" · ")}
+                        </div>
+                      </td>
+                      <td className="py-3 pr-3 text-right tabular-nums">{formatMarketPrice(candidate.current_price)}</td>
+                      <td className="py-3 pr-3 text-right tabular-nums">{formatCompactUsd(candidate.volume_24h_usd)}</td>
+                      <td className="py-3 pr-3 text-right tabular-nums">{candidate.discount_to_vwap_pct > 0 ? "+" : ""}{candidate.discount_to_vwap_pct.toFixed(1)}%</td>
+                      <td className={"py-3 pr-3 text-right tabular-nums " + (candidate.return_7d_pct >= 0 ? "text-emerald-500" : "text-rose-500")}>{candidate.return_7d_pct >= 0 ? "+" : ""}{candidate.return_7d_pct.toFixed(1)}%</td>
+                      <td className="py-3 pr-3 text-right tabular-nums">{candidate.rsi_14d.toFixed(0)}</td>
+                      <td className="py-3 pr-3">
+                        <div className={candidate.governor_approved ? "text-xs font-medium text-emerald-500" : "text-xs font-medium text-amber-500"}>
+                          {candidate.governor_approved ? "Approved asset" : "Not approved"}
+                        </div>
+                        <div className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                          {candidate.capital_authorized ? "Capital authorized" : "No capital authorization"}
+                        </div>
+                      </td>
+                      <td className="py-3 text-right font-semibold tabular-nums">{candidate.selection_score.toFixed(0)}/100</td>
+                      <td className="py-3 pl-3 text-right tabular-nums">
+                        {(() => {
+                          const previous = previousDailyCandidates.get(candidate.symbol);
+                          if (!previous) return <span className="text-[var(--color-text-muted)]">NEW</span>;
+                          const delta = candidate.selection_score - previous.selection_score;
+                          return <span className={delta > 0 ? "text-emerald-500" : delta < 0 ? "text-rose-500" : "text-[var(--color-text-muted)]"}>
+                            {delta > 0 ? "+" : ""}{delta.toFixed(0)}
+                          </span>;
+                        })()}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
-              {!activeMarketRows.length ? (
+              {!marketDiscovery.data.candidates.length ? (
                 <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">
-                  {activeMarketList === "recovery_watchlist"
-                    ? "No losing markets currently show at least two independent reversal observations."
-                    : activeMarketList === "mean_reversion_candidates"
-                      ? "No markets currently pass every mean-reversion and entry-eligibility guardrail. Review the research and rejected lists for the exact reasons."
-                      : "No markets currently match this research list."}
+                  No contracts passed the current selection and downside-risk filters.
                 </p>
               ) : null}
             </div>
             <p className="mt-3 text-xs leading-relaxed text-[var(--color-text-muted)]">
-              {marketDiscovery.data.source}. Scans up to {marketDiscovery.data.criteria.top_by_24h_quote_volume} Kraken USD spot markets with a ${marketDiscovery.data.criteria.minimum_research_24h_volume_quote.toLocaleString()} research-volume floor. The existing ${marketDiscovery.data.criteria.minimum_24h_volume_quote.toLocaleString()} entry-volume floor, 90-day history, historical turnover, volatility, and downside guardrails remain in force for the eligible-only shortlist. Research lists never authorize capital or activate recovery modules. Last refreshed {new Date(marketDiscovery.data.as_of * 1000).toLocaleString()}.
+              {marketDiscovery.data.source}. Scans the top {marketDiscovery.data.criteria.top_by_24h_quote_volume} contracts by 24h volume, requires at least {marketDiscovery.data.criteria.minimum_completed_history_days} days of history and $10M volume, and excludes stablecoins and wrapped assets. Rankings are research candidates, not trade signals. Last refreshed {new Date(marketDiscovery.data.as_of * 1000).toLocaleString()}.
             </p>
           </>
         ) : null}
