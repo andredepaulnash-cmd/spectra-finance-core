@@ -551,6 +551,7 @@ def _result(
         "sell_executor_id": manifest.sell_executor_id,
         "position_id": manifest.position_id,
         "pair": manifest.pair,
+        "exit_mode": manifest.exit_mode,
         "target_active_base": str(manifest.target_active_base),
         "remaining_active_base": str(progress.remaining_active_base),
         "realized_net_pnl_quote": str(progress.realized_pnl_quote),
