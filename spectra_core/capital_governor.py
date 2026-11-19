@@ -132,7 +132,8 @@ class CapitalGovernor:
                     reason TEXT NOT NULL,
                     available_after_quote TEXT NOT NULL,
                     created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
+                    updated_at REAL NOT NULL,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 )
                 """)
 
@@ -149,7 +150,8 @@ class CapitalGovernor:
                     state TEXT NOT NULL,
                     executor_id TEXT,
                     created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
+                    updated_at REAL NOT NULL,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS entry_submission_active_asset
                 ON entry_submission_claims(base_asset)
@@ -166,7 +168,8 @@ class CapitalGovernor:
                     state TEXT NOT NULL,
                     executor_id TEXT,
                     created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
+                    updated_at REAL NOT NULL,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 );
                 CREATE TABLE IF NOT EXISTS protected_buy_submissions (
                     proposal_id TEXT PRIMARY KEY,
@@ -179,7 +182,8 @@ class CapitalGovernor:
                     controller_id TEXT NOT NULL,
                     config_json TEXT NOT NULL,
                     config_sha256 TEXT NOT NULL,
-                    created_at REAL NOT NULL
+                    created_at REAL NOT NULL,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 );
                 CREATE TABLE IF NOT EXISTS protected_buy_conflicts (
                     proposal_id TEXT NOT NULL,
@@ -206,11 +210,22 @@ class CapitalGovernor:
                     "PRAGMA table_info(capital_reservations)"
                 ).fetchall()
             }
-            for column_name in ("account_name", "connector_name", "quote_asset"):
+            for column_name in ("account_name", "connector_name", "quote_asset", "strategy_source"):
                 if column_name not in reservation_columns:
+                    default = " TEXT NOT NULL DEFAULT 'STANDARD'" if column_name == "strategy_source" else " TEXT"
                     conn.execute(
                         "ALTER TABLE capital_reservations "
-                        f"ADD COLUMN {column_name} TEXT"
+                        f"ADD COLUMN {column_name}{default}"
+                    )
+            for table_name in ("entry_submission_claims", "position_submission_bindings", "protected_buy_submissions"):
+                columns = {
+                    str(row["name"])
+                    for row in conn.execute(f"PRAGMA table_info({table_name})")
+                }
+                if "strategy_source" not in columns:
+                    conn.execute(
+                        f"ALTER TABLE {table_name} "
+                        "ADD COLUMN strategy_source TEXT NOT NULL DEFAULT 'STANDARD'"
                     )
 
             conn.execute("""
