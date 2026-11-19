@@ -92,6 +92,18 @@ class ExecutionProvenance:
     account_name: str | None = None
     connector_name: str | None = None
     controller_id: str | None = None
+    strategy_source: EntryStrategySource = EntryStrategySource.STANDARD
+
+    def __post_init__(self) -> None:
+        try:
+            source = (
+                self.strategy_source
+                if isinstance(self.strategy_source, EntryStrategySource)
+                else EntryStrategySource(str(self.strategy_source).strip().upper())
+            )
+        except ValueError as exc:
+            raise ValueError("unknown execution strategy source") from exc
+        object.__setattr__(self, "strategy_source", source)
 
 
 @dataclass(frozen=True)
