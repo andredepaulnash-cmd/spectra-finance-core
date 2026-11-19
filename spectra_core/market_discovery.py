@@ -363,15 +363,17 @@ def build_dynamic_market_lists(
     # Dedicated pathway: measured 24h losers only, all existing quality guards
     # passed, entry-liquidity floor retained, and multiple reversal observations.
     top_loser_reversal_candidates = [
-        row for row in known_change
+        {
+            **row,
+            "reversal_pathway_eligible": True,
+            "capital_authorized": False,
+        }
+        for row in known_change
         if row.get("change_24h_pct") < 0
         and row.get("eligible") is True
         and row.get("entry_liquidity_eligible") is True
         and int(row.get("reversal_signal_count") or 0) >= 2
     ]
-    for row in top_loser_reversal_candidates:
-        row["reversal_pathway_eligible"] = True
-        row["capital_authorized"] = False
 
     return {
         "mean_reversion_watchlist": sorted(
@@ -644,7 +646,6 @@ async def scan_kraken_universe(
             "bbwp_bandwidth_change_pct": analysis.get("bbwp_bandwidth_change_pct"),
             "bbwp_state": analysis.get("bbwp_state", "UNAVAILABLE"),
             "bbwp_signal_reasons": analysis.get("bbwp_signal_reasons", []),
-            "reversal_pathway_eligible": False,
             "median_daily_range_30d_pct": analysis.get("median_daily_range_30d_pct"),
             "selection_reasons": analysis.get("selection_reasons", []),
             "rejection_reasons": analysis.get("rejection_reasons", []),
