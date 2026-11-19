@@ -51,7 +51,6 @@ from spectra_core.kraken_market_fabric import KrakenTradingRule
 from spectra_core.models import BreakerMode, IntentKind
 from spectra_core.partial_recycle import (
     PartialRecycleStore,
-    protected_partial_recycle_price,
 )
 from spectra_core.runtime import get_breaker_mode
 from spectra_core.vcap_profit_exit import (
