@@ -596,6 +596,7 @@ async def get_server_market_discovery(
     top_n: int = Query(default=80, ge=1, le=150),
     show_n: int = Query(default=25, ge=1, le=100),
     min_volume_usd: float = Query(default=10_000_000, gt=0, le=1_000_000_000_000),
+    research_min_volume_usd: float = Query(default=1_000_000, gt=0, le=1_000_000_000_000),
     min_history_days: int = Query(default=90, ge=90, le=365),
     user: WebUser = Depends(require_server_access),
 ):
@@ -606,7 +607,7 @@ async def get_server_market_discovery(
     """
     from spectra_core.market_discovery import scan_kraken_universe
 
-    key = f"kraken:{name}:{top_n}:{show_n}:{min_volume_usd}:{min_history_days}"
+    key = f"kraken:{name}:{top_n}:{show_n}:{min_volume_usd}:{research_min_volume_usd}:{min_history_days}"
     cached = _discovery_cache.get(key)
     now = time.monotonic()
     if cached and now - cached[0] < _DISCOVERY_CACHE_TTL:
@@ -619,6 +620,7 @@ async def get_server_market_discovery(
             top_n=top_n,
             show_n=show_n,
             min_volume_usd=min_volume_usd,
+            research_min_volume_usd=research_min_volume_usd,
             min_history_days=min_history_days,
             quote_assets=("USD",),
         )
@@ -648,7 +650,7 @@ async def get_market_discovery(
     """
     from spectra_core.market_discovery import scan_public_universe
 
-    key = f"{top_n}:{show_n}:{min_volume_usd}:{min_history_days}"
+    key = f"{top_n}:{show_n}:{min_volume_usd}:{research_min_volume_usd}:{min_history_days}"
     cached = _discovery_cache.get(key)
     now = time.monotonic()
     if cached and now - cached[0] < _DISCOVERY_CACHE_TTL:
@@ -658,6 +660,7 @@ async def get_market_discovery(
             top_n=top_n,
             show_n=show_n,
             min_volume_usd=min_volume_usd,
+            research_min_volume_usd=research_min_volume_usd,
             min_history_days=min_history_days,
         )
     except Exception as exc:
