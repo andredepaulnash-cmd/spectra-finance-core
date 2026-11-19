@@ -1182,6 +1182,15 @@ class CapitalGovernor:
                 # Idempotency:
                 # the same proposal_id can never reserve twice.
                 if existing is not None:
+                    if str(existing["strategy_source"]) != proposal.strategy_source.value:
+                        conn.commit()
+                        return CapitalDecision(
+                            proposal.proposal_id,
+                            DecisionStatus.REJECTED,
+                            "conflicting entry strategy source on reservation replay",
+                            ZERO,
+                            ZERO,
+                        )
                     if cash.binding(conn) is not None:
                         mismatch = cash.authority_rejection(conn, proposal, snapshot)
                         exact = (
@@ -1283,19 +1292,11 @@ class CapitalGovernor:
                 conn.execute(
                     """
                     INSERT INTO capital_reservations (
-                        proposal_id,
-                        pair,
-                        intent,
-                        amount_quote,
-                        leverage,
-                        status,
-                        reason,
-                        available_after_quote,
-                        created_at,
-                        updated_at
-                        , account_name, connector_name, quote_asset
+                        proposal_id, pair, intent, amount_quote, leverage,
+                        status, reason, available_after_quote, created_at, updated_at,
+                        account_name, connector_name, quote_asset, strategy_source
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         proposal.proposal_id,
@@ -1323,6 +1324,7 @@ class CapitalGovernor:
                             if not isinstance(proposal.quote_asset, str)
                             else proposal.quote_asset.strip().upper()
                         ),
+                        proposal.strategy_source.value,
                     ),
                 )
 
