@@ -438,10 +438,10 @@ def _authorize_spectra_execution(
             "fail-closed as HALTED"
         )
 
-    if executor_type not in {"grid_executor", "dca_executor", "order_executor"}:
+    if executor_type != "order_executor":
         return (
             f"Spectra execution is not enabled for {executor_type}; "
-            "only governed Kraken spot Grid, DCA, and ordinary MARKET BUY are authorized"
+            "all Spectra purchases must use a governed MARKET BUY order"
         )
 
     if not (proposal_id or "").strip():
@@ -953,10 +953,10 @@ async def create_executor(
                 # exact Governor reservation, never from saved amount/price defaults.
                 merged_config.pop("amount", None)
                 merged_config.pop("price", None)
-            if executor_type not in {"grid_executor", "dca_executor"} and not market_buy:
+            if not market_buy:
                 raise ValueError(
-                    f"Spectra execution is not enabled for {executor_type}; "
-                    "ordinary governed order entries must use MARKET BUY"
+                    f"Spectra purchase execution refused for {executor_type}; "
+                    "all purchases must use a governed MARKET BUY order"
                 )
             if not (spectra_proposal_id or "").strip():
                 raise ValueError("Spectra execution requires a capital proposal_id")
