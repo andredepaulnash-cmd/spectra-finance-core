@@ -1287,6 +1287,10 @@ def validate_manifest_against_ledger(
         manifest.protected_limit_price,
         manifest.sell_executor_id,
     )
+    if manifest.exit_mode == "ADAPTIVE_TRAILING" and not any(
+        value is not None for value in protected_fields
+    ):
+        raise RuntimeError("adaptive trailing exits require protected SELL economics")
     if any(value is not None for value in protected_fields):
         if any(value is None for value in protected_fields):
             raise RuntimeError("economic exit profit protection is incomplete")
@@ -1445,6 +1449,8 @@ def create_or_load_position_exit_manifest(
         pair=snapshot.pair,
     )
     protected = target_net_profit_bps is not None or expected_exit_cost_bps is not None
+    if exit_mode == "ADAPTIVE_TRAILING" and not protected:
+        raise ValueError("adaptive trailing exits require explicit protected SELL economics")
     if protected and (target_net_profit_bps is None or expected_exit_cost_bps is None):
         raise ValueError("economic exit requires explicit target and exit costs")
     if not protected:
