@@ -3071,7 +3071,7 @@ export const api = {
     ),
 
   getMarketDiscovery: (server: string) =>
-    apiFetch<MarketDiscoveryResponse>(`/api/v1/servers/${encodeURIComponent(server)}/market/discovery?top_n=80&show_n=25&min_volume_usd=10000000&min_history_days=90`),
+    apiFetch<MarketDiscoveryResponse>(`/api/v1/servers/${encodeURIComponent(server)}/market/discovery?top_n=80&show_n=25&min_volume_usd=10000000&research_min_volume_usd=1000000&min_history_days=90`),
 
   getOrderBook: (server: string, connector: string, pair: string, depth = 20) =>
     apiFetch<OrderBookResponse>(
