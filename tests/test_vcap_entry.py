@@ -248,3 +248,54 @@ async def test_fresh_paper_entry_does_not_fabricate_position_id_before_dispatch(
     assert result.position_id is None
     assert result.position_slot_opened is False
     assert result.order_dispatched is False
+
+
+@pytest.mark.asyncio
+async def test_top_loser_reversal_candidate_uses_its_separate_admission_path(monkeypatch):
+    configure(monkeypatch)
+    calls = []
+    result = scan_result(
+        change_24h_pct=-4.0,
+        entry_liquidity_eligible=True,
+        reversal_pathway_eligible=True,
+        reversal_signal_count=2,
+    )
+    result["lists"]["top_loser_reversal_candidates"] = [dict(result["lists"]["mean_reversion_candidates"][0])]
+
+    async def reserve(*args, **kwargs):
+        calls.append(kwargs)
+        return authorization()
+
+    monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
+    admitted = await vcap_entry.reserve_vcap_candidate_entry(
+        object(),
+        scan_result=result,
+        trading_pair="BTC-USD",
+        account_name="master_account",
+        now=1_000.0,
+        strategy_source="TOP_LOSER_REVERSAL",
+    )
+    assert admitted.strategy_source == "TOP_LOSER_REVERSAL"
+    assert calls[0]["strategy_source"] == "TOP_LOSER_REVERSAL"
+
+
+@pytest.mark.asyncio
+async def test_top_loser_reversal_cannot_borrow_ordinary_mean_reversion_membership(monkeypatch):
+    configure(monkeypatch)
+    calls = []
+
+    async def reserve(*args, **kwargs):
+        calls.append(kwargs)
+        return authorization()
+
+    monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
+    with pytest.raises(ValueError, match="not in the current mean-reversion shortlist"):
+        await vcap_entry.reserve_vcap_candidate_entry(
+            object(),
+            scan_result=scan_result(),
+            trading_pair="BTC-USD",
+            account_name="master_account",
+            now=1_000.0,
+            strategy_source="TOP_LOSER_REVERSAL",
+        )
+    assert calls == []
