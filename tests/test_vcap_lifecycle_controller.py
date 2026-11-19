@@ -1,4 +1,5 @@
 from decimal import Decimal
+from types import SimpleNamespace
 
 from mcp_servers.hummingbot_api.tools.vcap_lifecycle import (
     execute_vcap_lifecycle_decision,
@@ -10,7 +11,9 @@ from spectra_core.accounting_health import (
 from spectra_core.asset_fingerprint import AssetFingerprint, AssetObservation
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.kraken_market_fabric import KrakenTradingRule
+from spectra_core.economic_position import EconomicPositionStatus
 from spectra_core.models import (
+    EntryStrategySource,
     CapitalPolicy,
     CapitalProposal,
     CapitalSnapshot,
@@ -23,6 +26,7 @@ from spectra_core.vcap_lifecycle import (
     VCAPLifecycleAction,
     checkpoint_vcap_tranche_execution,
     plan_vcap_lifecycle,
+    plan_vcap_lifecycle_from_ledger,
 )
 from spectra_core.vcap_profit_exit import (
     VCAPExitCostModel,
@@ -513,3 +517,51 @@ def test_adaptive_exit_state_survives_vcap_store_restart(tmp_path):
     assert restored.profit_state.trailing_stop_price == decision.state.trailing_stop_price
     assert restored.profit_state.stop_distance_bps == decision.state.stop_distance_bps
     assert restored.profit_state.take_profit_target_bps == decision.state.take_profit_target_bps
+
+
+
+def test_ledger_backed_vcap_uses_adaptive_exits_only_for_top_loser_positions(tmp_path):
+    fingerprint = reversal_fingerprint()
+    now = fingerprint.last_seen_at
+    store = VCAPStateStore(tmp_path / "source-gated-vcap.sqlite3")
+    state = lifecycle_state(position_base="10", cost_basis="1000", price="96", remaining="0")
+
+    def evaluate(source):
+        snapshot = SimpleNamespace(
+            pair="BTC-USD",
+            status=EconomicPositionStatus.ACTIVE,
+            strategy_source=source,
+            active_base=D("10"),
+            active_cost_basis_quote=D("1000"),
+            active_entry_fees_quote=D("0"),
+            to_vcap_position=lambda *, current_price: VCAPPositionState(
+                pair="BTC-USD",
+                position_base=D("10"),
+                cost_basis_quote=D("1000"),
+                current_price=current_price,
+            ),
+        )
+        ledger = SimpleNamespace(snapshot=lambda position_id: snapshot)
+        return plan_vcap_lifecycle_from_ledger(
+            position_id="position-source-test",
+            ledger=ledger,
+            state=state,
+            store=store,
+            fingerprint=fingerprint,
+            trading_rule=rule(),
+            current_price=D("96"),
+            seed_quote=D("20"),
+            expected_exit_fee_bps=D("20"),
+            slippage_allowance_bps=D("10"),
+            now=now,
+            accounting_health=healthy_accounting("position-source-test", now),
+        )
+
+    top_loser = evaluate(EntryStrategySource.TOP_LOSER_REVERSAL)
+    ordinary = evaluate(EntryStrategySource.MEAN_REVERSION)
+
+    assert top_loser.profit_decision is not None
+    assert top_loser.profit_decision.exit_mode == "ADAPTIVE_TRAILING"
+    assert top_loser.action == VCAPLifecycleAction.EXIT
+    assert ordinary.profit_decision is not None
+    assert ordinary.profit_decision.exit_mode == "PROFIT_PROTECTED"
