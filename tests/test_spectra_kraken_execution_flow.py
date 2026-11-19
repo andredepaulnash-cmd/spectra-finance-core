@@ -539,7 +539,8 @@ async def test_live_api_paper_execution_reconciles_confirmed_fill(
             f"bound_orders={getattr(last_health, 'bound_orders', 0)}, "
             f"reasons={getattr(last_health, 'reasons', ())}, "
             f"unresolved_orders={getattr(last_health, 'unresolved_order_ids', ())}, "
-            f"unresolved_trades={getattr(last_health, 'unresolved_trade_ids', ())}"
+            f"unresolved_trades={getattr(last_health, 'unresolved_trade_ids', ())}, "
+            f"protected_buy_conflicts={governor.get_protected_buy_conflicts(authorization.proposal.proposal_id)}"
         )
     finally:
         await client.close()
