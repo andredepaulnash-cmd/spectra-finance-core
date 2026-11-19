@@ -118,7 +118,7 @@ async def reserve_vcap_candidate_entry(
         None,
     )
     if candidate is None:
-        raise ValueError(f"{pair} is not in the current mean-reversion shortlist")
+        raise ValueError(f"{pair} is not in the current {list_key} list")
     if candidate.get("eligible") is not True:
         raise ValueError(f"{pair} no longer passes mean-reversion eligibility")
     if candidate.get("capital_authorized") is not False:
