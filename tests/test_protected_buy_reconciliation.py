@@ -24,7 +24,7 @@ from spectra_core.models import (
 )
 
 
-def setup_buy(tmp_path, *, with_policy=True):
+def setup_buy(tmp_path, *, with_policy=True, market=False):
     governor = CapitalGovernor(
         tmp_path / "governor.sqlite",
         CapitalPolicy(
@@ -75,31 +75,61 @@ def setup_buy(tmp_path, *, with_policy=True):
         "trading_pair": "XRP-USD",
         "side": 1,
         "amount": "9",
-        "price": "1",
-        "execution_strategy": "LIMIT",
+        "execution_strategy": "MARKET" if market else "LIMIT",
         "leverage": 1,
         "position_action": "OPEN",
     }
-    policy = {
-        "fee_allowance_bps": "25",
-        "max_price_slippage_bps": "0",
-        "reference_price": "1",
-        "price_cap": "1",
-        "amount_base": "9",
-        "max_principal_quote": "9",
-        "max_fee_quote": ".0225",
-        "max_total_quote": "9.0225",
-        "authorized_quote_budget": "10",
-        "venue_book": {
-            "pair": "XRP-USD",
-            "requested_at": time() - 0.01,
-            "received_at": time(),
-            "best_bid": ".999",
-            "best_ask": "1",
-            "source": "kraken_public_depth",
-            "response_sha256": "a" * 64,
-        },
-    }
+    if not market:
+        config["price"] = "1"
+    policy = (
+        {
+            "execution_strategy": "MARKET",
+            "fee_allowance_bps": "25",
+            "reference_ask": "1",
+            "amount_base": "9",
+            "estimated_principal_quote": "9",
+            "estimated_fee_quote": ".0225",
+            "estimated_total_quote": "9.0225",
+            "authorized_quote_budget": "10",
+            "venue_book": {
+                "pair": "XRP-USD",
+                "requested_at": time() - 0.01,
+                "received_at": time(),
+                "best_bid": ".999",
+                "best_ask": "1",
+                "asks": [["1", "9"]],
+                "source": "kraken_public_depth",
+                "response_sha256": "a" * 64,
+                "venue_min_order_size": "0.01",
+                "venue_min_cost_quote": "1",
+                "venue_base_asset": "XRP",
+                "venue_quote_asset": "USD",
+                "venue_rules_observed_at": time(),
+                "venue_rules_sha256": "b" * 64,
+            },
+        }
+        if market
+        else {
+            "fee_allowance_bps": "25",
+            "max_price_slippage_bps": "0",
+            "reference_price": "1",
+            "price_cap": "1",
+            "amount_base": "9",
+            "max_principal_quote": "9",
+            "max_fee_quote": ".0225",
+            "max_total_quote": "9.0225",
+            "authorized_quote_budget": "10",
+            "venue_book": {
+                "pair": "XRP-USD",
+                "requested_at": time() - 0.01,
+                "received_at": time(),
+                "best_bid": ".999",
+                "best_ask": "1",
+                "source": "kraken_public_depth",
+                "response_sha256": "a" * 64,
+            },
+        }
+    )
     assert governor.commit_entry_submission_if_matches(
         proposal,
         position_id="position",
@@ -314,3 +344,53 @@ def test_policy_only_health_tag_survives_restart_but_not_missing_volume(tmp_path
     supervisor.record_reports(position_id="position", reports=(lagging,), now=1103)
     decision = restarted.assess(position_id="position", now=1104)
     assert "protected_buy_requires_reconciliation" not in decision.reasons
+
+
+
+def test_market_buy_fill_reconciles_without_limit_price_and_respects_quote_budget(tmp_path):
+    governor, ledger, reconciler, _, trade = setup_buy(tmp_path, market=True)
+    trade = replace(trade, amount_base=D("2"), price=D("1"))
+    result = reconciler.reconcile_trade_fill(
+        {
+            "trade_id": trade.trade_id,
+            "order_id": trade.order_id,
+            "account_name": trade.account_name,
+            "connector_name": trade.connector_name,
+            "trading_pair": trade.pair,
+            "trade_type": trade.side,
+            "amount": str(trade.amount_base),
+            "price": str(trade.price),
+            "fee_paid": str(trade.fee_paid),
+            "fee_currency": trade.fee_currency,
+            "timestamp": "1970-01-01T00:18:20+00:00",
+        },
+        reconciled_at=1101,
+    )
+    assert result.status == "APPLIED"
+    assert not governor.get_protected_buy_conflicts("buy")
+    assert ledger.snapshot("position").active_base == D("2")
+
+
+def test_market_buy_fill_spend_over_quote_budget_is_durable_conflict(tmp_path):
+    governor, ledger, reconciler, _, trade = setup_buy(tmp_path, market=True)
+    trade = replace(trade, amount_base=D("9"), price=D("1.2"))
+    result = reconciler.reconcile_trade_fill(
+        {
+            "trade_id": trade.trade_id,
+            "order_id": trade.order_id,
+            "account_name": trade.account_name,
+            "connector_name": trade.connector_name,
+            "trading_pair": trade.pair,
+            "trade_type": trade.side,
+            "amount": str(trade.amount_base),
+            "price": str(trade.price),
+            "fee_paid": "0",
+            "fee_currency": None,
+            "timestamp": "1970-01-01T00:18:20+00:00",
+        },
+        reconciled_at=1101,
+    )
+    assert result.status == "APPLIED"
+    assert "protected_market_buy_cumulative_quote_spend_above_budget" in governor.get_protected_buy_conflicts("buy")
+    assert governor.cash_authority_snapshot().blocked
+    assert ledger.snapshot("position").active_base == D("9")
