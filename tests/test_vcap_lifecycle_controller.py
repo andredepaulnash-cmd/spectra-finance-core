@@ -27,6 +27,7 @@ from spectra_core.vcap_lifecycle import (
 from spectra_core.vcap_profit_exit import (
     VCAPExitCostModel,
     VCAPProfitState,
+    plan_top_loser_adaptive_exit,
 )
 from spectra_core.vcap_state import (
     VCAPLifecycleState,
@@ -485,3 +486,30 @@ def test_exit_dispatcher_refuses_without_unified_economic_exit_context(
     assert result["lifecycle_status"] == VCAPLifecycleStatus.HOLD.value
     assert result["executed"] is False
     assert "unified economic exit requires" in result["error"]
+
+
+
+def test_adaptive_exit_state_survives_vcap_store_restart(tmp_path):
+    fingerprint = reversal_fingerprint()
+    decision = plan_top_loser_adaptive_exit(
+        VCAPPositionState(
+            pair="BTC-USD",
+            position_base=D("10"),
+            cost_basis_quote=D("1000"),
+            current_price=D("96"),
+        ),
+        costs=costs(),
+        now=fingerprint.last_seen_at,
+        fingerprint=fingerprint,
+    )
+    state = lifecycle_state(profit_state=decision.state)
+    path = tmp_path / "vcap-adaptive-state.sqlite3"
+    VCAPStateStore(path).save(state)
+
+    restored = VCAPStateStore(path).load("vcap-envelope-1")
+    assert restored is not None
+    assert restored.profit_state is not None
+    assert restored.profit_state.peak_price == decision.state.peak_price
+    assert restored.profit_state.trailing_stop_price == decision.state.trailing_stop_price
+    assert restored.profit_state.stop_distance_bps == decision.state.stop_distance_bps
+    assert restored.profit_state.take_profit_target_bps == decision.state.take_profit_target_bps
