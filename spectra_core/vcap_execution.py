@@ -8,7 +8,7 @@ from math import isfinite
 from .asset_fingerprint import AssetFingerprint
 from .capital_governor import CapitalGovernor
 from .kraken_market_fabric import KrakenTradingRule
-from .models import CapitalProposal, IntentKind
+from .models import CapitalProposal, EntryStrategySource, IntentKind
 from .recovery_fingerprint import (
     RecoveryFingerprintPolicy,
     VCAPPositionState,
@@ -91,6 +91,7 @@ def replan_vcap_sequence(
     fingerprint_policy: RecoveryFingerprintPolicy | None = None,
     recovery_policy: VCAPRecoveryPolicy | None = None,
     tranche_policy: VCAPTranchePolicy | None = None,
+    strategy_source: EntryStrategySource | str = EntryStrategySource.STANDARD,
 ) -> VCAPExecutionDecision:
     """Recompute VCAP after a fill and decide execute, hold, or stop.
 
@@ -114,6 +115,11 @@ def replan_vcap_sequence(
         raise ValueError("pair does not match fingerprint")
     if normalized_pair != trading_rule.trading_pair.strip().upper():
         raise ValueError("pair does not match trading rule")
+
+    try:
+        source = strategy_source if isinstance(strategy_source, EntryStrategySource) else EntryStrategySource(str(strategy_source).strip().upper())
+    except ValueError as exc:
+        raise ValueError("unknown VCAP strategy source") from exc
 
     seed_quote = _positive_decimal(seed_quote, "seed_quote")
     remaining = _non_negative_decimal(
@@ -153,6 +159,7 @@ def replan_vcap_sequence(
         intent=IntentKind.RECOVERY,
         amount_quote=seed,
         leverage=leverage,
+        strategy_source=source,
     )
 
     recovery = plan_vcap_recovery(
@@ -223,6 +230,7 @@ def replan_vcap_sequence(
         intent=IntentKind.RECOVERY,
         amount_quote=next_tranche.quote_amount,
         leverage=leverage,
+        strategy_source=source,
     )
 
     return VCAPExecutionDecision(
