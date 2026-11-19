@@ -21,6 +21,7 @@ const marketListLabels: Record<MarketDiscoveryListKey, string> = {
   mean_reversion_watchlist: "Mean-reversion research",
   mean_reversion_candidates: "Eligible mean-reversion",
   recovery_watchlist: "Recovery watchlist",
+  top_loser_reversal_candidates: "24h loser reversal candidates",
   top_24h_gainers: "24h gainers",
   top_24h_losers: "24h losers",
   top_3d_losers: "3d losers",
@@ -627,6 +628,8 @@ export function SpectraOverview() {
                   ? "Only eligible mean-reversion candidates appear here. This is the only discovery list consumed by the existing approved-asset writer."
                   : activeMarketList === "recovery_watchlist"
                     ? "Losers with at least two independent reversal observations. Research only; this does not activate VCAP, DTTP, DTSL, or authorize an entry."
+                    : activeMarketList === "top_loser_reversal_candidates"
+                    ? "Dedicated entry-candidate pathway: measured 24h losers only, all existing quality guardrails passed, $10M+ 24h volume, and at least two flexible RSI/price/BBWP reversal observations. Candidate status is not capital authorization."
                     : activeMarketList === "top_24h_gainers" || activeMarketList === "top_24h_losers"
                       ? "Measured from hourly candles. Missing or stale hourly references are omitted rather than estimated."
                       : activeMarketList === "top_3d_losers"
@@ -654,6 +657,9 @@ export function SpectraOverview() {
                     const rejection = candidate.rejection_reasons ?? [];
                     const rationale = candidate.selection_reasons ?? [];
                     const reversal = candidate.reversal_signal_reasons ?? [];
+                    const bbwp = candidate.bbwp_state && candidate.bbwp_state !== "UNAVAILABLE"
+                      ? `BBWP ${candidate.bbwp_state.toLowerCase().replaceAll("_", " ")}${candidate.bbwp_percentile == null ? "" : ` · ${candidate.bbwp_percentile.toFixed(0)}th percentile`}`
+                      : null;
                     const status = candidate.selection_score == null
                       ? "History unavailable"
                       : candidate.eligible
@@ -686,7 +692,7 @@ export function SpectraOverview() {
                           <div className={candidate.eligible ? "text-xs font-medium text-emerald-500" : "text-xs font-medium text-amber-500"}>{status}</div>
                           {reversal.length ? (
                             <div className="mt-1 max-w-[300px] text-[11px] text-[var(--color-text-muted)]">
-                              {reversal.join(" · ")}
+                              {[...reversal, ...(bbwp ? [bbwp] : [])].join(" · ")}
                             </div>
                           ) : null}
                           <div className="mt-1 text-[11px] text-[var(--color-text-muted)]">
@@ -715,7 +721,9 @@ export function SpectraOverview() {
               </table>
               {!activeMarketRows.length ? (
                 <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">
-                  {activeMarketList === "recovery_watchlist"
+                  {activeMarketList === "top_loser_reversal_candidates"
+                    ? "No 24-hour losers currently pass the entry-quality, liquidity, and reversal-evidence requirements."
+                    : activeMarketList === "recovery_watchlist"
                     ? "No losing markets currently show at least two independent reversal observations."
                     : activeMarketList === "mean_reversion_candidates"
                       ? "No markets currently pass every mean-reversion and entry-eligibility guardrail. Review the research and rejected lists for the exact reasons."
