@@ -102,7 +102,7 @@ class FakeKrakenMarketData:
 
     async def get_candles(self, connector, pair, interval, max_records):
         self.calls.append((connector, pair, interval, max_records))
-        return self.candles
+        return [] if interval == "1h" else self.candles
 
 
 class FakeKrakenConnectors:
