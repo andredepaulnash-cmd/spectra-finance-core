@@ -3132,7 +3132,8 @@ class CapitalGovernor:
                         leverage,
                         account_name,
                         connector_name,
-                        quote_asset
+                        quote_asset,
+                        strategy_source
                     FROM capital_reservations
                     WHERE proposal_id = ?
                     """,
