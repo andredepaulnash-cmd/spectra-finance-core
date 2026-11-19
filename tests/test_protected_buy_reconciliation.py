@@ -14,7 +14,11 @@ from spectra_core.executor_provenance_bridge import (
     ExecutorTradeSnapshot,
     synchronize_executor_evidence,
 )
-from spectra_core.fill_reconciliation import LiveFillLedgerReconciler, TradeFillEvidence
+from spectra_core.fill_reconciliation import (
+    EconomicFillRole,
+    LiveFillLedgerReconciler,
+    TradeFillEvidence,
+)
 from spectra_core.models import (
     CapitalPolicy,
     CapitalProposal,
@@ -352,7 +356,7 @@ def test_market_buy_fill_reconciles_without_limit_price_and_respects_quote_budge
     reconciler.bind_executor_order(
         order_id=trade.order_id,
         position_id="position",
-        role=__import__("spectra_core.fill_reconciliation", fromlist=["EconomicFillRole"]).EconomicFillRole.BASE_ENTRY,
+        role=EconomicFillRole.BASE_ENTRY,
         proposal_id="buy",
         account_name="offline",
         connector_name="kraken",
