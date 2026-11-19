@@ -650,7 +650,7 @@ async def get_market_discovery(
     """
     from spectra_core.market_discovery import scan_public_universe
 
-    key = f"{top_n}:{show_n}:{min_volume_usd}:{research_min_volume_usd}:{min_history_days}"
+    key = f"{top_n}:{show_n}:{min_volume_usd}:{min_history_days}"
     cached = _discovery_cache.get(key)
     now = time.monotonic()
     if cached and now - cached[0] < _DISCOVERY_CACHE_TTL:
@@ -660,7 +660,6 @@ async def get_market_discovery(
             top_n=top_n,
             show_n=show_n,
             min_volume_usd=min_volume_usd,
-            research_min_volume_usd=research_min_volume_usd,
             min_history_days=min_history_days,
         )
     except Exception as exc:
