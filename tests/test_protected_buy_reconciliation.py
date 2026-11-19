@@ -248,6 +248,18 @@ def test_confirmed_money_survives_durable_policy_breach_and_restart(tmp_path, br
     assert restarted.governor.cash_authority_snapshot().blocked
 
 
+def test_market_buy_accepts_observed_order_price_without_limit_config(tmp_path):
+    governor, ledger, reconciler, order, trade = setup_buy(tmp_path, market=True)
+    # Venue/order history may report a reference or observed price for a MARKET
+    # order. Only the immutable submitted config determines whether a limit
+    # price was configured; the order type must still be MARKET.
+    order = replace(order, order_type="MARKET", price=D("1"))
+    report = sync(reconciler, order, [trade])
+    assert report.fully_reconciled
+    assert not governor.get_protected_buy_conflicts("buy")
+    assert ledger.snapshot("position").active_base == D("2")
+
+
 def test_valid_fee_boundary_and_lagging_endpoint_are_not_permanent_conflicts(tmp_path):
     governor, ledger, reconciler, order, trade = setup_buy(tmp_path)
     trade = replace(trade, fee_paid=D(".005"), fee_currency="USD")
