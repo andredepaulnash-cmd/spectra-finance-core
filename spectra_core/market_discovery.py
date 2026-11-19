@@ -506,6 +506,12 @@ async def scan_kraken_universe(
                 )
                 analysis["trading_pair"] = item["trading_pair"]
                 analysis["quote_asset"] = item["quote_asset"]
+                rule = snapshot.trading_rules.get(item["trading_pair"])
+                if rule is None:
+                    return item["trading_pair"], None, "missing_trading_rules"
+                # VCAP admission needs the venue's actual quote-denominated
+                # minimum before it can decide whether a seed is executable.
+                analysis["minimum_order_quote"] = float(rule.effective_min_quote)
                 analysis["change_24h_window_seconds"] = hourly_window
                 analysis["change_24h_source"] = "hourly_candles" if hourly_change is not None else None
                 analysis["entry_liquidity_eligible"] = item["entry_liquidity_eligible"]
@@ -550,6 +556,7 @@ async def scan_kraken_universe(
             "current_price": item["price"],
             "volume_24h_usd": round(item["volume"], 2),
             "volume_rank_24h": item["volume_rank_24h"],
+            "minimum_order_quote": analysis.get("minimum_order_quote"),
             "change_24h_pct": analysis.get("change_24h_pct", item.get("change_24h_pct")),
             "change_24h_window_seconds": analysis.get("change_24h_window_seconds", item.get("change_24h_window_seconds")),
             "change_24h_source": analysis.get("change_24h_source", item.get("change_24h_source")),
