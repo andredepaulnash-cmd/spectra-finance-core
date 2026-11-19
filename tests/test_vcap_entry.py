@@ -289,10 +289,12 @@ async def test_top_loser_reversal_cannot_borrow_ordinary_mean_reversion_membersh
         return authorization()
 
     monkeypatch.setattr(vcap_entry, "reserve_kraken_capital", reserve)
+    ordinary_scan = scan_result()
+    ordinary_scan["lists"]["top_loser_reversal_candidates"] = []
     with pytest.raises(ValueError, match="not in the current top_loser_reversal_candidates list"):
         await vcap_entry.reserve_vcap_candidate_entry(
             object(),
-            scan_result=scan_result(),
+            scan_result=ordinary_scan,
             trading_pair="BTC-USD",
             account_name="master_account",
             now=1_000.0,
