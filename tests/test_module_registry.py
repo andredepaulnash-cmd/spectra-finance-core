@@ -9,8 +9,10 @@ def test_registry_preserves_advanced_module_names_and_conservative_statuses():
     assert registry["live_trading_enabled"] is False
     assert {"dttp", "dtsl", "pssm", "vcap", "mir"} <= set(modules)
     assert modules["vcap"]["status"] == "partial"
-    assert modules["dttp"]["readiness"] == "source-recovered"
-    assert modules["dtsl"]["status"] == "unverified"
+    assert modules["dttp"]["status"] == "implemented"
+    assert modules["dttp"]["readiness"] == "position-source-gated-adaptive-runtime"
+    assert modules["dtsl"]["status"] == "implemented"
+    assert modules["dtsl"]["readiness"] == "position-source-gated-adaptive-runtime"
     assert modules["pssm"]["status"] == "not-implemented"
     assert modules["mir"]["status"] == "research-only"
     assert all("Condor" not in item["name"] for item in registry["system_flow"])
