@@ -79,8 +79,9 @@ snapshot. Recovery submissions inherit the source from the exact economic
 position. This makes the source available after process restart.
 
 The adaptive DTTP/DTSL exit manager and its protected SELL execution contract
-remain a separate unfinished stage. They must be implemented and tested before
-the pathway is considered complete or enabled.
+are position-scoped to confirmed top-loser reversal positions. Their durable
+state and exit authorization are covered by the strategy-specific tests below;
+they do not globally enable DTTP/DTSL or affect ordinary positions.
 
 ## Order execution policy
 
