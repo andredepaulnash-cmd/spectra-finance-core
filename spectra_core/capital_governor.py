@@ -1606,10 +1606,7 @@ class CapitalGovernor:
                     and row["intent"] == proposal.intent.value
                     and Decimal(row["amount_quote"]) == proposal.amount_quote
                     and Decimal(row["leverage"]) == proposal.leverage
-                    and (
-                        proposal.intent == IntentKind.RECOVERY
-                        or str(row["strategy_source"]) == proposal.strategy_source.value
-                    )
+                    and str(row["strategy_source"]) == proposal.strategy_source.value
                 )
                 if cash.binding(conn) is not None:
                     matches = matches and (
