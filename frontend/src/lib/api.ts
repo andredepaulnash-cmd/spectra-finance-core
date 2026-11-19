@@ -211,6 +211,11 @@ export interface MarketDiscoveryCandidate {
   rsi_14d_change?: number | null;
   reversal_signal_count?: number;
   reversal_signal_reasons?: string[];
+  bbwp_percentile?: number | null;
+  bbwp_previous_percentile?: number | null;
+  bbwp_bandwidth_change_pct?: number | null;
+  bbwp_state?: string;
+  bbwp_signal_reasons?: string[];
   median_daily_range_30d_pct: number;
   active_range_days_30d: number;
   active_day_ratio_30d: number;
@@ -231,6 +236,7 @@ export type MarketDiscoveryListKey =
   | "mean_reversion_watchlist"
   | "mean_reversion_candidates"
   | "recovery_watchlist"
+  | "top_loser_reversal_candidates"
   | "top_24h_volume"
   | "top_24h_gainers"
   | "top_24h_losers"
@@ -270,6 +276,8 @@ export interface MarketDiscoveryResponse {
     "24h_change": string;
     "3d_change": string;
     recovery_watchlist: string;
+    top_loser_reversal_candidates: string;
+    bbwp: string;
   };
   counts: {
     eligible_kraken_markets: number;
@@ -286,6 +294,7 @@ export interface MarketDiscoveryResponse {
     without_measured_24h_change: number;
     mean_reversion_watchlist: number;
     recovery_watchlist: number;
+    top_loser_reversal_candidates: number;
     rejected_candidate_rows: number;
   };
   candidates: MarketDiscoveryCandidate[];
