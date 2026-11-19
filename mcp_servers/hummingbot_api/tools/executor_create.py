@@ -39,7 +39,7 @@ from mcp_servers.hummingbot_api.tools.dispatch_receipts import (
     dispatch_with_receipt,
     validate_dispatch_transport,
 )
-from spectra_core.models import BreakerMode
+from spectra_core.models import BreakerMode, EntryStrategySource
 from spectra_core.runtime import (
     get_breaker_mode,
     get_capital_governor,
@@ -405,6 +405,7 @@ def _authorize_spectra_execution(
     intent: str | None,
     *,
     position_id: str | None = None,
+    strategy_source: EntryStrategySource | str = EntryStrategySource.STANDARD,
     account_name: str = "master_account",
     controller_id: str = "spectra",
     protected_buy_config: dict[str, Any] | None = None,
@@ -518,12 +519,18 @@ def _authorize_spectra_execution(
         account_name=account_name,
         connector_name=connector,
         quote_asset=(pair.strip().upper().rsplit("-", 1)[1] if "-" in pair else None),
+        strategy_source=strategy_source,
     )
 
     try:
         governor = get_capital_governor()
         dust = get_dust_lifecycle(governor=governor)
         ledger = get_economic_position_ledger()
+        if intent_kind == IntentKind.RECOVERY and position_id:
+            position_source = ledger.snapshot(position_id).strategy_source
+            if str(strategy_source).strip().upper() not in {"STANDARD", position_source.value}:
+                return "Spectra recovery strategy provenance differs from its economic position"
+            proposal = replace(proposal, strategy_source=position_source)
         if not ledger.selected_recovery_proposal_allowed(pair, proposal.proposal_id):
             return "Spectra selected-recovery ownership lock refused this proposal"
         dust_successor_id = dust.assert_dispatch(
@@ -869,6 +876,7 @@ async def create_executor(
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
     spectra_position_id: str | None = None,
+    spectra_strategy_source: EntryStrategySource | str = EntryStrategySource.STANDARD,
     spectra_max_price_slippage_bps: str | float | Decimal | None = None,
     spectra_fee_allowance_bps: str | float | Decimal | None = None,
 ) -> dict[str, Any]:
@@ -1051,6 +1059,7 @@ async def create_executor(
         spectra_proposal_id,
         spectra_intent,
         position_id=spectra_position_id,
+        strategy_source=spectra_strategy_source,
         account_name=account,
         controller_id=tag,
         protected_buy_config=(
@@ -1466,6 +1475,7 @@ async def create_order_executor(
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
     spectra_position_id: str | None = None,
+    spectra_strategy_source: EntryStrategySource | str = EntryStrategySource.STANDARD,
     spectra_fee_allowance_bps: str | float | Decimal | None = None,
 ) -> dict[str, Any]:
     """Place one order with a chosen execution strategy.
@@ -1518,6 +1528,7 @@ async def create_order_executor(
         spectra_proposal_id=spectra_proposal_id,
         spectra_intent=spectra_intent,
         spectra_position_id=spectra_position_id,
+        spectra_strategy_source=spectra_strategy_source,
         spectra_fee_allowance_bps=spectra_fee_allowance_bps,
     )
 
