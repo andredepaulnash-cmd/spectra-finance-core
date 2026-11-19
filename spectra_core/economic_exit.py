@@ -1218,6 +1218,45 @@ def _validate_sellability(
             )
 
 
+def _economic_exit_protected_price(
+    *,
+    target_base: Decimal,
+    target_cost_basis_quote: Decimal,
+    target_entry_fees_quote: Decimal,
+    target_net_profit_bps: Decimal,
+    expected_exit_cost_bps: Decimal,
+    trading_rule: KrakenTradingRule,
+    exit_mode: str,
+) -> Decimal:
+    if exit_mode == "PROFIT_PROTECTED":
+        return protected_partial_recycle_price(
+            target_base=target_base,
+            target_cost_basis_quote=target_cost_basis_quote,
+            target_entry_fees_quote=target_entry_fees_quote,
+            target_net_profit_bps=target_net_profit_bps,
+            expected_exit_cost_bps=expected_exit_cost_bps,
+            trading_rule=trading_rule,
+        )
+    if exit_mode != "ADAPTIVE_TRAILING":
+        raise ValueError("unsupported economic exit mode")
+    target = _decimal(target_net_profit_bps, "target_net_profit_bps")
+    costs = _decimal(
+        expected_exit_cost_bps, "expected_exit_cost_bps", non_negative=True
+    )
+    if costs >= BPS:
+        raise ValueError("economic exit costs invalidate protection")
+    with localcontext() as context:
+        context.prec = 80
+        invested = target_cost_basis_quote + target_entry_fees_quote
+        target_net_proceeds = invested * (ONE + target / BPS)
+        if target_net_proceeds <= ZERO:
+            raise ValueError("adaptive stop floor would require a non-positive exit price")
+        exit_keep_ratio = ONE - costs / BPS
+        raw_price = target_net_proceeds / (target_base * exit_keep_ratio)
+        tick = trading_rule.min_price_increment
+        return (raw_price / tick).to_integral_value(rounding=ROUND_CEILING) * tick
+
+
 def validate_manifest_against_ledger(
     manifest: EconomicPositionExitManifest,
     *,
@@ -1234,6 +1273,14 @@ def validate_manifest_against_ledger(
         raise RuntimeError(
             "economic exit immutable manifest differs from durable state"
         )
+    if manifest.exit_mode not in {"PROFIT_PROTECTED", "ADAPTIVE_TRAILING"}:
+        raise RuntimeError("economic exit manifest has unknown exit mode")
+    snapshot = ledger.snapshot(manifest.position_id)
+    if (
+        manifest.exit_mode == "ADAPTIVE_TRAILING"
+        and snapshot.strategy_source != EntryStrategySource.TOP_LOSER_REVERSAL
+    ):
+        raise RuntimeError("adaptive trailing exit is restricted to top-loser positions")
     protected_fields = (
         manifest.target_net_profit_bps,
         manifest.expected_exit_cost_bps,
@@ -1247,7 +1294,9 @@ def validate_manifest_against_ledger(
             manifest.protected_limit_price, "protected_limit_price", positive=True
         )
         target = _decimal(
-            manifest.target_net_profit_bps, "target_net_profit_bps", non_negative=True
+            manifest.target_net_profit_bps,
+            "target_net_profit_bps",
+            non_negative=manifest.exit_mode == "PROFIT_PROTECTED",
         )
         costs = _decimal(
             manifest.expected_exit_cost_bps, "expected_exit_cost_bps", non_negative=True
@@ -1265,7 +1314,6 @@ def validate_manifest_against_ledger(
                 raise RuntimeError(
                     "economic exit limit violates configured profit floor"
                 )
-    snapshot = ledger.snapshot(manifest.position_id)
     if snapshot.pair != manifest.pair:
         raise RuntimeError("economic exit manifest pair changed")
     if (
@@ -1359,16 +1407,26 @@ def create_or_load_position_exit_manifest(
     target_net_profit_bps: Decimal | None = None,
     expected_exit_cost_bps: Decimal | None = None,
     protected_floor_price: Decimal | None = None,
+    exit_mode: str = "PROFIT_PROTECTED",
 ) -> EconomicPositionExitManifest:
     pid = _text(position_id, "position_id")
     timestamp = _time(now, "now")
     manifest_store = store or EconomicExitManifestStore(ledger.path)
 
-    if ledger.snapshot(pid).status == EconomicPositionStatus.RESIDUAL:
+    if exit_mode not in {"PROFIT_PROTECTED", "ADAPTIVE_TRAILING"}:
+        raise ValueError("unsupported economic exit mode")
+    initial_snapshot = ledger.snapshot(pid)
+    if exit_mode == "ADAPTIVE_TRAILING" and (
+        initial_snapshot.strategy_source != EntryStrategySource.TOP_LOSER_REVERSAL
+    ):
+        raise ValueError("adaptive trailing exits require TOP_LOSER_REVERSAL provenance")
+    if initial_snapshot.status == EconomicPositionStatus.RESIDUAL:
         raise ValueError("retired residual ownership cannot dispatch another exit")
 
     existing = manifest_store.open_for_position(pid)
     if existing is not None:
+        if existing.exit_mode != exit_mode:
+            raise RuntimeError("an open economic exit already uses a different exit mode")
         validate_manifest_against_ledger(existing, ledger=ledger)
         return existing
 
@@ -1414,13 +1472,14 @@ def create_or_load_position_exit_manifest(
     if protected:
         # Use the already-tested exact-parcel algebra. Whole-position disposal
         # follows the same proportional allocation, including ENTRY owners.
-        protected_price = protected_partial_recycle_price(
+        protected_price = _economic_exit_protected_price(
             target_base=target_base,
             target_cost_basis_quote=target_basis,
             target_entry_fees_quote=target_fees,
             target_net_profit_bps=target_net_profit_bps,
             expected_exit_cost_bps=expected_exit_cost_bps,
             trading_rule=trading_rule,
+            exit_mode=exit_mode,
         )
         if protected_floor_price is not None:
             floor = _decimal(
@@ -1468,6 +1527,7 @@ def create_or_load_position_exit_manifest(
             else "spectra-whole-exit-" + identity.rsplit(":", 1)[-1]
         ),
         cash_proceeds_route="PRODUCTIVE" if protected else None,
+        exit_mode=exit_mode,
     )
     created = manifest_store.create(manifest)
     validate_manifest_against_ledger(created, ledger=ledger)
