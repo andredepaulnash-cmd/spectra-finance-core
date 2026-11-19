@@ -433,10 +433,10 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
     assert len(client.executors.calls) == 1
     config = client.executors.calls[0][0]
     assert config["type"] == "order_executor"
-    assert config["execution_strategy"] == "LIMIT"
-    assert D(str(config["price"])) == D("100")
+    assert config["execution_strategy"] == "MARKET"
+    assert "price" not in config
     protected = g.get_protected_buy_submission(decision.next_proposal.proposal_id)
-    assert D(protected["policy"]["reference_price"]) == D(reference_price)
+    assert D(protected["policy"]["reference_ask"]) == D(reference_price)
     assert protected["strategy_source"] == strategy_source.value
     provenance = g.get_execution_provenance(decision.next_proposal.proposal_id)
     assert provenance is not None
