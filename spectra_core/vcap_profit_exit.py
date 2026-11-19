@@ -120,6 +120,11 @@ class VCAPProfitState:
     profit_floor_reached_at: float | None = None
     peak_net_profit_bps: Decimal = Decimal("0")
     peak_at: float | None = None
+    peak_price: Decimal | None = None
+    trailing_stop_price: Decimal | None = None
+    stop_distance_bps: Decimal | None = None
+    take_profit_giveback_bps: Decimal | None = None
+    take_profit_target_bps: Decimal | None = None
 
     def __post_init__(self) -> None:
         _time(self.updated_at, "updated_at")
@@ -132,6 +137,15 @@ class VCAPProfitState:
             _time(self.profit_floor_reached_at, "profit_floor_reached_at")
         if self.peak_at is not None:
             _time(self.peak_at, "peak_at")
+        for field, value in (
+            ("peak_price", self.peak_price),
+            ("trailing_stop_price", self.trailing_stop_price),
+            ("stop_distance_bps", self.stop_distance_bps),
+            ("take_profit_giveback_bps", self.take_profit_giveback_bps),
+            ("take_profit_target_bps", self.take_profit_target_bps),
+        ):
+            if value is not None:
+                _decimal(value, field, positive=True)
 
 
 @dataclass(frozen=True)
@@ -152,6 +166,7 @@ class VCAPProfitExitDecision:
     # that can be observed but must not silently acquire a new profit policy.
     target_net_profit_bps: Decimal | None = None
     expected_exit_cost_bps: Decimal | None = None
+    exit_mode: str = "PROFIT_PROTECTED"
 
     @property
     def profit_floor_reached(self) -> bool:
@@ -426,4 +441,207 @@ def plan_vcap_profit_exit(
         reasons=tuple(reasons),
         target_net_profit_bps=policy.target_net_profit_bps,
         expected_exit_cost_bps=costs.expected_exit_cost_bps,
+    )
+
+
+
+def _bounded_bps(value: float, *, lower: Decimal, upper: Decimal) -> Decimal:
+    if not isfinite(value) or value <= 0:
+        return lower
+    return min(upper, max(lower, Decimal(str(value))))
+
+
+def plan_top_loser_adaptive_exit(
+    position: VCAPPositionState,
+    *,
+    costs: VCAPExitCostModel,
+    now: float,
+    fingerprint: AssetFingerprint | None,
+    previous_state: VCAPProfitState | None = None,
+) -> VCAPProfitExitDecision:
+    """Plan position-specific adaptive DTSL and DTTP for top-loser entries only.
+
+    The stop distance, trailing distance, take-profit activation and giveback
+    all adapt to the asset's fresh short/medium realized volatility. The
+    persistent peak and stop only ratchet upward. This function authorizes no
+    order; the caller must pass an EXIT decision through the protected economic
+    SELL manifest and its exact venue-book checks.
+    """
+    now_value = _time(now, "now")
+    pair = position.pair
+    if fingerprint is None or fingerprint.trading_pair != pair:
+        raise ValueError("top-loser adaptive exit requires its matching fingerprint")
+
+    medium = fingerprint.windows[FingerprintHorizon.MEDIUM]
+    short = fingerprint.windows[FingerprintHorizon.SHORT]
+    medium_confidence = medium.confidence(now=now_value)
+    short_confidence = short.confidence(now=now_value)
+    medium_vol = medium.realized_volatility_bps
+    short_vol = short.realized_volatility_bps
+    if (
+        medium_confidence <= 0.0
+        or short_confidence <= 0.0
+        or medium.is_stale(now=now_value)
+        or short.is_stale(now=now_value)
+        or medium_vol is None
+        or medium_vol <= 0.0
+    ):
+        net_proceeds, net_profit, net_profit_bps = _profit_geometry(position, costs)
+        policy = VCAPProfitExitPolicy()
+        target = _target_exit_price(position, costs, policy.target_net_profit_bps)
+        state = VCAPProfitState(
+            updated_at=now_value,
+            profit_floor_reached_at=(
+                None if previous_state is None else previous_state.profit_floor_reached_at
+            ),
+            peak_net_profit_bps=(
+                ZERO if previous_state is None else previous_state.peak_net_profit_bps
+            ),
+            peak_at=None if previous_state is None else previous_state.peak_at,
+            peak_price=None if previous_state is None else previous_state.peak_price,
+            trailing_stop_price=(
+                None if previous_state is None else previous_state.trailing_stop_price
+            ),
+            stop_distance_bps=(
+                None if previous_state is None else previous_state.stop_distance_bps
+            ),
+            take_profit_giveback_bps=(
+                None if previous_state is None else previous_state.take_profit_giveback_bps
+            ),
+            take_profit_target_bps=(
+                None if previous_state is None else previous_state.take_profit_target_bps
+            ),
+        )
+        return VCAPProfitExitDecision(
+            pair=pair,
+            action=VCAPProfitExitAction.WAIT,
+            current_price=position.current_price,
+            target_exit_price=target,
+            protected_floor_price=target,
+            estimated_net_proceeds_quote=net_proceeds,
+            estimated_net_profit_quote=net_profit,
+            estimated_net_profit_bps=net_profit_bps,
+            continuation_support=0.0,
+            state=state,
+            suggested_trailing_delta_bps=Decimal("0.01"),
+            reasons=("adaptive_exit_waiting_for_fresh_volatility_fingerprint",),
+            target_net_profit_bps=None,
+            expected_exit_cost_bps=costs.expected_exit_cost_bps,
+            exit_mode="ADAPTIVE_TRAILING",
+        )
+
+    short_vol = short_vol if short_vol is not None and short_vol > 0 else medium_vol
+    stop_distance = _bounded_bps(
+        medium_vol * 1.75, lower=Decimal("250"), upper=Decimal("1500")
+    )
+    trailing_distance = _bounded_bps(
+        short_vol * 1.25, lower=Decimal("150"), upper=Decimal("750")
+    )
+    target_bps = _bounded_bps(
+        medium_vol * 1.5 + float(costs.expected_exit_cost_bps),
+        lower=Decimal("174"),
+        upper=Decimal("1500"),
+    )
+    giveback_bps = _bounded_bps(
+        short_vol * 0.75, lower=Decimal("75"), upper=Decimal("600")
+    )
+
+    basis_quote = position.cost_basis_quote + costs.accrued_fees_quote
+    basis_price = basis_quote / position.position_base
+    previous_peak_price = (
+        basis_price if previous_state is None or previous_state.peak_price is None
+        else previous_state.peak_price
+    )
+    peak_price = max(previous_peak_price, position.current_price)
+    initial_stop = basis_price * (ONE - stop_distance / BPS)
+    trailing_stop = (
+        peak_price * (ONE - trailing_distance / BPS)
+        if peak_price > basis_price else initial_stop
+    )
+    previous_stop = (
+        ZERO if previous_state is None or previous_state.trailing_stop_price is None
+        else previous_state.trailing_stop_price
+    )
+    stop_price = max(initial_stop, trailing_stop, previous_stop)
+
+    net_proceeds, net_profit, net_profit_bps = _profit_geometry(position, costs)
+    state = VCAPProfitState(
+        updated_at=now_value,
+        profit_floor_reached_at=(
+            None if previous_state is None else previous_state.profit_floor_reached_at
+        ),
+        peak_net_profit_bps=(
+            ZERO if previous_state is None else previous_state.peak_net_profit_bps
+        ),
+        peak_at=None if previous_state is None else previous_state.peak_at,
+        peak_price=peak_price,
+        trailing_stop_price=stop_price,
+        stop_distance_bps=stop_distance,
+        take_profit_giveback_bps=giveback_bps,
+        take_profit_target_bps=target_bps,
+    )
+    target_price = _target_exit_price(position, costs, target_bps)
+
+    if position.current_price <= stop_price:
+        # The trigger is the ratcheted stop. The immutable sell floor allows
+        # only the configured slippage allowance below that trigger.
+        sell_floor = stop_price * (
+            ONE - costs.slippage_allowance_bps / BPS
+        )
+        floor_proceeds = (
+            sell_floor * position.position_base
+            * (ONE - costs.expected_exit_cost_bps / BPS)
+        )
+        loss_target_bps = (
+            (floor_proceeds - basis_quote) / basis_quote * BPS
+        )
+        return VCAPProfitExitDecision(
+            pair=pair,
+            action=VCAPProfitExitAction.EXIT,
+            current_price=position.current_price,
+            target_exit_price=stop_price,
+            protected_floor_price=sell_floor,
+            estimated_net_proceeds_quote=net_proceeds,
+            estimated_net_profit_quote=net_profit,
+            estimated_net_profit_bps=net_profit_bps,
+            continuation_support=_continuation_support(fingerprint, pair=pair, now=now_value),
+            state=state,
+            suggested_trailing_delta_bps=trailing_distance,
+            reasons=("adaptive_dtsl_trailing_stop_triggered", "position_source_top_loser_reversal"),
+            target_net_profit_bps=loss_target_bps,
+            expected_exit_cost_bps=costs.expected_exit_cost_bps,
+            exit_mode="ADAPTIVE_TRAILING",
+        )
+
+    policy = VCAPProfitExitPolicy(
+        target_net_profit_bps=target_bps,
+        max_profit_giveback_bps=giveback_bps,
+        suggested_trailing_delta_bps=trailing_distance,
+    )
+    profit = plan_vcap_profit_exit(
+        position,
+        costs=costs,
+        now=now_value,
+        fingerprint=fingerprint,
+        previous_state=previous_state,
+        policy=policy,
+    )
+    merged_state = replace(
+        profit.state,
+        peak_price=peak_price,
+        trailing_stop_price=stop_price,
+        stop_distance_bps=stop_distance,
+        take_profit_giveback_bps=giveback_bps,
+        take_profit_target_bps=target_bps,
+    )
+    reasons = (
+        *profit.reasons,
+        "adaptive_dttp_dtsl_monitoring",
+        "position_source_top_loser_reversal",
+    )
+    return replace(
+        profit,
+        state=merged_state,
+        reasons=reasons,
+        exit_mode="ADAPTIVE_TRAILING",
     )
