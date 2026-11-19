@@ -67,18 +67,28 @@ compression and expansion are observations, not a standalone numeric entry
 gate. The candidate list remains informational and sets
 `reversal_pathway_eligible=true` while keeping `capital_authorized=false`.
 
-The portfolio supervisor, VCAP admission, durable position provenance, and
-adaptive DTTP/DTSL exit lifecycle are separate implementation stages. This
-research-list change does not yet authorize orders or activate those exits.
+The portfolio supervisor now routes this shortlist through a distinct
+`TOP_LOSER_REVERSAL` source, and VCAP admission rechecks the 24-hour loser,
+reversal evidence, and $10M liquidity requirements. The paper asset-authority
+writer includes only candidates that pass those same pathway checks; this
+allowlist is not capital authorization.
+
+The entry strategy source is persisted in the capital reservation, protected
+entry submission, economic position, dust-successor admission, and position
+snapshot. Recovery submissions inherit the source from the exact economic
+position. This makes the source available after process restart.
+
+The adaptive DTTP/DTSL exit manager and its protected SELL execution contract
+remain a separate unfinished stage. They must be implemented and tested before
+the pathway is considered complete or enabled.
 
 ## Safety and compatibility invariants
 
 - The flat candidates key remains the eligible-only mean-reversion shortlist.
 - The lists.mean_reversion_candidates key remains eligible-only.
-- write_discovered_kraken_assets is unchanged and consumes only that list.
+- write_discovered_kraken_assets includes ordinary eligible candidates and separately qualified top-loser reversal candidates; it grants no capital.
 - Research, gainer, loser, volatility, recovery, and rejected lists never grant
   Governor approval or capital authorization.
 - Every research row has capital_authorized set to false.
 - The scan remains research-only and creates zero orders.
-- Capital policy, portfolio sizing, VCAP, DTTP, DTSL, and live-dispatch settings
-  are not changed by this discovery update.
+- Capital policy and portfolio sizing are unchanged. The new source metadata does not change VCAP recovery policy or enable DTTP/DTSL/live dispatch.
