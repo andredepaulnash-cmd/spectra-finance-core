@@ -1007,6 +1007,7 @@ class DustLifecycle:
         pair: str,
         checkpoint_ids: tuple[str, ...],
         now: float,
+        strategy_source: str = "STANDARD",
     ) -> None:
         """Atomically open one slot after checking *all* same-base predecessors.
 
@@ -1020,6 +1021,8 @@ class DustLifecycle:
             _pair(pair),
             _time(now, "now"),
         )
+        if strategy_source not in {"STANDARD", "MEAN_REVERSION", "TOP_LOSER_REVERSAL"}:
+            raise ValueError("unknown dust successor strategy source")
         base = normalized_base_asset(pair)
         if not checkpoint_ids or len(set(checkpoint_ids)) != len(checkpoint_ids):
             raise ValueError("provide distinct checkpoints for every dust predecessor")
@@ -1032,9 +1035,11 @@ class DustLifecycle:
                     "SELECT checkpoint_id FROM economic_dust_successors WHERE successor_id = ?",
                     (pid,),
                 ).fetchall()
-                if existing["pair"] != pair or {
-                    r["checkpoint_id"] for r in links
-                } != set(checkpoint_ids):
+                if (
+                    existing["pair"] != pair
+                    or existing["strategy_source"] != strategy_source
+                    or {r["checkpoint_id"] for r in links} != set(checkpoint_ids)
+                ):
                     raise ValueError("successor replay conflicts")
                 # An idempotent replay never opens/reopens or changes anything.
                 return
@@ -1048,9 +1053,9 @@ class DustLifecycle:
             )
             conn.execute(
                 """INSERT INTO economic_positions
-                (position_id, pair, base_asset, status, created_at, updated_at)
-                VALUES (?, ?, ?, 'ACTIVE', ?, ?)""",
-                (pid, pair, base, now, now),
+                (position_id, pair, base_asset, status, created_at, updated_at, strategy_source)
+                VALUES (?, ?, ?, 'ACTIVE', ?, ?, ?)""",
+                (pid, pair, base, now, now, strategy_source),
             )
             conn.executemany(
                 "INSERT INTO economic_dust_successors VALUES (?, ?, ?, ?)",
