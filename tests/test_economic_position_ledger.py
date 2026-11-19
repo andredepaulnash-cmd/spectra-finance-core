@@ -19,6 +19,7 @@ from spectra_core.models import (
     CapitalProposal,
     CapitalSnapshot,
     DecisionStatus,
+    EntryStrategySource,
     IntentKind,
 )
 from spectra_core.vcap_lifecycle import plan_vcap_lifecycle_from_ledger
@@ -70,6 +71,7 @@ def governor(tmp_path):
 def prepare_recovery(
     g,
     *,
+    strategy_source=EntryStrategySource.STANDARD,
     proposal_id="position-1:vcap:0001",
     executor_id="exec-economic-1",
     pair="XRP-USD",
@@ -81,6 +83,7 @@ def prepare_recovery(
         intent=IntentKind.RECOVERY,
         amount_quote=D(amount),
         leverage=D("1"),
+        strategy_source=strategy_source,
     )
     decision = g.reserve(
         proposal,
@@ -101,12 +104,13 @@ def prepare_recovery(
     return proposal
 
 
-def ledger(tmp_path):
+def ledger(tmp_path, strategy_source=EntryStrategySource.STANDARD):
     result = EconomicPositionLedger(tmp_path / "economic-position.sqlite3")
     result.open_position(
         position_id="position-1",
         pair="XRP-USD",
         created_at=1_000,
+        strategy_source=strategy_source,
     )
     return result
 
@@ -554,3 +558,64 @@ def test_unified_lifecycle_geometry_comes_from_whole_active_trade_ledger(
     snapshot = book.snapshot("btc-economic-1")
     assert snapshot.active_entry_fees_quote == D("1.2")
     assert snapshot.strategic_retained_base_same_pair == D("50")
+
+
+
+def test_confirmed_entry_fill_preserves_and_checks_execution_strategy_source(tmp_path):
+    g = governor(tmp_path)
+    proposal = CapitalProposal(
+        proposal_id="top-loser-entry",
+        pair="XRP-USD",
+        intent=IntentKind.ENTRY,
+        amount_quote=D("25"),
+        leverage=D("1"),
+        strategy_source=EntryStrategySource.TOP_LOSER_REVERSAL,
+    )
+    decision = g.reserve(
+        proposal,
+        CapitalSnapshot(free_quote=D("5000")),
+    )
+    assert decision.status == DecisionStatus.RESERVED
+    assert g.commit(proposal.proposal_id)
+    assert g.reconcile_execution(
+        proposal_id=proposal.proposal_id,
+        executor_id="exec-top-loser-entry",
+    )
+    provenance = g.get_execution_provenance(proposal.proposal_id)
+    assert provenance is not None
+    assert provenance.strategy_source == EntryStrategySource.TOP_LOSER_REVERSAL
+
+    matching = ledger(
+        tmp_path / "matching",
+        strategy_source=EntryStrategySource.TOP_LOSER_REVERSAL,
+    )
+    matching.record_entry_fill(
+        governor=g,
+        position_id="position-1",
+        lot_id="top-loser-confirmed-fill",
+        proposal_id=proposal.proposal_id,
+        base_amount=D("50"),
+        cost_basis_quote=D("25"),
+        occurred_at=1_010,
+    )
+    assert matching.snapshot("position-1").strategy_source == EntryStrategySource.TOP_LOSER_REVERSAL
+
+    mismatched = EconomicPositionLedger(
+        tmp_path / "mismatched" / "economic-position.sqlite3"
+    )
+    mismatched.open_position(
+        position_id="ordinary-position",
+        pair="XRP-USD",
+        created_at=1_000,
+        strategy_source=EntryStrategySource.MEAN_REVERSION,
+    )
+    with pytest.raises(ValueError, match="strategy provenance differs"):
+        mismatched.record_entry_fill(
+            governor=g,
+            position_id="ordinary-position",
+            lot_id="misattributed-fill",
+            proposal_id=proposal.proposal_id,
+            base_amount=D("50"),
+            cost_basis_quote=D("25"),
+            occurred_at=1_010,
+        )
