@@ -2532,7 +2532,7 @@ class CapitalGovernor:
                 raise ValueError("RECOVERY economic identity changed before commit")
             schema = recovery_ledger[0]
             position = conn.execute(
-                f"SELECT status, pair, base_asset FROM {schema}.economic_positions "
+                f"SELECT status, pair, base_asset, strategy_source FROM {schema}.economic_positions "
                 "WHERE position_id = ?",
                 (claim["position_id"],),
             ).fetchone()
@@ -2541,6 +2541,8 @@ class CapitalGovernor:
                 or position["status"] != "ACTIVE"
                 or position["pair"] != claim["pair"]
                 or position["base_asset"] != claim["base_asset"]
+                or str(position["strategy_source"]) != str(claim["strategy_source"])
+                or str(claim["strategy_source"]) != proposal.strategy_source.value
             ):
                 raise ValueError("RECOVERY requires its exact ACTIVE economic position")
             certificate_table = conn.execute(
