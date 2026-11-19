@@ -116,6 +116,7 @@ async def execute_vcap_decision(
         spectra_proposal_id=proposal.proposal_id,
         spectra_intent="RECOVERY",
         spectra_position_id=position_id,
+        spectra_strategy_source=proposal.strategy_source,
         spectra_max_price_slippage_bps=buy_max_price_slippage_bps,
         spectra_fee_allowance_bps=buy_fee_allowance_bps,
     )
