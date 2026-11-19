@@ -13,7 +13,7 @@ from pathlib import Path
 from .capital_governor import CapitalGovernor
 from .decimal_math import exact_decimal_difference, exact_decimal_sum
 from .kraken_market_fabric import KrakenTradingRule
-from .models import IntentKind
+from .models import EntryStrategySource, IntentKind
 from .recovery_fingerprint import VCAPPositionState
 
 ZERO = Decimal("0")
@@ -148,6 +148,7 @@ class EconomicPositionSnapshot:
     unattributed_base_same_pair: Decimal
     active_lot_ids: tuple[str, ...]
     recovery_proposal_ids: tuple[str, ...]
+    strategy_source: EntryStrategySource = EntryStrategySource.STANDARD
 
     @property
     def has_active_inventory(self) -> bool:
@@ -350,7 +351,8 @@ class EconomicPositionLedger:
                     base_asset TEXT NOT NULL,
                     status TEXT NOT NULL,
                     created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
+                    updated_at REAL NOT NULL,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 );
 
                 CREATE TABLE IF NOT EXISTS economic_lots (
@@ -471,6 +473,12 @@ class EconomicPositionLedger:
                     f"the same base asset: {assets}"
                 )
 
+            position_columns = {
+                str(row["name"]) for row in conn.execute("PRAGMA table_info(economic_positions)")
+            }
+            if "strategy_source" not in position_columns:
+                conn.execute("ALTER TABLE economic_positions ADD COLUMN strategy_source TEXT NOT NULL DEFAULT 'STANDARD'")
+
             conn.execute("""
                 CREATE UNIQUE INDEX IF NOT EXISTS
                     economic_positions_active_base_unique
@@ -486,11 +494,20 @@ class EconomicPositionLedger:
         created_at: float,
         dust_lifecycle=None,
         dust_checkpoint_ids: tuple[str, ...] = (),
+        strategy_source: EntryStrategySource | str = EntryStrategySource.STANDARD,
     ) -> None:
         pid = _text(position_id, "position_id")
         normalized_pair = _pair(pair)
         base_asset = normalized_base_asset(normalized_pair)
         timestamp = _time(created_at, "created_at")
+        try:
+            source = (
+                strategy_source
+                if isinstance(strategy_source, EntryStrategySource)
+                else EntryStrategySource(str(strategy_source).strip().upper())
+            )
+        except ValueError as exc:
+            raise ValueError("unknown economic-position strategy source") from exc
 
         if dust_lifecycle is not None:
             if dust_lifecycle.ledger.path.resolve() != self.path.resolve():
@@ -500,6 +517,7 @@ class EconomicPositionLedger:
                 pair=normalized_pair,
                 checkpoint_ids=dust_checkpoint_ids,
                 now=timestamp,
+                strategy_source=source.value,
             )
             return
         if dust_checkpoint_ids:
@@ -510,7 +528,7 @@ class EconomicPositionLedger:
             try:
                 existing = conn.execute(
                     """
-                    SELECT pair, base_asset
+                    SELECT pair, base_asset, strategy_source
                     FROM economic_positions
                     WHERE position_id = ?
                     """,
@@ -520,6 +538,7 @@ class EconomicPositionLedger:
                     if (
                         str(existing["pair"]) != normalized_pair
                         or str(existing["base_asset"]) != base_asset
+                        or str(existing["strategy_source"]) != source.value
                     ):
                         raise RuntimeError(
                             "economic position replay conflicts with existing pair"
@@ -563,9 +582,9 @@ class EconomicPositionLedger:
                     """
                     INSERT INTO economic_positions (
                         position_id, pair, base_asset, status,
-                        created_at, updated_at
+                        created_at, updated_at, strategy_source
                     )
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         pid,
@@ -574,6 +593,7 @@ class EconomicPositionLedger:
                         EconomicPositionStatus.ACTIVE.value,
                         timestamp,
                         timestamp,
+                        source.value,
                     ),
                 )
                 conn.commit()
@@ -1458,6 +1478,7 @@ class EconomicPositionLedger:
                 lot.lot_id for lot in active_lots if lot.base_remaining > ZERO
             ),
             recovery_proposal_ids=recovery_ids,
+            strategy_source=EntryStrategySource(str(position["strategy_source"])),
         )
 
     def list_active_lots(self, position_id: str) -> tuple[EconomicLot, ...]:
