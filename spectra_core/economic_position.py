@@ -202,6 +202,12 @@ def validate_protected_buy_terminal_evidence(
     config = authority.get("config", authority.get("executor_config"))
     if not isinstance(config, dict):
         raise ValueError("terminal BUY order executor has no immutable config")
+    source = authority.get("strategy_source")
+    if source not in {item.value for item in EntryStrategySource}:
+        raise ValueError("terminal BUY order executor has unknown strategy provenance")
+    position_snapshot = EconomicPositionLedger(ledger_path).snapshot(position_id)
+    if position_snapshot.strategy_source.value != source:
+        raise ValueError("terminal BUY strategy provenance differs from its economic position")
     strategy = config.get("execution_strategy")
     if strategy not in {"LIMIT", "MARKET"}:
         raise ValueError("terminal BUY order executor has an unsupported execution strategy")
