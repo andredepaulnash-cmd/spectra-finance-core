@@ -380,3 +380,28 @@ def test_symlinked_portfolio_status_fails_closed(monkeypatch, tmp_path):
 
     assert status["supervisor_state"] == "UNAVAILABLE"
     assert "symlink" in status["error"]
+
+
+@pytest.mark.asyncio
+async def test_supervisor_preserves_top_loser_source_through_entry_dispatch():
+    deps, reserved, created, _ = _dependencies()
+    scan = _scan("BTC-USD")
+    reversal = _candidate("BTC-USD")
+    reversal.update({
+        "volume_24h_usd": 15_000_000.0,
+        "change_24h_pct": -4.0,
+        "entry_liquidity_eligible": True,
+        "reversal_pathway_eligible": True,
+        "reversal_signal_count": 2,
+    })
+    scan["lists"]["top_loser_reversal_candidates"] = [reversal]
+    status = await run_portfolio_cycle(
+        object(),
+        scan_result=scan,
+        config=_config(target_active_positions=1, max_new_entries_per_tick=1),
+        dependencies=deps,
+        now=1000.0,
+    )
+    assert reserved == ["BTC-USD"]
+    assert created[0]["spectra_strategy_source"] == "TOP_LOSER_REVERSAL"
+    assert status["entries"][0]["strategy_source"] == "TOP_LOSER_REVERSAL"
