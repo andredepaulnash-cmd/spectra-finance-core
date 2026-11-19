@@ -21,6 +21,7 @@ from spectra_core.models import (
     CapitalProposal,
     CapitalSnapshot,
     DecisionStatus,
+    EntryStrategySource,
     IntentKind,
 )
 from spectra_core.recovery_fingerprint import VCAPPositionState
@@ -454,3 +455,30 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
     assert replay["idempotent_replay"] is True
     assert replay["executor_id"] == "vcap-exec-1"
     assert len(client.executors.calls) == 1
+
+
+
+def test_replanned_vcap_recovery_inherits_top_loser_position_source():
+    fp = reversal_fingerprint()
+    decision = replan_vcap_sequence(
+        envelope_proposal_id="vcap-envelope-1",
+        sequence=1,
+        pair="BTC-USD",
+        seed_quote=D("20"),
+        remaining_authorized_quote=D("100"),
+        position=VCAPPositionState(
+            pair="BTC-USD",
+            position_base=D("10"),
+            cost_basis_quote=D("1100"),
+            current_price=D("100"),
+        ),
+        fingerprint=fp,
+        trading_rule=rule(),
+        current_price=D("100"),
+        now=fp.last_seen_at,
+        strategy_source=EntryStrategySource.TOP_LOSER_REVERSAL,
+    )
+
+    assert decision.action == VCAPLoopAction.EXECUTE
+    assert decision.next_proposal is not None
+    assert decision.next_proposal.strategy_source == EntryStrategySource.TOP_LOSER_REVERSAL
