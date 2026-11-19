@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from mcp_servers.hummingbot_api.settings import settings
-from mcp_servers.hummingbot_api.tools.executor_create import create_dca_executor
+from mcp_servers.hummingbot_api.tools.executor_create import create_order_executor
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.vcap_execution import (
     VCAPExecutionDecision,
@@ -102,13 +102,12 @@ async def execute_vcap_decision(
             "error": "VCAP recovery envelope could not carve the next tranche",
         }
 
-    result = await create_dca_executor(
+    result = await create_order_executor(
         client,
         connector_name=connector_name,
         trading_pair=proposal.pair,
         side=1,
-        amounts_quote=[str(proposal.amount_quote)],
-        prices=[str(decision.current_price)],
+        execution_strategy="MARKET",
         leverage=1,
         level_id=f"vcap-{decision.sequence:04d}",
         account_name=account,
@@ -117,7 +116,6 @@ async def execute_vcap_decision(
         spectra_intent="RECOVERY",
         spectra_position_id=position_id,
         spectra_strategy_source=proposal.strategy_source,
-        spectra_max_price_slippage_bps=buy_max_price_slippage_bps,
         spectra_fee_allowance_bps=buy_fee_allowance_bps,
     )
 
