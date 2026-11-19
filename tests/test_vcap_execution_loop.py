@@ -56,13 +56,14 @@ def governor(tmp_path):
     )
 
 
-def reserve_envelope(g, amount="100"):
+def reserve_envelope(g, amount="100", strategy_source=EntryStrategySource.STANDARD):
     proposal = CapitalProposal(
         proposal_id="vcap-envelope-1",
         pair="BTC-USD",
         intent=IntentKind.RECOVERY,
         amount_quote=D(amount),
         leverage=D("1"),
+        strategy_source=strategy_source,
     )
     decision = g.reserve(
         proposal,
@@ -323,13 +324,14 @@ class Client:
         self.executors = Executors()
 
 
-def executable_decision():
+def executable_decision(strategy_source=EntryStrategySource.STANDARD):
     proposal = CapitalProposal(
         proposal_id="vcap-envelope-1:vcap:0001",
         pair="BTC-USD",
         intent=IntentKind.RECOVERY,
         amount_quote=D("20"),
         leverage=D("1"),
+        strategy_source=strategy_source,
     )
     return VCAPExecutionDecision(
         envelope_proposal_id="vcap-envelope-1",
@@ -351,17 +353,23 @@ def executable_decision():
 
 
 @pytest.mark.parametrize(
-    "native_quote,reference_price",
-    [("20", "100"), ("20.1234567890123456789", "100.1234567890123456789")],
+    "native_quote,reference_price,strategy_source",
+    [
+        ("20", "100", EntryStrategySource.STANDARD),
+        ("20.1234567890123456789", "100.1234567890123456789", EntryStrategySource.STANDARD),
+        ("20", "100", EntryStrategySource.TOP_LOSER_REVERSAL),
+        ("20.1234567890123456789", "100.1234567890123456789", EntryStrategySource.TOP_LOSER_REVERSAL),
+    ],
 )
 def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
     monkeypatch,
     tmp_path,
     native_quote,
     reference_price,
+    strategy_source,
 ):
     g = governor(tmp_path)
-    reserve_envelope(g, "100")
+    reserve_envelope(g, "100", strategy_source=strategy_source)
     client = Client()
 
     executor_create.trading_rules_cache.clear()
@@ -373,7 +381,7 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
     )
     monkeypatch.setattr(executor_create, "get_capital_governor", lambda: g)
     ledger = EconomicPositionLedger(tmp_path / "economic.sqlite3")
-    ledger.open_position(position_id="position", pair="BTC-USD", created_at=1000)
+    ledger.open_position(position_id="position", pair="BTC-USD", created_at=1000, strategy_source=strategy_source)
     monkeypatch.setattr(executor_create, "get_economic_position_ledger", lambda: ledger)
     from mcp_servers.hummingbot_api.tools import execution_book
 
@@ -399,7 +407,7 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
         )
 
     monkeypatch.setattr(execution_book, "fetch_protected_kraken_book", fresh_book)
-    decision = executable_decision()
+    decision = executable_decision(strategy_source)
     decision = replace(
         decision,
         current_price=D(reference_price),
@@ -429,6 +437,10 @@ def test_execute_vcap_tranche_uses_exact_execution_gate_and_replay_is_safe(
     assert D(str(config["price"])) == D("100")
     protected = g.get_protected_buy_submission(decision.next_proposal.proposal_id)
     assert D(protected["policy"]["reference_price"]) == D(reference_price)
+    assert protected["strategy_source"] == strategy_source.value
+    provenance = g.get_execution_provenance(decision.next_proposal.proposal_id)
+    assert provenance is not None
+    assert provenance.strategy_source == strategy_source
     assert D(str(config["amount"])) == D("0.2")
     assert D(
         g.get_protected_buy_submission(decision.next_proposal.proposal_id)[
