@@ -126,6 +126,8 @@ def plan_vcap_lifecycle(
     recovery_policy: VCAPRecoveryPolicy | None = None,
     tranche_policy: VCAPTranchePolicy | None = None,
     profit_policy: VCAPProfitExitPolicy | None = None,
+    profit_decision_override: VCAPProfitExitDecision | None = None,
+    strategy_source: EntryStrategySource = EntryStrategySource.STANDARD,
 ) -> VCAPLifecycleDecision:
     """Run one deterministic VCAP lifecycle planning cycle and checkpoint it.
 
@@ -159,7 +161,7 @@ def plan_vcap_lifecycle(
         store.save(state)
         return decision
 
-    profit = plan_vcap_profit_exit(
+    profit = profit_decision_override or plan_vcap_profit_exit(
         position,
         costs=costs,
         now=now,
@@ -215,6 +217,7 @@ def plan_vcap_lifecycle(
         fingerprint_policy=fingerprint_policy,
         recovery_policy=recovery_policy,
         tranche_policy=tranche_policy,
+        strategy_source=strategy_source,
     )
 
     if execution.action == VCAPLoopAction.EXECUTE:
@@ -551,4 +554,6 @@ def plan_vcap_lifecycle_from_ledger(
         recovery_policy=recovery_policy,
         tranche_policy=tranche_policy,
         profit_policy=profit_policy,
+        profit_decision_override=profit,
+        strategy_source=snapshot.strategy_source,
     )
