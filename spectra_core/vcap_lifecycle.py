@@ -159,23 +159,14 @@ def plan_vcap_lifecycle(
         store.save(state)
         return decision
 
-    if snapshot.strategy_source == EntryStrategySource.TOP_LOSER_REVERSAL:
-        profit = plan_top_loser_adaptive_exit(
-            position,
-            costs=costs,
-            now=now,
-            fingerprint=fingerprint,
-            previous_state=state.profit_state,
-        )
-    else:
-        profit = plan_vcap_profit_exit(
-            position,
-            costs=costs,
-            now=now,
-            fingerprint=fingerprint,
-            previous_state=state.profit_state,
-            policy=profit_policy,
-        )
+    profit = plan_vcap_profit_exit(
+        position,
+        costs=costs,
+        now=now,
+        fingerprint=fingerprint,
+        previous_state=state.profit_state,
+        policy=profit_policy,
+    )
 
     checkpoint = _checkpoint_state(
         state,
@@ -461,14 +452,23 @@ def plan_vcap_lifecycle_from_ledger(
     # Whole-position profit protection remains higher priority than parcel
     # harvesting. Only when the economic position itself is below that exit
     # path do we consider monetizing independently profitable RECOVERY owners.
-    profit = plan_vcap_profit_exit(
-        position,
-        costs=costs,
-        now=now,
-        fingerprint=fingerprint,
-        previous_state=state.profit_state,
-        policy=profit_policy,
-    )
+    if snapshot.strategy_source == EntryStrategySource.TOP_LOSER_REVERSAL:
+        profit = plan_top_loser_adaptive_exit(
+            position,
+            costs=costs,
+            now=now,
+            fingerprint=fingerprint,
+            previous_state=state.profit_state,
+        )
+    else:
+        profit = plan_vcap_profit_exit(
+            position,
+            costs=costs,
+            now=now,
+            fingerprint=fingerprint,
+            previous_state=state.profit_state,
+            policy=profit_policy,
+        )
     if (
         governor is not None
         and profit.action not in {
