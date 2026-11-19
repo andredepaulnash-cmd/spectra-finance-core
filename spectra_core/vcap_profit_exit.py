@@ -487,6 +487,43 @@ def plan_top_loser_adaptive_exit(
         or medium_vol <= 0.0
     ):
         net_proceeds, net_profit, net_profit_bps = _profit_geometry(position, costs)
+        existing_stop = (
+            None if previous_state is None else previous_state.trailing_stop_price
+        )
+        if existing_stop is not None and position.current_price <= existing_stop:
+            basis_quote = position.cost_basis_quote + costs.accrued_fees_quote
+            sell_floor = existing_stop * (
+                ONE - costs.slippage_allowance_bps / BPS
+            )
+            floor_proceeds = (
+                sell_floor * position.position_base
+                * (ONE - costs.expected_exit_cost_bps / BPS)
+            )
+            loss_target_bps = (floor_proceeds - basis_quote) / basis_quote * BPS
+            preserved = replace(previous_state, updated_at=now_value)
+            return VCAPProfitExitDecision(
+                pair=pair,
+                action=VCAPProfitExitAction.EXIT,
+                current_price=position.current_price,
+                target_exit_price=existing_stop,
+                protected_floor_price=sell_floor,
+                estimated_net_proceeds_quote=net_proceeds,
+                estimated_net_profit_quote=net_profit,
+                estimated_net_profit_bps=net_profit_bps,
+                continuation_support=0.0,
+                state=preserved,
+                suggested_trailing_delta_bps=(
+                    preserved.stop_distance_bps or Decimal("0.01")
+                ),
+                reasons=(
+                    "adaptive_dtsl_existing_stop_triggered",
+                    "volatility_fingerprint_stale",
+                    "position_source_top_loser_reversal",
+                ),
+                target_net_profit_bps=loss_target_bps,
+                expected_exit_cost_bps=costs.expected_exit_cost_bps,
+                exit_mode="ADAPTIVE_TRAILING",
+            )
         policy = VCAPProfitExitPolicy()
         target = _target_exit_price(position, costs, policy.target_net_profit_bps)
         state = VCAPProfitState(
