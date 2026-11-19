@@ -23,6 +23,7 @@ from .models import (
     CapitalSnapshot,
     DecisionStatus,
     ExecutionProvenance,
+    EntryStrategySource,
     ExecutorAccountingDelta,
     ExecutorAccountingObservation,
     IntentKind,
@@ -369,6 +370,7 @@ class CapitalGovernor:
                     account_name TEXT,
                     connector_name TEXT,
                     controller_id TEXT,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD',
                     created_at REAL NOT NULL
                 )
                 """)
@@ -384,6 +386,7 @@ class CapitalGovernor:
                 "account_name",
                 "connector_name",
                 "controller_id",
+                "strategy_source",
             ):
                 if column_name not in provenance_columns:
                     conn.execute(
@@ -402,7 +405,8 @@ class CapitalGovernor:
                     intent,
                     authorized_quote,
                     leverage,
-                    created_at
+                    created_at,
+                    strategy_source
                 )
                 SELECT
                     r.proposal_id,
@@ -411,7 +415,8 @@ class CapitalGovernor:
                     r.intent,
                     r.amount_quote,
                     r.leverage,
-                    e.created_at
+                    e.created_at,
+                    r.strategy_source
                 FROM execution_receipts AS e
                 JOIN capital_reservations AS r
                   ON r.proposal_id = e.proposal_id
@@ -437,6 +442,7 @@ class CapitalGovernor:
                       OR p.intent != r.intent
                       OR p.authorized_quote != r.amount_quote
                       OR p.leverage != r.leverage
+                      OR p.strategy_source != r.strategy_source
                   )
                 LIMIT 1
                 """,
@@ -3195,7 +3201,8 @@ class CapitalGovernor:
                             leverage,
                             account_name,
                             connector_name,
-                            controller_id
+                            controller_id,
+                            strategy_source
                         FROM execution_provenance
                         WHERE proposal_id = ?
                         """,
@@ -3214,6 +3221,7 @@ class CapitalGovernor:
                         reservation["intent"],
                         reservation["amount_quote"],
                         reservation["leverage"],
+                        reservation["strategy_source"],
                     )
                     actual = (
                         provenance["executor_id"],
@@ -3221,6 +3229,7 @@ class CapitalGovernor:
                         provenance["intent"],
                         provenance["authorized_quote"],
                         provenance["leverage"],
+                        provenance["strategy_source"],
                     )
 
                     if actual != expected:
@@ -3290,9 +3299,10 @@ class CapitalGovernor:
                         account_name,
                         connector_name,
                         controller_id,
+                        strategy_source,
                         created_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         proposal_id,
@@ -3304,6 +3314,7 @@ class CapitalGovernor:
                         (None if normalized_scope is None else normalized_scope[0]),
                         (None if normalized_scope is None else normalized_scope[1]),
                         (None if normalized_scope is None else normalized_scope[2]),
+                        reservation["strategy_source"],
                         now,
                     ),
                 )
@@ -3396,7 +3407,8 @@ class CapitalGovernor:
                     leverage,
                     account_name,
                     connector_name,
-                    controller_id
+                    controller_id,
+                    strategy_source
                 FROM execution_provenance
                 WHERE proposal_id = ?
                 """,
@@ -3422,6 +3434,7 @@ class CapitalGovernor:
             controller_id=(
                 None if row["controller_id"] is None else str(row["controller_id"])
             ),
+            strategy_source=EntryStrategySource(str(row["strategy_source"])),
         )
 
     @staticmethod
