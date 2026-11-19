@@ -1372,6 +1372,7 @@ async def create_grid_executor(
         spectra_proposal_id=spectra_proposal_id,
         spectra_intent=spectra_intent,
         spectra_position_id=spectra_position_id,
+        spectra_strategy_source=spectra_strategy_source,
         spectra_max_price_slippage_bps=spectra_max_price_slippage_bps,
         spectra_fee_allowance_bps=spectra_fee_allowance_bps,
     )
@@ -1399,6 +1400,7 @@ async def create_dca_executor(
     spectra_proposal_id: str | None = None,
     spectra_intent: str | None = None,
     spectra_position_id: str | None = None,
+    spectra_strategy_source: EntryStrategySource | str = EntryStrategySource.STANDARD,
     spectra_max_price_slippage_bps: str | float | Decimal | None = None,
     spectra_fee_allowance_bps: str | float | Decimal | None = None,
 ) -> dict[str, Any]:
