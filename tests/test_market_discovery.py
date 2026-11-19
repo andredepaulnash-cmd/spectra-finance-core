@@ -167,7 +167,7 @@ async def test_kraken_scan_uses_configured_connector_and_never_creates_orders():
     assert result["lists"]["mean_reversion_candidates"] == result["candidates"]
     assert result["lists"]["mean_reversion_candidates"][0]["capital_authorized"] is False
     assert result["orders_created"] == 0
-    assert market_data.calls == [("kraken", "BTC-USD", "1d", 92)]
+    assert market_data.calls == [("kraken", "BTC-USD", "1h", 27), ("kraken", "BTC-USD", "1d", 92)]
 
 
 @pytest.mark.asyncio
