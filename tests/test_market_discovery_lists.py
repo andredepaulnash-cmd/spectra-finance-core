@@ -129,6 +129,11 @@ def test_analyzer_exposes_three_day_and_reversal_context():
     assert "rsi_14d_change" in result
     assert result["reversal_signal_count"] >= 1
     assert isinstance(result["reversal_signal_reasons"], list)
+    assert 0 <= result["bbwp_percentile"] <= 100
+    assert result["bbwp_state"] in {
+        "COMPRESSION_TO_EXPANSION", "COMPRESSION", "EXPANSION", "NEUTRAL", "UNAVAILABLE"
+    }
+    assert isinstance(result["bbwp_signal_reasons"], list)
 
 
 class FakeMarketData:
@@ -229,3 +234,47 @@ async def test_scan_expands_research_lists_without_lowering_entry_liquidity_floo
     assert result["candidates"] == result["lists"]["mean_reversion_candidates"]
     assert result["orders_created"] == 0
     assert all(row["capital_authorized"] is False for row in result["lists"]["mean_reversion_watchlist"])
+
+
+def test_top_loser_reversal_candidates_are_distinct_and_keep_entry_guards():
+    markets = [
+        {
+            "trading_pair": "REV-USD", "quote_asset": "USD",
+            "current_price": 95.0, "volume_24h_usd": 15_000_000.0,
+            "change_24h_pct": -4.0, "return_3d_pct": -6.0,
+            "entry_liquidity_eligible": True, "eligible": True,
+            "selection_score": 72.0, "reversal_signal_count": 2,
+            "capital_authorized": False,
+        },
+        {
+            "trading_pair": "NOTLOSER-USD", "quote_asset": "USD",
+            "current_price": 105.0, "volume_24h_usd": 20_000_000.0,
+            "change_24h_pct": 1.0, "return_3d_pct": -6.0,
+            "entry_liquidity_eligible": True, "eligible": True,
+            "selection_score": 75.0, "reversal_signal_count": 3,
+            "capital_authorized": False,
+        },
+        {
+            "trading_pair": "THIN-USD", "quote_asset": "USD",
+            "current_price": 95.0, "volume_24h_usd": 8_000_000.0,
+            "change_24h_pct": -4.0, "return_3d_pct": -6.0,
+            "entry_liquidity_eligible": False, "eligible": False,
+            "selection_score": 72.0, "reversal_signal_count": 3,
+            "capital_authorized": False,
+        },
+        {
+            "trading_pair": "NO-SIGNAL-USD", "quote_asset": "USD",
+            "current_price": 95.0, "volume_24h_usd": 18_000_000.0,
+            "change_24h_pct": -4.0, "return_3d_pct": -6.0,
+            "entry_liquidity_eligible": True, "eligible": True,
+            "selection_score": 72.0, "reversal_signal_count": 1,
+            "capital_authorized": False,
+        },
+    ]
+    lists = build_dynamic_market_lists(markets, markets, show_n=10)
+    assert [row["trading_pair"] for row in lists["top_loser_reversal_candidates"]] == [
+        "REV-USD"
+    ]
+    candidate = lists["top_loser_reversal_candidates"][0]
+    assert candidate["reversal_pathway_eligible"] is True
+    assert candidate["capital_authorized"] is False
