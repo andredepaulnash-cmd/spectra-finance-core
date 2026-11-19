@@ -1570,6 +1570,7 @@ class CapitalGovernor:
                     and row["intent"] == proposal.intent.value
                     and Decimal(row["amount_quote"]) == proposal.amount_quote
                     and Decimal(row["leverage"]) == proposal.leverage
+                    and str(row["strategy_source"]) == proposal.strategy_source.value
                 )
                 if cash.binding(conn) is not None:
                     matches = matches and (
@@ -1658,8 +1659,9 @@ class CapitalGovernor:
                         conn.execute(
                             """INSERT INTO position_submission_bindings (
                                 proposal_id,base_asset,position_id,ledger_path,pair,
-                                account_name,connector_name,controller_id,state,created_at,updated_at
-                            ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?)""",
+                                account_name,connector_name,controller_id,state,created_at,updated_at,
+                                strategy_source
+                            ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?,?)""",
                             (
                                 proposal_id,
                                 owner["base_asset"],
@@ -1669,6 +1671,7 @@ class CapitalGovernor:
                                 *recovery_scope,
                                 now,
                                 now,
+                                str(owner["strategy_source"]),
                             ),
                         )
 
@@ -2037,7 +2040,11 @@ class CapitalGovernor:
         if existing is not None:
             raise ValueError("protected BUY submission is already durably claimed")
         conn.execute(
-            "INSERT INTO protected_buy_submissions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            """INSERT INTO protected_buy_submissions (
+                proposal_id,authorized_quote_budget,position_id,ledger_path,pair,
+                account_name,connector_name,controller_id,config_json,config_sha256,
+                created_at,strategy_source
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 proposal.proposal_id,
                 str(proposal.amount_quote),
@@ -2048,6 +2055,7 @@ class CapitalGovernor:
                 payload,
                 hashlib.sha256(payload.encode()).hexdigest(),
                 self._now(),
+                proposal.strategy_source.value,
             ),
         )
         if policy is not None:
@@ -2270,6 +2278,7 @@ class CapitalGovernor:
                     and reservation["intent"] == IntentKind.ENTRY.value
                     and Decimal(reservation["amount_quote"]) == proposal.amount_quote
                     and Decimal(reservation["leverage"]) == proposal.leverage
+                    and str(reservation["strategy_source"]) == proposal.strategy_source.value
                 ):
                     conn.rollback()
                     return False
@@ -2316,6 +2325,7 @@ class CapitalGovernor:
                     or position["status"] != "ACTIVE"
                     or position["pair"] != pair
                     or position["base_asset"] != base
+                    or str(position["strategy_source"]) != proposal.strategy_source.value
                 ):
                     raise ValueError("ENTRY requires its exact ACTIVE prefill position")
                 active = conn.execute(
@@ -2394,8 +2404,9 @@ class CapitalGovernor:
                 conn.execute(
                     """INSERT INTO entry_submission_claims (
                         proposal_id,base_asset,position_id,ledger_path,pair,
-                        account_name,connector_name,controller_id,state,created_at,updated_at
-                    ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?)""",
+                        account_name,connector_name,controller_id,state,created_at,updated_at,
+                        strategy_source
+                    ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?,?)""",
                     (
                         proposal.proposal_id.strip(),
                         base,
@@ -2405,6 +2416,7 @@ class CapitalGovernor:
                         *scope,
                         now,
                         now,
+                        proposal.strategy_source.value,
                     ),
                 )
                 cursor = conn.execute(
