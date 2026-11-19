@@ -640,3 +640,44 @@ def test_partial_fill_leaves_manifest_open_and_never_consumes_other_buckets(
     assert ledger.get_lot("retained-43").base_remaining == D("43")
     assert ledger.get_lot("unattributed-20").base_remaining == D("20")
     assert store.load(manifest.manifest_id).status == EconomicExitManifestStatus.OPEN
+
+
+
+def test_adaptive_trailing_manifest_allows_signed_target_only_for_top_loser_source(tmp_path):
+    g, ledger = build_owned_position(
+        tmp_path,
+        strategy_source=EntryStrategySource.TOP_LOSER_REVERSAL,
+    )
+    manifest = create_or_load_position_exit_manifest(
+        ledger=ledger,
+        governor=g,
+        position_id="xrp-position-1",
+        trading_rule=trading_rule(),
+        current_price=D("0.50"),
+        now=2_000,
+        target_net_profit_bps=D("-200"),
+        expected_exit_cost_bps=D("45"),
+        exit_mode="ADAPTIVE_TRAILING",
+    )
+
+    assert manifest.exit_mode == "ADAPTIVE_TRAILING"
+    assert manifest.target_net_profit_bps == D("-200")
+    assert manifest.protected_limit_price is not None
+    assert manifest.protected_limit_price > D("0")
+    validate_manifest_against_ledger(manifest, ledger=ledger)
+
+
+def test_adaptive_trailing_manifest_rejects_ordinary_position_source(tmp_path):
+    g, ledger = build_owned_position(tmp_path)
+    with pytest.raises(ValueError, match="TOP_LOSER_REVERSAL provenance"):
+        create_or_load_position_exit_manifest(
+            ledger=ledger,
+            governor=g,
+            position_id="xrp-position-1",
+            trading_rule=trading_rule(),
+            current_price=D("0.50"),
+            now=2_000,
+            target_net_profit_bps=D("-200"),
+            expected_exit_cost_bps=D("45"),
+            exit_mode="ADAPTIVE_TRAILING",
+        )
