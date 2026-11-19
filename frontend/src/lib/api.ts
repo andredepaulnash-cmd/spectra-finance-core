@@ -189,6 +189,7 @@ export interface MarketDiscoveryCandidate {
   change_24h_window_seconds?: number | null;
   change_24h_source?: string | null;
   volume_rank_24h: number;
+  minimum_order_quote?: number;
   entry_liquidity_eligible?: boolean;
   history_days: number;
   high_90d: number;
