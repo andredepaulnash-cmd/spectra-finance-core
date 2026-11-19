@@ -186,7 +186,10 @@ export interface MarketDiscoveryCandidate {
   current_price: number;
   volume_24h_usd: number;
   change_24h_pct: number | null;
+  change_24h_window_seconds?: number | null;
+  change_24h_source?: string | null;
   volume_rank_24h: number;
+  entry_liquidity_eligible?: boolean;
   history_days: number;
   high_90d: number;
   low_90d: number;
@@ -196,9 +199,17 @@ export interface MarketDiscoveryCandidate {
   distance_from_low_pct: number;
   range_position_pct: number;
   sma_20d: number;
+  sma_5d?: number;
+  return_3d_pct?: number;
+  previous_return_3d_pct?: number | null;
   return_7d_pct: number;
   return_30d_pct: number;
+  distance_from_3d_low_pct?: number;
   rsi_14d: number;
+  rsi_14d_previous?: number | null;
+  rsi_14d_change?: number | null;
+  reversal_signal_count?: number;
+  reversal_signal_reasons?: string[];
   median_daily_range_30d_pct: number;
   active_range_days_30d: number;
   active_day_ratio_30d: number;
@@ -215,6 +226,30 @@ export interface MarketDiscoveryCandidate {
   capital_authorized: false;
 }
 
+export type MarketDiscoveryListKey =
+  | "mean_reversion_watchlist"
+  | "mean_reversion_candidates"
+  | "recovery_watchlist"
+  | "top_24h_volume"
+  | "top_24h_gainers"
+  | "top_24h_losers"
+  | "top_3d_losers"
+  | "volatility_leaders"
+  | "rejected_candidates";
+
+export interface MarketDiscoveryListRow extends Partial<MarketDiscoveryCandidate> {
+  symbol: string;
+  base_asset: string;
+  quote_asset: string;
+  trading_pair: string;
+  current_price: number;
+  volume_24h_usd: number;
+  volume_rank_24h: number;
+  change_24h_pct: number | null;
+  governor_approved: boolean;
+  capital_authorized: false;
+}
+
 export interface MarketDiscoveryResponse {
   source: string;
   as_of: number;
@@ -223,6 +258,7 @@ export interface MarketDiscoveryResponse {
   criteria: {
     top_by_24h_quote_volume: number;
     minimum_24h_volume_quote: number;
+    minimum_research_24h_volume_quote: number;
     minimum_completed_history_days: number;
     minimum_median_daily_quote_volume_usd: number;
     minimum_active_day_ratio_30d: number;
@@ -230,18 +266,31 @@ export interface MarketDiscoveryResponse {
     maximum_current_move_from_last_close_pct: number;
     quote_assets: string[];
     ranking: string;
+    "24h_change": string;
+    "3d_change": string;
+    recovery_watchlist: string;
   };
   counts: {
     eligible_kraken_markets: number;
     liquid_markets_found: number;
+    entry_liquid_markets_found: number;
     markets_selected_for_history: number;
     analyzed: number;
     eligible: number;
     rejected_by_guardrails: number;
+    rejected_by_entry_liquidity: number;
     history_or_data_rejected: number;
     governor_approved: number;
+    with_measured_24h_change: number;
+    without_measured_24h_change: number;
+    mean_reversion_watchlist: number;
+    recovery_watchlist: number;
+    rejected_candidate_rows: number;
   };
   candidates: MarketDiscoveryCandidate[];
+  lists: Record<MarketDiscoveryListKey, MarketDiscoveryListRow[]>;
+  list_scope: string;
+  rejected_candidates: MarketDiscoveryListRow[];
   rejected_data: Array<{ trading_pair: string; reason: string }>;
   governor_approved_list_loaded: boolean;
   approved_asset_list_source: string | null;
