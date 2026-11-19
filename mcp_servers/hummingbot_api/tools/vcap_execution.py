@@ -25,7 +25,11 @@ async def execute_vcap_decision(
     buy_max_price_slippage_bps: Decimal | None = None,
     buy_fee_allowance_bps: Decimal | None = None,
 ) -> dict[str, Any]:
-    """Execute one prevalidated VCAP tranche through the Spectra DCA path.
+    """Execute one prevalidated VCAP tranche as a protected MARKET BUY.
+
+    VCAP still replans and authorizes one tranche at a time, but it never submits
+    a resting DCA/limit BUY. The protected market adapter derives base quantity
+    from the exact reserved quote budget and fresh ask depth.
 
     Exact replay is idempotent. If the child proposal already has an execution
     receipt, the existing executor is returned and no new external mutation is
