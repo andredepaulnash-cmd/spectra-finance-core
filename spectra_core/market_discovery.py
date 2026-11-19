@@ -20,6 +20,19 @@ def _number(value: Any, field: str) -> float:
     return result
 
 
+def _rsi_from_prices(prices: list[float]) -> float | None:
+    """Return a simple 14-change RSI for a 15-price window."""
+    if len(prices) < 15:
+        return None
+    changes = [prices[index] - prices[index - 1] for index in range(1, len(prices))]
+    recent = changes[-14:]
+    gains = sum(max(value, 0.0) for value in recent) / 14
+    losses = sum(max(-value, 0.0) for value in recent) / 14
+    if losses == 0:
+        return 100.0 if gains > 0 else 50.0
+    return 100.0 - (100.0 / (1.0 + gains / losses))
+
+
 def analyze_daily_history(
     *,
     symbol: str,
@@ -83,13 +96,32 @@ def analyze_daily_history(
     range_position = ((price - low_90d) / (high_90d - low_90d) * 100) if high_90d > low_90d else 50.0
     distance_from_low = (price / low_90d - 1) * 100 if low_90d > 0 else 0.0
 
-    changes = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
-    recent = changes[-14:]
-    gains = sum(max(x, 0) for x in recent) / 14
-    losses = sum(max(-x, 0) for x in recent) / 14
-    rsi_14d = 100.0 if losses == 0 and gains > 0 else (
-        50.0 if losses == 0 else 100 - (100 / (1 + gains / losses))
+    rsi_14d = _rsi_from_prices(closes[-15:]) or 50.0
+    rsi_14d_previous = _rsi_from_prices(closes[-29:-14]) if len(closes) >= 29 else None
+    rsi_14d_change = (
+        rsi_14d - rsi_14d_previous if rsi_14d_previous is not None else None
     )
+    return_3d = (price / closes[-4] - 1) * 100 if len(closes) >= 4 else 0.0
+    previous_return_3d = (
+        (closes[-4] / closes[-7] - 1) * 100 if len(closes) >= 7 else None
+    )
+    sma_5d = sum(closes[-5:]) / min(5, len(closes))
+    distance_from_3d_low = (
+        (price / min(lows[-3:]) - 1) * 100 if len(lows) >= 3 and min(lows[-3:]) > 0 else 0.0
+    )
+
+    reversal_signal_reasons: list[str] = []
+    if rsi_14d_change is not None and rsi_14d_change >= 2.0:
+        reversal_signal_reasons.append("RSI improving versus prior 14-day window")
+    if previous_return_3d is not None and return_3d > previous_return_3d:
+        reversal_signal_reasons.append("3-day return improving versus prior 3-day window")
+    if change_24h_pct is not None and change_24h_pct > 0:
+        reversal_signal_reasons.append("positive measured 24-hour rebound")
+    if price >= sma_5d:
+        reversal_signal_reasons.append("price recovered above 5-day average")
+    if distance_from_3d_low >= 2.0:
+        reversal_signal_reasons.append("price moved at least 2% above recent 3-day low")
+    reversal_signal_count = len(reversal_signal_reasons)
 
     # Medians and active-day frequency reward persistent movement, not one pump.
     daily_ranges_90d = [(high - low) / op * 100 for op, high, low, _, _ in rows if op > 0]
@@ -173,9 +205,17 @@ def analyze_daily_history(
         "distance_from_low_pct": round(distance_from_low, 2),
         "range_position_pct": round(range_position, 2),
         "sma_20d": round(sma_20d, 10),
+        "return_3d_pct": round(return_3d, 2),
+        "previous_return_3d_pct": None if previous_return_3d is None else round(previous_return_3d, 2),
         "return_7d_pct": round(return_7d, 2),
         "return_30d_pct": round(return_30d, 2),
+        "sma_5d": round(sma_5d, 10),
+        "distance_from_3d_low_pct": round(distance_from_3d_low, 2),
         "rsi_14d": round(rsi_14d, 2),
+        "rsi_14d_previous": None if rsi_14d_previous is None else round(rsi_14d_previous, 2),
+        "rsi_14d_change": None if rsi_14d_change is None else round(rsi_14d_change, 2),
+        "reversal_signal_count": reversal_signal_count,
+        "reversal_signal_reasons": reversal_signal_reasons,
         "median_daily_range_30d_pct": round(median_daily_range_30d, 3),
         "active_range_days_30d": active_days_30d,
         "active_day_ratio_30d": round(active_day_ratio_30d, 3),
@@ -199,12 +239,133 @@ def _candle_timestamp(row: Any) -> float:
     return stamp / 1000.0 if stamp > 1_000_000_000_000 else stamp
 
 
+def _candle_close(row: Any) -> float:
+    raw = row.get("close") if isinstance(row, Mapping) else (row[4] if row else None)
+    return _number(raw, "candle_close")
+
+
+def calculate_24h_change(
+    candles: list[Any],
+    *,
+    current_price: float,
+    now: float,
+    max_reference_age_seconds: float = 7_200,
+) -> tuple[float | None, float | None]:
+    """Measure the 24h return from the hourly candle nearest at/before t-24h.
+
+    Missing or stale reference candles return (None, None). The function never
+    substitutes a daily close or guesses a percentage from ticker metadata.
+    """
+    target = _number(now, "now") - 86_400
+    price = _number(current_price, "current_price")
+    if price <= 0:
+        return None, None
+    references: list[tuple[float, float]] = []
+    for row in candles:
+        try:
+            stamp = _candle_timestamp(row)
+            close = _candle_close(row)
+            candle_close_time = stamp + 3_600
+            if candle_close_time <= target:
+                references.append((candle_close_time, close))
+        except (TypeError, ValueError, IndexError, KeyError):
+            continue
+    if not references:
+        return None, None
+    close_time, reference_price = max(references, key=lambda item: item[0])
+    age = target - close_time
+    if age < 0 or age > max_reference_age_seconds or reference_price <= 0:
+        return None, None
+    return (price / reference_price - 1.0) * 100.0, now - close_time
+
+
+def build_dynamic_market_lists(
+    markets: list[dict[str, Any]],
+    analyses: list[dict[str, Any]],
+    *,
+    show_n: int = 25,
+) -> dict[str, list[dict[str, Any]]]:
+    """Build independent research lists; no list grants capital authority."""
+    by_pair = {row["trading_pair"]: row for row in analyses}
+    enriched: list[dict[str, Any]] = []
+    for market in markets:
+        row = dict(market)
+        analysis = by_pair.get(row["trading_pair"])
+        if analysis:
+            row.update(analysis)
+        row["governor_approved"] = bool(row.get("governor_approved", False))
+        row["capital_authorized"] = False
+        enriched.append(row)
+
+    known_change = [row for row in enriched if row.get("change_24h_pct") is not None]
+    analyzed = [row for row in enriched if row.get("selection_score") is not None]
+    eligible = [row for row in analyzed if row.get("eligible") is True]
+    rejected = [row for row in analyzed if row.get("eligible") is False]
+    losers = [
+        row for row in analyzed
+        if (row.get("change_24h_pct") is not None and row["change_24h_pct"] < 0)
+        or (row.get("return_3d_pct") is not None and row["return_3d_pct"] < 0)
+    ]
+    recovery = [
+        row for row in losers if int(row.get("reversal_signal_count") or 0) >= 2
+    ]
+
+    return {
+        "mean_reversion_watchlist": sorted(
+            analyzed,
+            key=lambda row: (row.get("selection_score") or 0, row.get("volume_24h_usd") or 0),
+            reverse=True,
+        )[:show_n],
+        "mean_reversion_candidates": sorted(
+            eligible,
+            key=lambda row: (row.get("selection_score") or 0, row.get("volume_24h_usd") or 0),
+            reverse=True,
+        )[:show_n],
+        "recovery_watchlist": sorted(
+            recovery,
+            key=lambda row: (
+                int(row.get("reversal_signal_count") or 0),
+                row.get("selection_score") or 0,
+                row.get("volume_24h_usd") or 0,
+            ),
+            reverse=True,
+        )[:show_n],
+        "top_24h_volume": sorted(
+            enriched, key=lambda row: row.get("volume_24h_usd") or 0, reverse=True
+        )[:show_n],
+        "top_24h_gainers": sorted(
+            (row for row in known_change if row["change_24h_pct"] > 0),
+            key=lambda row: row["change_24h_pct"],
+            reverse=True,
+        )[:show_n],
+        "top_24h_losers": sorted(
+            (row for row in known_change if row["change_24h_pct"] < 0),
+            key=lambda row: row["change_24h_pct"],
+        )[:show_n],
+        "top_3d_losers": sorted(
+            (row for row in analyzed if row.get("return_3d_pct") is not None and row["return_3d_pct"] < 0),
+            key=lambda row: row["return_3d_pct"],
+        )[:show_n],
+        "volatility_leaders": sorted(
+            (row for row in analyzed if row.get("median_daily_range_30d_pct") is not None),
+            key=lambda row: row["median_daily_range_30d_pct"],
+            reverse=True,
+        )[:show_n],
+        "rejected_candidates": sorted(
+            rejected,
+            key=lambda row: (row.get("selection_score") or 0, row.get("volume_24h_usd") or 0),
+            reverse=True,
+        )[:show_n],
+    }
+
+
 async def scan_kraken_universe(
     client: Any,
     *,
     top_n: int = 100,
     show_n: int = 25,
     min_volume_usd: float = 10_000_000,
+    research_min_volume_usd: float | None = None,
     min_history_days: int = 90,
     min_median_daily_quote_volume_usd: float = 1_000_000,
     min_active_day_ratio: float = 0.65,
@@ -214,16 +375,24 @@ async def scan_kraken_universe(
     approved_pairs: Iterable[str] | None = None,
     now: float | None = None,
 ) -> dict[str, Any]:
-    """Rank Kraken USD spot markets using the configured Hummingbot API.
+    """Build mean-reversion, momentum-context, and recovery research lists.
 
-    This is discovery only. It never creates an order or reserves capital.
-    If a Governor-approved pair list is supplied, candidates are annotated
-    against it; without that list no candidate is marked approved for capital.
+    The existing 24h entry-liquidity floor remains authoritative. A separate,
+    lower research floor broadens visibility without making those additional
+    markets eligible for the approved entry shortlist.
     """
     if not 1 <= top_n <= 150 or not 1 <= show_n <= 100:
         raise ValueError("top_n/show_n outside supported bounds")
     if min_volume_usd < 0 or min_history_days < 90:
         raise ValueError("minimum volume cannot be negative and history must be at least 90 days")
+    research_floor = (
+        min(1_000_000.0, min_volume_usd)
+        if research_min_volume_usd is None
+        else _number(research_min_volume_usd, "research_min_volume_usd")
+    )
+    if research_floor < 0 or research_floor > min_volume_usd:
+        raise ValueError("research_min_volume_usd must be between zero and the entry volume floor")
+
     timestamp = time.time() if now is None else _number(now, "now")
     day_start = int(timestamp // 86_400) * 86_400
     quote_assets = tuple(str(q).strip().upper() for q in quote_assets if str(q).strip())
@@ -250,7 +419,7 @@ async def scan_kraken_universe(
     for pair in snapshot.eligible_pairs:
         ticker = snapshot.tickers[pair]
         volume = float(ticker.quote_volume_24h)
-        if volume < min_volume_usd:
+        if volume < research_floor:
             continue
         candidates.append({
             "trading_pair": pair,
@@ -259,6 +428,8 @@ async def scan_kraken_universe(
             "quote_asset": pair.rsplit("-", 1)[1],
             "price": float(ticker.price),
             "volume": volume,
+            "entry_liquidity_eligible": volume >= min_volume_usd,
+            "governor_approved": approved is not None and pair in approved,
         })
     candidates.sort(key=lambda item: item["volume"], reverse=True)
     for volume_rank, item in enumerate(candidates, start=1):
@@ -269,6 +440,31 @@ async def scan_kraken_universe(
 
     async def fetch_history(item: dict[str, Any]):
         async with semaphore:
+            hourly_change = None
+            hourly_window = None
+            try:
+                hourly_raw = await client.market_data.get_candles(
+                    "kraken",
+                    item["trading_pair"],
+                    "1h",
+                    max_records=27,
+                )
+                hourly_rows = (
+                    hourly_raw if isinstance(hourly_raw, list)
+                    else hourly_raw.get("data", hourly_raw.get("candles", []))
+                    if isinstance(hourly_raw, Mapping)
+                    else []
+                )
+                hourly_change, hourly_window = calculate_24h_change(
+                    hourly_rows,
+                    current_price=item["price"],
+                    now=timestamp,
+                )
+            except Exception:
+                # A missing hourly reference removes a pair from 24h leaderboards,
+                # but does not invalidate its independent daily mean-reversion analysis.
+                pass
+
             try:
                 raw = await client.market_data.get_candles(
                     "kraken",
@@ -297,7 +493,7 @@ async def scan_kraken_universe(
                     quote_asset=item["quote_asset"],
                     current_price=item["price"],
                     volume_24h_usd=item["volume"],
-                    change_24h_pct=None,
+                    change_24h_pct=hourly_change,
                     candles=completed,
                     min_median_daily_quote_volume_usd=min_median_daily_quote_volume_usd,
                     min_active_day_ratio=min_active_day_ratio,
@@ -306,17 +502,17 @@ async def scan_kraken_universe(
                 )
                 analysis["trading_pair"] = item["trading_pair"]
                 analysis["quote_asset"] = item["quote_asset"]
-                rule = snapshot.trading_rules.get(item["trading_pair"])
-                if rule is None:
-                    return item["trading_pair"], None, "missing_trading_rules"
-                # VCAP admission needs the venue's actual quote-denominated
-                # minimum before it can decide whether a $20 seed is executable.
-                analysis["minimum_order_quote"] = float(rule.effective_min_quote)
+                analysis["change_24h_window_seconds"] = hourly_window
+                analysis["change_24h_source"] = "hourly_candles" if hourly_change is not None else None
+                analysis["entry_liquidity_eligible"] = item["entry_liquidity_eligible"]
                 analysis["volume_rank_24h"] = item["volume_rank_24h"]
-                analysis["governor_approved"] = (
-                    approved is not None and item["trading_pair"] in approved
-                )
+                analysis["governor_approved"] = item["governor_approved"]
                 analysis["capital_authorized"] = False
+                if not item["entry_liquidity_eligible"]:
+                    analysis["eligible"] = False
+                    analysis["rejection_reasons"].append(
+                        "weak_24h_turnover: 24h quote volume is below the entry eligibility floor"
+                    )
                 return item["trading_pair"], analysis, None
             except Exception as exc:
                 return (
@@ -327,7 +523,7 @@ async def scan_kraken_universe(
 
     fetched = await asyncio.gather(*(fetch_history(item) for item in selected))
     analyzed = [row for _, row, reason in fetched if row is not None]
-    rejected = [
+    rejected_data = [
         {"trading_pair": pair, "reason": reason}
         for pair, row, reason in fetched if row is None
     ]
@@ -337,6 +533,39 @@ async def scan_kraken_universe(
         reverse=True,
     )
     ranked = ranked_all[:show_n]
+
+    analysis_by_pair = {row["trading_pair"]: row for row in analyzed}
+    market_rows = []
+    for item in selected:
+        analysis = analysis_by_pair.get(item["trading_pair"], {})
+        market_rows.append({
+            "trading_pair": item["trading_pair"],
+            "symbol": item["symbol"],
+            "base_asset": item["base_asset"],
+            "quote_asset": item["quote_asset"],
+            "current_price": item["price"],
+            "volume_24h_usd": round(item["volume"], 2),
+            "volume_rank_24h": item["volume_rank_24h"],
+            "change_24h_pct": analysis.get("change_24h_pct"),
+            "change_24h_window_seconds": analysis.get("change_24h_window_seconds"),
+            "change_24h_source": analysis.get("change_24h_source"),
+            "entry_liquidity_eligible": item["entry_liquidity_eligible"],
+            "eligible": analysis.get("eligible", False),
+            "selection_score": analysis.get("selection_score"),
+            "discount_to_vwap_pct": analysis.get("discount_to_vwap_pct"),
+            "return_3d_pct": analysis.get("return_3d_pct"),
+            "rsi_14d": analysis.get("rsi_14d"),
+            "reversal_signal_count": analysis.get("reversal_signal_count", 0),
+            "reversal_signal_reasons": analysis.get("reversal_signal_reasons", []),
+            "median_daily_range_30d_pct": analysis.get("median_daily_range_30d_pct"),
+            "selection_reasons": analysis.get("selection_reasons", []),
+            "rejection_reasons": analysis.get("rejection_reasons", []),
+            "governor_approved": item["governor_approved"],
+            "capital_authorized": False,
+        })
+    dynamic_lists = build_dynamic_market_lists(market_rows, analyzed, show_n=show_n)
+    rejected_candidates = dynamic_lists["rejected_candidates"]
+
     return {
         "source": "Kraken spot market data via Hummingbot API",
         "as_of": timestamp,
@@ -345,31 +574,50 @@ async def scan_kraken_universe(
         "criteria": {
             "top_by_24h_quote_volume": top_n,
             "minimum_24h_volume_quote": min_volume_usd,
+            "minimum_research_24h_volume_quote": research_floor,
             "minimum_completed_history_days": min_history_days,
             "minimum_median_daily_quote_volume_usd": min_median_daily_quote_volume_usd,
             "minimum_active_day_ratio_30d": min_active_day_ratio,
             "minimum_median_daily_range_30d_pct": min_median_daily_range_pct,
             "maximum_current_move_from_last_close_pct": max_current_move_pct,
             "quote_assets": sorted({str(q).strip().upper() for q in quote_assets}),
-            "ranking": "discount-to-90d-VWAP + recovery/trend/RSI context",
+            "ranking": "90d VWAP discount + drawdown + recovery/trend/RSI context + volatility consistency",
+            "24h_change": "hourly candle close nearest at/before the 24h reference; stale/missing values omitted",
+            "3d_change": "current price versus the close three completed daily candles earlier",
+            "recovery_watchlist": "losers with at least two independent reversal observations; research only",
         },
         "counts": {
             "eligible_kraken_markets": len(snapshot.eligible_pairs),
             "liquid_markets_found": len(candidates),
+            "entry_liquid_markets_found": sum(bool(item["entry_liquidity_eligible"]) for item in candidates),
             "markets_selected_for_history": len(selected),
             "analyzed": len(analyzed),
             "eligible": len(ranked_all),
-            "rejected_by_guardrails": sum(not row["eligible"] for row in analyzed),
-            "history_or_data_rejected": len(rejected),
+            "rejected_by_guardrails": sum(
+                not row["eligible"] and row.get("entry_liquidity_eligible", True)
+                for row in analyzed
+            ),
+            "rejected_by_entry_liquidity": sum(
+                not row.get("entry_liquidity_eligible", True) for row in analyzed
+            ),
+            "history_or_data_rejected": len(rejected_data),
             "governor_approved": sum(bool(row["governor_approved"]) for row in ranked_all),
+            "with_measured_24h_change": sum(row.get("change_24h_pct") is not None for row in analyzed),
+            "without_measured_24h_change": sum(row.get("change_24h_pct") is None for row in analyzed),
+            "mean_reversion_watchlist": len(dynamic_lists["mean_reversion_watchlist"]),
+            "recovery_watchlist": len(dynamic_lists["recovery_watchlist"]),
+            "rejected_candidate_rows": len(rejected_candidates),
         },
-        # Keep the flat key for the existing dashboard/routine consumers,
-        # and publish the canonical Condor supervisor contract alongside it.
-        # The portfolio supervisor, VCAP admission, and discovery asset writer
-        # all consume this exact research-only candidate list.
+        # The supervisor, VCAP entry and asset-authority writer continue to consume
+        # this eligible-only list. Research lists below never grant approval.
         "candidates": ranked,
-        "lists": {"mean_reversion_candidates": ranked},
-        "rejected_data": rejected,
+        "lists": dynamic_lists,
+        "list_scope": (
+            f"top {top_n} liquid Kraken spot markets by 24h quote volume; "
+            f"research floor \${research_floor:,.0f}; entry floor \${min_volume_usd:,.0f}"
+        ),
+        "rejected_candidates": rejected_candidates,
+        "rejected_data": rejected_data,
         "governor_approved_list_loaded": approved is not None,
         "approved_asset_list_source": approved_asset_source,
         "paper_only": True,
