@@ -899,6 +899,13 @@ class EconomicPositionLedger:
         receipt = governor.get_execution_receipt(proposal)
         if receipt is None or receipt != provenance.executor_id:
             raise ValueError("entry lot requires exact execution receipt")
+        position = self.snapshot(position_id)
+        if position.pair != provenance.pair:
+            raise ValueError("entry execution provenance pair differs from economic position")
+        if position.strategy_source != provenance.strategy_source:
+            raise ValueError(
+                "confirmed ENTRY fill strategy provenance differs from economic position"
+            )
 
         return self._insert_lot(
             lot_id=lot_id,
@@ -943,6 +950,13 @@ class EconomicPositionLedger:
         )
         if basis > provenance.authorized_quote:
             raise ValueError("VCAP lot cost basis exceeds authorized recovery quote")
+        position = self.snapshot(position_id)
+        if position.pair != provenance.pair:
+            raise ValueError("VCAP execution provenance pair differs from economic position")
+        if position.strategy_source != provenance.strategy_source:
+            raise ValueError(
+                "confirmed VCAP fill strategy provenance differs from economic position"
+            )
 
         return self._insert_lot(
             lot_id=lot_id,
