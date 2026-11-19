@@ -495,6 +495,10 @@ def synchronize_executor_evidence(
         market_buy = config.get("execution_strategy") == "MARKET"
         if market_buy and config.get("price") is not None:
             raise ValueError("protected MARKET BUY configuration must not contain a price")
+        # Hummingbot's order snapshot may expose an observed/execution price
+        # for a MARKET order. It is not an order limit and must not be treated
+        # as a configured price cap; the immutable submitted config above is
+        # the evidence that the order was dispatched without a limit price.
         price_cap = (
             None
             if market_buy
@@ -513,12 +517,7 @@ def synchronize_executor_evidence(
                 breaches.append(
                     f"protected_buy_order_is_not_{expected_type.lower()}:{order.order_id}"
                 )
-            if market_buy:
-                if order.price is not None:
-                    breaches.append(
-                        f"protected_market_buy_order_has_limit_price:{order.order_id}"
-                    )
-            elif order.price is None or Fraction(order.price) > price_cap:
+            if not market_buy and (order.price is None or Fraction(order.price) > price_cap):
                 breaches.append(f"protected_buy_order_price_above_cap:{order.order_id}")
             if Fraction(order.amount) != authorized_amount:
                 breaches.append(f"protected_buy_order_amount_changed:{order.order_id}")
