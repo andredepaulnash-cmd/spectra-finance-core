@@ -50,6 +50,10 @@ async def execute_vcap_decision(
         raise ValueError(
             "VCAP execution requires explicit account and pair quote scope"
         )
+    if not isinstance(position_id, str) or not position_id.strip():
+        raise ValueError(
+            "VCAP MARKET BUY requires its exact economic position identity"
+        )
     connector_name = "kraken_paper_trade" if settings.paper_only else "kraken"
     scope = (account, connector_name, pair.rsplit("-", 1)[1])
     for field, actual in zip(("account_name", "connector_name", "quote_asset"), scope):
