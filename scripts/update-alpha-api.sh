@@ -566,30 +566,34 @@ declare -A CORE_ALPHA2_NEW_BLOBS=(
   ["spectra_core/vcap_profit_exit.py"]="cf3734eecb6a0f25ac03cf3049d98603bac61b03"
   ["spectra_core/vcap_state.py"]="bad5180034284d601923915f1302c3080f0cc000"
 )
-for source in "\${CORE_ALPHA2_SOURCES[@]}"; do
+for source in "${CORE_ALPHA2_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
-  expected_blob="\${CORE_ALPHA2_NEW_BLOBS[$source]}"
-  [[ "$upstream_blob" == "$expected_blob" ]] \\
-    || die "Fetched Alpha 2.0 source $source is not the reviewed PR #139/#140 version."
-  [[ ! -L "$CORE_DIR/$source" ]] \\
-    || die "Refusing to replace symlinked local Alpha 2.0 source $source."
+  expected_blob="${CORE_ALPHA2_NEW_BLOBS[$source]}"
+  if [[ "$upstream_blob" != "$expected_blob" ]]; then
+    die "Fetched Alpha 2.0 source $source is not the reviewed PR #139/#140 version."
+  fi
+  if [[ -L "$CORE_DIR/$source" ]]; then
+    die "Refusing to replace symlinked local Alpha 2.0 source $source."
+  fi
   if [[ -f "$CORE_DIR/$source" ]]; then
     worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-    base_blob="\${CORE_ALPHA2_BASE_BLOBS[$source]}"
-    [[ "$worktree_blob" == "$expected_blob" || "$worktree_blob" == "$base_blob" ]] \\
-      || die "Unrecognized local changes in $source. They were preserved; review them before updating."
+    base_blob="${CORE_ALPHA2_BASE_BLOBS[$source]}"
+    if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$base_blob" ]]; then
+      die "Unrecognized local changes in $source. They were preserved; review them before updating."
+    fi
   else
     die "Expected existing Alpha 2.0 source $source is missing; refusing an incomplete update."
   fi
 done
-for source in "\${CORE_ALPHA2_SOURCES[@]}"; do
+for source in "${CORE_ALPHA2_SOURCES[@]}"; do
   worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-  if [[ "$worktree_blob" != "\${CORE_ALPHA2_NEW_BLOBS[$source]}" ]]; then
+  if [[ "$worktree_blob" != "${CORE_ALPHA2_NEW_BLOBS[$source]}" ]]; then
     git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
   fi
 done
-"$CORE_DIR/.venv/bin/python" -m py_compile \\
-  "\${CORE_ALPHA2_SOURCES[@]/#/$CORE_DIR/}"
+for source in "${CORE_ALPHA2_SOURCES[@]}"; do
+  "$CORE_DIR/.venv/bin/python" -m py_compile "$CORE_DIR/$source"
+done
 say "Installed and syntax-checked the remaining Alpha 2.0 VCAP, economic-exit, and provenance modules."
 
 install -m 700 "$CORE_DIR/scripts/spectra" "$HOME/.local/bin/spectra"
