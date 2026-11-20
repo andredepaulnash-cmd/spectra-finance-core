@@ -332,6 +332,11 @@ declare -A CORE_SHELL_NEW_BLOBS=(
   ["frontend/src/pages/SpectraOverview.tsx"]="31a9fe01decc24a7067da27e575552186dc98988"
   ["frontend/src/lib/api.ts"]="93d2e82aa4f1e9905f95f66c52842a53f81ca0af"
 )
+# These exact local-only Alpha edits were inspected and tested on the user's
+# machine. Preserve them byte-for-byte; do not replace them with upstream blobs.
+declare -A CORE_SHELL_PRESERVE_BLOBS=(
+  ["frontend/src/components/layout/AppShell.tsx"]="4713e8353b3eb61459df907e2a213db9e5199c1a"
+)
 for source in "${CORE_SHELL_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
   expected_blob="${CORE_SHELL_NEW_BLOBS[$source]}"
@@ -344,8 +349,15 @@ for source in "${CORE_SHELL_SOURCES[@]}"; do
     die "Unrecognized local changes in $source. They were preserved; review them before updating."
   fi
 done
-git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "${CORE_SHELL_SOURCES[@]}"
-say "Updated the reviewed Command Center shell and Kraken discovery UI."
+for source in "${CORE_SHELL_SOURCES[@]}"; do
+  worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
+  if [[ "${CORE_SHELL_PRESERVE_BLOBS[$source]:-}" == "$worktree_blob" ]]; then
+    say "Preserving inspected local customization in $source; no overwrite."
+    continue
+  fi
+  git -C "$CORE_DIR" restore --source=FETCH_HEAD --worktree -- "$source"
+done
+say "Updated reviewed Command Center files; preserved the inspected local overview-scroll customization."
 
 # Install the reviewed paper lifecycle operator, health monitor and user services.
 CORE_OPS_SOURCES=(
@@ -443,6 +455,14 @@ declare -A CORE_PYTHON_OLD_BLOBS=(
   ["routines/mean_reversion_scanner.py"]="218126472c0e1af749e62ef5fdc6c3db89fb9745"
   ["condor/web/routes/market.py"]="c40bf5ec4edc40e7f49005df1a8c3417c270f8a7"
 )
+# Exact local Alpha governor/ledger changes are retained; these changes are
+# part of the user's working tree and must not be replaced by upstream files.
+declare -A CORE_PYTHON_PRESERVE_BLOBS=(
+  ["spectra_core/kraken_authorization.py"]="075dc18c1f900a01b03676f11e809e94406ee936"
+  ["spectra_core/portfolio_supervisor.py"]="c71e24643a0cc53cc85aebdfec5b7376ee2d0877"
+  ["spectra_core/capital_governor.py"]="7ca1fd9fcee05fc48ab91ebfedd2c610508d2d70"
+  ["spectra_core/economic_position.py"]="190ace0ccfe00e2bb8be695588a5606b2ce3260a"
+)
 for source in "${CORE_PYTHON_SOURCES[@]}"; do
   upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
   expected_blob="${CORE_PYTHON_NEW_BLOBS[$source]}"
@@ -468,6 +488,12 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
   fi
 done
 for source in "${CORE_PYTHON_SOURCES[@]}"; do
+  worktree_blob=""
+  [[ -f "$CORE_DIR/$source" ]] && worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
+  if [[ "${CORE_PYTHON_PRESERVE_BLOBS[$source]:-}" == "$worktree_blob" ]]; then
+    say "Preserving inspected local governor/ledger change in $source; no overwrite."
+    continue
+  fi
   mkdir -p "$(dirname "$CORE_DIR/$source")"
   git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
 done
