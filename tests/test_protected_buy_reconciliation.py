@@ -430,3 +430,37 @@ def test_market_buy_fill_spend_over_quote_budget_is_durable_conflict(tmp_path):
     assert "protected_market_buy_cumulative_quote_spend_above_budget" in governor.get_protected_buy_conflicts("buy")
     assert governor.cash_authority_snapshot().blocked
     assert ledger.snapshot("position").active_base == D("9")
+
+
+def test_market_buy_accepts_exchange_quantity_rounded_down_to_precision(tmp_path):
+    governor, ledger, reconciler, order, trade = setup_buy(tmp_path, market=True)
+    # Kraken may report a MARKET order amount slightly below the authorized
+    # request after applying its base-quantity precision.
+    order = replace(
+        order,
+        order_type="MARKET",
+        amount=D("8.99999994"),
+        price=None,
+    )
+    report = sync(reconciler, order, [trade])
+    assert report.fully_reconciled
+    assert not governor.get_protected_buy_conflicts("buy")
+    assert ledger.snapshot("position").active_base == D("2")
+
+
+def test_market_buy_still_rejects_exchange_quantity_rounded_up(tmp_path):
+    governor, ledger, reconciler, order, trade = setup_buy(tmp_path, market=True)
+    order = replace(
+        order,
+        order_type="MARKET",
+        amount=D("9.00000001"),
+        price=None,
+    )
+    report = sync(reconciler, order, [trade])
+    assert not report.fully_reconciled
+    assert any(
+        "protected_buy_order_amount_changed" in reason
+        for reason in governor.get_protected_buy_conflicts("buy")
+    )
+    assert ledger.snapshot("position").active_base == D("2")
+    assert governor.cash_authority_snapshot().blocked

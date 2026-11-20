@@ -519,11 +519,18 @@ def synchronize_executor_evidence(
                 )
             if not market_buy and (order.price is None or Fraction(order.price) > price_cap):
                 breaches.append(f"protected_buy_order_price_above_cap:{order.order_id}")
-            # Keep both base-denominated quantities in the durable conflict
-            # detail so live executor/API representation mismatches can be
-            # distinguished from actual over-ordering without weakening the gate.
+            # MARKET BUY venues may quantize the submitted base quantity
+            # down to their supported precision. The immutable authorization
+            # is a ceiling: accept any positive exchange-reported amount at or
+            # below it, but never accept upward rounding. LIMIT submissions
+            # retain exact amount matching.
             observed_amount = Fraction(order.amount)
-            if observed_amount != authorized_amount:
+            amount_invalid = (
+                observed_amount > authorized_amount
+                if market_buy
+                else observed_amount != authorized_amount
+            )
+            if amount_invalid:
                 breaches.append(
                     "protected_buy_order_amount_changed:"
                     f"{order.order_id}:authorized_base={authorized_amount}:"
