@@ -13,6 +13,7 @@ from .models import (
     CapitalProposal,
     CapitalSnapshot,
     DecisionStatus,
+    EntryStrategySource,
     IntentKind,
 )
 from .runtime import (
@@ -86,6 +87,7 @@ async def reserve_kraken_capital(
     amount_quote: Decimal | str | int | float,
     governor=None,
     refresh: bool = True,
+    strategy_source: EntryStrategySource | str = EntryStrategySource.STANDARD,
 ) -> KrakenCapitalAuthorization:
     """
     Request capital authority for one Kraken USD spot or isolated paper action.
@@ -106,6 +108,14 @@ async def reserve_kraken_capital(
 
     amount = _positive_decimal(amount_quote, "amount_quote")
     intent_kind = _intent(intent)
+    try:
+        source = (
+            strategy_source
+            if isinstance(strategy_source, EntryStrategySource)
+            else EntryStrategySource(str(strategy_source).strip().upper())
+        )
+    except ValueError as exc:
+        raise ValueError("unknown Kraken entry strategy source") from exc
 
     paper_only = spectra_paper_only_enabled()
     connector_name = "kraken_paper_trade" if paper_only else "kraken"
@@ -131,6 +141,7 @@ async def reserve_kraken_capital(
         account_name=account,
         connector_name=connector_name,
         quote_asset=pair.rsplit("-", 1)[1],
+        strategy_source=source,
     )
 
     # The portfolio fetch above is an await boundary. Recheck durable
@@ -177,6 +188,10 @@ async def reserve_kraken_capital(
                     raise ValueError(
                         "existing economic position uses a different quote pair"
                     )
+                if existing.strategy_source != source:
+                    raise ValueError(
+                        "existing economic position strategy source differs from this entry"
+                    )
                 if existing.active_base != 0 or existing.active_cost_basis_quote != 0:
                     raise ValueError(
                         "asset already has active economic inventory"
@@ -192,6 +207,7 @@ async def reserve_kraken_capital(
                     position_id=economic_position_id,
                     pair=pair,
                     created_at=authorization_now,
+                    strategy_source=source,
                 )
         except Exception:
             capital_governor.release(

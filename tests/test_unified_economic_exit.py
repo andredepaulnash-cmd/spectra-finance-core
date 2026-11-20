@@ -34,6 +34,7 @@ from spectra_core.models import (
     CapitalProposal,
     CapitalSnapshot,
     DecisionStatus,
+    EntryStrategySource,
     IntentKind,
 )
 from spectra_core.vcap_profit_exit import (
@@ -72,6 +73,7 @@ def prepare_execution(
     executor_id,
     intent,
     amount,
+    strategy_source=EntryStrategySource.STANDARD,
 ):
     proposal = CapitalProposal(
         proposal_id=proposal_id,
@@ -79,6 +81,7 @@ def prepare_execution(
         intent=intent,
         amount_quote=D(amount),
         leverage=D("1"),
+        strategy_source=strategy_source,
     )
     decision = g.reserve(
         proposal,
@@ -116,25 +119,27 @@ def trading_rule(*, min_order_size="1", min_quote="1"):
     )
 
 
-def book(tmp_path):
+def book(tmp_path, strategy_source=EntryStrategySource.STANDARD):
     ledger = EconomicPositionLedger(tmp_path / "unified-exit.sqlite3")
     ledger.open_position(
         position_id="xrp-position-1",
         pair="XRP-USD",
         created_at=1_000,
+        strategy_source=strategy_source,
     )
     return ledger
 
 
-def build_owned_position(tmp_path):
+def build_owned_position(tmp_path, strategy_source=EntryStrategySource.STANDARD):
     g = governor(tmp_path)
-    ledger = book(tmp_path)
+    ledger = book(tmp_path, strategy_source=strategy_source)
 
     prepare_execution(
         g,
         proposal_id="entry-1",
         executor_id="exec-entry-1",
         intent=IntentKind.ENTRY,
+        strategy_source=strategy_source,
         amount="10",
     )
     prepare_execution(
@@ -142,6 +147,7 @@ def build_owned_position(tmp_path):
         proposal_id="recovery-1",
         executor_id="exec-recovery-1",
         intent=IntentKind.RECOVERY,
+        strategy_source=strategy_source,
         amount="4",
     )
     prepare_execution(
@@ -149,6 +155,7 @@ def build_owned_position(tmp_path):
         proposal_id="recovery-2",
         executor_id="exec-recovery-2",
         intent=IntentKind.RECOVERY,
+        strategy_source=strategy_source,
         amount="4",
     )
 
@@ -640,3 +647,44 @@ def test_partial_fill_leaves_manifest_open_and_never_consumes_other_buckets(
     assert ledger.get_lot("retained-43").base_remaining == D("43")
     assert ledger.get_lot("unattributed-20").base_remaining == D("20")
     assert store.load(manifest.manifest_id).status == EconomicExitManifestStatus.OPEN
+
+
+
+def test_adaptive_trailing_manifest_allows_signed_target_only_for_top_loser_source(tmp_path):
+    g, ledger = build_owned_position(
+        tmp_path,
+        strategy_source=EntryStrategySource.TOP_LOSER_REVERSAL,
+    )
+    manifest = create_or_load_position_exit_manifest(
+        ledger=ledger,
+        governor=g,
+        position_id="xrp-position-1",
+        trading_rule=trading_rule(),
+        current_price=D("0.50"),
+        now=2_000,
+        target_net_profit_bps=D("-200"),
+        expected_exit_cost_bps=D("45"),
+        exit_mode="ADAPTIVE_TRAILING",
+    )
+
+    assert manifest.exit_mode == "ADAPTIVE_TRAILING"
+    assert manifest.target_net_profit_bps == D("-200")
+    assert manifest.protected_limit_price is not None
+    assert manifest.protected_limit_price > D("0")
+    validate_manifest_against_ledger(manifest, ledger=ledger)
+
+
+def test_adaptive_trailing_manifest_rejects_ordinary_position_source(tmp_path):
+    g, ledger = build_owned_position(tmp_path)
+    with pytest.raises(ValueError, match="TOP_LOSER_REVERSAL provenance"):
+        create_or_load_position_exit_manifest(
+            ledger=ledger,
+            governor=g,
+            position_id="xrp-position-1",
+            trading_rule=trading_rule(),
+            current_price=D("0.50"),
+            now=2_000,
+            target_net_profit_bps=D("-200"),
+            expected_exit_cost_bps=D("45"),
+            exit_mode="ADAPTIVE_TRAILING",
+        )

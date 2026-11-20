@@ -176,11 +176,31 @@ class VCAPStateStore:
                     profit_floor_reached_at REAL,
                     peak_net_profit_bps TEXT,
                     peak_at REAL,
+                    peak_price TEXT,
+                    trailing_stop_price TEXT,
+                    stop_distance_bps TEXT,
+                    take_profit_giveback_bps TEXT,
+                    take_profit_target_bps TEXT,
                     status TEXT NOT NULL,
                     updated_at REAL NOT NULL
                 )
                 """
             )
+            columns = {
+                str(row["name"])
+                for row in conn.execute("PRAGMA table_info(vcap_lifecycle_state)")
+            }
+            for column in (
+                "peak_price",
+                "trailing_stop_price",
+                "stop_distance_bps",
+                "take_profit_giveback_bps",
+                "take_profit_target_bps",
+            ):
+                if column not in columns:
+                    conn.execute(
+                        f"ALTER TABLE vcap_lifecycle_state ADD COLUMN {column} TEXT"
+                    )
 
     def save(self, state: VCAPLifecycleState) -> None:
         profit = state.profit_state
@@ -201,10 +221,15 @@ class VCAPStateStore:
                     profit_floor_reached_at,
                     peak_net_profit_bps,
                     peak_at,
+                    peak_price,
+                    trailing_stop_price,
+                    stop_distance_bps,
+                    take_profit_giveback_bps,
+                    take_profit_target_bps,
                     status,
                     updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(envelope_proposal_id) DO UPDATE SET
                     schema_version = excluded.schema_version,
                     pair = excluded.pair,
@@ -218,6 +243,11 @@ class VCAPStateStore:
                     profit_floor_reached_at = excluded.profit_floor_reached_at,
                     peak_net_profit_bps = excluded.peak_net_profit_bps,
                     peak_at = excluded.peak_at,
+                    peak_price = excluded.peak_price,
+                    trailing_stop_price = excluded.trailing_stop_price,
+                    stop_distance_bps = excluded.stop_distance_bps,
+                    take_profit_giveback_bps = excluded.take_profit_giveback_bps,
+                    take_profit_target_bps = excluded.take_profit_target_bps,
                     status = excluded.status,
                     updated_at = excluded.updated_at
                 """,
@@ -235,6 +265,11 @@ class VCAPStateStore:
                     None if profit is None else profit.profit_floor_reached_at,
                     None if profit is None else str(profit.peak_net_profit_bps),
                     None if profit is None else profit.peak_at,
+                    None if profit is None or profit.peak_price is None else str(profit.peak_price),
+                    None if profit is None or profit.trailing_stop_price is None else str(profit.trailing_stop_price),
+                    None if profit is None or profit.stop_distance_bps is None else str(profit.stop_distance_bps),
+                    None if profit is None or profit.take_profit_giveback_bps is None else str(profit.take_profit_giveback_bps),
+                    None if profit is None or profit.take_profit_target_bps is None else str(profit.take_profit_target_bps),
                     state.status.value,
                     state.updated_at,
                 ),
@@ -267,6 +302,11 @@ class VCAPStateStore:
             row["profit_floor_reached_at"] is not None
             or row["peak_net_profit_bps"] is not None
             or row["peak_at"] is not None
+            or row["peak_price"] is not None
+            or row["trailing_stop_price"] is not None
+            or row["stop_distance_bps"] is not None
+            or row["take_profit_giveback_bps"] is not None
+            or row["take_profit_target_bps"] is not None
         ):
             if row["peak_net_profit_bps"] is None:
                 raise ValueError("corrupt VCAP profit state")
@@ -275,6 +315,11 @@ class VCAPStateStore:
                 profit_floor_reached_at=row["profit_floor_reached_at"],
                 peak_net_profit_bps=Decimal(row["peak_net_profit_bps"]),
                 peak_at=row["peak_at"],
+                peak_price=None if row["peak_price"] is None else Decimal(row["peak_price"]),
+                trailing_stop_price=None if row["trailing_stop_price"] is None else Decimal(row["trailing_stop_price"]),
+                stop_distance_bps=None if row["stop_distance_bps"] is None else Decimal(row["stop_distance_bps"]),
+                take_profit_giveback_bps=None if row["take_profit_giveback_bps"] is None else Decimal(row["take_profit_giveback_bps"]),
+                take_profit_target_bps=None if row["take_profit_target_bps"] is None else Decimal(row["take_profit_target_bps"]),
             )
 
         return VCAPLifecycleState(

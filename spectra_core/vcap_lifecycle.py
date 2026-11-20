@@ -12,6 +12,7 @@ from .economic_position import (
     EconomicPositionStatus,
 )
 from .kraken_market_fabric import KrakenTradingRule
+from .models import EntryStrategySource
 from .partial_attempt import (
     PartialAttemptDisposition,
     PartialAttemptPolicy,
@@ -40,6 +41,7 @@ from .vcap_profit_exit import (
     VCAPProfitExitDecision,
     VCAPProfitExitPolicy,
     plan_vcap_profit_exit,
+    plan_top_loser_adaptive_exit,
 )
 from .vcap_state import (
     VCAPLifecycleState,
@@ -124,6 +126,8 @@ def plan_vcap_lifecycle(
     recovery_policy: VCAPRecoveryPolicy | None = None,
     tranche_policy: VCAPTranchePolicy | None = None,
     profit_policy: VCAPProfitExitPolicy | None = None,
+    profit_decision_override: VCAPProfitExitDecision | None = None,
+    strategy_source: EntryStrategySource = EntryStrategySource.STANDARD,
 ) -> VCAPLifecycleDecision:
     """Run one deterministic VCAP lifecycle planning cycle and checkpoint it.
 
@@ -157,7 +161,7 @@ def plan_vcap_lifecycle(
         store.save(state)
         return decision
 
-    profit = plan_vcap_profit_exit(
+    profit = profit_decision_override or plan_vcap_profit_exit(
         position,
         costs=costs,
         now=now,
@@ -213,6 +217,7 @@ def plan_vcap_lifecycle(
         fingerprint_policy=fingerprint_policy,
         recovery_policy=recovery_policy,
         tranche_policy=tranche_policy,
+        strategy_source=strategy_source,
     )
 
     if execution.action == VCAPLoopAction.EXECUTE:
@@ -450,14 +455,23 @@ def plan_vcap_lifecycle_from_ledger(
     # Whole-position profit protection remains higher priority than parcel
     # harvesting. Only when the economic position itself is below that exit
     # path do we consider monetizing independently profitable RECOVERY owners.
-    profit = plan_vcap_profit_exit(
-        position,
-        costs=costs,
-        now=now,
-        fingerprint=fingerprint,
-        previous_state=state.profit_state,
-        policy=profit_policy,
-    )
+    if snapshot.strategy_source == EntryStrategySource.TOP_LOSER_REVERSAL:
+        profit = plan_top_loser_adaptive_exit(
+            position,
+            costs=costs,
+            now=now,
+            fingerprint=fingerprint,
+            previous_state=state.profit_state,
+        )
+    else:
+        profit = plan_vcap_profit_exit(
+            position,
+            costs=costs,
+            now=now,
+            fingerprint=fingerprint,
+            previous_state=state.profit_state,
+            policy=profit_policy,
+        )
     if (
         governor is not None
         and profit.action not in {
@@ -540,4 +554,6 @@ def plan_vcap_lifecycle_from_ledger(
         recovery_policy=recovery_policy,
         tranche_policy=tranche_policy,
         profit_policy=profit_policy,
+        profit_decision_override=profit,
+        strategy_source=snapshot.strategy_source,
     )

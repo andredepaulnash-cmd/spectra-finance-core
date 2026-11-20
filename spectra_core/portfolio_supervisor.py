@@ -430,10 +430,40 @@ async def run_portfolio_cycle(
 
     lists = scan_result.get("lists")
     candidates = lists.get("mean_reversion_candidates") if isinstance(lists, Mapping) else None
-    if not isinstance(candidates, list):
-        status["blocked_reason"] = "mean_reversion_candidate_list_missing"
+    reversal_candidates = lists.get("top_loser_reversal_candidates", []) if isinstance(lists, Mapping) else None
+    if not isinstance(candidates, list) or not isinstance(reversal_candidates, list):
+        status["blocked_reason"] = "market_entry_candidate_list_missing"
         return status
-    status["scan_candidate_count"] = len(candidates)
+    reversal_by_pair = {}
+    for row in reversal_candidates:
+        if not isinstance(row, Mapping) or row.get("reversal_pathway_eligible") is not True:
+            continue
+        try:
+            reversal_by_pair[canonical_kraken_usd_pair(str(row.get("trading_pair") or ""))] = row
+        except ValueError:
+            continue
+    candidate_sources = []
+    seen_candidate_pairs = set()
+    for row in candidates:
+        if not isinstance(row, Mapping):
+            candidate_sources.append((row, "MEAN_REVERSION"))
+            continue
+        try:
+            pair_key = canonical_kraken_usd_pair(str(row.get("trading_pair") or ""))
+        except ValueError:
+            pair_key = None
+        if pair_key is not None and pair_key in reversal_by_pair:
+            candidate_sources.append((reversal_by_pair[pair_key], "TOP_LOSER_REVERSAL"))
+            seen_candidate_pairs.add(pair_key)
+        else:
+            candidate_sources.append((row, "MEAN_REVERSION"))
+            if pair_key is not None:
+                seen_candidate_pairs.add(pair_key)
+    for pair_key, row in reversal_by_pair.items():
+        if pair_key not in seen_candidate_pairs:
+            candidate_sources.append((row, "TOP_LOSER_REVERSAL"))
+    status["scan_candidate_count"] = len(candidate_sources)
+    status["top_loser_reversal_candidate_count"] = len(reversal_by_pair)
 
     allowed_pairs: frozenset[str] | None = None
     if paper_only:
@@ -450,7 +480,7 @@ async def run_portfolio_cycle(
 
     connector_name = "kraken_paper_trade" if paper_only else "kraken"
     entries: list[dict[str, Any]] = []
-    for candidate in candidates:
+    for candidate, strategy_source in candidate_sources:
         if entry_capacity <= 0:
             break
         if not isinstance(candidate, Mapping):
@@ -484,6 +514,7 @@ async def run_portfolio_cycle(
                 account_name=cfg.account_name,
                 governor=governor,
                 now=timestamp,
+                strategy_source=strategy_source,
             )
         except Exception as exc:
             entries.append({
@@ -514,6 +545,7 @@ async def run_portfolio_cycle(
             "proposal_id": str(proposal_id),
             "position_id": str(position_id),
             "amount_quote": str(getattr(admission, "amount_quote", PAPER_VCAP_SEED_QUOTE)),
+            "strategy_source": strategy_source,
             "status": "reserved",
             "executor_id": None,
         }
@@ -537,6 +569,7 @@ async def run_portfolio_cycle(
                 spectra_proposal_id=str(proposal_id),
                 spectra_intent="ENTRY",
                 spectra_position_id=str(position_id),
+                spectra_strategy_source=strategy_source,
                 spectra_fee_allowance_bps=float(cfg.buy_fee_allowance_bps),
             )
             executor_id = (

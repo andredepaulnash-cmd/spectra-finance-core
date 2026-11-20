@@ -215,12 +215,23 @@ def write_discovered_kraken_assets(
 
     lists = scan_result.get("lists")
     candidates = lists.get("mean_reversion_candidates") if isinstance(lists, Mapping) else None
-    if not isinstance(candidates, list):
-        raise AssetAuthorityError("market discovery has no mean-reversion candidate list")
+    reversal_candidates = lists.get("top_loser_reversal_candidates", []) if isinstance(lists, Mapping) else None
+    if not isinstance(candidates, list) or not isinstance(reversal_candidates, list):
+        raise AssetAuthorityError("market discovery is missing an eligible entry candidate list")
+    criteria = scan_result.get("criteria")
+    entry_floor = 10_000_000.0
+    if isinstance(criteria, Mapping):
+        configured_floor = _finite_number(criteria.get("minimum_24h_volume_quote", entry_floor), "minimum_24h_volume_quote")
+        entry_floor = max(entry_floor, configured_floor)
 
+    # Ordinary mean-reversion candidates retain first priority. The separate
+    # top-loser list is admitted to the paper asset allowlist only when its
+    # pathway-specific evidence and the unchanged entry-liquidity floor hold.
+    sourced_candidates = [(row, "MEAN_REVERSION") for row in candidates]
+    sourced_candidates.extend((row, "TOP_LOSER_REVERSAL") for row in reversal_candidates)
     pairs: list[str] = []
     seen: set[str] = set()
-    for row in candidates:
+    for row, source in sourced_candidates:
         if not isinstance(row, Mapping) or row.get("eligible") is not True:
             continue
         if row.get("capital_authorized") is not False:
@@ -231,6 +242,15 @@ def write_discovered_kraken_assets(
         volume = _finite_number(row.get("volume_24h_usd"), "candidate volume_24h_usd")
         _finite_number(row.get("selection_score"), "candidate selection_score")
         if price <= 0 or volume <= 0:
+            continue
+        if source == "TOP_LOSER_REVERSAL" and not (
+            row.get("reversal_pathway_eligible") is True
+            and row.get("entry_liquidity_eligible") is True
+            and volume >= entry_floor
+            and row.get("change_24h_pct") is not None
+            and _finite_number(row.get("change_24h_pct"), "candidate change_24h_pct") < 0
+            and int(row.get("reversal_signal_count") or 0) >= 2
+        ):
             continue
         pair = canonical_kraken_usd_pair(str(row.get("trading_pair") or ""))
         if pair in seen:

@@ -13,8 +13,8 @@ from pathlib import Path
 
 MODULES = {
     "vcap": {"implemented": False, "default": "MONITORING", "triggered": False},
-    "dttp": {"implemented": False, "default": "MONITORING", "triggered": True},
-    "dtsl": {"implemented": False, "default": "BLOCKED", "triggered": True},
+    "dttp": {"implemented": True, "default": "MONITORING", "triggered": False},
+    "dtsl": {"implemented": True, "default": "MONITORING", "triggered": False},
     "pssm": {"implemented": False, "default": "BLOCKED", "triggered": False},
     "mir": {"implemented": False, "default": "BLOCKED", "triggered": False},
 }
@@ -72,6 +72,30 @@ class ModuleLifecycleStore:
                        VALUES (?,?,0,?,?)""",
                     (module_id, state, reason, now),
                 )
+            # Promote only untouched default rows whose old reason explicitly
+            # says the implementation had not yet been verified. Operator-set
+            # states/reasons are never overwritten by this readiness migration.
+            for module_id in ("dttp", "dtsl"):
+                row = db.execute(
+                    "SELECT state,reason FROM module_controls WHERE module_id=?",
+                    (module_id,),
+                ).fetchone()
+                if (
+                    row is not None
+                    and MODULES[module_id]["implemented"]
+                    and row["reason"] == "runtime initialized; implementation not yet verified"
+                ):
+                    reason = "integrated adaptive exit runtime verified; source-gated to TOP_LOSER_REVERSAL positions"
+                    db.execute(
+                        "UPDATE module_controls SET state='MONITORING',trigger_enabled=0,reason=?,updated_at=? WHERE module_id=?",
+                        (reason, now, module_id),
+                    )
+                    db.execute(
+                        """INSERT INTO module_control_events
+                           (module_id,previous_state,new_state,trigger_enabled,reason,created_at)
+                           VALUES (?,?,'MONITORING',0,?,?)""",
+                        (module_id, row["state"], reason, now),
+                    )
 
     def snapshot(self):
         with self._connect() as db:

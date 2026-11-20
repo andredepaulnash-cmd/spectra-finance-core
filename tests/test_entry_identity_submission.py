@@ -25,6 +25,7 @@ from spectra_core.models import (
     CapitalProposal,
     CapitalSnapshot,
     DecisionStatus,
+    EntryStrategySource,
     ExecutorAccountingObservation,
     IntentKind,
 )
@@ -44,13 +45,14 @@ def governor(path):
     )
 
 
-def reserve(g, proposal_id, pair="XRP-USD", intent=IntentKind.ENTRY):
+def reserve(g, proposal_id, pair="XRP-USD", intent=IntentKind.ENTRY, strategy_source=EntryStrategySource.STANDARD):
     proposal = CapitalProposal(
         proposal_id=proposal_id,
         pair=pair,
         intent=intent,
         amount_quote=D(50),
         leverage=D(1),
+        strategy_source=strategy_source,
     )
     result = g.reserve(
         proposal,
@@ -618,3 +620,39 @@ def test_guarded_recovery_basis_floor_survives_release_restart_and_missing_ledge
             "UPDATE economic_lots SET executor_id='wrong-owner' WHERE proposal_id='owner'"
         )
     assert restarted.current_recovery_exposure_quote() == D(100)
+
+
+def test_top_loser_strategy_source_persists_and_is_required_at_entry_commit(tmp_path):
+    g = governor(tmp_path / "capital.sqlite")
+    ledger_path = tmp_path / "economic.sqlite"
+    ledger = EconomicPositionLedger(ledger_path)
+    ledger.open_position(
+        position_id="position-top-loser",
+        pair="XRP-USD",
+        created_at=1000,
+        strategy_source=EntryStrategySource.TOP_LOSER_REVERSAL,
+    )
+    proposal = reserve(
+        g,
+        "entry-top-loser",
+        strategy_source=EntryStrategySource.TOP_LOSER_REVERSAL,
+    )
+    assert commit(g, proposal, ledger, pid="position-top-loser") is True
+    claim = g.get_entry_submission_claim(proposal.proposal_id)
+    assert claim["strategy_source"] == "TOP_LOSER_REVERSAL"
+    reopened = EconomicPositionLedger(ledger_path)
+    assert reopened.snapshot("position-top-loser").strategy_source == EntryStrategySource.TOP_LOSER_REVERSAL
+
+
+def test_entry_submission_rejects_strategy_source_mismatch(tmp_path):
+    g = governor(tmp_path / "capital.sqlite")
+    ledger = EconomicPositionLedger(tmp_path / "economic.sqlite")
+    ledger.open_position(
+        position_id="position-top-loser",
+        pair="XRP-USD",
+        created_at=1000,
+        strategy_source=EntryStrategySource.TOP_LOSER_REVERSAL,
+    )
+    ordinary = reserve(g, "entry-wrong-source")
+    with pytest.raises(ValueError, match="exact ACTIVE prefill position"):
+        commit(g, ordinary, ledger, pid="position-top-loser")

@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from mcp_servers.hummingbot_api.settings import settings
-from mcp_servers.hummingbot_api.tools.executor_create import create_dca_executor
+from mcp_servers.hummingbot_api.tools.executor_create import create_order_executor
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.vcap_execution import (
     VCAPExecutionDecision,
@@ -25,7 +25,11 @@ async def execute_vcap_decision(
     buy_max_price_slippage_bps: Decimal | None = None,
     buy_fee_allowance_bps: Decimal | None = None,
 ) -> dict[str, Any]:
-    """Execute one prevalidated VCAP tranche through the Spectra DCA path.
+    """Execute one prevalidated VCAP tranche as a protected MARKET BUY.
+
+    VCAP still replans and authorizes one tranche at a time, but it never submits
+    a resting DCA/limit BUY. The protected market adapter derives base quantity
+    from the exact reserved quote budget and fresh ask depth.
 
     Exact replay is idempotent. If the child proposal already has an execution
     receipt, the existing executor is returned and no new external mutation is
@@ -49,6 +53,10 @@ async def execute_vcap_decision(
     if not account or "-" not in pair or not pair.rsplit("-", 1)[1]:
         raise ValueError(
             "VCAP execution requires explicit account and pair quote scope"
+        )
+    if not isinstance(position_id, str) or not position_id.strip():
+        raise ValueError(
+            "VCAP MARKET BUY requires its exact economic position identity"
         )
     connector_name = "kraken_paper_trade" if settings.paper_only else "kraken"
     scope = (account, connector_name, pair.rsplit("-", 1)[1])
@@ -102,13 +110,12 @@ async def execute_vcap_decision(
             "error": "VCAP recovery envelope could not carve the next tranche",
         }
 
-    result = await create_dca_executor(
+    result = await create_order_executor(
         client,
         connector_name=connector_name,
         trading_pair=proposal.pair,
         side=1,
-        amounts_quote=[str(proposal.amount_quote)],
-        prices=[str(decision.current_price)],
+        execution_strategy="MARKET",
         leverage=1,
         level_id=f"vcap-{decision.sequence:04d}",
         account_name=account,
@@ -116,7 +123,7 @@ async def execute_vcap_decision(
         spectra_proposal_id=proposal.proposal_id,
         spectra_intent="RECOVERY",
         spectra_position_id=position_id,
-        spectra_max_price_slippage_bps=buy_max_price_slippage_bps,
+        spectra_strategy_source=proposal.strategy_source,
         spectra_fee_allowance_bps=buy_fee_allowance_bps,
     )
 

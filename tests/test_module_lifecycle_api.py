@@ -22,7 +22,7 @@ class FakeConfigManager:
 
 
 @pytest.mark.asyncio
-async def test_module_trigger_endpoint_is_owner_only_and_never_activates(monkeypatch, tmp_path):
+async def test_module_trigger_endpoint_rejects_global_trigger_for_position_scoped_exits(monkeypatch, tmp_path):
     store = ModuleLifecycleStore(tmp_path / "module-controls.sqlite3")
     monkeypatch.setattr(
         servers,
@@ -31,18 +31,18 @@ async def test_module_trigger_endpoint_is_owner_only_and_never_activates(monkeyp
     )
     monkeypatch.setattr(servers, "get_spectra_module_lifecycle_store", lambda: store)
 
-    result = await servers.set_spectra_module_trigger(
-        "local-paper",
-        "dttp",
-        servers.ModuleTriggerRequest(enabled=True),
-        user=SimpleNamespace(id=7),
-    )
+    with pytest.raises(HTTPException) as exc:
+        await servers.set_spectra_module_trigger(
+            "local-paper",
+            "dttp",
+            servers.ModuleTriggerRequest(enabled=True),
+            user=SimpleNamespace(id=7),
+        )
 
-    assert result["control"]["trigger_enabled"] is True
-    assert result["control"]["state"] == "BLOCKED"
-    assert result["activation_performed"] is False
-    assert result["live_trading_enabled"] is False
-    assert result["orders_created"] == 0
+    assert exc.value.status_code == 409
+    control = next(row for row in store.snapshot() if row["module_id"] == "dttp")
+    assert control["trigger_enabled"] is False
+    assert control["state"] == "MONITORING"
 
 
 @pytest.mark.asyncio

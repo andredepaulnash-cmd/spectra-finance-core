@@ -33,6 +33,7 @@ from spectra_core.economic_exit import (
     assess_position_exit_manifest,
     create_or_load_position_exit_manifest,
     validate_manifest_against_ledger,
+    _economic_exit_protected_price,
 )
 from spectra_core.economic_position import (
     EconomicPositionLedger,
@@ -50,7 +51,6 @@ from spectra_core.kraken_market_fabric import KrakenTradingRule
 from spectra_core.models import BreakerMode, IntentKind
 from spectra_core.partial_recycle import (
     PartialRecycleStore,
-    protected_partial_recycle_price,
 )
 from spectra_core.runtime import get_breaker_mode
 from spectra_core.vcap_profit_exit import (
@@ -551,6 +551,7 @@ def _result(
         "sell_executor_id": manifest.sell_executor_id,
         "position_id": manifest.position_id,
         "pair": manifest.pair,
+        "exit_mode": manifest.exit_mode,
         "target_active_base": str(manifest.target_active_base),
         "remaining_active_base": str(progress.remaining_active_base),
         "realized_net_pnl_quote": str(progress.realized_pnl_quote),
@@ -667,13 +668,14 @@ async def dispatch_protected_economic_exit(
         )
     if trading_rule.trading_pair.strip().upper() != manifest.pair:
         raise ValueError("economic exit trading rule pair changed")
-    floor = protected_partial_recycle_price(
+    floor = _economic_exit_protected_price(
         target_base=manifest.target_active_base,
         target_cost_basis_quote=manifest.target_cost_basis_quote,
         target_entry_fees_quote=manifest.target_entry_fees_quote,
         target_net_profit_bps=manifest.target_net_profit_bps,
         expected_exit_cost_bps=manifest.expected_exit_cost_bps,
         trading_rule=trading_rule,
+        exit_mode=manifest.exit_mode,
     )
     if (
         floor > manifest.protected_limit_price
@@ -920,10 +922,18 @@ async def execute_economic_position_exit(
     existing = store.open_for_position(position_id) or store.latest_for_position(
         position_id
     )
+    requested_exit_mode = getattr(decision, "exit_mode", "PROFIT_PROTECTED")
     if existing is not None and (
         existing.status.value == "OPEN"
         or ledger.snapshot(position_id).active_base == ZERO
     ):
+        if existing.exit_mode != requested_exit_mode:
+            return {
+                "action": "EXIT",
+                "exit_requested": False,
+                "executed": False,
+                "reasons": ["economic_exit_mode_conflicts_with_existing_manifest"],
+            }
         manifest = existing
     elif (
         decision.target_net_profit_bps is None
@@ -947,6 +957,7 @@ async def execute_economic_position_exit(
             target_net_profit_bps=decision.target_net_profit_bps,
             expected_exit_cost_bps=decision.expected_exit_cost_bps,
             protected_floor_price=decision.protected_floor_price,
+            exit_mode=requested_exit_mode,
         )
     return await dispatch_protected_economic_exit(
         client,

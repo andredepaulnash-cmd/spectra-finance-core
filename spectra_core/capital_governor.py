@@ -23,6 +23,7 @@ from .models import (
     CapitalSnapshot,
     DecisionStatus,
     ExecutionProvenance,
+    EntryStrategySource,
     ExecutorAccountingDelta,
     ExecutorAccountingObservation,
     IntentKind,
@@ -132,7 +133,8 @@ class CapitalGovernor:
                     reason TEXT NOT NULL,
                     available_after_quote TEXT NOT NULL,
                     created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
+                    updated_at REAL NOT NULL,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 )
                 """)
 
@@ -149,7 +151,8 @@ class CapitalGovernor:
                     state TEXT NOT NULL,
                     executor_id TEXT,
                     created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
+                    updated_at REAL NOT NULL,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS entry_submission_active_asset
                 ON entry_submission_claims(base_asset)
@@ -166,7 +169,8 @@ class CapitalGovernor:
                     state TEXT NOT NULL,
                     executor_id TEXT,
                     created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
+                    updated_at REAL NOT NULL,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 );
                 CREATE TABLE IF NOT EXISTS protected_buy_submissions (
                     proposal_id TEXT PRIMARY KEY,
@@ -179,7 +183,8 @@ class CapitalGovernor:
                     controller_id TEXT NOT NULL,
                     config_json TEXT NOT NULL,
                     config_sha256 TEXT NOT NULL,
-                    created_at REAL NOT NULL
+                    created_at REAL NOT NULL,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 );
                 CREATE TABLE IF NOT EXISTS protected_buy_conflicts (
                     proposal_id TEXT NOT NULL,
@@ -206,11 +211,22 @@ class CapitalGovernor:
                     "PRAGMA table_info(capital_reservations)"
                 ).fetchall()
             }
-            for column_name in ("account_name", "connector_name", "quote_asset"):
+            for column_name in ("account_name", "connector_name", "quote_asset", "strategy_source"):
                 if column_name not in reservation_columns:
+                    default = " TEXT NOT NULL DEFAULT 'STANDARD'" if column_name == "strategy_source" else " TEXT"
                     conn.execute(
                         "ALTER TABLE capital_reservations "
-                        f"ADD COLUMN {column_name} TEXT"
+                        f"ADD COLUMN {column_name}{default}"
+                    )
+            for table_name in ("entry_submission_claims", "position_submission_bindings", "protected_buy_submissions"):
+                columns = {
+                    str(row["name"])
+                    for row in conn.execute(f"PRAGMA table_info({table_name})")
+                }
+                if "strategy_source" not in columns:
+                    conn.execute(
+                        f"ALTER TABLE {table_name} "
+                        "ADD COLUMN strategy_source TEXT NOT NULL DEFAULT 'STANDARD'"
                     )
 
             conn.execute("""
@@ -354,6 +370,7 @@ class CapitalGovernor:
                     account_name TEXT,
                     connector_name TEXT,
                     controller_id TEXT,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD',
                     created_at REAL NOT NULL
                 )
                 """)
@@ -369,12 +386,28 @@ class CapitalGovernor:
                 "account_name",
                 "connector_name",
                 "controller_id",
+                "strategy_source",
             ):
                 if column_name not in provenance_columns:
                     conn.execute(
                         "ALTER TABLE execution_provenance "
                         f"ADD COLUMN {column_name} TEXT"
                     )
+            conn.execute(
+                """
+                UPDATE execution_provenance
+                SET strategy_source = COALESCE(
+                    (
+                        SELECT strategy_source
+                        FROM capital_reservations
+                        WHERE capital_reservations.proposal_id =
+                              execution_provenance.proposal_id
+                    ),
+                    'STANDARD'
+                )
+                WHERE strategy_source IS NULL OR strategy_source = ''
+                """
+            )
 
             # Upgrade existing reconciled receipts deterministically. This is
             # provenance of authorization/executor ownership, not fill data.
@@ -387,7 +420,8 @@ class CapitalGovernor:
                     intent,
                     authorized_quote,
                     leverage,
-                    created_at
+                    created_at,
+                    strategy_source
                 )
                 SELECT
                     r.proposal_id,
@@ -396,7 +430,8 @@ class CapitalGovernor:
                     r.intent,
                     r.amount_quote,
                     r.leverage,
-                    e.created_at
+                    e.created_at,
+                    r.strategy_source
                 FROM execution_receipts AS e
                 JOIN capital_reservations AS r
                   ON r.proposal_id = e.proposal_id
@@ -422,6 +457,7 @@ class CapitalGovernor:
                       OR p.intent != r.intent
                       OR p.authorized_quote != r.amount_quote
                       OR p.leverage != r.leverage
+                      OR p.strategy_source != r.strategy_source
                   )
                 LIMIT 1
                 """,
@@ -1182,6 +1218,15 @@ class CapitalGovernor:
                 # Idempotency:
                 # the same proposal_id can never reserve twice.
                 if existing is not None:
+                    if str(existing["strategy_source"]) != proposal.strategy_source.value:
+                        conn.commit()
+                        return CapitalDecision(
+                            proposal.proposal_id,
+                            DecisionStatus.REJECTED,
+                            "conflicting entry strategy source on reservation replay",
+                            ZERO,
+                            ZERO,
+                        )
                     if cash.binding(conn) is not None:
                         mismatch = cash.authority_rejection(conn, proposal, snapshot)
                         exact = (
@@ -1283,19 +1328,11 @@ class CapitalGovernor:
                 conn.execute(
                     """
                     INSERT INTO capital_reservations (
-                        proposal_id,
-                        pair,
-                        intent,
-                        amount_quote,
-                        leverage,
-                        status,
-                        reason,
-                        available_after_quote,
-                        created_at,
-                        updated_at
-                        , account_name, connector_name, quote_asset
+                        proposal_id, pair, intent, amount_quote, leverage,
+                        status, reason, available_after_quote, created_at, updated_at,
+                        account_name, connector_name, quote_asset, strategy_source
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         proposal.proposal_id,
@@ -1323,6 +1360,7 @@ class CapitalGovernor:
                             if not isinstance(proposal.quote_asset, str)
                             else proposal.quote_asset.strip().upper()
                         ),
+                        proposal.strategy_source.value,
                     ),
                 )
 
@@ -1568,6 +1606,7 @@ class CapitalGovernor:
                     and row["intent"] == proposal.intent.value
                     and Decimal(row["amount_quote"]) == proposal.amount_quote
                     and Decimal(row["leverage"]) == proposal.leverage
+                    and str(row["strategy_source"]) == proposal.strategy_source.value
                 )
                 if cash.binding(conn) is not None:
                     matches = matches and (
@@ -1656,8 +1695,9 @@ class CapitalGovernor:
                         conn.execute(
                             """INSERT INTO position_submission_bindings (
                                 proposal_id,base_asset,position_id,ledger_path,pair,
-                                account_name,connector_name,controller_id,state,created_at,updated_at
-                            ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?)""",
+                                account_name,connector_name,controller_id,state,created_at,updated_at,
+                                strategy_source
+                            ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?,?)""",
                             (
                                 proposal_id,
                                 owner["base_asset"],
@@ -1667,6 +1707,7 @@ class CapitalGovernor:
                                 *recovery_scope,
                                 now,
                                 now,
+                                str(owner["strategy_source"]),
                             ),
                         )
 
@@ -2035,7 +2076,11 @@ class CapitalGovernor:
         if existing is not None:
             raise ValueError("protected BUY submission is already durably claimed")
         conn.execute(
-            "INSERT INTO protected_buy_submissions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            """INSERT INTO protected_buy_submissions (
+                proposal_id,authorized_quote_budget,position_id,ledger_path,pair,
+                account_name,connector_name,controller_id,config_json,config_sha256,
+                created_at,strategy_source
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 proposal.proposal_id,
                 str(proposal.amount_quote),
@@ -2046,6 +2091,7 @@ class CapitalGovernor:
                 payload,
                 hashlib.sha256(payload.encode()).hexdigest(),
                 self._now(),
+                proposal.strategy_source.value,
             ),
         )
         if policy is not None:
@@ -2268,6 +2314,7 @@ class CapitalGovernor:
                     and reservation["intent"] == IntentKind.ENTRY.value
                     and Decimal(reservation["amount_quote"]) == proposal.amount_quote
                     and Decimal(reservation["leverage"]) == proposal.leverage
+                    and str(reservation["strategy_source"]) == proposal.strategy_source.value
                 ):
                     conn.rollback()
                     return False
@@ -2314,6 +2361,7 @@ class CapitalGovernor:
                     or position["status"] != "ACTIVE"
                     or position["pair"] != pair
                     or position["base_asset"] != base
+                    or str(position["strategy_source"]) != proposal.strategy_source.value
                 ):
                     raise ValueError("ENTRY requires its exact ACTIVE prefill position")
                 active = conn.execute(
@@ -2392,8 +2440,9 @@ class CapitalGovernor:
                 conn.execute(
                     """INSERT INTO entry_submission_claims (
                         proposal_id,base_asset,position_id,ledger_path,pair,
-                        account_name,connector_name,controller_id,state,created_at,updated_at
-                    ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?)""",
+                        account_name,connector_name,controller_id,state,created_at,updated_at,
+                        strategy_source
+                    ) VALUES (?,?,?,?,?,?,?,?,'COMMITTED',?,?,?)""",
                     (
                         proposal.proposal_id.strip(),
                         base,
@@ -2403,6 +2452,7 @@ class CapitalGovernor:
                         *scope,
                         now,
                         now,
+                        proposal.strategy_source.value,
                     ),
                 )
                 cursor = conn.execute(
@@ -2503,7 +2553,7 @@ class CapitalGovernor:
                 raise ValueError("RECOVERY economic identity changed before commit")
             schema = recovery_ledger[0]
             position = conn.execute(
-                f"SELECT status, pair, base_asset FROM {schema}.economic_positions "
+                f"SELECT status, pair, base_asset, strategy_source FROM {schema}.economic_positions "
                 "WHERE position_id = ?",
                 (claim["position_id"],),
             ).fetchone()
@@ -2512,6 +2562,8 @@ class CapitalGovernor:
                 or position["status"] != "ACTIVE"
                 or position["pair"] != claim["pair"]
                 or position["base_asset"] != claim["base_asset"]
+                or str(position["strategy_source"]) != str(claim["strategy_source"])
+                or str(claim["strategy_source"]) != proposal.strategy_source.value
             ):
                 raise ValueError("RECOVERY requires its exact ACTIVE economic position")
             certificate_table = conn.execute(
@@ -2637,6 +2689,7 @@ class CapitalGovernor:
                         and Decimal(child["amount_quote"])
                         == tranche_proposal.amount_quote
                         and Decimal(child["leverage"]) == tranche_proposal.leverage
+                        and str(child["strategy_source"]) == tranche_proposal.strategy_source.value
                     )
                     if cash.binding(conn) is not None:
                         exact_replay = (
@@ -2688,6 +2741,7 @@ class CapitalGovernor:
                     and parent["intent"] == IntentKind.RECOVERY.value
                     and parent["pair"] == pair
                     and Decimal(parent["leverage"]) == tranche_proposal.leverage
+                    and str(parent["strategy_source"]) == tranche_proposal.strategy_source.value
                     and parent_amount >= tranche_proposal.amount_quote
                 )
                 if not matches:
@@ -2712,9 +2766,9 @@ class CapitalGovernor:
                         available_after_quote,
                         created_at,
                         updated_at
-                        , account_name, connector_name, quote_asset
+                        , account_name, connector_name, quote_asset, strategy_source
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         child_id,
@@ -2742,6 +2796,7 @@ class CapitalGovernor:
                             if not isinstance(tranche_proposal.quote_asset, str)
                             else tranche_proposal.quote_asset.strip().upper()
                         ),
+                        tranche_proposal.strategy_source.value,
                     ),
                 )
 
@@ -3077,7 +3132,8 @@ class CapitalGovernor:
                         leverage,
                         account_name,
                         connector_name,
-                        quote_asset
+                        quote_asset,
+                        strategy_source
                     FROM capital_reservations
                     WHERE proposal_id = ?
                     """,
@@ -3161,7 +3217,8 @@ class CapitalGovernor:
                             leverage,
                             account_name,
                             connector_name,
-                            controller_id
+                            controller_id,
+                            strategy_source
                         FROM execution_provenance
                         WHERE proposal_id = ?
                         """,
@@ -3180,6 +3237,7 @@ class CapitalGovernor:
                         reservation["intent"],
                         reservation["amount_quote"],
                         reservation["leverage"],
+                        reservation["strategy_source"],
                     )
                     actual = (
                         provenance["executor_id"],
@@ -3187,6 +3245,7 @@ class CapitalGovernor:
                         provenance["intent"],
                         provenance["authorized_quote"],
                         provenance["leverage"],
+                        provenance["strategy_source"],
                     )
 
                     if actual != expected:
@@ -3256,9 +3315,10 @@ class CapitalGovernor:
                         account_name,
                         connector_name,
                         controller_id,
+                        strategy_source,
                         created_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         proposal_id,
@@ -3270,6 +3330,7 @@ class CapitalGovernor:
                         (None if normalized_scope is None else normalized_scope[0]),
                         (None if normalized_scope is None else normalized_scope[1]),
                         (None if normalized_scope is None else normalized_scope[2]),
+                        reservation["strategy_source"],
                         now,
                     ),
                 )
@@ -3362,7 +3423,8 @@ class CapitalGovernor:
                     leverage,
                     account_name,
                     connector_name,
-                    controller_id
+                    controller_id,
+                    strategy_source
                 FROM execution_provenance
                 WHERE proposal_id = ?
                 """,
@@ -3388,6 +3450,7 @@ class CapitalGovernor:
             controller_id=(
                 None if row["controller_id"] is None else str(row["controller_id"])
             ),
+            strategy_source=EntryStrategySource(str(row["strategy_source"])),
         )
 
     @staticmethod

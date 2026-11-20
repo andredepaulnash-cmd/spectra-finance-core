@@ -304,3 +304,36 @@ def test_automatic_discovery_rejects_stale_or_mutating_scan(monkeypatch, tmp_pat
     unsafe["orders_created"] = 1
     with pytest.raises(AssetAuthorityError, match="research-only"):
         write_discovered_kraken_assets(unsafe, now=1000.0)
+
+
+def test_top_loser_reversal_candidates_join_paper_allowlist_only_after_all_entry_guards(monkeypatch, tmp_path):
+    state = tmp_path / "paper-state"
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("CONDOR_AGENT_SLUG", "spectra")
+    monkeypatch.setenv("SPECTRA_PAPER_STATE_DIR", str(state))
+    monkeypatch.delenv("SPECTRA_APPROVED_ASSETS_FILE", raising=False)
+    monkeypatch.setenv("SPECTRA_AUTO_ASSET_SELECTION", "true")
+    scan = _scan()
+    scan["criteria"] = {"minimum_24h_volume_quote": 10_000_000}
+    scan["lists"]["top_loser_reversal_candidates"] = [
+        {
+            "trading_pair": "XRP-USD", "quote_asset": "USD",
+            "eligible": True, "capital_authorized": False,
+            "current_price": 0.60, "volume_24h_usd": 15_000_000,
+            "selection_score": 70.0, "reversal_pathway_eligible": True,
+            "entry_liquidity_eligible": True, "change_24h_pct": -4.0,
+            "reversal_signal_count": 2,
+        },
+        {
+            "trading_pair": "THIN-USD", "quote_asset": "USD",
+            "eligible": True, "capital_authorized": False,
+            "current_price": 1.0, "volume_24h_usd": 9_000_000,
+            "selection_score": 70.0, "reversal_pathway_eligible": True,
+            "entry_liquidity_eligible": False, "change_24h_pct": -4.0,
+            "reversal_signal_count": 3,
+        },
+    ]
+    policy = write_discovered_kraken_assets(scan, now=1000.0)
+    assert "XRP-USD" in policy.pairs
+    assert "THIN-USD" not in policy.pairs

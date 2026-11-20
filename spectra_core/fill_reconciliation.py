@@ -735,11 +735,29 @@ class LiveFillLedgerReconciler:
         if submission is None:
             return
         config = submission["config"]
-        cap = Fraction(Decimal(str(config["price"])))
+        strategy = config.get("execution_strategy")
         amount = Fraction(Decimal(str(config["amount"])))
         reasons: list[str] = []
-        if Fraction(fill.price) > cap:
-            reasons.append(f"protected_buy_fill_price_above_cap:{fill.trade_id}")
+        policy = submission.get("policy")
+
+        # LIMIT BUYs retain their immutable price-cap audit. MARKET BUYs
+        # intentionally have no config["price"]; their durable protection is
+        # the quote-denominated authorization budget and exact fresh-book
+        # estimate persisted with the protected submission.
+        if strategy == "LIMIT":
+            if "price" not in config or config.get("price") is None:
+                reasons.append("protected_limit_buy_price_missing")
+            else:
+                cap = Fraction(Decimal(str(config["price"])))
+                if Fraction(fill.price) > cap:
+                    reasons.append(f"protected_buy_fill_price_above_cap:{fill.trade_id}")
+        elif strategy == "MARKET":
+            if "price" in config and config.get("price") is not None:
+                reasons.append("protected_market_buy_unexpected_limit_price")
+            if not isinstance(policy, dict) or policy.get("execution_strategy") != "MARKET":
+                reasons.append("protected_market_buy_policy_missing_or_invalid")
+        else:
+            reasons.append("protected_buy_execution_strategy_missing_or_invalid")
 
         with self._connect() as conn:
             rows = conn.execute(
@@ -755,7 +773,27 @@ class LiveFillLedgerReconciler:
         if filled > amount:
             reasons.append("protected_buy_cumulative_fills_above_authorized_amount")
 
-        policy = submission.get("policy")
+        if strategy == "MARKET" and isinstance(policy, dict):
+            try:
+                budget = Fraction(Decimal(str(policy["authorized_quote_budget"])))
+                quote = fill.pair.split("-", 1)[1]
+                actual_quote_spend = sum(
+                    (
+                        Fraction(Decimal(row["amount_base"])) * Fraction(Decimal(row["price"]))
+                        + (
+                            Fraction(Decimal(row["fee_paid"]))
+                            if row["fee_currency"] == quote
+                            else Fraction(0)
+                        )
+                        for row in rows
+                    ),
+                    Fraction(0),
+                )
+                if budget <= 0 or actual_quote_spend > budget:
+                    reasons.append("protected_market_buy_cumulative_quote_spend_above_budget")
+            except (KeyError, ValueError, ArithmeticError):
+                reasons.append("protected_market_buy_budget_evidence_invalid")
+
         if policy is None:
             reasons.append("protected_buy_fee_policy_missing")
         else:

@@ -297,7 +297,8 @@ class DustLifecycle:
                     amount_quote TEXT NOT NULL, leverage TEXT NOT NULL,
                     checkpoint_ids_json TEXT NOT NULL, status TEXT NOT NULL,
                     created_at REAL NOT NULL, claimed_at REAL,
-                    executor_id TEXT
+                    executor_id TEXT,
+                    strategy_source TEXT NOT NULL DEFAULT 'STANDARD'
                 );
                 CREATE TABLE IF NOT EXISTS economic_dust_successors (
                     successor_id TEXT NOT NULL, predecessor_id TEXT NOT NULL,
@@ -305,6 +306,15 @@ class DustLifecycle:
                     PRIMARY KEY(successor_id, predecessor_id)
                 );
             """)
+            admission_columns = {
+                str(row["name"])
+                for row in conn.execute("PRAGMA table_info(economic_dust_entry_admissions)")
+            }
+            if "strategy_source" not in admission_columns:
+                conn.execute(
+                    "ALTER TABLE economic_dust_entry_admissions "
+                    "ADD COLUMN strategy_source TEXT NOT NULL DEFAULT 'STANDARD'"
+                )
 
     def _fresh(self, observed_at: float, now: float) -> None:
         observed_at = _time(observed_at, "observed_at")
@@ -1007,6 +1017,7 @@ class DustLifecycle:
         pair: str,
         checkpoint_ids: tuple[str, ...],
         now: float,
+        strategy_source: str = "STANDARD",
     ) -> None:
         """Atomically open one slot after checking *all* same-base predecessors.
 
@@ -1020,6 +1031,8 @@ class DustLifecycle:
             _pair(pair),
             _time(now, "now"),
         )
+        if strategy_source not in {"STANDARD", "MEAN_REVERSION", "TOP_LOSER_REVERSAL"}:
+            raise ValueError("unknown dust successor strategy source")
         base = normalized_base_asset(pair)
         if not checkpoint_ids or len(set(checkpoint_ids)) != len(checkpoint_ids):
             raise ValueError("provide distinct checkpoints for every dust predecessor")
@@ -1032,9 +1045,11 @@ class DustLifecycle:
                     "SELECT checkpoint_id FROM economic_dust_successors WHERE successor_id = ?",
                     (pid,),
                 ).fetchall()
-                if existing["pair"] != pair or {
-                    r["checkpoint_id"] for r in links
-                } != set(checkpoint_ids):
+                if (
+                    existing["pair"] != pair
+                    or existing["strategy_source"] != strategy_source
+                    or {r["checkpoint_id"] for r in links} != set(checkpoint_ids)
+                ):
                     raise ValueError("successor replay conflicts")
                 # An idempotent replay never opens/reopens or changes anything.
                 return
@@ -1048,9 +1063,9 @@ class DustLifecycle:
             )
             conn.execute(
                 """INSERT INTO economic_positions
-                (position_id, pair, base_asset, status, created_at, updated_at)
-                VALUES (?, ?, ?, 'ACTIVE', ?, ?)""",
-                (pid, pair, base, now, now),
+                (position_id, pair, base_asset, status, created_at, updated_at, strategy_source)
+                VALUES (?, ?, ?, 'ACTIVE', ?, ?, ?)""",
+                (pid, pair, base, now, now, strategy_source),
             )
             conn.executemany(
                 "INSERT INTO economic_dust_successors VALUES (?, ?, ?, ?)",
@@ -1068,6 +1083,7 @@ class DustLifecycle:
             and row["intent"] == proposal.intent.value
             and Decimal(row["amount_quote"]) == proposal.amount_quote
             and Decimal(row["leverage"]) == proposal.leverage
+            and str(row["strategy_source"]) == proposal.strategy_source.value
         )
 
     def cancel_unsubmitted_entry(self, *, proposal_id: str, now: float) -> bool:
@@ -1210,6 +1226,7 @@ class DustLifecycle:
                     or existing["pair"] != proposal.pair
                     or Decimal(existing["amount_quote"]) != proposal.amount_quote
                     or Decimal(existing["leverage"]) != proposal.leverage
+                    or str(existing["strategy_source"]) != proposal.strategy_source.value
                 ):
                     raise ValueError("dust entry admission replay conflicts")
                 # This is an immutable admission replay, not a new dispatch.
@@ -1287,6 +1304,7 @@ class DustLifecycle:
                 created_at=now,
                 dust_lifecycle=self,
                 dust_checkpoint_ids=tuple(checkpoints),
+                strategy_source=proposal.strategy_source.value,
             )
         with self._transaction() as conn:
             self._validate_predecessors(
@@ -1297,8 +1315,8 @@ class DustLifecycle:
             conn.execute(
                 """INSERT INTO economic_dust_entry_admissions
                 (proposal_id, successor_id, account_name, pair, amount_quote, leverage,
-                 checkpoint_ids_json, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'ADMITTED', ?)""",
+                 checkpoint_ids_json, status, created_at, strategy_source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'ADMITTED', ?, ?)""",
                 (
                     proposal.proposal_id,
                     successor,
@@ -1308,6 +1326,7 @@ class DustLifecycle:
                     str(proposal.leverage),
                     _json(checkpoints),
                     now,
+                    proposal.strategy_source.value,
                 ),
             )
         return successor
@@ -1411,6 +1430,7 @@ class DustLifecycle:
                 or admission["pair"] != proposal.pair
                 or Decimal(admission["amount_quote"]) != proposal.amount_quote
                 or Decimal(admission["leverage"]) != proposal.leverage
+                or str(admission["strategy_source"]) != proposal.strategy_source.value
             ):
                 raise ValueError(
                     "dust entry admission scope changed or already claimed"

@@ -4,6 +4,7 @@ from decimal import Decimal
 from mcp_servers.hummingbot_api.tools.vcap_profit_exit import (
     execute_vcap_profit_exit,
 )
+from spectra_core.asset_fingerprint import AssetFingerprint, AssetObservation
 from spectra_core.capital_governor import CapitalGovernor
 from spectra_core.models import (
     CapitalPolicy,
@@ -18,6 +19,7 @@ from spectra_core.vcap_profit_exit import (
     VCAPProfitExitAction,
     VCAPProfitExitPolicy,
     plan_vcap_profit_exit,
+    plan_top_loser_adaptive_exit,
 )
 
 
@@ -326,3 +328,83 @@ def test_non_exit_decision_never_mutates_executor(tmp_path):
 
     assert result["exit_requested"] is False
     assert client.executors.stop_calls == []
+
+
+
+def adaptive_fingerprint():
+    observation = AssetObservation(
+        trading_pair="BTC-USD",
+        timestamp=10_000.0,
+        price=100.0,
+        quote_volume_24h=15_000_000.0,
+        spread_bps=5.0,
+        depth_quote=100_000.0,
+        depth_imbalance=0.1,
+        microprice_edge_bps=0.5,
+    )
+    fingerprint = AssetFingerprint.cold_start(observation)
+    for index in range(1, 41):
+        price = 101.0 if index % 2 else 100.0
+        fingerprint = fingerprint.update(
+            AssetObservation(
+                trading_pair="BTC-USD",
+                timestamp=10_000.0 + index * 60.0,
+                price=price,
+                quote_volume_24h=15_000_000.0,
+                spread_bps=5.0,
+                depth_quote=100_000.0,
+                depth_imbalance=0.1,
+                microprice_edge_bps=0.5,
+            )
+        )
+    return fingerprint
+
+
+def test_top_loser_adaptive_dtsl_uses_volatility_and_emits_bounded_loss_contract():
+    fingerprint = adaptive_fingerprint()
+    decision = plan_top_loser_adaptive_exit(
+        position("96"),
+        costs=costs(),
+        now=fingerprint.last_seen_at,
+        fingerprint=fingerprint,
+    )
+
+    assert decision.action == VCAPProfitExitAction.EXIT
+    assert decision.exit_mode == "ADAPTIVE_TRAILING"
+    assert "adaptive_dtsl_trailing_stop_triggered" in decision.reasons
+    assert decision.target_net_profit_bps is not None
+    assert decision.target_net_profit_bps < D("0")
+    assert decision.protected_floor_price < decision.target_exit_price
+    assert decision.state.peak_price == D("100")
+    assert decision.state.trailing_stop_price is not None
+    assert decision.state.stop_distance_bps is not None
+
+
+def test_top_loser_adaptive_dttp_tracks_dynamic_profit_state():
+    fingerprint = adaptive_fingerprint()
+    decision = plan_top_loser_adaptive_exit(
+        position("104"),
+        costs=costs(),
+        now=fingerprint.last_seen_at,
+        fingerprint=fingerprint,
+    )
+
+    assert decision.action in {VCAPProfitExitAction.EXTEND, VCAPProfitExitAction.EXIT}
+    assert decision.exit_mode == "ADAPTIVE_TRAILING"
+    assert decision.state.peak_price == D("104")
+    assert decision.state.trailing_stop_price is not None
+    assert decision.state.take_profit_target_bps is not None
+    assert decision.state.take_profit_giveback_bps is not None
+
+
+def test_top_loser_adaptive_exit_fails_closed_without_fresh_volatility():
+    fingerprint = adaptive_fingerprint()
+    decision = plan_top_loser_adaptive_exit(
+        position("100"),
+        costs=costs(),
+        now=fingerprint.last_seen_at + 100_000,
+        fingerprint=fingerprint,
+    )
+
+    assert decision.action == VCAPProfitExitAction.WAIT
+    assert "adaptive_exit_waiting_for_fresh_volatility_fingerprint" in decision.reasons
