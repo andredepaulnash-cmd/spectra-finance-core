@@ -24,6 +24,7 @@ say() { printf '[SPECTRA API UPDATE] %s\n' "$*"; }
 die() { say "STOP: $*" >&2; exit 1; }
 
 mkdir -p "$LOG_DIR"
+exec > >(tee -a "$LOG_FILE") 2>&1
 
 if [[ "$#" -ne 0 ]]; then
   die "This updater runs in the foreground and accepts no arguments."
@@ -567,7 +568,7 @@ if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
 fi
 command -v npm >/dev/null 2>&1 || die "npm is required to rebuild the Spectra dashboard."
 node_major="$(node --version 2>/dev/null || true)"
-[[ "$node_major" =~ ^v22\. ]] || die "Node.js 22 is required for the Spectra dashboard build; found ${node_major:-unavailable}."
+[[ "$node_major" =~ ^v(22|24)\. ]] || die "Node.js 22 or 24 is required for the Spectra dashboard build; found ${node_major:-unavailable}."
 cd "$CORE_DIR/frontend"
 if [[ ! -f node_modules/.package-lock.json || package-lock.json -nt node_modules/.package-lock.json ]]; then
   say "Synchronizing the existing frontend dependencies."
