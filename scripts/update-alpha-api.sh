@@ -171,7 +171,7 @@ grep -q "refusing registration" "${API_SOURCES[0]}" \
   || die "The fail-closed Kraken fix was not applied locally."
 grep -q "A read request must be able to initialize its own feed" "${API_SOURCES[1]}" \
   || die "The lazy order-book initialization fix was not applied locally."
-grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[2]}" \
+grep -q "Bot orchestration is disabled in Spectra paper-only mode" "${API_SOURCES[3]}" \
   || die "The paper-only bot-status guard was not applied locally."
 say "Updated only ${API_SOURCES[*]}; local credentials, configuration, and paper state were left untouched."
 
