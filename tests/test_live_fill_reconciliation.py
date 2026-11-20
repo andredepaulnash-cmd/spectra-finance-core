@@ -831,3 +831,57 @@ def test_batch_reconciliation_applies_oldest_fill_first(tmp_path):
         "batch-newer",
     ]
     assert ledger.snapshot("position-1").active_base == D("20")
+
+
+def test_vcap_recovery_position_uses_actual_exchange_fill_not_requested_size(tmp_path):
+    g = governor(tmp_path)
+    prepare_execution(
+        g,
+        proposal_id="vcap-rounded-recovery",
+        executor_id="exec-vcap-rounded-recovery",
+        intent=IntentKind.RECOVERY,
+        amount="25",
+    )
+    ledger = book(tmp_path)
+    reconciler = LiveFillLedgerReconciler(ledger=ledger, governor=g)
+    bind(
+        reconciler,
+        order_id="vcap-rounded-order",
+        role=EconomicFillRole.VCAP_RECOVERY,
+        proposal_id="vcap-rounded-recovery",
+    )
+
+    # The authorized quote tranche was $25, but the exchange-confirmed
+    # MARKET BUY fill is smaller after venue precision/price execution.
+    result = reconciler.reconcile_trade_fill(
+        fill(
+            trade_id="vcap-rounded-trade",
+            order_id="vcap-rounded-order",
+            side="BUY",
+            amount="0.4047",
+            price="49.40",
+            fee="0.01",
+            fee_currency="USD",
+        )
+    )
+
+    assert result.status == FillReconciliationStatus.APPLIED
+    snapshot = ledger.snapshot("position-1")
+    assert snapshot.active_base == D("0.4047")
+    assert snapshot.active_cost_basis_quote == D("19.99218")
+    assert snapshot.active_entry_fees_quote == D("0.01")
+
+    # Replaying the same confirmed fill must not inflate the position.
+    replay = reconciler.reconcile_trade_fill(
+        fill(
+            trade_id="vcap-rounded-trade",
+            order_id="vcap-rounded-order",
+            side="BUY",
+            amount="0.4047",
+            price="49.40",
+            fee="0.01",
+            fee_currency="USD",
+        )
+    )
+    assert replay.status == FillReconciliationStatus.REPLAY
+    assert ledger.snapshot("position-1").active_base == D("0.4047")
