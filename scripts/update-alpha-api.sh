@@ -345,7 +345,8 @@ for source in "${CORE_SHELL_SOURCES[@]}"; do
   fi
   worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
   old_blob="${CORE_SHELL_OLD_BLOBS[$source]}"
-  if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
+  preserved_blob="${CORE_SHELL_PRESERVE_BLOBS[$source]:-}"
+  if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" && "$worktree_blob" != "$preserved_blob" ]]; then
     die "Unrecognized local changes in $source. They were preserved; review them before updating."
   fi
 done
@@ -480,7 +481,8 @@ for source in "${CORE_PYTHON_SOURCES[@]}"; do
       && "$worktree_blob" == "2c3fd6ab5e0372f0350eaafe4724e0f70a9c4c1a" ]]; then
       old_blob="$worktree_blob"
     fi
-    if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" ]]; then
+    preserved_blob="${CORE_PYTHON_PRESERVE_BLOBS[$source]:-}"
+    if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" && "$worktree_blob" != "$preserved_blob" ]]; then
       die "Unrecognized local changes in $source. They were preserved; review them before updating."
     fi
   elif [[ -n "${CORE_PYTHON_OLD_BLOBS[$source]}" ]]; then
