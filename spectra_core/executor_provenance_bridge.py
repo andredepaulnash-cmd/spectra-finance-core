@@ -524,16 +524,10 @@ def synchronize_executor_evidence(
             # distinguished from actual over-ordering without weakening the gate.
             observed_amount = Fraction(order.amount)
             if observed_amount != authorized_amount:
-                policy_amount = (
-                    policy.get("amount_base")
-                    if market_buy and isinstance(policy, dict)
-                    else None
-                )
                 breaches.append(
                     "protected_buy_order_amount_changed:"
                     f"{order.order_id}:authorized_base={authorized_amount}:"
-                    f"observed_order_base={observed_amount}:"
-                    f"policy_base={policy_amount}"
+                    f"observed_order_base={observed_amount}"
                 )
             if Fraction(order.filled_amount) > authorized_amount:
                 breaches.append(
