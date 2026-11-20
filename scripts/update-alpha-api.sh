@@ -330,7 +330,7 @@ declare -A CORE_SHELL_OLD_BLOBS=(
 declare -A CORE_SHELL_NEW_BLOBS=(
   ["frontend/src/components/layout/AppShell.tsx"]="776e421f5ab1312ab97a09756bc82df8e4da0fc5"
   ["frontend/src/index.css"]="6d79e7a5111d423be6bf260a65e238c0344a4f5e"
-  ["frontend/src/pages/SpectraOverview.tsx"]="31a9fe01decc24a7067da27e575552186dc98988"
+  ["frontend/src/pages/SpectraOverview.tsx"]="aa2262ea9d84e16c0a188cd85895ef9e7abbdfe8"
   ["frontend/src/lib/api.ts"]="93d2e82aa4f1e9905f95f66c52842a53f81ca0af"
 )
 # These exact local-only Alpha edits were inspected and tested on the user's
@@ -513,6 +513,84 @@ done
   "$CORE_DIR/routines/mean_reversion_scanner.py" \
   "$CORE_DIR/condor/web/routes/market.py"
 say "Installed and syntax-checked the reviewed paper asset authority and strategy-discovery code."
+
+# Install the remaining Alpha 2.0 economic-position, VCAP lifecycle, and
+# executor-provenance runtime modules changed by merged PRs #139 and #140.
+# Accept only the exact pre-PR #139 integration blobs or the reviewed release
+# blobs. Unknown local edits are preserved and stop the update.
+CORE_ALPHA2_SOURCES=(
+  "mcp_servers/hummingbot_api/tools/economic_exit.py"
+  "mcp_servers/hummingbot_api/tools/vcap_execution.py"
+  "spectra_core/dust_lifecycle.py"
+  "spectra_core/economic_exit.py"
+  "spectra_core/executor_provenance_bridge.py"
+  "spectra_core/fill_reconciliation.py"
+  "spectra_core/models.py"
+  "spectra_core/module_lifecycle.py"
+  "spectra_core/module_registry.py"
+  "spectra_core/vcap_entry.py"
+  "spectra_core/vcap_execution.py"
+  "spectra_core/vcap_lifecycle.py"
+  "spectra_core/vcap_profit_exit.py"
+  "spectra_core/vcap_state.py"
+)
+declare -A CORE_ALPHA2_BASE_BLOBS=(
+  ["mcp_servers/hummingbot_api/tools/economic_exit.py"]="e1c4fc42dc4cc496db3e8092a7d926bf4fda9580"
+  ["mcp_servers/hummingbot_api/tools/vcap_execution.py"]="6b2cb75cc451c769a09ac8f0e21e3e3b3a9c021d"
+  ["spectra_core/dust_lifecycle.py"]="9fc8b7a6239d94c8a0ea2d9e37d8c231e3fa68a8"
+  ["spectra_core/economic_exit.py"]="5aba7cfd47b0f0c763c610f05382a7599b94226e"
+  ["spectra_core/executor_provenance_bridge.py"]="db2d72ae3902273975903fb709bd8224e19546da"
+  ["spectra_core/fill_reconciliation.py"]="515b08913c30a594327f2b1f25fa04d302ba9eb8"
+  ["spectra_core/models.py"]="efc87ac28fd5f2fcd168f1e03e6d6ef4f4c6ded8"
+  ["spectra_core/module_lifecycle.py"]="7ecf16070bba677ba15c59602c0cb76f7dafd448"
+  ["spectra_core/module_registry.py"]="1c1ccc2d0e14f4c5760dbbd9aa6d9f00f6de093b"
+  ["spectra_core/vcap_entry.py"]="87545875fcd593abd39f1697c6efa50842586830"
+  ["spectra_core/vcap_execution.py"]="ba59778b94e67c140f40b2a0abb20c1c8cb63ead"
+  ["spectra_core/vcap_lifecycle.py"]="92ed90b9a1a8b02a56c15db0a9fb6df09331083b"
+  ["spectra_core/vcap_profit_exit.py"]="6b01b2125590ba3a1ced6b278f15a564a55e6492"
+  ["spectra_core/vcap_state.py"]="fb51b5bbc67d6ee9c9f484c5e52ce490b42c7787"
+)
+declare -A CORE_ALPHA2_NEW_BLOBS=(
+  ["mcp_servers/hummingbot_api/tools/economic_exit.py"]="47ed8652216d7b26ce1fa6224cb999afc2bf0753"
+  ["mcp_servers/hummingbot_api/tools/vcap_execution.py"]="bb9239a6c7746ab64b9627c81db8ed7cab5d7c2f"
+  ["spectra_core/dust_lifecycle.py"]="0c288e9511f81decd6c344476808b9d484c83ef2"
+  ["spectra_core/economic_exit.py"]="97be838014d3c1e72e48e8a05e4339b35c4ef065"
+  ["spectra_core/executor_provenance_bridge.py"]="bd821378f9d41d1d42f897ed99cc9866b5f24e53"
+  ["spectra_core/fill_reconciliation.py"]="bf4fe731b9f50dd4069235c8580f0d91742f98c3"
+  ["spectra_core/models.py"]="37b2a315d3e07efe434a6c0d8e1e7eff50ca3fdd"
+  ["spectra_core/module_lifecycle.py"]="83e52445e4088d74802f422c6ea7e4c68c68aaf9"
+  ["spectra_core/module_registry.py"]="fac224e0060e9eb617abc9fdba771ace30bb1cc9"
+  ["spectra_core/vcap_entry.py"]="7ff47da7ee4f6244ac440af33f32c3f4a4f9584d"
+  ["spectra_core/vcap_execution.py"]="be51e375730d4fb6086c3e737080ba6fbb031cf0"
+  ["spectra_core/vcap_lifecycle.py"]="9e1b5d38f9c8c0637242b6d7dc9e6309a39a28b5"
+  ["spectra_core/vcap_profit_exit.py"]="cf3734eecb6a0f25ac03cf3049d98603bac61b03"
+  ["spectra_core/vcap_state.py"]="bad5180034284d601923915f1302c3080f0cc000"
+)
+for source in "\${CORE_ALPHA2_SOURCES[@]}"; do
+  upstream_blob="$(git -C "$CORE_DIR" rev-parse "FETCH_HEAD:$source")"
+  expected_blob="\${CORE_ALPHA2_NEW_BLOBS[$source]}"
+  [[ "$upstream_blob" == "$expected_blob" ]] \\
+    || die "Fetched Alpha 2.0 source $source is not the reviewed PR #139/#140 version."
+  [[ ! -L "$CORE_DIR/$source" ]] \\
+    || die "Refusing to replace symlinked local Alpha 2.0 source $source."
+  if [[ -f "$CORE_DIR/$source" ]]; then
+    worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
+    base_blob="\${CORE_ALPHA2_BASE_BLOBS[$source]}"
+    [[ "$worktree_blob" == "$expected_blob" || "$worktree_blob" == "$base_blob" ]] \\
+      || die "Unrecognized local changes in $source. They were preserved; review them before updating."
+  else
+    die "Expected existing Alpha 2.0 source $source is missing; refusing an incomplete update."
+  fi
+done
+for source in "\${CORE_ALPHA2_SOURCES[@]}"; do
+  worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
+  if [[ "$worktree_blob" != "\${CORE_ALPHA2_NEW_BLOBS[$source]}" ]]; then
+    git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
+  fi
+done
+"$CORE_DIR/.venv/bin/python" -m py_compile \\
+  "\${CORE_ALPHA2_SOURCES[@]/#/$CORE_DIR/}"
+say "Installed and syntax-checked the remaining Alpha 2.0 VCAP, economic-exit, and provenance modules."
 
 install -m 700 "$CORE_DIR/scripts/spectra" "$HOME/.local/bin/spectra"
 install -m 700 "$CORE_DIR/scripts/spectra-alpha-doctor.sh" "$HOME/.local/bin/spectra-alpha-doctor"
