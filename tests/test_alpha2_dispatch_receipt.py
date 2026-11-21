@@ -34,7 +34,7 @@ def trade_body():
         "account_name":"master_account",
         "connector_name":"kraken_paper_trade",
         "trading_pair":"BTC-USDT",
-        "trade_type":"BUY",
+        "trade_type":"BUY","strategy_origin":"TOP_GAINER",
         "amount":"0.0003",
         "order_type":"MARKET",
         "max_execution_price":"65000",
