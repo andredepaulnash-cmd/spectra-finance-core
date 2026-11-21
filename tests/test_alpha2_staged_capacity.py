@@ -27,12 +27,13 @@ def market(index):
 class Scanner:
     def __init__(self,items): self.items=items
     async def scan(self): return self.items
+    async def inspect_pair(self,pair): return None
 
 
 class PaperExecution:
     def __init__(self): self.counter=0
     async def reconcile_pending(self,governor,timeout_seconds=0.1): return []
-    async def submit_authorized_buy(self,governor,authorization,request_body,timeout_seconds=60):
+    async def submit_authorized_buy(self,governor,authorization,request_body,timeout_seconds=60,shard_id=None):
         self.counter+=1
         governor.consume_authorization(
             authorization.authorization_id,idempotency_key=authorization.idempotency_key,
