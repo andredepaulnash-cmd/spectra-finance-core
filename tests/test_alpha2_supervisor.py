@@ -1,5 +1,6 @@
 import asyncio
 import tempfile
+from types import SimpleNamespace
 import unittest
 from decimal import Decimal
 
@@ -32,7 +33,7 @@ class FakeScanner:
 
 
 class FakeExecution:
-    def __init__(self,fail=False): self.fail=fail; self.orders=0
+    def __init__(self,fail=False): self.fail=fail; self.orders=0; self.sell_orders=0
     async def reconcile_pending(self,governor,timeout_seconds=0.1): return []
     async def submit_authorized_buy(self,governor,authorization,request_body,timeout_seconds=60,shard_id=None):
         self.orders+=1
@@ -54,6 +55,27 @@ class FakeExecution:
             actual_quantity=quantity,average_price=price,
         )
         return ExecutionResult(authorization.authorization_id,order_id,"FILLED",quantity,gross,fee)
+
+    async def submit_authorized_sell(self,governor,authorization,request_body,timeout_seconds=60):
+        self.sell_orders+=1
+        governor.consume_exit_authorization(
+            authorization.authorization_id,
+            idempotency_key=authorization.idempotency_key,
+            connector="kraken_paper_trade",
+        )
+        order_id=f"paper-sell-{self.sell_orders}"
+        governor.bind_exit_order_id(authorization.authorization_id,order_id=order_id)
+        quantity=Decimal(request_body["amount"])
+        price=Decimal(request_body["price"])
+        gross=quantity*price
+        fee=gross*Decimal("0.004")
+        governor.settle_exit_fill(
+            authorization.authorization_id,
+            actual_quantity=quantity,
+            average_price=price,
+            actual_fee=fee,
+        )
+        return SimpleNamespace(status="FILLED",filled_quantity=quantity)
 
 
 class PortfolioSupervisorTests(unittest.TestCase):
@@ -120,6 +142,20 @@ class PortfolioSupervisorTests(unittest.TestCase):
         self.assertEqual(state["completed_vcap_steps"],set())
         self.assertEqual(len(state["active_lots"]),1)
         self.assertEqual(execution.orders,0)
+
+    def test_supervisor_submits_fixed_net_take_profit_limit_sell_for_top_gainer(self):
+        self._open_position()
+        up=candidate(1,Decimal("104"))
+        scanner=FakeScanner([up],snapshots={"COIN1-USDT":up})
+        execution=FakeExecution()
+        supervisor=PortfolioSupervisor(
+            self.gov,scanner,CondorAnalyzer(),execution,target_positions=1,
+        )
+        report=asyncio.run(supervisor.run_once())
+        self.assertEqual(report.exit_orders,1)
+        self.assertEqual(report.realized_exit_fills,1)
+        self.assertEqual(execution.sell_orders,1)
+        self.assertEqual(self.gov.list_positions(),[])
 
     def test_supervisor_flags_minus_24_percent_for_manual_review_without_patching(self):
         self._open_position()
