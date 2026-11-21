@@ -1,8 +1,6 @@
 # Spectra Finance Alpha 2.0
 
-A paper-trading-only portfolio automation system.
-
-**Current status:** Blueprint and architecture phase. This branch is intentionally a clean Alpha 2.0 workspace; Alpha 1.x source remains in repository history and existing branches for audit/reference. No application runtime is certified or installable yet.
+A paper-trading-only portfolio automation system. Alpha 2.0 is developed on the dedicated `spectra-finance-alpha-2.0` branch. Older Alpha/Condor branches are reference and code-mining sources only.
 
 ## Non-negotiable safety mode
 
@@ -11,15 +9,28 @@ A paper-trading-only portfolio automation system.
 - No private exchange credentials are requested, stored, loaded, or wired into this project.
 - Public market data only; all order execution is simulated.
 - Hummingbot must reject order requests unless they carry a valid CapitalGovernor authorization.
-- A missing, malformed, stale, or contradictory safety setting fails closed.
+- Missing, malformed, stale, or contradictory safety settings fail closed.
 
-## Product shape
+## Product architecture
 
-1. Research scanner: discovers eligible public markets.
-2. Condor: analyzes and recommends; never submits orders.
-3. Spectra Core: coordinates the lifecycle and enforces portfolio policy.
-4. CapitalGovernor: authorizes and reserves capital before any order can be sent.
-5. Hummingbot paper executor: executes only authorized simulated orders.
-6. Ledger/reconciler: records fills, fees, shard cost basis, realized P&L, and restart state.
+1. Research scanner: identifies quality-filtered 24-hour gainers from public Kraken market data.
+2. Condor: scores and explains candidates; recommendation-only, never executes.
+3. Spectra Core: coordinates position lifecycle and preserves strategy origin.
+4. CapitalGovernor: sole authority for capital reservations and order authorization.
+5. Hummingbot paper executor: submits only signed, authorized paper orders.
+6. Ledger/reconciler: records fills, fees, lot basis, realized P&L, and restart state.
 
-See [the master blueprint](docs/MASTER_BLUEPRINT.md) and [the phase plan](docs/BUILD_PLAN.md).
+## Confirmed Alpha 2.0 strategy boundaries
+
+- Primary entries are quality-filtered 24-hour gainers with at least $10M 24-hour quote volume.
+- Every purchase is a MARKET BUY. LIMIT BUY and resting buy orders are prohibited.
+- Ordinary `TOP_GAINER` positions use the fixed +1.74% net take-profit after 0.40% buy and sell fee assumptions; exit sells are LIMIT orders and are not submitted until the current bid reaches the fee-aware target.
+- `TOP_LOSER_REVERSAL` is a separate research/entry pathway. Adaptive DTTP/DTSL is exclusive to that origin and is not applied to ordinary gainer positions.
+- VCAP is independent shard recovery, not DCA. VCAP automation remains disabled until its approved shard-selection, batching, sizing, and recycling policy is configured.
+- The -24% outer boundary stops automatic patching and flags manual review.
+
+See [the master blueprint](docs/MASTER_BLUEPRINT.md), [the phase plan and evidence register](docs/BUILD_PLAN.md), and [the Bazzite installation guide](docs/BAZZITE_INSTALL.md).
+
+## Release status
+
+The repository contains a working paper-only foundation and deterministic domain/API tests. It is not yet declared upgrade-ready: the full clean-install strategy cycle, restart/soak evidence, VCAP policy, reversal-path DTTP/DTSL, and actual Bazzite install/upgrade verification remain separate acceptance gates.
