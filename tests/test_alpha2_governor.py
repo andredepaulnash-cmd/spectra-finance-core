@@ -61,7 +61,7 @@ class CapitalGovernorTests(unittest.TestCase):
             "account_name":"master_account",
             "connector_name":"kraken_paper_trade",
             "trading_pair":"BTC-USDT",
-            "trade_type":"BUY",
+            "trade_type":"BUY","strategy_origin":"TOP_GAINER",
             "amount":"0.0003",
             "order_type":"MARKET",
             "max_execution_price":"65000",
@@ -96,7 +96,7 @@ class CapitalGovernorTests(unittest.TestCase):
         self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
         body={
             "account_name":"master_account","connector_name":"kraken_paper_trade",
-            "trading_pair":"BTC-USDT","trade_type":"BUY","amount":"0.0004",
+            "trading_pair":"BTC-USDT","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.0004",
             "order_type":"MARKET","max_execution_price":"65000","position_action":"OPEN",
         }
         private=Ed25519PrivateKey.generate()
