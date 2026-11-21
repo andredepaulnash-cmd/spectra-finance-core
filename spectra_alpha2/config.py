@@ -19,7 +19,8 @@ class Alpha2Config:
     scan_interval_seconds: float
     target_positions: int
     max_new_positions_per_cycle: int
-    min_quote_volume_24h: Decimal
+    min_quote_volume_24h: Decimal | None
+    entry_quote_assets: frozenset[str]
     max_spread_fraction: Decimal
     max_slippage_fraction: Decimal
     order_timeout_seconds: float
@@ -47,10 +48,18 @@ class Alpha2Config:
         interval=float(env.get("SPECTRA_SCAN_INTERVAL_SECONDS","30"))
         timeout=float(env.get("SPECTRA_ORDER_TIMEOUT_SECONDS","60"))
         if interval<=0 or timeout<=0: raise ValueError("scan and order timeout values must be positive")
-        min_volume=decimal("SPECTRA_MIN_QUOTE_VOLUME_24H","10000000")
+        raw_min_volume=env.get("SPECTRA_MIN_QUOTE_VOLUME_24H","").strip()
+        min_volume=decimal("SPECTRA_MIN_QUOTE_VOLUME_24H",raw_min_volume) if raw_min_volume else None
+        quote_assets=frozenset(
+            item.strip().upper()
+            for item in env.get("SPECTRA_ENTRY_QUOTE_ASSETS","").split(",")
+            if item.strip()
+        )
+        if min_volume is not None and min_volume <= 0:
+            raise ValueError("SPECTRA_MIN_QUOTE_VOLUME_24H must be positive when configured")
         max_spread=decimal("SPECTRA_MAX_SPREAD_FRACTION","0.003")
         max_slippage=decimal("SPECTRA_MAX_SLIPPAGE_FRACTION","0.001")
-        if min_volume<0 or not Decimal("0")<=max_spread<=Decimal("0.02") or not Decimal("0")<=max_slippage<=Decimal("0.02"):
+        if not Decimal("0")<=max_spread<=Decimal("0.02") or not Decimal("0")<=max_slippage<=Decimal("0.02"):
             raise ValueError("market volume, spread, or slippage configuration is outside safe bounds")
         username=env.get("SPECTRA_HB_API_USERNAME","")
         password=env.get("SPECTRA_HB_API_PASSWORD","")
@@ -65,6 +74,7 @@ class Alpha2Config:
             target_positions=target,
             max_new_positions_per_cycle=max_new,
             min_quote_volume_24h=min_volume,
+            entry_quote_assets=quote_assets,
             max_spread_fraction=max_spread,
             max_slippage_fraction=max_slippage,
             order_timeout_seconds=timeout,
