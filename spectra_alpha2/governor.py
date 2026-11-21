@@ -110,6 +110,7 @@ class CapitalGovernor:
                 CREATE TABLE IF NOT EXISTS positions (
                     position_id TEXT PRIMARY KEY,
                     asset_id TEXT NOT NULL,
+                    strategy_origin TEXT NOT NULL DEFAULT 'TOP_GAINER',
                     reference_price TEXT NOT NULL,
                     status TEXT NOT NULL,
                     gross_committed TEXT NOT NULL,
@@ -126,6 +127,7 @@ class CapitalGovernor:
                     idempotency_key TEXT NOT NULL UNIQUE,
                     position_id TEXT NOT NULL REFERENCES positions(position_id),
                     asset_id TEXT NOT NULL,
+                    strategy_origin TEXT NOT NULL DEFAULT 'TOP_GAINER',
                     action_id TEXT NOT NULL,
                     pool_id TEXT NOT NULL REFERENCES pools(pool_id),
                     gross_notional TEXT NOT NULL,
@@ -232,12 +234,16 @@ class CapitalGovernor:
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_vcap_shards_asset_status ON vcap_shards(asset_id,status)")
             position_columns={row[1] for row in conn.execute("PRAGMA table_info(positions)")}
             for column,declaration in (
+                ("strategy_origin","TEXT NOT NULL DEFAULT 'TOP_GAINER'"),
                 ("manual_review_required","INTEGER NOT NULL DEFAULT 0"),
                 ("manual_review_reason","TEXT"),
                 ("manual_review_at","REAL"),
             ):
                 if column not in position_columns:
                     conn.execute(f"ALTER TABLE positions ADD COLUMN {column} {declaration}")
+            reservation_columns={row[1] for row in conn.execute("PRAGMA table_info(reservations)")}
+            if "strategy_origin" not in reservation_columns:
+                conn.execute("ALTER TABLE reservations ADD COLUMN strategy_origin TEXT NOT NULL DEFAULT 'TOP_GAINER'")
             conn.execute(
                 "INSERT OR IGNORE INTO pools(pool_id,budget,reserved,spent,recovered) VALUES(?,?,?,?,?)",
                 (CapitalPool.INITIAL.value, str(INITIAL_ENTRY_BUDGET), "0", "0", "0"),
@@ -272,8 +278,11 @@ class CapitalGovernor:
         asset_id: str,
         reference_price: Decimal,
         idempotency_key: str,
+        strategy_origin: str = "TOP_GAINER",
     ) -> CapitalAuthorization:
         self._assert_paper()
+        if strategy_origin not in {"TOP_GAINER","TOP_LOSER_REVERSAL"}:
+            raise ValueError("strategy_origin must be TOP_GAINER or TOP_LOSER_REVERSAL")
         price = self._positive(reference_price, "reference_price")
         if not all((position_id, asset_id, idempotency_key)):
             raise ValueError("position_id, asset_id and idempotency_key are required")
@@ -294,16 +303,16 @@ class CapitalGovernor:
                 if self._available_pool(conn, CapitalPool.INITIAL) < amount + fee:
                     raise CapitalDenied("initial-entry pool has insufficient available capital")
                 conn.execute(
-                    """INSERT INTO positions(position_id,asset_id,reference_price,status,gross_committed,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?)""",
-                    (position_id, asset_id, str(price), "RESERVED", str(amount), now, now),
+                    """INSERT INTO positions(position_id,asset_id,strategy_origin,reference_price,status,gross_committed,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?)""",
+                    (position_id, asset_id, strategy_origin, str(price), "RESERVED", str(amount), now, now),
                 )
                 conn.execute(
                     """INSERT INTO reservations
-                    (reservation_id,idempotency_key,position_id,asset_id,action_id,pool_id,
+                    (reservation_id,idempotency_key,position_id,asset_id,strategy_origin,action_id,pool_id,
                      gross_notional,fee_reserve,status,expires_at,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (reservation_id,idempotency_key,position_id,asset_id,"INITIAL",
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (reservation_id,idempotency_key,position_id,asset_id,strategy_origin,"INITIAL",
                      CapitalPool.INITIAL.value,str(amount),str(fee),ReservationStatus.RESERVED.value,
                      now+self.reservation_ttl_seconds,now,now),
                 )
@@ -887,11 +896,12 @@ class CapitalGovernor:
         self._assert_paper()
         with self._connect() as conn:
             rows=conn.execute(
-                "SELECT position_id,asset_id,reference_price,status,gross_committed,manual_review_required,manual_review_reason,manual_review_at,created_at,updated_at FROM positions WHERE status IN ('RESERVED','OPEN') ORDER BY created_at"
+                "SELECT position_id,asset_id,strategy_origin,reference_price,status,gross_committed,manual_review_required,manual_review_reason,manual_review_at,created_at,updated_at FROM positions WHERE status IN ('RESERVED','OPEN') ORDER BY created_at"
             ).fetchall()
         return [
             {
                 "position_id":row["position_id"],"asset_id":row["asset_id"],
+                "strategy_origin":row["strategy_origin"],
                 "reference_price":Decimal(row["reference_price"]),
                 "status":row["status"],"gross_committed":Decimal(row["gross_committed"]),
                 "manual_review_required":bool(row["manual_review_required"]),
@@ -935,6 +945,7 @@ class CapitalGovernor:
         ]
         return {
             "position_id":position["position_id"],"asset_id":position["asset_id"],
+            "strategy_origin":position["strategy_origin"],
             "reference_price":Decimal(position["reference_price"]),
             "status":position["status"],"gross_committed":Decimal(position["gross_committed"]),
             "manual_review_required":bool(position["manual_review_required"]),
