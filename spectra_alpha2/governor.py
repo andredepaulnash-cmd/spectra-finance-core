@@ -19,6 +19,7 @@ from .policy import (
     INITIAL_ENTRY_NOTIONAL,
     MAX_OPEN_POSITIONS,
     VCAP_RECOVERY_POOL,
+    gross_sell_notional_for_net_target,
 )
 
 
@@ -494,11 +495,51 @@ class CapitalGovernor:
         limit_price: Decimal,
         idempotency_key: str,
     ) -> ExitAuthorization:
-        """Fail closed until strategy-origin-specific adaptive exit policy is implemented."""
+        """Authorize the confirmed fixed net take-profit for TOP_GAINER lots only."""
         self._assert_paper()
-        raise CapitalDenied(
-            "Static take-profit exits are disabled; ordinary-entry exits are unspecified and DTTP/DTSL is restricted to approved TOP_LOSER_REVERSAL positions"
-        )
+        qty=self._positive(quantity,"quantity")
+        price=self._positive(limit_price,"limit_price")
+        if not idempotency_key:
+            raise ValueError("idempotency_key is required")
+        now=time.time()
+        authorization_id=str(uuid.uuid4())
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                lot=conn.execute("SELECT * FROM position_lots WHERE lot_id=?",(lot_id,)).fetchone()
+                if lot is None or lot["status"] != "ACTIVE":
+                    raise CapitalDenied("only an active lot can receive a take-profit authorization")
+                position=conn.execute("SELECT strategy_origin FROM positions WHERE position_id=?",(lot["position_id"],)).fetchone()
+                if position is None or position["strategy_origin"] != "TOP_GAINER":
+                    raise CapitalDenied("fixed +1.74% net take-profit is reserved for TOP_GAINER; TOP_LOSER_REVERSAL requires DTTP/DTSL")
+                remaining=Decimal(lot["remaining_quantity"])
+                reserved_exit=Decimal(lot["reserved_exit_quantity"])
+                available=remaining-reserved_exit
+                if qty>available:
+                    raise CapitalDenied("exit quantity exceeds unreserved remaining lot quantity")
+                basis=Decimal(lot["remaining_cost_basis_quote"])*qty/remaining
+                required_gross=gross_sell_notional_for_net_target(basis)
+                minimum_price=required_gross/qty
+                if price<minimum_price:
+                    raise CapitalDenied("sell limit price does not achieve the +1.74% net take-profit after fees")
+                expected_gross=qty*price
+                fee_reserve=expected_gross*SELL_FEE_RATE
+                conn.execute("UPDATE position_lots SET reserved_exit_quantity=?,updated_at=? WHERE lot_id=?",(str(reserved_exit+qty),now,lot_id))
+                conn.execute(
+                    """INSERT INTO exit_authorizations
+                    (authorization_id,idempotency_key,position_id,asset_id,lot_id,quantity,
+                     minimum_price,expected_gross_proceeds,fee_reserve,status,expires_at,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (authorization_id,idempotency_key,lot["position_id"],lot["asset_id"],lot_id,
+                     str(qty),str(minimum_price),str(expected_gross),str(fee_reserve),
+                     ReservationStatus.RESERVED.value,now+self.reservation_ttl_seconds,now,now),
+                )
+                self._event(conn,"EXIT_QUANTITY_RESERVED",authorization_id,{"lot_id":lot_id,"quantity":str(qty),"minimum_price":str(minimum_price),"expected_gross_proceeds":str(expected_gross)})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return ExitAuthorization(authorization_id,idempotency_key,lot["position_id"],lot["asset_id"],lot_id,qty,minimum_price,expected_gross,fee_reserve)
     def consume_exit_authorization(
         self,
         authorization_id: str,
@@ -517,7 +558,7 @@ class CapitalGovernor:
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
-                row=conn.execute("SELECT * FROM exit_authorizations WHERE authorization_id=?",(authorization_id,)).fetchone()
+                row=conn.execute("SELECT e.*,p.strategy_origin FROM exit_authorizations e JOIN positions p ON p.position_id=e.position_id WHERE e.authorization_id=?",(authorization_id,)).fetchone()
                 if row is None or row["status"] != ReservationStatus.RESERVED.value:
                     raise CapitalDenied("exit authorization is unknown or already consumed")
                 if row["idempotency_key"] != idempotency_key:
@@ -554,6 +595,8 @@ class CapitalGovernor:
             raise CapitalDenied("exit order is restricted to the master Kraken paper account")
         if request_body.get("trading_pair")!=row["asset_id"]:
             raise CapitalDenied("exit market does not match the authorized lot")
+        if request_body.get("strategy_origin")!=row["strategy_origin"]:
+            raise CapitalDenied("exit strategy origin does not match the persisted position")
         if request_body.get("trade_type")!="SELL" or request_body.get("position_action")!="OPEN":
             raise CapitalDenied("exit authorization requires a Kraken spot SELL order")
         if request_body.get("order_type")!="LIMIT":
