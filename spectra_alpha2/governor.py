@@ -608,9 +608,9 @@ class CapitalGovernor:
                 remaining=Decimal(lot["remaining_quantity"])
                 basis=Decimal(lot["remaining_cost_basis_quote"])
                 allocated_basis=basis*qty/remaining
-                minimum_gross=gross_sell_notional_for_net_target(allocated_basis)
-                if gross<minimum_gross:
-                    raise CapitalDenied("settled sell fill does not meet the +1.74% net take-profit")
+                minimum_price=Decimal(auth["minimum_price"])
+                if price<minimum_price:
+                    raise CapitalDenied("settled sell fill is below its signed adaptive-exit minimum price")
                 if actual_fee>gross*SELL_FEE_RATE*Decimal("1.05"):
                     raise CapitalDenied("actual sell fee exceeds the estimated Kraken fee allowance")
                 reserved_exit=Decimal(lot["reserved_exit_quantity"])-authorized_qty
