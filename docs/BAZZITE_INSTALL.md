@@ -29,9 +29,9 @@ bash <(curl -fsSL \
   https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/spectra-finance-alpha-2.0/scripts/install_bazzite_alpha2.sh)
 ```
 
-The installer creates `$HOME/SpectraFinance-Alpha2` with separate Core and Hummingbot API checkouts, creates a host-side virtual environment, generates keyless paper configuration, builds an isolated Compose file, and starts the services.
+The installer creates `$HOME/SpectraFinance-Alpha2` with separate Core and Hummingbot API checkouts, creates a host-side virtual environment, generates keyless paper configuration, builds an isolated Compose file, and starts the services. It pins both checkouts to the dedicated `spectra-finance-alpha-2.0` branches.
 
-It records the exact checked-out source commits in `installed-commits.txt`.
+It records the exact checked-out source commits in `installed-commits.txt`. On an in-place upgrade, it first creates a SQLite online backup of the running Alpha 2.0 ledger under `backups/`. It refuses to overwrite local source changes and stops if an existing Alpha 2.0 data volume cannot be safely backed up. It never removes Alpha 1.x files, containers, databases, or volumes and never runs `podman compose down -v`.
 
 ## Commands
 
@@ -72,6 +72,6 @@ The Core SQLite ledger, PostgreSQL database, and EMQX data use Alpha 2.0-scoped 
 
 ## Verification status
 
-A successful CI clean-install workflow verifies the Compose configuration, builds the containers, starts the isolated services, authenticates to the paper API, and runs Core's market-data doctor and persistent status checks. The separate API integration workflow verifies a real signed Kraken paper buy and Core lot settlement.
+A successful CI clean-install workflow verifies the Compose configuration, builds the containers, starts the isolated services, authenticates to the paper API, runs Core's market-data doctor and persistent status checks, and executes one full paper-only strategy cycle. The separate API integration workflow verifies a signed Kraken paper MARKET BUY and Core lot settlement.
 
-The Architect's Bazzite machine still requires the installer to be run locally. CI success is not a claim that the local machine has already been installed or verified.
+VCAP shard automation remains disabled until its approved selection/batching/recycling policy is configured. DTTP/DTSL remains exclusive to TOP_LOSER_REVERSAL and is not enabled until its ratchet specification is implemented. The Architect's Bazzite machine still requires local install/upgrade, backup/restore, rollback, and service-preservation verification. CI success is not a claim that the local machine has already been installed or verified.
