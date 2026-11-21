@@ -31,6 +31,9 @@ jobs:
       - name: Compile Alpha 2.0 modules and scripts
         working-directory: spectra-finance-core
         run: python -m compileall -q spectra_alpha2 scripts
+      - name: Validate Bazzite installer shell syntax
+        working-directory: spectra-finance-core
+        run: bash -n scripts/install_bazzite_alpha2.sh
 
   alpha2-clean-compose-install:
     runs-on: ubuntu-latest
