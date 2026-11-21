@@ -15,9 +15,9 @@ class FakeClient:
     async def get_tickers(self):
         now=time.time()
         return {
-            "BTC-USDT":{"price":65000,"quote_volume":1100000000,"base_volume":80,"timestamp":now},
-            "ETH-USDT":{"price":3500,"quote_volume":1500000,"base_volume":400,"timestamp":now},
-            "LOSER-USDT":{"price":5,"quote_volume":1200000,"base_volume":240000,"timestamp":now},
+            "BTC-USDT":{"price":65000,"quote_volume":15000000,"base_volume":80,"timestamp":now},
+            "ETH-USDT":{"price":3500,"quote_volume":12000000,"base_volume":400,"timestamp":now},
+            "LOSER-USDT":{"price":5,"quote_volume":11000000,"base_volume":240000,"timestamp":now},
             "USDC-USDT":{"price":1,"quote_volume":900000,"base_volume":900000,"timestamp":now},
             "DOGE-USDT":{"price":0.1,"quote_volume":20000,"base_volume":200000,"timestamp":now},
             "OLD-USDT":{"price":1,"quote_volume":1000000,"base_volume":1000000,"timestamp":now-1000},
