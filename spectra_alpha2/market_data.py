@@ -194,7 +194,9 @@ class ResearchScanner:
         quote_volume = _decimal(ticker.get("quote_volume"))
         base_volume = _decimal(ticker.get("base_volume"))
         timestamp = _safe_float(ticker.get("timestamp"))
-        if price <= ZERO or quote_volume < self.min_quote_volume_24h or base_volume <= ZERO:
+        if price <= ZERO or quote_volume <= ZERO or base_volume <= ZERO:
+            return None
+        if require_gainer and quote_volume < self.min_quote_volume_24h:
             return None
         if timestamp <= 0 or now - timestamp > self.max_ticker_age_seconds or timestamp > now + 5:
             return None
@@ -202,7 +204,9 @@ class ResearchScanner:
         min_order = _decimal(rule.get("min_order_size"))
         base_increment = _decimal(rule.get("min_base_amount_increment"))
         price_increment = _decimal(rule.get("min_price_increment"))
-        if min_notional > Decimal("20") or min_order <= ZERO or base_increment <= ZERO or price_increment <= ZERO:
+        if min_notional <= ZERO or min_order <= ZERO or base_increment <= ZERO or price_increment <= ZERO:
+            return None
+        if require_gainer and min_notional > Decimal("20"):
             return None
 
         change = ZERO
