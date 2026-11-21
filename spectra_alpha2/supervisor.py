@@ -157,6 +157,13 @@ class PortfolioSupervisor:
                     pending_orders += 1
                 else:
                     skipped += 1
+            latest_state = self.governor.get_position_state(position["position_id"])
+            if latest_state is not None and latest_state["total_quantity"] == 0:
+                self.governor.close_position(
+                    position["position_id"],
+                    confirmed_all_exits_reconciled=True,
+                )
+                blocked_assets.add(asset_id)
         return exit_orders, pending_orders, skipped, realized_fills, blocked_assets
 
     async def run_once(self) -> CycleReport:
