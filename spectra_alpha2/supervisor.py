@@ -131,6 +131,10 @@ class PortfolioSupervisor:
                         price_increment=candidate.price_increment,
                         strategy_origin=state["strategy_origin"],
                     )
+                    # Do not park a resting exit order. Submit the LIMIT SELL only
+                    # when the current bid has reached the fee-aware target.
+                    if candidate.best_bid < draft.limit_price:
+                        continue
                     authorization = self.governor.authorize_exit(
                         lot["lot_id"],
                         quantity=draft.base_quantity,
