@@ -481,58 +481,11 @@ class CapitalGovernor:
         limit_price: Decimal,
         idempotency_key: str,
     ) -> ExitAuthorization:
-        """Reserve a lot quantity for a fee-aware +1.74% net take-profit sell."""
+        """Fail closed until strategy-origin-specific adaptive exit policy is implemented."""
         self._assert_paper()
-        qty=self._positive(quantity,"quantity")
-        price=self._positive(limit_price,"limit_price")
-        if not idempotency_key:
-            raise ValueError("idempotency_key is required")
-        now=time.time()
-        authorization_id=str(uuid.uuid4())
-        with self._connect() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                lot=conn.execute("SELECT * FROM position_lots WHERE lot_id=?",(lot_id,)).fetchone()
-                if lot is None or lot["status"] != "ACTIVE":
-                    raise CapitalDenied("only an active lot can receive an exit authorization")
-                remaining=Decimal(lot["remaining_quantity"])
-                reserved_exit=Decimal(lot["reserved_exit_quantity"])
-                available=remaining-reserved_exit
-                if qty>available:
-                    raise CapitalDenied("exit quantity exceeds unreserved remaining lot quantity")
-                basis=Decimal(lot["remaining_cost_basis_quote"])*qty/remaining
-                required_gross=gross_sell_notional_for_net_target(basis)
-                minimum_price=required_gross/qty
-                if price<minimum_price:
-                    raise CapitalDenied("sell limit price does not achieve the +1.74% net take-profit after fees")
-                expected_gross=qty*price
-                fee_reserve=expected_gross*SELL_FEE_RATE*Decimal("1.05")
-                conn.execute(
-                    "UPDATE position_lots SET reserved_exit_quantity=?,updated_at=? WHERE lot_id=?",
-                    (str(reserved_exit+qty),now,lot_id),
-                )
-                conn.execute(
-                    """INSERT INTO exit_authorizations
-                    (authorization_id,idempotency_key,position_id,asset_id,lot_id,quantity,
-                     minimum_price,expected_gross_proceeds,fee_reserve,status,expires_at,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (authorization_id,idempotency_key,lot["position_id"],lot["asset_id"],lot_id,
-                     str(qty),str(minimum_price),str(expected_gross),str(fee_reserve),
-                     ReservationStatus.RESERVED.value,now+self.reservation_ttl_seconds,now,now),
-                )
-                self._event(conn,"EXIT_QUANTITY_RESERVED",authorization_id,{
-                    "lot_id":lot_id,"quantity":str(qty),"minimum_price":str(minimum_price),
-                    "expected_gross_proceeds":str(expected_gross),
-                })
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
-        return ExitAuthorization(
-            authorization_id,idempotency_key,lot["position_id"],lot["asset_id"],lot_id,
-            qty,minimum_price,expected_gross,fee_reserve,
+        raise CapitalDenied(
+            "Static take-profit exits are disabled; ordinary-entry exits are unspecified and DTTP/DTSL is restricted to approved TOP_LOSER_REVERSAL positions"
         )
-
     def consume_exit_authorization(
         self,
         authorization_id: str,
