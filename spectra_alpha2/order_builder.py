@@ -72,6 +72,7 @@ def build_buy_market_order(
         "trade_type": "BUY",
         "amount": str(quantity),
         "order_type": "MARKET",
+        "max_execution_price": str(maximum_execution_price),
         "position_action": "OPEN",
     }
     return PaperOrderDraft(body, quote_notional, maximum_execution_price, quantity)
