@@ -98,6 +98,9 @@ jobs:
         run: |
           docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 doctor
           docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 status
+      - name: Execute one full paper-only strategy cycle
+        working-directory: spectra-finance-core
+        run: docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 run-once
       - name: Capture clean-install logs on failure
         if: failure()
         working-directory: spectra-finance-core
