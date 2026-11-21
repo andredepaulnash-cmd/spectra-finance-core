@@ -540,18 +540,17 @@ class CapitalGovernor:
             raise CapitalDenied("order market does not match the reserved asset")
         if request_body.get("trade_type") != "BUY" or request_body.get("position_action") != "OPEN":
             raise CapitalDenied("this reservation authorizes only an opening paper buy")
-        if request_body.get("order_type") != "LIMIT" or request_body.get("price") in (None, ""):
-            raise CapitalDenied("Alpha 2.0 entries/recovery must use a marketable LIMIT order")
+        if request_body.get("order_type") != "MARKET" or request_body.get("price") not in (None, ""):
+            raise CapitalDenied("Alpha 2.0 entries and recovery purchases must be MARKET BUY orders without a limit price")
         try:
             base_amount=Decimal(str(request_body.get("amount")))
-            limit_price=Decimal(str(request_body.get("price")))
         except Exception as exc:
-            raise CapitalDenied("order amount and limit price must be decimal values") from exc
-        if not base_amount.is_finite() or base_amount <= ZERO or not limit_price.is_finite() or limit_price <= ZERO:
-            raise CapitalDenied("order amount and limit price must be positive")
-        quote_notional=base_amount*limit_price
-        if quote_notional > Decimal(row["gross_notional"]):
-            raise CapitalDenied("order quote notional exceeds the reserved CapitalGovernor amount")
+            raise CapitalDenied("market-buy base amount must be a decimal value") from exc
+        if not base_amount.is_finite() or base_amount <= ZERO:
+            raise CapitalDenied("market-buy base amount must be positive")
+        # The MARKET order carries base quantity only. Its quote spend is bounded
+        # by conservative sizing in Core and by this signed, reservation-backed
+        # receipt. Actual gross plus fee is checked again during fill settlement.
         intent="ENTRY" if row["action_id"] == "INITIAL" else "RECOVERY"
         return _issue_executor_dispatch_receipt(
             request_body=request_body,
