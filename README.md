@@ -22,10 +22,10 @@ A paper-trading-only portfolio automation system. Alpha 2.0 is developed on the 
 
 ## Confirmed Alpha 2.0 strategy boundaries
 
-- Primary entries are quality-filtered 24-hour gainers with at least $10M 24-hour quote volume.
+- Primary entries are quality-filtered 24-hour gainers. Quote-asset universe and liquidity metric/floor require explicit configuration; no entries are admitted when those settings are absent.
 - Every purchase is a MARKET BUY. LIMIT BUY and resting buy orders are prohibited.
 - Ordinary `TOP_GAINER` positions use the fixed +1.74% net take-profit after 0.40% buy and sell fee assumptions; exit sells are LIMIT orders and are not submitted until the current bid reaches the fee-aware target.
-- `TOP_LOSER_REVERSAL` is a separate research/entry pathway. Adaptive DTTP/DTSL is exclusive to that origin and is not applied to ordinary gainer positions.
+- `TOP_LOSER_REVERSAL` is a separate, not-yet-enabled research/entry pathway. The discussed $1M research and $10M entry-liquidity targets still need metric/quote-asset semantics. Adaptive DTTP/DTSL is exclusive to that origin and is not applied to ordinary gainer positions.
 - VCAP is independent shard recovery, not DCA. VCAP automation remains disabled until its approved shard-selection, batching, sizing, and recycling policy is configured.
 - The -24% outer boundary stops automatic patching and flags manual review.
 
