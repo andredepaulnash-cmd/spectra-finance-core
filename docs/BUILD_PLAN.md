@@ -18,8 +18,9 @@
 - [x] ENTRY, PRESS, ROTATION share the initial-entry pool; RECOVERY is separate.
 - [x] 0.40% buy and 0.40% sell fee assumptions; ordinary TOP_GAINER fixed take-profit is +1.74% net after fees.
 - [x] Every purchase is MARKET BUY; LIMIT orders are for exit sells only.
-- [x] Primary discovery is quality-filtered 24-hour gainers; $10M 24-hour quote-volume entry floor.
-- [x] Separate top-loser research pathway: $1M research floor; $10M entry liquidity; flexible RSI/BBWP reversal evidence.
+- [x] Primary discovery is quality-filtered 24-hour gainers.
+- [ ] Confirm eligible quote assets and exact entry-liquidity metric/normalization. The discussed $10M target is not silently treated as USDT quote volume.
+- [ ] Confirm top-loser research and entry liquidity metric/quote-asset semantics for the discussed $1M research and $10M entry targets; keep reversal entry disabled until confirmed.
 - [x] DTTP/DTSL applies only to TOP_LOSER_REVERSAL positions.
 - [x] VCAP is independent shard recovery, not DCA; maximum two capital-bearing/in-flight shards per asset.
 - [x] -24% outer boundary stops automatic patching and flags manual review.
@@ -50,7 +51,8 @@ No code may silently fill these gaps with assistant-invented thresholds. Related
 - [x] Read-only Kraken paper ticker/trading-rule access.
 - [x] Public hourly candle client for true 24-hour change measurement.
 - [x] Positive 24-hour gainer filtering.
-- [x] $10M 24-hour quote-volume entry floor.
+- [x] Scanner fails closed unless quote assets and a liquidity threshold are explicitly configured.
+- [ ] Configure the approved quote-asset universe and liquidity metric; do not assume USDT-only or USD-normalized volume.
 - [x] Freshness, quote-asset, exchange-rule, and spread checks.
 - [x] Condor recommendation-only ranking with capped momentum, liquidity, and spread scoring.
 - [ ] Verify the public Kraken candle endpoint in clean-install CI and actual Bazzite runtime.
