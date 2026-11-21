@@ -53,7 +53,7 @@ def authorization(action_id="INITIAL"):
 def order_body():
     return {
         "account_name":"master_account","connector_name":"kraken_paper_trade",
-        "trading_pair":"BTC-USDT","trade_type":"BUY","amount":"0.2",
+        "trading_pair":"BTC-USDT","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.2",
         "order_type":"MARKET","max_execution_price":"100","position_action":"OPEN",
     }
 
