@@ -37,18 +37,6 @@ class CapitalGovernorTests(unittest.TestCase):
             average_price=price,
         )
 
-    def sell_lot(self,lot_id,*,quantity,price,fee,idempotency_key,order_id):
-        auth=self.gov.authorize_exit(
-            lot_id,quantity=quantity,limit_price=price,idempotency_key=idempotency_key
-        )
-        self.gov.consume_exit_authorization(
-            auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade"
-        )
-        self.gov.bind_exit_order_id(auth.authorization_id,order_id=order_id)
-        return self.gov.settle_exit_fill(
-            auth.authorization_id,actual_quantity=quantity,average_price=price,actual_fee=fee
-        )
-
     def open_position(self, asset="BTC-USDT", position="p1"):
         auth = self.gov.reserve_initial_position(
             position_id=position,
@@ -122,46 +110,12 @@ class CapitalGovernorTests(unittest.TestCase):
             self.gov.issue_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
 
 
-    def test_exit_authorization_enforces_net_target_and_prevents_double_selling(self):
+    def test_static_exit_authorization_is_disabled_pending_strategy_specific_exit_policy(self):
         self.open_position()
         with self.assertRaises(CapitalDenied):
-            self.gov.authorize_exit("p1:INITIAL",quantity=Decimal("0.1"),limit_price=Decimal("100"),idempotency_key="bad-price")
-        with self.assertRaises(CapitalDenied):
-            self.gov.authorize_exit("p1:INITIAL",quantity=Decimal("0.3"),limit_price=Decimal("110"),idempotency_key="too-much")
-        auth=self.gov.authorize_exit(
-            "p1:INITIAL",quantity=Decimal("0.1"),limit_price=Decimal("105"),idempotency_key="exit-one"
-        )
-        with self.assertRaises(CapitalDenied):
             self.gov.authorize_exit(
-                "p1:INITIAL",quantity=Decimal("0.2"),limit_price=Decimal("105"),idempotency_key="exit-two"
+                "p1:INITIAL",quantity=Decimal("0.1"),limit_price=Decimal("105"),idempotency_key="static-exit"
             )
-        self.gov.consume_exit_authorization(
-            auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade"
-        )
-        body={
-            "account_name":"master_account","connector_name":"kraken_paper_trade",
-            "trading_pair":"BTC-USDT","trade_type":"SELL","amount":"0.1",
-            "order_type":"LIMIT","price":"105","position_action":"OPEN",
-        }
-        with self.assertRaises(CapitalDenied):
-            self.gov.issue_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
-        private=Ed25519PrivateKey.generate()
-        raw=private.private_bytes(serialization.Encoding.Raw,serialization.PrivateFormat.Raw,serialization.NoEncryption())
-        env={
-            "SPECTRA_PAPER_ONLY":"true","SPECTRA_ALLOW_LIVE_EXECUTION":"false",
-            "SPECTRA_DISPATCH_POLICY_VERSION":"spectra-alpha2-v1",
-            "SPECTRA_DISPATCH_PRIVATE_KEY":base64.urlsafe_b64encode(raw).decode().rstrip("="),
-        }
-        with patch.dict(os.environ,env,clear=True):
-            receipt=self.gov.issue_exit_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
-        self.assertTrue(receipt.token)
-        self.gov.bind_exit_order_id(auth.authorization_id,order_id="paper-exit-one")
-        realized=self.gov.settle_exit_fill(
-            auth.authorization_id,actual_quantity=Decimal("0.1"),
-            average_price=Decimal("105"),actual_fee=Decimal("0.042"),
-        )
-        self.assertEqual(realized,Decimal("0.418"))
-
 
     def test_outer_boundary_flags_manual_review_without_resetting_reference_or_patching(self):
         self.open_position()
@@ -212,7 +166,7 @@ class CapitalGovernorTests(unittest.TestCase):
         self.assertEqual(sum(results),74)
         self.assertEqual(self.gov.snapshot()["open_positions"],74)
 
-    def test_dca_is_rejected_and_vcap_is_disabled_by_default(self):
+    def test_dca_and_unconfigured_vcap_recovery_are_rejected(self):
         self.open_position()
         with self.assertRaises(CapitalDenied):
             self.gov.reserve_addition(
@@ -221,77 +175,25 @@ class CapitalGovernorTests(unittest.TestCase):
             )
         with self.assertRaises(CapitalDenied):
             self.gov.reserve_addition(
-                position_id="p1",action_id="VCAP_FAT1_1",gross_notional=Decimal("20"),
+                position_id="p1",action_id="VCAP_SHARD",gross_notional=Decimal("20"),
                 current_price=Decimal("92.23"),idempotency_key="vcap-disabled",
-                action_type="VCAP",shard_id="p1:VCAP_FAT1_1"
+                action_type="VCAP",shard_id="p1:VCAP_SHARD"
             )
 
-    def test_vcap_uses_recovery_pool_and_enforces_two_shards_per_asset(self):
-        self.gov=CapitalGovernor(self.db,environment=SAFE_ENV,enable_vcap_automation=True)
-        self.open_position()
-        shards=[]
-        for i,(amount,price,step_id) in enumerate((
-            (Decimal("20"),Decimal("92.23"),"VCAP_FAT1_1"),
-            (Decimal("40"),Decimal("90.26"),"VCAP_FAT1_2"),
-        )):
-            auth=self.gov.reserve_addition(
-                position_id="p1",action_id=step_id,gross_notional=amount,
-                current_price=price,idempotency_key=f"vcap-{i}",action_type="VCAP",shard_id=f"p1:{step_id}"
-            )
-            self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
-            self.settle(auth,gross=amount,fee=amount*Decimal("0.004"),quantity=amount/Decimal("100"),price=Decimal("100"),order_id=f"paper-vcap-{i}")
-            self.gov.activate_vcap_shard(f"p1:{step_id}")
-            shards.append(f"p1:{step_id}")
-        with self.assertRaises(CapitalDenied):
-            self.gov.reserve_addition(
-                position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
-                current_price=Decimal("89.26"),idempotency_key="vcap-3",
-                action_type="VCAP",shard_id="p1:VCAP_FAT1_3"
-            )
-        self.sell_lot(shards[0],quantity=Decimal("0.2"),price=Decimal("110"),fee=Decimal("0.088"),idempotency_key="sell-vcap-0",order_id="paper-sell-vcap-0")
-        self.gov.resolve_vcap_shard(shards[0])
-        allowed=self.gov.reserve_addition(
-            position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
-            current_price=Decimal("89.26"),idempotency_key="vcap-3",action_type="VCAP",shard_id="p1:VCAP_FAT1_3"
-        )
-        self.assertEqual(allowed.pool,CapitalPool.RECOVERY)
-
-    def test_unfilled_vcap_reservation_cannot_be_reserved_twice(self):
-        self.gov=CapitalGovernor(self.db,environment=SAFE_ENV,enable_vcap_automation=True)
-        self.open_position()
-        auth=self.gov.reserve_addition(
-            position_id="p1",action_id="VCAP_FAT1_1",gross_notional=Decimal("20"),
-            current_price=Decimal("92.23"),idempotency_key="vcap-reserved-1",
-            action_type="VCAP",shard_id="p1:VCAP_FAT1_1"
-        )
-        self.assertIsNotNone(auth.authorization_id)
-        with self.assertRaises(CapitalDenied):
-            self.gov.reserve_addition(
-                position_id="p1",action_id="VCAP_FAT1_1",gross_notional=Decimal("20"),
-                current_price=Decimal("92.23"),idempotency_key="vcap-reserved-2",
-                action_type="VCAP",shard_id="p1:VCAP_FAT1_1"
-            )
-
-    def test_asset_replacement_requires_reconciled_close(self):
+    def test_position_replacement_is_blocked_without_approved_exit_policy(self):
         self.open_position()
         with self.assertRaises(CapitalDenied):
             self.gov.close_position("p1")
-        before=self.gov.snapshot()["pools"]["INITIAL"]["available"]
-        self.assertEqual(before,Decimal("6250")-Decimal("20.08"))
-        first=self.sell_lot("p1:INITIAL",quantity=Decimal("0.1"),price=Decimal("105"),fee=Decimal("0.042"),idempotency_key="sell-initial-1",order_id="paper-sell-initial-1")
-        self.assertEqual(first,Decimal("0.418"))
-        after_first=self.gov.snapshot()["pools"]["INITIAL"]["available"]
-        self.assertEqual(after_first,before+Decimal("10.458"))
+        with self.assertRaises(CapitalDenied):
+            self.gov.authorize_exit(
+                "p1:INITIAL",quantity=Decimal("0.2"),limit_price=Decimal("105"),idempotency_key="no-exit-policy"
+            )
         with self.assertRaises(CapitalDenied):
             self.gov.close_position("p1",confirmed_all_exits_reconciled=True)
-        second=self.sell_lot("p1:INITIAL",quantity=Decimal("0.1"),price=Decimal("105"),fee=Decimal("0.042"),idempotency_key="sell-initial-2",order_id="paper-sell-initial-2")
-        self.assertEqual(second,Decimal("0.418"))
-        realized=self.gov.close_position("p1",confirmed_all_exits_reconciled=True)
-        self.assertEqual(realized,Decimal("0.836"))
-        replacement=self.gov.reserve_initial_position(
-            position_id="p2",asset_id="BTC-USDT",reference_price=Decimal("101"),idempotency_key="initial-p2"
-        )
-        self.assertEqual(replacement.asset_id,"BTC-USDT")
+        with self.assertRaises(CapitalDenied):
+            self.gov.reserve_initial_position(
+                position_id="p2",asset_id="BTC-USDT",reference_price=Decimal("101"),idempotency_key="initial-p2"
+            )
 
     def test_submitted_reservation_cannot_be_released_without_cancel_confirmation(self):
         auth=self.gov.reserve_initial_position(
