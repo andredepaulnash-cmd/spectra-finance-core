@@ -47,7 +47,7 @@ class Alpha2Config:
         interval=float(env.get("SPECTRA_SCAN_INTERVAL_SECONDS","30"))
         timeout=float(env.get("SPECTRA_ORDER_TIMEOUT_SECONDS","60"))
         if interval<=0 or timeout<=0: raise ValueError("scan and order timeout values must be positive")
-        min_volume=decimal("SPECTRA_MIN_QUOTE_VOLUME_24H","100000")
+        min_volume=decimal("SPECTRA_MIN_QUOTE_VOLUME_24H","10000000")
         max_spread=decimal("SPECTRA_MAX_SPREAD_FRACTION","0.003")
         max_slippage=decimal("SPECTRA_MAX_SLIPPAGE_FRACTION","0.001")
         if min_volume<0 or not Decimal("0")<=max_spread<=Decimal("0.02") or not Decimal("0")<=max_slippage<=Decimal("0.02"):
