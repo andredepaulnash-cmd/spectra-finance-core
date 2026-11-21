@@ -548,9 +548,15 @@ class CapitalGovernor:
             raise CapitalDenied("market-buy base amount must be a decimal value") from exc
         if not base_amount.is_finite() or base_amount <= ZERO:
             raise CapitalDenied("market-buy base amount must be positive")
-        # The MARKET order carries base quantity only. Its quote spend is bounded
-        # by conservative sizing in Core and by this signed, reservation-backed
-        # receipt. Actual gross plus fee is checked again during fill settlement.
+        try:
+            maximum_execution_price=Decimal(str(request_body.get("max_execution_price")))
+        except Exception as exc:
+            raise CapitalDenied("market-buy maximum execution price must be a decimal value") from exc
+        if not maximum_execution_price.is_finite() or maximum_execution_price <= ZERO:
+            raise CapitalDenied("market-buy maximum execution price must be positive")
+        if base_amount * maximum_execution_price > Decimal(row["gross_notional"]):
+            raise CapitalDenied("market-buy quantity at its signed price ceiling exceeds the reserved quote amount")
+        # Actual gross plus fee is checked again during fill settlement.
         intent="ENTRY" if row["action_id"] == "INITIAL" else "RECOVERY"
         return _issue_executor_dispatch_receipt(
             request_body=request_body,
