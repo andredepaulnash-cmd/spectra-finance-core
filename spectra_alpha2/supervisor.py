@@ -89,11 +89,11 @@ class PortfolioSupervisor:
                 manual_review_flags += 1
         return manual_review_flags
 
-    async def _process_exits(self, positions: list[dict]) -> tuple[int, int, int, set[str]]:
+    async def _process_exits(self, positions: list[dict]) -> tuple[int, int, int, int, set[str]]:
         """Apply fixed +1.74% net take-profit to TOP_GAINER lots only."""
         inspect_pair = getattr(self.scanner, "inspect_pair", None)
         if inspect_pair is None:
-            return 0, 0, 0, set()
+            return 0, 0, 0, 0, set()
         exit_orders = pending_orders = skipped = 0
         realized_fills = 0
         blocked_assets: set[str] = set()
@@ -157,7 +157,7 @@ class PortfolioSupervisor:
                     pending_orders += 1
                 else:
                     skipped += 1
-        return exit_orders, pending_orders, skipped, blocked_assets | set()
+        return exit_orders, pending_orders, skipped, realized_fills, blocked_assets
 
     async def run_once(self) -> CycleReport:
         self.safety.assert_paper_mode()
@@ -165,7 +165,7 @@ class PortfolioSupervisor:
         positions_before = self.governor.list_positions()
         manual_review_flags = await self._process_recovery(positions_before)
         positions_for_exit = self.governor.list_positions()
-        exit_orders, exit_pending, exit_skipped, blocked_assets = await self._process_exits(positions_for_exit)
+        exit_orders, exit_pending, exit_skipped, realized_fills, blocked_assets = await self._process_exits(positions_for_exit)
 
         # New admissions come only from the scanner's quality-filtered 24-hour gainer universe.
         candidates = await self.scanner.scan()
