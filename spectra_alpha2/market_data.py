@@ -122,7 +122,8 @@ class ResearchScanner:
         self,
         data_client: HummingbotPaperDataClient,
         *,
-        min_quote_volume_24h: Decimal = Decimal("10000000"),
+        min_quote_volume_24h: Decimal | None = None,
+        entry_quote_assets: frozenset[str] | set[str] = frozenset(),
         max_spread_fraction: Decimal = Decimal("0.003"),
         min_change_24h_fraction: Decimal = ZERO,
         max_ticker_age_seconds: int = 60,
@@ -132,7 +133,14 @@ class ResearchScanner:
         clock=time.time,
     ):
         self.client = data_client
+        if min_quote_volume_24h is not None and (
+            not isinstance(min_quote_volume_24h, Decimal)
+            or not min_quote_volume_24h.is_finite()
+            or min_quote_volume_24h <= ZERO
+        ):
+            raise ValueError("min_quote_volume_24h must be a positive Decimal when configured")
         self.min_quote_volume_24h = min_quote_volume_24h
+        self.entry_quote_assets = frozenset(asset.strip().upper() for asset in entry_quote_assets if asset.strip())
         self.max_spread_fraction = max_spread_fraction
         self.min_change_24h_fraction = min_change_24h_fraction
         self.max_ticker_age_seconds = max_ticker_age_seconds
@@ -183,10 +191,12 @@ class ResearchScanner:
         now: float,
         require_gainer: bool,
     ) -> MarketCandidate | None:
-        if not pair.endswith("-USDT") or "-" not in pair:
+        if "-" not in pair:
             return None
         base, quote = pair.rsplit("-", 1)
-        if quote != "USDT" or not base or base in {"USDT", "USDC", "DAI", "TUSD", "USDE", "FDUSD"}:
+        if not base or not quote or base in {"USDT", "USDC", "DAI", "TUSD", "USDE", "FDUSD"}:
+            return None
+        if require_gainer and quote not in self.entry_quote_assets:
             return None
         if not isinstance(rule, dict) or not rule.get("supports_limit_orders", False):
             return None
@@ -196,7 +206,9 @@ class ResearchScanner:
         timestamp = _safe_float(ticker.get("timestamp"))
         if price <= ZERO or quote_volume <= ZERO or base_volume <= ZERO:
             return None
-        if require_gainer and quote_volume < self.min_quote_volume_24h:
+        if require_gainer and (
+            self.min_quote_volume_24h is None or quote_volume < self.min_quote_volume_24h
+        ):
             return None
         if timestamp <= 0 or now - timestamp > self.max_ticker_age_seconds or timestamp > now + 5:
             return None
@@ -264,6 +276,9 @@ class ResearchScanner:
             return None
 
     async def scan(self) -> list[MarketCandidate]:
+        # Entry universe and liquidity semantics are Architect-configured, not guessed.
+        if not self.entry_quote_assets or self.min_quote_volume_24h is None:
+            return []
         tickers, rules = await asyncio.gather(
             self.client.get_tickers(),
             self.client.get_trading_rules(),
@@ -273,7 +288,7 @@ class ResearchScanner:
         for pair, ticker in tickers.items():
             if not isinstance(ticker, dict):
                 continue
-            if not pair.endswith("-USDT") or "-" not in pair:
+            if "-" not in pair or pair.rsplit("-",1)[1] not in self.entry_quote_assets:
                 continue
             rule = rules.get(pair)
             if not isinstance(rule, dict):
