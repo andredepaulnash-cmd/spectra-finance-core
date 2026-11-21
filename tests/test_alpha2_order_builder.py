@@ -2,7 +2,7 @@ from decimal import Decimal
 import unittest
 
 from spectra_alpha2.market_data import MarketCandidate
-from spectra_alpha2.order_builder import build_buy_market_order
+from spectra_alpha2.order_builder import build_buy_market_order, build_take_profit_limit_order
 
 
 def candidate():
@@ -28,6 +28,32 @@ class PaperOrderBuilderTests(unittest.TestCase):
         self.assertGreaterEqual(order.limit_price,candidate().best_ask)
         self.assertLessEqual(order.gross_quote_notional,Decimal("20"))
         self.assertEqual(order.gross_quote_notional,order.base_quantity*order.limit_price)
+
+
+    def test_fixed_take_profit_is_net_of_buy_and_sell_fees_for_top_gainers(self):
+        order=build_take_profit_limit_order(
+            trading_pair="BTC-USDT",
+            remaining_quantity=Decimal("1"),
+            fee_inclusive_cost_basis=Decimal("100.40"),
+            base_amount_increment=Decimal("0.001"),
+            price_increment=Decimal("0.01"),
+        )
+        net=order.gross_quote_notional*Decimal("0.996")
+        self.assertGreaterEqual(net,Decimal("100.40")*Decimal("1.0174"))
+        self.assertEqual(order.request_body["trade_type"],"SELL")
+        self.assertEqual(order.request_body["order_type"],"LIMIT")
+        self.assertEqual(order.request_body["strategy_origin"],"TOP_GAINER")
+
+    def test_fixed_take_profit_is_not_available_for_top_loser_reversal(self):
+        with self.assertRaises(ValueError):
+            build_take_profit_limit_order(
+                trading_pair="BTC-USDT",
+                remaining_quantity=Decimal("1"),
+                fee_inclusive_cost_basis=Decimal("100.40"),
+                base_amount_increment=Decimal("0.001"),
+                price_increment=Decimal("0.01"),
+                strategy_origin="TOP_LOSER_REVERSAL",
+            )
 
     def test_market_buy_rejects_budget_below_exchange_minimum(self):
         with self.assertRaises(ValueError):
