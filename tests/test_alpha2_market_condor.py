@@ -42,7 +42,7 @@ class FakeClient:
 
 @pytest.mark.asyncio
 async def test_research_scanner_filters_quote_volume_spread_staleness_and_quote_asset():
-    scanner=ResearchScanner(FakeClient(),clock=time.time)
+    scanner=ResearchScanner(FakeClient(),entry_quote_assets={"USDT"},min_quote_volume_24h=Decimal("10000000"),clock=time.time)
     candidates=await scanner.scan()
     assert [x.trading_pair for x in candidates]==["BTC-USDT","ETH-USDT"]
     assert all(x.quote_asset=="USDT" for x in candidates)
