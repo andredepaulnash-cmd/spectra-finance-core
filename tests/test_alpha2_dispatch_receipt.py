@@ -36,8 +36,8 @@ def trade_body():
         "trading_pair":"BTC-USDT",
         "trade_type":"BUY",
         "amount":"0.0003",
-        "order_type":"LIMIT",
-        "price":"65000",
+        "order_type":"MARKET",
+        "max_execution_price":"65000",
         "position_action":"OPEN",
     }
 
