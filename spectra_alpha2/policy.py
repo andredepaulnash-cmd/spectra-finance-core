@@ -14,7 +14,6 @@ VCAP_RECOVERY_POOL = Decimal("18750")
 MAX_OPEN_POSITIONS = 74
 INITIAL_ENTRY_NOTIONAL = Decimal("20")
 MAX_ASSET_GROSS_NOTIONAL = Decimal("1000")
-DCA_ADDITION_NOTIONAL = Decimal("20")
 BUY_FEE_RATE = Decimal("0.004")
 SELL_FEE_RATE = Decimal("0.004")
 NET_TAKE_PROFIT_RATE = Decimal("0.0174")
@@ -38,12 +37,7 @@ class LadderStep:
     phase: VCAPPhase
 
 
-DCA_STEPS: tuple[LadderStep, ...] = (
-    LadderStep("DCA_1", Decimal("-0.0274"), DCA_ADDITION_NOTIONAL, VCAPPhase.DCA),
-    LadderStep("DCA_2", Decimal("-0.0444"), DCA_ADDITION_NOTIONAL, VCAPPhase.DCA),
-    LadderStep("DCA_3", Decimal("-0.0674"), DCA_ADDITION_NOTIONAL, VCAPPhase.DCA),
-)
-
+# VCAP shard amounts/thresholds are provisional and remain disabled by default.
 VCAP_STEPS: tuple[LadderStep, ...] = (
     LadderStep("VCAP_FAT1_1", Decimal("-0.0777"), Decimal("20"), VCAPPhase.FAT_1),
     LadderStep("VCAP_FAT1_2", Decimal("-0.0974"), Decimal("40"), VCAPPhase.FAT_1),
@@ -67,17 +61,11 @@ def _require_decimal(value: Decimal, name: str) -> Decimal:
 def validate_portfolio_policy() -> None:
     if INITIAL_ENTRY_BUDGET + VCAP_RECOVERY_POOL != PORTFOLIO_EQUITY:
         raise ValueError("capital pools must equal simulated portfolio equity")
-    if sum((step.addition for step in DCA_STEPS), ZERO) != Decimal("60"):
-        raise ValueError("DCA additions must total $60 per asset")
     if sum((step.addition for step in VCAP_STEPS), ZERO) != Decimal("920"):
         raise ValueError("VCAP ladder must total $920 per asset")
-    scheduled = (
-        INITIAL_ENTRY_NOTIONAL
-        + sum((s.addition for s in DCA_STEPS), ZERO)
-        + sum((s.addition for s in VCAP_STEPS), ZERO)
-    )
-    if scheduled != MAX_ASSET_GROSS_NOTIONAL:
-        raise ValueError("scheduled per-asset notional must equal the $1,000 cap")
+    scheduled = INITIAL_ENTRY_NOTIONAL + sum((s.addition for s in VCAP_STEPS), ZERO)
+    if scheduled > MAX_ASSET_GROSS_NOTIONAL:
+        raise ValueError("initial entry plus provisional VCAP shards must remain within the $1,000 per-asset cap")
 
 
 def next_eligible_vcap_step(
