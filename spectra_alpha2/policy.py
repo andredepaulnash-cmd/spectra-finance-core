@@ -18,6 +18,7 @@ INITIAL_ENTRY_NOTIONAL = Decimal("20")
 MAX_ASSET_GROSS_NOTIONAL = Decimal("1000")
 BUY_FEE_RATE = Decimal("0.004")
 SELL_FEE_RATE = Decimal("0.004")
+NET_TAKE_PROFIT_RATE = Decimal("0.0174")
 VCAP_OUTER_BOUNDARY = Decimal("-0.24")
 MAX_ACTIVE_VCAP_SHARDS_PER_ASSET = 2
 
@@ -59,6 +60,14 @@ def validate_asset_exposure(
     if total > MAX_ASSET_GROSS_NOTIONAL:
         raise ValueError("per-asset gross-notional cap exceeded")
     return total
+
+
+def gross_sell_notional_for_net_target(fee_inclusive_cost_basis: Decimal) -> Decimal:
+    """Gross proceeds required to realize the confirmed net target after sell fees."""
+    basis = _require_decimal(fee_inclusive_cost_basis, "fee_inclusive_cost_basis")
+    if basis <= ZERO:
+        raise ValueError("fee_inclusive_cost_basis must be positive")
+    return basis * (ONE + NET_TAKE_PROFIT_RATE) / (ONE - SELL_FEE_RATE)
 
 
 validate_portfolio_policy()
