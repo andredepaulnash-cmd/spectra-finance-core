@@ -588,7 +588,7 @@ class CapitalGovernor:
         self._assert_paper()
         from .dispatch_receipt import _issue_executor_dispatch_receipt
         with self._connect() as conn:
-            row=conn.execute("SELECT * FROM exit_authorizations WHERE authorization_id=?",(authorization_id,)).fetchone()
+            row=conn.execute("SELECT e.*,p.strategy_origin FROM exit_authorizations e JOIN positions p ON p.position_id=e.position_id WHERE e.authorization_id=?",(authorization_id,)).fetchone()
         if row is None or row["status"] != ReservationStatus.SUBMITTED.value:
             raise CapitalDenied("a submitted CapitalGovernor exit authorization is required")
         if request_body.get("account_name")!="master_account" or request_body.get("connector_name")!=PAPER_CONNECTOR:
@@ -654,7 +654,7 @@ class CapitalGovernor:
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
-                auth=conn.execute("SELECT * FROM exit_authorizations WHERE authorization_id=?",(authorization_id,)).fetchone()
+                auth=conn.execute("SELECT e.*,p.strategy_origin FROM exit_authorizations e JOIN positions p ON p.position_id=e.position_id WHERE e.authorization_id=?",(authorization_id,)).fetchone()
                 if auth is None or auth["status"] != ReservationStatus.SUBMITTED.value or not auth["order_id"]:
                     raise CapitalDenied("submitted exit authorization with bound order ID is required")
                 authorized_qty=Decimal(auth["quantity"])
@@ -718,7 +718,7 @@ class CapitalGovernor:
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
-                auth=conn.execute("SELECT * FROM exit_authorizations WHERE authorization_id=?",(authorization_id,)).fetchone()
+                auth=conn.execute("SELECT e.*,p.strategy_origin FROM exit_authorizations e JOIN positions p ON p.position_id=e.position_id WHERE e.authorization_id=?",(authorization_id,)).fetchone()
                 if auth is None or auth["status"] not in {ReservationStatus.RESERVED.value,ReservationStatus.SUBMITTED.value}:
                     raise CapitalDenied("exit authorization is not releasable")
                 if auth["status"]==ReservationStatus.SUBMITTED.value and not confirmed_no_fill:
