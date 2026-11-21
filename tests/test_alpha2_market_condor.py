@@ -17,6 +17,7 @@ class FakeClient:
         return {
             "BTC-USDT":{"price":65000,"quote_volume":5000000,"base_volume":80,"timestamp":now},
             "ETH-USDT":{"price":3500,"quote_volume":1500000,"base_volume":400,"timestamp":now},
+            "LOSER-USDT":{"price":5,"quote_volume":1200000,"base_volume":240000,"timestamp":now},
             "USDC-USDT":{"price":1,"quote_volume":900000,"base_volume":900000,"timestamp":now},
             "DOGE-USDT":{"price":0.1,"quote_volume":20000,"base_volume":200000,"timestamp":now},
             "OLD-USDT":{"price":1,"quote_volume":1000000,"base_volume":1000000,"timestamp":now-1000},
@@ -26,8 +27,13 @@ class FakeClient:
         return {
             pair:{"supports_limit_orders":True,"min_order_size":"0.00001","min_notional_size":"5",
                   "min_base_amount_increment":"0.00001","min_price_increment":"0.1"}
-            for pair in ("BTC-USDT","ETH-USDT","USDC-USDT","DOGE-USDT","OLD-USDT")
+            for pair in ("BTC-USDT","ETH-USDT","LOSER-USDT","USDC-USDT","DOGE-USDT","OLD-USDT")
         }
+    async def get_hourly_candles(self,pair,max_records=28):
+        now=time.time()
+        price={"BTC-USDT":65000,"ETH-USDT":3500,"LOSER-USDT":5}.get(pair,1)
+        prior=price/1.02 if pair!="LOSER-USDT" else price/0.90
+        return [{"timestamp":now-25*3600,"close":prior},{"timestamp":now-24*3600,"close":prior}]
     async def get_order_book(self,pair,depth=5):
         if pair=="ETH-USDT":
             return {"bids":[{"price":"3499","amount":"100"}],"asks":[{"price":"3501","amount":"100"}]}
@@ -52,6 +58,7 @@ def test_condor_ranks_liquid_tight_spread_candidates_and_explains_score():
             spread_fraction=Decimal(str(spread)),ticker_timestamp=time.time(),
             min_order_size=Decimal("0.001"),min_notional_size=Decimal("5"),
             base_amount_increment=Decimal("0.001"),price_increment=Decimal("0.01"),
+            change_24h_fraction=Decimal("0.01") if pair=="LOW-USDT" else Decimal("0.04"),
         )
     ranked=CondorAnalyzer().recommend([
         candidate("LOW-USDT",100000,0.0025),
@@ -87,6 +94,8 @@ async def test_paper_data_client_uses_only_paper_connector_and_public_data():
             return httpx.Response(200,json={"tickers":{"kraken_paper_trade":{"BTC-USDT":{"price":1}}}})
         if request.url.path=="/connectors/kraken_paper_trade/trading-rules":
             return httpx.Response(200,json={"BTC-USDT":{"supports_limit_orders":True}})
+        if request.url.path=="/market-data/candles":
+            return httpx.Response(200,json=[{"timestamp":time.time()-86400,"close":"1"}])
         return httpx.Response(200,json={"trading_pair":"BTC-USDT","bids":[],"asks":[]})
     client=HummingbotPaperDataClient(
         "http://hummingbot",api_username="local-core",api_password="internal-only",
@@ -95,8 +104,11 @@ async def test_paper_data_client_uses_only_paper_connector_and_public_data():
     await client.get_tickers()
     await client.get_trading_rules()
     await client.get_order_book("BTC-USDT")
+    await client.get_hourly_candles("BTC-USDT")
     assert requests[0].url.path=="/market-data/tickers"
     assert requests[0].url.params["connectors"]=="kraken_paper_trade"
     assert requests[1].url.path=="/connectors/kraken_paper_trade/trading-rules"
     assert requests[2].url.path=="/market-data/order-book"
+    assert requests[3].url.path=="/market-data/candles"
+    assert requests[3].content.find(b'"connector_name":"kraken"') >= 0
     await client.close()
