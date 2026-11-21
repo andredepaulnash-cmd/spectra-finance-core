@@ -54,7 +54,7 @@ def order_body():
     return {
         "account_name":"master_account","connector_name":"kraken_paper_trade",
         "trading_pair":"BTC-USDT","trade_type":"BUY","amount":"0.2",
-        "order_type":"LIMIT","price":"100","position_action":"OPEN",
+        "order_type":"MARKET","max_execution_price":"100","position_action":"OPEN",
     }
 
 
