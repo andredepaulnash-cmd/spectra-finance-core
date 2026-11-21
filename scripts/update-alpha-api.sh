@@ -590,11 +590,30 @@ for source in "${CORE_ALPHA2_SOURCES[@]}"; do
     die "Expected existing Alpha 2.0 source $source is missing; refusing an incomplete update."
   fi
 done
+# Reconcile each Alpha 2.0 module against the exact local HEAD base. This
+# preserves uncommitted local edits while applying upstream changes; if both
+# sides changed overlapping lines, git merge-file reports a conflict and the
+# original file remains untouched.
 for source in "${CORE_ALPHA2_SOURCES[@]}"; do
   worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-  if [[ "$worktree_blob" != "${CORE_ALPHA2_NEW_BLOBS[$source]}" ]]; then
-    git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$CORE_DIR/$source"
+  upstream_blob="${CORE_ALPHA2_NEW_BLOBS[$source]}"
+  [[ "$worktree_blob" == "$upstream_blob" ]] && continue
+  base_file="$(mktemp "$LOG_DIR/alpha2-base.XXXXXX")"
+  local_file="$(mktemp "$LOG_DIR/alpha2-local.XXXXXX")"
+  upstream_file="$(mktemp "$LOG_DIR/alpha2-upstream.XXXXXX")"
+  merged_file="$(mktemp "$LOG_DIR/alpha2-merged.XXXXXX")"
+  git -C "$CORE_DIR" show "HEAD:$source" > "$base_file" \
+    || { rm -f "$base_file" "$local_file" "$upstream_file" "$merged_file"; die "Cannot read committed base for $source; preserved local file."; }
+  cp -- "$CORE_DIR/$source" "$local_file"
+  git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$upstream_file"
+  if git merge-file -p "$local_file" "$base_file" "$upstream_file" > "$merged_file"; then
+    install -m --reference="$CORE_DIR/$source" "$merged_file" "$CORE_DIR/$source"
+    say "Merged reviewed Alpha 2.0 changes into $source while preserving nonconflicting local edits."
+  else
+    rm -f "$base_file" "$local_file" "$upstream_file" "$merged_file"
+    die "Overlapping local and upstream edits in $source. Original preserved; manual reconciliation is required."
   fi
+  rm -f "$base_file" "$local_file" "$upstream_file" "$merged_file"
 done
 for source in "${CORE_ALPHA2_SOURCES[@]}"; do
   "$CORE_DIR/.venv/bin/python" -m py_compile "$CORE_DIR/$source"
