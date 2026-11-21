@@ -105,7 +105,7 @@ class PortfolioSupervisorTests(unittest.TestCase):
             actual_quantity=Decimal("0.2"),average_price=Decimal("100"),
         )
 
-    def test_supervisor_executes_next_dca_patch_as_market_buy(self):
+    def test_supervisor_does_not_execute_unapproved_dca_or_vcap_policy(self):
         self._open_position()
         down=candidate(1,Decimal("97"))
         scanner=FakeScanner([down],snapshots={"COIN1-USDT":down})
@@ -115,10 +115,11 @@ class PortfolioSupervisorTests(unittest.TestCase):
         )
         report=asyncio.run(supervisor.run_once())
         state=self.gov.get_position_state("existing-1")
-        self.assertEqual(report.recovery_actions,1)
-        self.assertIn("DCA_1",state["completed_dca_steps"])
-        self.assertEqual(len(state["active_lots"]),2)
-        self.assertEqual(execution.orders,1)
+        self.assertEqual(report.recovery_actions,0)
+        self.assertEqual(state["completed_dca_steps"],set())
+        self.assertEqual(state["completed_vcap_steps"],set())
+        self.assertEqual(len(state["active_lots"]),1)
+        self.assertEqual(execution.orders,0)
 
     def test_supervisor_flags_minus_24_percent_for_manual_review_without_patching(self):
         self._open_position()
