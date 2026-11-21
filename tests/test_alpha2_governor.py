@@ -110,11 +110,30 @@ class CapitalGovernorTests(unittest.TestCase):
             self.gov.issue_dispatch_receipt(auth.authorization_id,request_body=body,now=time.time())
 
 
-    def test_static_exit_authorization_is_disabled_pending_strategy_specific_exit_policy(self):
+    def test_fixed_net_take_profit_is_authorized_only_for_top_gainer_positions(self):
         self.open_position()
         with self.assertRaises(CapitalDenied):
             self.gov.authorize_exit(
-                "p1:INITIAL",quantity=Decimal("0.1"),limit_price=Decimal("105"),idempotency_key="static-exit"
+                "p1:INITIAL",quantity=Decimal("0.2"),limit_price=Decimal("100"),idempotency_key="below-target"
+            )
+        auth=self.gov.authorize_exit(
+            "p1:INITIAL",quantity=Decimal("0.2"),limit_price=Decimal("105"),idempotency_key="top-gainer-tp"
+        )
+        self.assertGreater(auth.minimum_price,Decimal("100"))
+
+        other=self.gov.reserve_initial_position(
+            position_id="p2",asset_id="DOGE-USDT",reference_price=Decimal("100"),
+            idempotency_key="top-loser-initial",strategy_origin="TOP_LOSER_REVERSAL",
+        )
+        self.gov.consume_authorization(other.authorization_id,idempotency_key=other.idempotency_key,connector="kraken_paper_trade")
+        self.gov.bind_order_id(other.authorization_id,order_id="paper-top-loser")
+        self.gov.settle_fill(
+            other.authorization_id,actual_gross_notional=Decimal("20"),actual_fee=Decimal("0.08"),
+            actual_quantity=Decimal("0.2"),average_price=Decimal("100"),
+        )
+        with self.assertRaises(CapitalDenied):
+            self.gov.authorize_exit(
+                "p2:INITIAL",quantity=Decimal("0.2"),limit_price=Decimal("105"),idempotency_key="top-loser-static-tp"
             )
 
     def test_outer_boundary_flags_manual_review_without_resetting_reference_or_patching(self):
@@ -184,10 +203,6 @@ class CapitalGovernorTests(unittest.TestCase):
         self.open_position()
         with self.assertRaises(CapitalDenied):
             self.gov.close_position("p1")
-        with self.assertRaises(CapitalDenied):
-            self.gov.authorize_exit(
-                "p1:INITIAL",quantity=Decimal("0.2"),limit_price=Decimal("105"),idempotency_key="no-exit-policy"
-            )
         with self.assertRaises(CapitalDenied):
             self.gov.close_position("p1",confirmed_all_exits_reconciled=True)
         with self.assertRaises(CapitalDenied):
