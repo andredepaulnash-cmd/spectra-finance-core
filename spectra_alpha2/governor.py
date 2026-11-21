@@ -335,116 +335,13 @@ class CapitalGovernor:
         action_type: str,
         shard_id: str | None = None,
     ) -> CapitalAuthorization:
+        """Fail closed until the Architect-approved VCAP shard policy is configured."""
         self._assert_paper()
-        amount = self._positive(gross_notional, "gross_notional")
         if action_type != "VCAP":
-            raise CapitalDenied("DCA purchases are not part of the Alpha 2.0 VCAP strategy")
-        if not self.enable_vcap_automation:
-            raise CapitalDenied("VCAP automation is disabled until the Architect-approved shard policy is configured")
-        if not all((position_id, action_id, idempotency_key)):
-            raise ValueError("position_id, action_id and idempotency_key are required")
-        if not shard_id:
-            raise ValueError("VCAP additions require an independent shard_id")
-        pool = CapitalPool.RECOVERY
-        fee = amount * BUY_FEE_RATE
-        now = time.time()
-        reservation_id = str(uuid.uuid4())
-        with self._connect() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                position = conn.execute("SELECT * FROM positions WHERE position_id=?", (position_id,)).fetchone()
-                if position is None or position["status"] != "OPEN":
-                    raise CapitalDenied("position must be OPEN before adding capital")
-                if position["manual_review_required"]:
-                    raise CapitalDenied("manual-review position is permanently excluded from automatic patching")
-                price = self._positive(current_price, "current_price")
-                drawdown = calculate_drawdown(Decimal(position["reference_price"]), price)
-                step_rows = conn.execute(
-                    "SELECT step_id,action_type,status FROM position_steps WHERE position_id=?",
-                    (position_id,),
-                ).fetchall()
-                completed_vcap = {
-                    row["step_id"] for row in step_rows
-                    if row["action_type"] == "VCAP"
-                    and row["status"] in {"SUBMITTED","FILLED","ACTIVE","RESOLVED","RECYCLED"}
-                }
-                planned_step = next_eligible_vcap_step(drawdown, completed_vcap)
-                if planned_step is None:
-                    raise CapitalDenied("no VCAP shard is eligible at the current drawdown")
-                if planned_step.step_id != action_id or planned_step.addition != amount:
-                    raise CapitalDenied("action does not match the next VCAP shard policy step")
-                prior = conn.execute(
-                    "SELECT status FROM position_steps WHERE position_id=? AND step_id=?",
-                    (position_id,action_id),
-                ).fetchone()
-                if prior is not None and prior["status"] != "AVAILABLE":
-                    raise CapitalDenied("this ladder step already has an outstanding or completed reservation")
-                committed = Decimal(position["gross_committed"])
-                if committed + amount > MAX_ASSET_GROSS_NOTIONAL:
-                    raise CapitalDenied("per-asset $1,000 gross-notional cap exceeded")
-                if action_type == "VCAP":
-                    occupied = conn.execute(
-                        """SELECT COUNT(*) AS n FROM vcap_shards
-                        WHERE asset_id=? AND status IN ('RESERVED','SUBMITTED','FILLED','ACTIVE')""",
-                        (position["asset_id"],),
-                    ).fetchone()["n"]
-                    if occupied >= MAX_ACTIVE_VCAP_SHARDS_PER_ASSET:
-                        raise CapitalDenied("per-asset two-shard concurrency limit reached")
-                    prior_shard=conn.execute("SELECT status FROM vcap_shards WHERE shard_id=?",(shard_id,)).fetchone()
-                    if prior_shard is None or prior_shard["status"]!="AVAILABLE":
-                        raise CapitalDenied("VCAP shard is not in the Available lifecycle state")
-                if self._available_pool(conn,pool) < amount + fee:
-                    raise CapitalDenied(f"{pool.value.lower()} pool has insufficient available capital")
-                conn.execute(
-                    "UPDATE positions SET gross_committed=?,updated_at=? WHERE position_id=?",
-                    (str(committed+amount),now,position_id),
-                )
-                conn.execute(
-                    """INSERT INTO reservations
-                    (reservation_id,idempotency_key,position_id,asset_id,action_id,pool_id,
-                     gross_notional,fee_reserve,status,expires_at,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (reservation_id,idempotency_key,position_id,position["asset_id"],action_id,pool.value,
-                     str(amount),str(fee),ReservationStatus.RESERVED.value,now+self.reservation_ttl_seconds,now,now),
-                )
-                lot_id = shard_id if action_type == "VCAP" else f"{position_id}:{action_id}"
-                conn.execute(
-                    """INSERT INTO position_lots
-                    (lot_id,position_id,asset_id,action_id,pool_id,reservation_id,status,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?,?)
-                    ON CONFLICT(lot_id) DO UPDATE SET
-                    reservation_id=excluded.reservation_id,status='RESERVED',
-                    gross_buy_notional='0',buy_fee_quote='0',filled_quantity='0',
-                    remaining_quantity='0',remaining_cost_basis_quote='0',
-                    gross_sell_proceeds='0',sell_fee_quote='0',realized_pnl_quote='0',
-                    updated_at=excluded.updated_at""",
-                    (lot_id,position_id,position["asset_id"],action_id,pool.value,reservation_id,"RESERVED",now,now),
-                )
-                conn.execute(
-                    """INSERT INTO position_steps(position_id,step_id,action_type,status,reservation_id,drawdown,updated_at)
-                    VALUES(?,?,?,?,?,?,?)
-                    ON CONFLICT(position_id,step_id) DO UPDATE SET
-                    status='RESERVED',reservation_id=excluded.reservation_id,
-                    drawdown=excluded.drawdown,updated_at=excluded.updated_at""",
-                    (position_id,action_id,action_type,"RESERVED",reservation_id,str(drawdown),now),
-                )
-                if action_type == "VCAP":
-                    changed=conn.execute(
-                        """UPDATE vcap_shards SET status='RESERVED',reservation_id=?,updated_at=?
-                        WHERE shard_id=? AND status='AVAILABLE'""",
-                        (reservation_id,now,shard_id),
-                    ).rowcount
-                    if changed!=1:
-                        raise CapitalDenied("VCAP shard could not transition from Available to Reserved")
-                row = conn.execute("SELECT reserved FROM pools WHERE pool_id=?", (pool.value,)).fetchone()
-                conn.execute("UPDATE pools SET reserved=? WHERE pool_id=?", (str(Decimal(row["reserved"])+amount+fee),pool.value))
-                self._event(conn,"CAPITAL_RESERVED",reservation_id,{"position_id":position_id,"action_id":action_id,"action_type":action_type,"gross_notional":str(amount),"fee_reserve":str(fee),"pool":pool.value,"shard_id":shard_id})
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
-        return CapitalAuthorization(reservation_id,idempotency_key,position_id,position["asset_id"],action_id,pool,amount,fee)
-
+            raise CapitalDenied("DCA purchases are not part of the Alpha 2.0 recovery strategy")
+        raise CapitalDenied(
+            "VCAP shard selection, batch sizing, drawdown triggers, and recycling policy are not yet approved/configured"
+        )
     def consume_authorization(
         self, authorization_id: str, *, idempotency_key: str, connector: str
     ) -> CapitalAuthorization:
