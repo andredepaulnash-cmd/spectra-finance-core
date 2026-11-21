@@ -41,21 +41,19 @@ The initial-entry pool is a ceiling, not an instruction to spend all available f
 The primary discovery strategy is to identify reasonably solid assets among 24-hour gainers, then evaluate their market quality before entry. It is not indiscriminate buying of low-quality tokens.
 
 Confirmed entry constraints include:
-- USDT spot markets on the keyless Kraken paper/data integration.
-- At least $10,000,000 in 24-hour quote volume for entry eligibility.
-- Fresh ticker data.
-- Exchange trading rules compatible with the $20 initial order.
-- A configured maximum top-of-book spread.
-- Positive 24-hour price change, calculated from public hourly candle history rather than today's opening price or volume rank.
+- Identify positive 24-hour gainers using public hourly candle history, not today's opening price or volume rank.
+- Use fresh ticker data.
+- Enforce exchange trading rules compatible with the $20 initial order.
+- Enforce a configured maximum top-of-book spread.
 - Condor ranks and explains candidates; it cannot reserve capital or submit orders.
 
-The $10M figure is the entry-liquidity floor. It is not a research-only threshold.
+**Not yet confirmed:** the eligible quote-asset universe and the exact meaning/normalization of the discussed $10M entry-liquidity target. The current scanner therefore requires explicit `SPECTRA_ENTRY_QUOTE_ASSETS` and `SPECTRA_MIN_QUOTE_VOLUME_24H` configuration and admits no entries when either is absent. The configured volume threshold is interpreted in each pair's quote-asset units; it is not automatically USD-normalized. Do not silently assume USDT-only markets or equate quote-volume with order-book depth.
 
 ### Separate research pathway: 24-hour top losers and possible reversal
 
-A distinct top-loser research pathway may identify assets with at least $1,000,000 in 24-hour quote volume. That lower floor is for research, not entry authorization. Entry from this pathway requires stronger liquidity, including the $10M entry-liquidity floor, and flexible reversal evidence using indicators such as RSI and BBWP. Do not convert those indicators into rigid, unapproved thresholds.
+A distinct top-loser research pathway has a discussed $1M research-liquidity floor and a stronger discussed $10M entry-liquidity target, but the quote-asset universe, measurement metric, and USD normalization still require confirmation. This pathway is not currently enabled for entries.
 
-A top-loser candidate is not automatically an entry. The pathway must preserve its evidence, source, timestamps, and strategy origin.
+Potential reversal evidence includes RSI and BBWP. Keep those indicators flexible; do not convert them into rigid, unapproved thresholds. A top-loser candidate is not automatically an entry. The pathway must preserve evidence, source, timestamps, policy version, and strategy origin.
 
 ### Strategy origin is mandatory provenance
 
@@ -162,7 +160,7 @@ A release is not complete until evidence demonstrates:
 2. Clean Compose install passes with the actual full paper strategy cycle.
 3. Paper-only negative tests reject unsafe configuration and unsigned/mismatched orders.
 4. MARKET BUY contract is enforced end-to-end.
-5. Gainer discovery uses true 24-hour price change and the $10M entry-liquidity floor.
+5. Gainer discovery uses true 24-hour price change and the explicitly configured quote-asset/liquidity metric; no unconfirmed default market universe.
 6. Fixed net take-profit is applied only to TOP_GAINER positions and reconciles fees/lot basis.
 7. TOP_LOSER_REVERSAL positions cannot enter the ordinary fixed take-profit path.
 8. -24% boundary flags manual review and prevents automatic recovery.
