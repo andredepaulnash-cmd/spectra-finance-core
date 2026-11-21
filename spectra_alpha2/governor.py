@@ -882,7 +882,7 @@ class CapitalGovernor:
                     raise CapitalDenied("all VCAP shards must be resolved before position closure")
                 lots=conn.execute("SELECT remaining_quantity FROM position_lots WHERE position_id=?",(position_id,)).fetchall()
                 if any(Decimal(lot["remaining_quantity"]) > ZERO for lot in lots):
-                    raise CapitalDenied("all initial, DCA, and VCAP lots must be fully exited before position closure")
+                    raise CapitalDenied("all position lots must be fully exited before position closure")
                 lot_rows=conn.execute("SELECT realized_pnl_quote FROM position_lots WHERE position_id=?",(position_id,)).fetchall()
                 realized_pnl=sum((Decimal(lot["realized_pnl_quote"]) for lot in lot_rows),ZERO)
                 conn.execute("UPDATE positions SET status='CLOSED',updated_at=? WHERE position_id=?",(now,position_id))
