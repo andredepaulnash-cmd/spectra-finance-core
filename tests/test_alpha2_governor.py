@@ -212,27 +212,23 @@ class CapitalGovernorTests(unittest.TestCase):
         self.assertEqual(sum(results),74)
         self.assertEqual(self.gov.snapshot()["open_positions"],74)
 
-    def test_dca_uses_recovery_pool_and_asset_cap_includes_reservations(self):
+    def test_dca_is_rejected_and_vcap_is_disabled_by_default(self):
         self.open_position()
-        for i, price in enumerate((Decimal("97.26"),Decimal("95.56"),Decimal("93.26"))):
-            auth=self.gov.reserve_addition(
-                position_id="p1",action_id=f"DCA_{i+1}",gross_notional=Decimal("20"),
-                current_price=price,idempotency_key=f"dca-{i}",action_type="DCA"
+        with self.assertRaises(CapitalDenied):
+            self.gov.reserve_addition(
+                position_id="p1",action_id="DCA_1",gross_notional=Decimal("20"),
+                current_price=Decimal("97.26"),idempotency_key="dca-disabled",action_type="DCA"
             )
-            self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
-            self.settle(auth,order_id=f"paper-dca-{i}")
-        self.assertEqual(self.gov.snapshot()["pools"]["INITIAL"]["spent"],Decimal("20.08"))
-        self.assertEqual(self.gov.snapshot()["pools"]["RECOVERY"]["spent"],Decimal("60.24"))
+        with self.assertRaises(CapitalDenied):
+            self.gov.reserve_addition(
+                position_id="p1",action_id="VCAP_FAT1_1",gross_notional=Decimal("20"),
+                current_price=Decimal("92.23"),idempotency_key="vcap-disabled",
+                action_type="VCAP",shard_id="p1:VCAP_FAT1_1"
+            )
 
     def test_vcap_uses_recovery_pool_and_enforces_two_shards_per_asset(self):
+        self.gov=CapitalGovernor(self.db,environment=SAFE_ENV,enable_vcap_automation=True)
         self.open_position()
-        for i, price in enumerate((Decimal("97.26"),Decimal("95.56"),Decimal("93.26"))):
-            dca=self.gov.reserve_addition(
-                position_id="p1",action_id=f"DCA_{i+1}",gross_notional=Decimal("20"),
-                current_price=price,idempotency_key=f"pre-vcap-dca-{i}",action_type="DCA"
-            )
-            self.gov.consume_authorization(dca.authorization_id,idempotency_key=dca.idempotency_key,connector="kraken_paper_trade")
-            self.settle(dca,order_id=f"paper-pre-vcap-dca-{i}")
         shards=[]
         for i,(amount,price,step_id) in enumerate((
             (Decimal("20"),Decimal("92.23"),"VCAP_FAT1_1"),
@@ -249,7 +245,8 @@ class CapitalGovernorTests(unittest.TestCase):
         with self.assertRaises(CapitalDenied):
             self.gov.reserve_addition(
                 position_id="p1",action_id="VCAP_FAT1_3",gross_notional=Decimal("80"),
-                current_price=Decimal("89.26"),idempotency_key="vcap-3",action_type="VCAP",shard_id="p1:VCAP_FAT1_3"
+                current_price=Decimal("89.26"),idempotency_key="vcap-3",
+                action_type="VCAP",shard_id="p1:VCAP_FAT1_3"
             )
         self.sell_lot(shards[0],quantity=Decimal("0.2"),price=Decimal("110"),fee=Decimal("0.088"),idempotency_key="sell-vcap-0",order_id="paper-sell-vcap-0")
         self.gov.resolve_vcap_shard(shards[0])
@@ -259,19 +256,21 @@ class CapitalGovernorTests(unittest.TestCase):
         )
         self.assertEqual(allowed.pool,CapitalPool.RECOVERY)
 
-    def test_asset_cap_includes_unfilled_reservations(self):
+    def test_unfilled_vcap_reservation_cannot_be_reserved_twice(self):
+        self.gov=CapitalGovernor(self.db,environment=SAFE_ENV,enable_vcap_automation=True)
         self.open_position()
         auth=self.gov.reserve_addition(
-            position_id="p1",action_id="DCA_1",gross_notional=Decimal("20"),
-            current_price=Decimal("97.26"),idempotency_key="dca-1",action_type="DCA"
+            position_id="p1",action_id="VCAP_FAT1_1",gross_notional=Decimal("20"),
+            current_price=Decimal("92.23"),idempotency_key="vcap-reserved-1",
+            action_type="VCAP",shard_id="p1:VCAP_FAT1_1"
         )
         self.assertIsNotNone(auth.authorization_id)
         with self.assertRaises(CapitalDenied):
             self.gov.reserve_addition(
-                position_id="p1",action_id="too-much",gross_notional=Decimal("961"),
-                current_price=Decimal("97.26"),idempotency_key="too-much",action_type="DCA"
+                position_id="p1",action_id="VCAP_FAT1_1",gross_notional=Decimal("20"),
+                current_price=Decimal("92.23"),idempotency_key="vcap-reserved-2",
+                action_type="VCAP",shard_id="p1:VCAP_FAT1_1"
             )
-
 
     def test_asset_replacement_requires_reconciled_close(self):
         self.open_position()
