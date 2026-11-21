@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+INSTALL_DIR="${SPECTRA_ALPHA2_HOME:-$HOME/SpectraFinance-Alpha2}"
+CORE_DIR="$INSTALL_DIR/spectra-finance-core"
+PYTHON="$CORE_DIR/.venv/bin/python"
+BIN_DIR="$HOME/.local/bin"
+PID_FILE="$INSTALL_DIR/desktop.pid"
+URL="http://127.0.0.1:8765"
+
+[[ -x "$PYTHON" ]] || { echo "Spectra Alpha 2.0 is not installed at $INSTALL_DIR." >&2; exit 1; }
+
+case "${1:-open}" in
+  --stop)
+    if [[ -f "$PID_FILE" ]]; then
+      pid="$(cat "$PID_FILE")"
+      if kill -0 "$pid" 2>/dev/null; then
+        command_line="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+        if [[ "$command_line" == *"spectra_alpha2.desktop"* ]]; then
+          kill -TERM "$pid"
+        else
+          echo "Refusing to stop unverified PID $pid." >&2
+          exit 1
+        fi
+      fi
+      rm -f "$PID_FILE"
+    fi
+    exit 0
+    ;;
+  --no-open|open) ;;
+  *) echo "Usage: spectra-alpha2-desktop [--no-open|--stop]" >&2; exit 2 ;;
+esac
+
+if ! curl -fsS --max-time 2 "$URL/api/health" >/dev/null 2>&1; then
+  mkdir -p "$INSTALL_DIR"
+  nohup "$PYTHON" -m spectra_alpha2.desktop --host 127.0.0.1 --port 8765 > "$INSTALL_DIR/desktop.log" 2>&1 &
+  echo $! > "$PID_FILE"
+  chmod 600 "$PID_FILE"
+  ready=false
+  for _ in $(seq 1 30); do
+    if curl -fsS --max-time 2 "$URL/api/health" >/dev/null 2>&1; then
+      ready=true
+      break
+    fi
+    sleep 1
+  done
+  [[ "$ready" == true ]] || { tail -80 "$INSTALL_DIR/desktop.log" >&2 || true; exit 1; }
+fi
+
+if [[ "${1:-open}" != "--no-open" ]]; then
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$URL/" >/dev/null 2>&1 &
+  else
+    printf 'Open %s in your browser.\n' "$URL"
+  fi
+fi
