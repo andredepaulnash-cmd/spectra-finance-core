@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from decimal import Decimal, ROUND_DOWN, ROUND_UP
 
 from .market_data import MarketCandidate
+from .policy import gross_sell_notional_for_net_target
 
 ZERO = Decimal("0")
 ONE = Decimal("1")
@@ -80,4 +81,40 @@ def build_buy_market_order(
     }
     return PaperOrderDraft(body, quote_notional, maximum_execution_price, quantity)
 
+
+def build_take_profit_limit_order(
+    *,
+    trading_pair: str,
+    remaining_quantity: Decimal,
+    fee_inclusive_cost_basis: Decimal,
+    base_amount_increment: Decimal,
+    price_increment: Decimal,
+    account_name: str = "master_account",
+    strategy_origin: str = "TOP_GAINER",
+) -> PaperOrderDraft:
+    """Build the fixed +1.74% net LIMIT SELL for ordinary top-gainer entries only."""
+    if strategy_origin != "TOP_GAINER":
+        raise ValueError("fixed take-profit is reserved for TOP_GAINER; TOP_LOSER_REVERSAL uses DTTP/DTSL")
+    if not all(isinstance(v, Decimal) and v.is_finite() and v > ZERO for v in (
+        remaining_quantity, fee_inclusive_cost_basis, base_amount_increment, price_increment
+    )):
+        raise ValueError("take-profit order inputs must be positive finite Decimals")
+    quantity = _round_to_increment(remaining_quantity, base_amount_increment, ROUND_DOWN)
+    if quantity <= ZERO:
+        raise ValueError("remaining quantity rounds below exchange increment")
+    target_gross = gross_sell_notional_for_net_target(fee_inclusive_cost_basis)
+    target_price = _round_to_increment(target_gross / quantity, price_increment, ROUND_UP)
+    gross_proceeds = quantity * target_price
+    body = {
+        "account_name": account_name,
+        "connector_name": "kraken_paper_trade",
+        "trading_pair": trading_pair,
+        "trade_type": "SELL",
+        "strategy_origin": strategy_origin,
+        "amount": str(quantity),
+        "order_type": "LIMIT",
+        "price": str(target_price),
+        "position_action": "OPEN",
+    }
+    return PaperOrderDraft(body, gross_proceeds, target_price, quantity)
 
