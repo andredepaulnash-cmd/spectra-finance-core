@@ -31,6 +31,7 @@ def build_buy_market_order(
     gross_quote_budget: Decimal,
     max_slippage_fraction: Decimal = Decimal("0.001"),
     account_name: str = "master_account",
+    strategy_origin: str = "TOP_GAINER",
 ) -> PaperOrderDraft:
     """Build a MARKET BUY whose base quantity is conservatively budgeted.
 
@@ -39,6 +40,8 @@ def build_buy_market_order(
     price. The signed Governor reservation remains the authoritative quote cap,
     and fill settlement independently rejects actual gross/fees above that cap.
     """
+    if strategy_origin not in {"TOP_GAINER","TOP_LOSER_REVERSAL"}:
+        raise ValueError("strategy_origin must be TOP_GAINER or TOP_LOSER_REVERSAL")
     if not isinstance(gross_quote_budget, Decimal) or not gross_quote_budget.is_finite() or gross_quote_budget <= ZERO:
         raise ValueError("gross_quote_budget must be a positive Decimal")
     if not isinstance(max_slippage_fraction, Decimal) or not max_slippage_fraction.is_finite() or not ZERO <= max_slippage_fraction <= Decimal("0.02"):
@@ -69,6 +72,7 @@ def build_buy_market_order(
         "connector_name": "kraken_paper_trade",
         "trading_pair": candidate.trading_pair,
         "trade_type": "BUY",
+        "strategy_origin": strategy_origin,
         "amount": str(quantity),
         "order_type": "MARKET",
         "max_execution_price": str(maximum_execution_price),
