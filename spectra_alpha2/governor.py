@@ -23,7 +23,6 @@ from .policy import (
     MAX_ASSET_GROSS_NOTIONAL,
     MAX_OPEN_POSITIONS,
     VCAP_RECOVERY_POOL,
-    DCA_STEPS,
     VCAP_STEPS,
     next_eligible_vcap_step,
 )
