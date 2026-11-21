@@ -5,6 +5,7 @@ from spectra_alpha2.policy import (
     INITIAL_ENTRY_BUDGET, INITIAL_ENTRY_NOTIONAL, INITIAL_ENTRY_POOL_ACTIONS,
     MAX_OPEN_POSITIONS, MAX_ACTIVE_VCAP_SHARDS_PER_ASSET, MAX_ASSET_GROSS_NOTIONAL,
     PORTFOLIO_EQUITY, VCAP_OUTER_BOUNDARY, VCAP_RECOVERY_POOL,
+    NET_TAKE_PROFIT_RATE, gross_sell_notional_for_net_target,
     can_admit_position, validate_asset_exposure, validate_portfolio_policy,
 )
 
@@ -27,6 +28,13 @@ class Alpha2PolicyTests(unittest.TestCase):
     def test_vcap_has_two_shard_concurrency_ceiling_but_no_unapproved_ladder(self):
         self.assertEqual(MAX_ACTIVE_VCAP_SHARDS_PER_ASSET,2)
         self.assertEqual(VCAP_OUTER_BOUNDARY,Decimal("-0.24"))
+
+    def test_net_take_profit_is_after_confirmed_buy_and_sell_fee_accounting(self):
+        self.assertEqual(NET_TAKE_PROFIT_RATE,Decimal("0.0174"))
+        basis=Decimal("100.40")
+        gross=gross_sell_notional_for_net_target(basis)
+        net=gross*(Decimal("1")-Decimal("0.004"))
+        self.assertGreaterEqual(net,basis*Decimal("1.0174"))
 
     def test_initial_entry_and_per_asset_cap(self):
         self.assertEqual(INITIAL_ENTRY_NOTIONAL,Decimal("20"))
