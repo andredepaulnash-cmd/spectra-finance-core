@@ -345,9 +345,14 @@ for source in "${CORE_SHELL_SOURCES[@]}"; do
     die "Fetched $source is not the reviewed Command Center version."
   fi
   worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
+  head_blob="$(git -C "$CORE_DIR" rev-parse "HEAD:$source" 2>/dev/null || true)"
   old_blob="${CORE_SHELL_OLD_BLOBS[$source]}"
   preserved_blob="${CORE_SHELL_PRESERVE_BLOBS[$source]:-}"
-  if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" && "$worktree_blob" != "$preserved_blob" ]]; then
+  # A clean checkout may legitimately have a committed pre-Alpha blob that
+  # predates the two explicitly listed integration hashes. Accept it only when
+  # the worktree exactly matches HEAD; genuinely modified files still require
+  # an explicitly reviewed preserve hash and are never overwritten.
+  if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$old_blob" && "$worktree_blob" != "$preserved_blob" && "$worktree_blob" != "$head_blob" ]]; then
     die "Unrecognized local changes in $source. They were preserved; review them before updating."
   fi
 done
