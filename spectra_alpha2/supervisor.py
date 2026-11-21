@@ -10,7 +10,7 @@ from .condor import CondorAnalyzer
 from .execution import ExecutionUncertain, HummingbotPaperExecutionClient
 from .governor import CapitalDenied, CapitalGovernor
 from .market_data import ResearchScanner
-from .order_builder import build_buy_limit_order
+from .order_builder import build_buy_market_order
 from .policy import MAX_OPEN_POSITIONS
 from .safety import PaperSafetySettings
 
@@ -95,7 +95,7 @@ class PortfolioSupervisor:
                     reference_price=candidate.last_price,
                     idempotency_key=idempotency_key,
                 )
-                draft=build_buy_limit_order(
+                draft=build_buy_market_order(
                     candidate,
                     gross_quote_budget=authorization.gross_notional,
                     max_slippage_fraction=self.max_slippage_fraction,
