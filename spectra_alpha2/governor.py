@@ -354,11 +354,13 @@ class CapitalGovernor:
     ) -> CapitalAuthorization:
         self._assert_paper()
         amount = self._positive(gross_notional, "gross_notional")
-        if action_type not in {"DCA","VCAP"}:
-            raise ValueError("action_type must be DCA or VCAP")
+        if action_type != "VCAP":
+            raise CapitalDenied("DCA purchases are not part of the Alpha 2.0 VCAP strategy")
+        if not self.enable_vcap_automation:
+            raise CapitalDenied("VCAP automation is disabled until the Architect-approved shard policy is configured")
         if not all((position_id, action_id, idempotency_key)):
             raise ValueError("position_id, action_id and idempotency_key are required")
-        if action_type == "VCAP" and not shard_id:
+        if not shard_id:
             raise ValueError("VCAP additions require an independent shard_id")
         pool = CapitalPool.RECOVERY
         fee = amount * BUY_FEE_RATE
