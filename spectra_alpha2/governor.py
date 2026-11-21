@@ -12,19 +12,13 @@ from pathlib import Path
 from typing import Mapping
 
 from .safety import PaperSafetySettings
-from .strategy import calculate_drawdown
 from .policy import (
     BUY_FEE_RATE,
     SELL_FEE_RATE,
-    gross_sell_notional_for_net_target,
     INITIAL_ENTRY_BUDGET,
     INITIAL_ENTRY_NOTIONAL,
-    MAX_ACTIVE_VCAP_SHARDS_PER_ASSET,
-    MAX_ASSET_GROSS_NOTIONAL,
     MAX_OPEN_POSITIONS,
     VCAP_RECOVERY_POOL,
-    VCAP_STEPS,
-    next_eligible_vcap_step,
 )
 
 
@@ -78,16 +72,13 @@ class ExitAuthorization:
 class CapitalGovernor:
     """Single-writer transactional capital and order-authorization boundary."""
 
-    def __init__(self, database_path: str | Path, *, environment: Mapping[str, str], reservation_ttl_seconds: int = 90, enable_vcap_automation: bool = False):
+    def __init__(self, database_path: str | Path, *, environment: Mapping[str, str], reservation_ttl_seconds: int = 90):
         if isinstance(reservation_ttl_seconds, bool) or not isinstance(reservation_ttl_seconds, int) or reservation_ttl_seconds <= 0:
             raise ValueError("reservation_ttl_seconds must be a positive integer")
         self.safety = PaperSafetySettings.from_environment(environment)
         self.safety.assert_paper_mode()
-        if not isinstance(enable_vcap_automation, bool):
-            raise ValueError("enable_vcap_automation must be a boolean")
         self.database_path = str(database_path)
         self.reservation_ttl_seconds = reservation_ttl_seconds
-        self.enable_vcap_automation = enable_vcap_automation
         if self.database_path != ":memory:":
             Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
@@ -326,13 +317,6 @@ class CapitalGovernor:
                     "UPDATE pools SET reserved=? WHERE pool_id=?",
                     (str(Decimal(conn.execute("SELECT reserved FROM pools WHERE pool_id=?", (CapitalPool.INITIAL.value,)).fetchone()["reserved"]) + amount + fee), CapitalPool.INITIAL.value),
                 )
-                for step in VCAP_STEPS:
-                    shard_id=f"{position_id}:{step.step_id}"
-                    conn.execute(
-                        """INSERT INTO vcap_shards(shard_id,position_id,asset_id,step_id,status,reservation_id,created_at,updated_at)
-                        VALUES(?,?,?,?,?,?,?,?)""",
-                        (shard_id,position_id,asset_id,step.step_id,"AVAILABLE",None,now,now),
-                    )
                 self._event(conn,"POSITION_RESERVED",position_id,{"asset_id":asset_id,"gross_notional":str(amount),"fee_reserve":str(fee)})
                 conn.commit()
             except Exception:
