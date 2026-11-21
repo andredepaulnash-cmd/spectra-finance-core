@@ -41,7 +41,7 @@ class PaperExecution:
         order_id=f"staged-paper-{self.counter}"
         governor.bind_order_id(authorization.authorization_id,order_id=order_id)
         quantity=Decimal(request_body["amount"])
-        price=Decimal(request_body["price"])
+        price=Decimal(request_body["max_execution_price"])
         gross=quantity*price
         fee=gross*Decimal("0.004")
         governor.settle_fill(
