@@ -82,6 +82,39 @@ PYBACKUP
   podman cp "spectra-alpha2-core:/data/backups/$backup_name" "$INSTALL_DIR/backups/$backup_name"
   chmod 600 "$INSTALL_DIR/backups/$backup_name"
   info "Created pre-upgrade SQLite online backup: $INSTALL_DIR/backups/$backup_name"
+  backup_stamp="$(date +%Y%m%d-%H%M%S)"
+  # Preserve the API replay/idempotency database with SQLite online backup.
+  if podman container exists spectra-alpha2-hummingbot-api 2>/dev/null && podman exec spectra-alpha2-hummingbot-api test -f /hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite3; then
+    receipt_name="spectra-alpha2-api-receipts-preupgrade-$backup_stamp.sqlite3"
+    podman exec spectra-alpha2-hummingbot-api python - "$receipt_name" <<PYRECEIPT
+import sqlite3
+import sys
+from pathlib import Path
+target=Path("/tmp")/sys.argv[1]
+with sqlite3.connect("/hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite3") as source, sqlite3.connect(target) as destination:
+    source.backup(destination)
+target.chmod(0o600)
+PYRECEIPT
+    podman cp "spectra-alpha2-hummingbot-api:/tmp/$receipt_name" "$INSTALL_DIR/backups/$receipt_name"
+    podman exec spectra-alpha2-hummingbot-api rm -f "/tmp/$receipt_name"
+    chmod 600 "$INSTALL_DIR/backups/$receipt_name"
+  fi
+  # PostgreSQL stores API-side state separately from the Core ledger.
+  if podman container exists spectra-alpha2-postgres 2>/dev/null; then
+    pg_running="$(podman inspect --format "{{.State.Running}}" spectra-alpha2-postgres 2>/dev/null || true)"
+    [[ "$pg_running" == "true" ]] || die "Alpha 2.0 PostgreSQL exists but is stopped; refusing an unbacked upgrade."
+    pg_backup="$INSTALL_DIR/backups/spectra-alpha2-postgres-preupgrade-$backup_stamp.sql"
+    podman exec spectra-alpha2-postgres pg_dump -U hbot -d hummingbot_api > "$pg_backup"
+    chmod 600 "$pg_backup"
+  fi
+  # Keep existing internal credentials and signing material recoverable.
+  for config_file in "$CORE_DIR/.env" "$CORE_DIR/.env.core" "$API_DIR/.env" "$API_DIR/.emqx/auth-bootstrap.csv" "$API_DIR/bots/credentials/master_account/conf_client.yml"; do
+    if [[ -f "$config_file" ]]; then
+      backup_config="$INSTALL_DIR/backups/$(basename "$config_file").preupgrade-$backup_stamp"
+      cp -p -- "$config_file" "$backup_config"
+      chmod 600 "$backup_config"
+    fi
+  done
 else
   existing_volumes="$(podman volume ls -q | grep 'spectra-alpha2' || true)"
   [[ -z "$existing_volumes" ]] || die "Alpha 2.0 data volumes exist without the Core container. Preserve/restore the ledger and create a backup before upgrading."
