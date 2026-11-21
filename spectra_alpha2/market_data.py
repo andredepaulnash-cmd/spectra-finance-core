@@ -122,7 +122,7 @@ class ResearchScanner:
         self,
         data_client: HummingbotPaperDataClient,
         *,
-        min_quote_volume_24h: Decimal = Decimal("100000"),
+        min_quote_volume_24h: Decimal = Decimal("10000000"),
         max_spread_fraction: Decimal = Decimal("0.003"),
         min_change_24h_fraction: Decimal = ZERO,
         max_ticker_age_seconds: int = 60,
