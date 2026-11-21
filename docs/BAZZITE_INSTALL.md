@@ -31,7 +31,7 @@ bash <(curl -fsSL \
 
 The installer creates `$HOME/SpectraFinance-Alpha2` with separate Core and Hummingbot API checkouts, creates a host-side virtual environment, generates keyless paper configuration, builds an isolated Compose file, and starts the services. It pins both checkouts to the dedicated `spectra-finance-alpha-2.0` branches.
 
-It records the exact checked-out source commits in `installed-commits.txt`. On an in-place upgrade, it first creates a SQLite online backup of the running Alpha 2.0 ledger under `backups/`. It refuses to overwrite local source changes and stops if an existing Alpha 2.0 data volume cannot be safely backed up. It never removes Alpha 1.x files, containers, databases, or volumes and never runs `podman compose down -v`.
+It records the exact checked-out source commits in `installed-commits.txt`. On an in-place upgrade, it first backs up the running Core SQLite ledger and API receipt database with SQLite's online backup API, exports the Alpha 2.0 PostgreSQL database, and copies internal signing/configuration files under `backups/` with restrictive permissions. It refuses to overwrite local source changes and stops if an existing Alpha 2.0 data volume cannot be safely backed up. It never removes Alpha 1.x files, containers, databases, or volumes and never runs `podman compose down -v`.
 
 ## Commands
 
@@ -66,7 +66,7 @@ The simulated portfolio starts with 25,000 USDT, split into the 6,250 USDT initi
 
 ## Persistence and backups
 
-The Core SQLite ledger, PostgreSQL database, and EMQX data use Alpha 2.0-scoped named volumes. The `backup` command uses SQLite's online backup API and writes a mode-0600 database copy under `backups/`.
+The Core SQLite ledger, PostgreSQL database, and EMQX data use Alpha 2.0-scoped named volumes. The `backup` command uses SQLite's online backup API for the Core ledger and writes a mode-0600 database copy under `backups/`. The installer also creates the broader pre-upgrade backup set described above.
 
 `spectra-alpha2 uninstall` stops and removes only Alpha 2.0 containers and its Compose network. It deliberately keeps named volumes and files. It does not run `podman system prune` or delete Alpha 1.0 resources.
 
