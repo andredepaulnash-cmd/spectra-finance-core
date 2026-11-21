@@ -580,15 +580,13 @@ for source in "${CORE_ALPHA2_SOURCES[@]}"; do
   if [[ -L "$CORE_DIR/$source" ]]; then
     die "Refusing to replace symlinked local Alpha 2.0 source $source."
   fi
-  if [[ -f "$CORE_DIR/$source" ]]; then
-    worktree_blob="$(git -C "$CORE_DIR" hash-object "$CORE_DIR/$source")"
-    base_blob="${CORE_ALPHA2_BASE_BLOBS[$source]}"
-    if [[ "$worktree_blob" != "$expected_blob" && "$worktree_blob" != "$base_blob" ]]; then
-      die "Unrecognized local changes in $source. They were preserved; review them before updating."
-    fi
-  else
+  if [[ ! -f "$CORE_DIR/$source" ]]; then
     die "Expected existing Alpha 2.0 source $source is missing; refusing an incomplete update."
   fi
+  # Local edits are reconciled below with a three-way merge from HEAD; do not
+  # reject them merely because their blob is not one of the old release hashes.
+  git -C "$CORE_DIR" rev-parse "HEAD:$source" >/dev/null 2>&1 \
+    || die "No committed base exists for $source; preserving it and stopping."
 done
 # Reconcile each Alpha 2.0 module against the exact local HEAD base. This
 # preserves uncommitted local edits while applying upstream changes; if both
@@ -607,7 +605,8 @@ for source in "${CORE_ALPHA2_SOURCES[@]}"; do
   cp -- "$CORE_DIR/$source" "$local_file"
   git -C "$CORE_DIR" show "FETCH_HEAD:$source" > "$upstream_file"
   if git merge-file -p "$local_file" "$base_file" "$upstream_file" > "$merged_file"; then
-    install -m --reference="$CORE_DIR/$source" "$merged_file" "$CORE_DIR/$source"
+    mode="$(stat -c '%a' "$CORE_DIR/$source")"
+    install -m "$mode" "$merged_file" "$CORE_DIR/$source"
     say "Merged reviewed Alpha 2.0 changes into $source while preserving nonconflicting local edits."
   else
     rm -f "$base_file" "$local_file" "$upstream_file" "$merged_file"
