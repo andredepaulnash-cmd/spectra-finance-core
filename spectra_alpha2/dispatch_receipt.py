@@ -127,11 +127,20 @@ def _issue_executor_dispatch_receipt(
             raise ValueError("unsupported paper order side")
         if request_body["order_type"] not in {"LIMIT", "MARKET", "LIMIT_MAKER"}:
             raise ValueError("unsupported paper order type")
-        if request_body["order_type"] in {"LIMIT", "LIMIT_MAKER"} and request_body.get("price") is None:
-            raise ValueError("paper limit order requires a price")
         base_amount = Decimal(str(request_body["amount"]))
         if not base_amount.is_finite() or base_amount <= 0:
             raise ValueError("paper order base amount must be positive")
+        if request_body["trade_type"] == "BUY":
+            if request_body["order_type"] != "MARKET" or request_body.get("price") is not None:
+                raise ValueError("all Alpha 2.0 purchases must be MARKET BUY orders without a limit price")
+            maximum_execution_price = Decimal(str(request_body.get("max_execution_price")))
+            if not maximum_execution_price.is_finite() or maximum_execution_price <= 0:
+                raise ValueError("MARKET BUY requires a positive signed maximum execution price")
+            if base_amount * maximum_execution_price > amount:
+                raise ValueError("MARKET BUY base quantity at its signed price ceiling exceeds the authorized quote amount")
+        else:
+            if request_body["order_type"] != "LIMIT" or request_body.get("price") is None:
+                raise ValueError("Alpha 2.0 exits must use authorized LIMIT SELL orders")
         scope = {
             key: request_body.get(key)
             for key in ("account_name","connector_name","trading_pair","trade_type","amount","order_type","price","position_action")
