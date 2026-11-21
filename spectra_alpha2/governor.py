@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .safety import PaperSafetySettings
-from .strategy import PlannedActionType, calculate_drawdown, plan_next_action
+from .strategy import calculate_drawdown
 from .policy import (
     BUY_FEE_RATE,
     SELL_FEE_RATE,
@@ -25,6 +25,7 @@ from .policy import (
     VCAP_RECOVERY_POOL,
     DCA_STEPS,
     VCAP_STEPS,
+    next_eligible_vcap_step,
 )
 
 
@@ -78,13 +79,16 @@ class ExitAuthorization:
 class CapitalGovernor:
     """Single-writer transactional capital and order-authorization boundary."""
 
-    def __init__(self, database_path: str | Path, *, environment: Mapping[str, str], reservation_ttl_seconds: int = 90):
+    def __init__(self, database_path: str | Path, *, environment: Mapping[str, str], reservation_ttl_seconds: int = 90, enable_vcap_automation: bool = False):
         if isinstance(reservation_ttl_seconds, bool) or not isinstance(reservation_ttl_seconds, int) or reservation_ttl_seconds <= 0:
             raise ValueError("reservation_ttl_seconds must be a positive integer")
         self.safety = PaperSafetySettings.from_environment(environment)
         self.safety.assert_paper_mode()
+        if not isinstance(enable_vcap_automation, bool):
+            raise ValueError("enable_vcap_automation must be a boolean")
         self.database_path = str(database_path)
         self.reservation_ttl_seconds = reservation_ttl_seconds
+        self.enable_vcap_automation = enable_vcap_automation
         if self.database_path != ":memory:":
             Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
