@@ -37,6 +37,7 @@ def build_runtime():
     scanner=ResearchScanner(
         data_client,
         min_quote_volume_24h=config.min_quote_volume_24h,
+        entry_quote_assets=config.entry_quote_assets,
         max_spread_fraction=config.max_spread_fraction,
     )
     execution=HummingbotPaperExecutionClient(
@@ -91,18 +92,38 @@ async def _doctor() -> int:
         tickers=await data_client.get_tickers()
         rules=await data_client.get_trading_rules()
         candidates=await supervisor.scanner.scan()
+        preferred_pairs=[
+            pair for pair in rules
+            if pair.split("-",1)[0].upper() in {"BTC","XBT"}
+        ]
+        probe_pair=preferred_pairs[0] if preferred_pairs else (next(iter(rules),None))
+        candle_count=0
+        candle_error=None
+        if probe_pair:
+            try:
+                candle_count=len(await data_client.get_hourly_candles(probe_pair,max_records=2))
+            except Exception as exc:
+                candle_error=f"{type(exc).__name__}: {exc}"
+        discovery_configured=bool(config.entry_quote_assets and config.min_quote_volume_24h is not None)
         report={
             "paper_only":True,
             "live_execution":False,
             "connector":"kraken_paper_trade",
+            "public_candle_connector":"kraken",
             "api_url":config.hummingbot_api_url,
             "ticker_count":len(tickers),
             "trading_rule_count":len(rules),
+            "public_candle_probe_pair":probe_pair,
+            "public_candle_probe_count":candle_count,
+            "public_candle_probe_error":candle_error,
+            "entry_discovery_configured":discovery_configured,
+            "entry_quote_assets":sorted(config.entry_quote_assets),
+            "min_quote_volume_24h":str(config.min_quote_volume_24h) if config.min_quote_volume_24h is not None else None,
             "eligible_market_count":len(candidates),
             "portfolio":governor.snapshot(),
         }
         print(json.dumps(report,indent=2,default=str))
-        return 0 if tickers and rules else 2
+        return 0 if tickers and rules and candle_count > 0 else 2
     finally:
         await execution.close()
         await data_client.close()
