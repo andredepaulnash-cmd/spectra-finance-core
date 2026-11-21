@@ -75,8 +75,8 @@ class CapitalGovernorTests(unittest.TestCase):
             "trading_pair":"BTC-USDT",
             "trade_type":"BUY",
             "amount":"0.0003",
-            "order_type":"LIMIT",
-            "price":"65000",
+            "order_type":"MARKET",
+            "max_execution_price":"65000",
             "position_action":"OPEN",
         }
         with self.assertRaises(CapitalDenied):
@@ -109,7 +109,7 @@ class CapitalGovernorTests(unittest.TestCase):
         body={
             "account_name":"master_account","connector_name":"kraken_paper_trade",
             "trading_pair":"BTC-USDT","trade_type":"BUY","amount":"0.0004",
-            "order_type":"LIMIT","price":"65000","position_action":"OPEN",
+            "order_type":"MARKET","max_execution_price":"65000","position_action":"OPEN",
         }
         private=Ed25519PrivateKey.generate()
         raw=private.private_bytes(serialization.Encoding.Raw,serialization.PrivateFormat.Raw,serialization.NoEncryption())
