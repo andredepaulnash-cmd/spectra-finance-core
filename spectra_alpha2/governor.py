@@ -380,25 +380,16 @@ class CapitalGovernor:
                     "SELECT step_id,action_type,status FROM position_steps WHERE position_id=?",
                     (position_id,),
                 ).fetchall()
-                completed_dca = {
-                    row["step_id"] for row in step_rows
-                    if row["action_type"] == "DCA" and row["status"] in {"SUBMITTED","FILLED","ACTIVE","RESOLVED","RECYCLED"}
-                }
                 completed_vcap = {
                     row["step_id"] for row in step_rows
                     if row["action_type"] == "VCAP"
                     and row["status"] in {"SUBMITTED","FILLED","ACTIVE","RESOLVED","RECYCLED"}
                 }
-                planned = plan_next_action(
-                    drawdown,
-                    completed_dca_steps=completed_dca,
-                    completed_vcap_steps=completed_vcap,
-                )
-                expected_type = PlannedActionType.DCA if action_type == "DCA" else PlannedActionType.VCAP
-                if planned.action_type != expected_type or planned.step is None:
-                    raise CapitalDenied("no automatic capital addition is eligible at the current drawdown")
-                if planned.step.step_id != action_id or planned.step.addition != amount:
-                    raise CapitalDenied("action does not match the next exact DCA/VCAP ladder step")
+                planned_step = next_eligible_vcap_step(drawdown, completed_vcap)
+                if planned_step is None:
+                    raise CapitalDenied("no VCAP shard is eligible at the current drawdown")
+                if planned_step.step_id != action_id or planned_step.addition != amount:
+                    raise CapitalDenied("action does not match the next VCAP shard policy step")
                 prior = conn.execute(
                     "SELECT status FROM position_steps WHERE position_id=? AND step_id=?",
                     (position_id,action_id),
