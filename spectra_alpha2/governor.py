@@ -424,6 +424,10 @@ class CapitalGovernor:
             raise CapitalDenied("only kraken_paper_trade is authorized")
         if request_body.get("trading_pair") != row["asset_id"]:
             raise CapitalDenied("order market does not match the reserved asset")
+        if request_body.get("strategy_origin") != row["strategy_origin"]:
+            raise CapitalDenied("order strategy origin does not match the persisted position reservation")
+        if request_body.get("strategy_origin") not in {"TOP_GAINER","TOP_LOSER_REVERSAL"}:
+            raise CapitalDenied("order strategy origin is unsupported")
         if request_body.get("trade_type") != "BUY" or request_body.get("position_action") != "OPEN":
             raise CapitalDenied("this reservation authorizes only an opening paper buy")
         if request_body.get("order_type") != "MARKET" or request_body.get("price") not in (None, ""):
