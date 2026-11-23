@@ -82,7 +82,10 @@ class PaperVenue:
         raise AssertionError(f"unexpected paper API request: {request.method} {path}")
 
 
-def test_alpha2_real_components_discover_submit_fill_and_survive_restart(tmp_path):
+def test_alpha2_real_components_discover_submit_fill_and_survive_restart(tmp_path, monkeypatch):
+    # Dispatch signing reads process environment independently of client config.
+    monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
+    monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
     venue = PaperVenue()
     transport = httpx.MockTransport(venue.handle)
     db_path = tmp_path / "alpha2-acceptance.sqlite3"
