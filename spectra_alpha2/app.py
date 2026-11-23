@@ -123,7 +123,7 @@ async def _doctor() -> int:
             "portfolio":governor.snapshot(),
         }
         print(json.dumps(report,indent=2,default=str))
-        return 0 if tickers and rules and candle_count > 0 else 2
+        return 0 if tickers and rules and candle_count > 0 and discovery_configured else 2
     finally:
         await execution.close()
         await data_client.close()
