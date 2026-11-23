@@ -1,9 +1,10 @@
 """Full Alpha 2.0 paper path: market data -> scanner -> Condor -> Governor -> Hummingbot -> ledger.
 
-This is an isolated deterministic acceptance fixture. Its USDT/volume values are
+This is an isolated deterministic acceptance fixture. Its USD/volume values are
 test inputs only; it does not establish or change production entry configuration.
 """
 import asyncio
+import base64
 import json
 import time
 from decimal import Decimal
@@ -20,6 +21,8 @@ from spectra_alpha2.supervisor import PortfolioSupervisor
 SAFE_ENV = {
     "SPECTRA_PAPER_ONLY": "true",
     "SPECTRA_ALLOW_LIVE_EXECUTION": "false",
+    "SPECTRA_PAPER_CONNECTORS": "kraken_paper_trade",
+    "SPECTRA_DISPATCH_POLICY_VERSION": "spectra-alpha2-v1",
 }
 API_USER = "alpha2-acceptance"
 API_PASSWORD = "isolated-test-only"
@@ -37,7 +40,7 @@ class PaperVenue:
         if path == "/market-data/tickers":
             now = time.time()
             return httpx.Response(200, json={"tickers": {"kraken_paper_trade": {
-                "BTC-USDT": {
+                "BTC-USD": {
                     "price": "100", "quote_volume": "15000000",
                     "base_volume": "150000", "timestamp": now,
                 }
@@ -86,6 +89,9 @@ def test_alpha2_real_components_discover_submit_fill_and_survive_restart(tmp_pat
     # Dispatch signing reads process environment independently of client config.
     monkeypatch.setenv("SPECTRA_PAPER_ONLY", "true")
     monkeypatch.setenv("SPECTRA_ALLOW_LIVE_EXECUTION", "false")
+    monkeypatch.setenv("SPECTRA_PAPER_CONNECTORS", "kraken_paper_trade")
+    monkeypatch.setenv("SPECTRA_DISPATCH_POLICY_VERSION", "spectra-alpha2-v1")
+    monkeypatch.setenv("SPECTRA_DISPATCH_PRIVATE_KEY", base64.urlsafe_b64encode(bytes(range(32))).decode("ascii").rstrip("="))
     venue = PaperVenue()
     transport = httpx.MockTransport(venue.handle)
     db_path = tmp_path / "alpha2-acceptance.sqlite3"
@@ -102,7 +108,7 @@ def test_alpha2_real_components_discover_submit_fill_and_survive_restart(tmp_pat
         try:
             # Explicit fixture-only config; no production policy is inferred here.
             scanner = ResearchScanner(
-                data, entry_quote_assets={"USDT"},
+                data, entry_quote_assets={"USD"},
                 min_quote_volume_24h=Decimal("10000000"),
             )
             supervisor = PortfolioSupervisor(
