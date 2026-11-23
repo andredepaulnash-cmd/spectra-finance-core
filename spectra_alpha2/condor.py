@@ -38,9 +38,9 @@ class CondorAnalyzer:
             score = 0.40 * liquidity_score + 0.35 * spread_score + 0.25 * momentum_score
             rationale = (
                 f"24h price change {change * 100:+.2f}%",
-                f"24h quote volume {volume:,.0f} USDT",
+                f"24h quote volume {volume:,.0f} USD",
                 f"top-of-book spread {spread * 100:.3f}%",
-                "USDT spot market with Kraken public candles and paper execution",
+                "USD spot market with Kraken public candles and paper execution",
             )
             ranked.append(MarketRecommendation(
                 trading_pair=candidate.trading_pair,
