@@ -4,6 +4,7 @@ This is an isolated deterministic acceptance fixture. Its USDT/volume values are
 test inputs only; it does not establish or change production entry configuration.
 """
 import asyncio
+import json
 import time
 from decimal import Decimal
 
@@ -65,6 +66,7 @@ class PaperVenue:
             assert '"trade_type":"BUY"' in body
             assert '"order_type":"MARKET"' in body
             self.orders.append(body)
+            self.filled_amount = json.loads(body)["amount"]
             return httpx.Response(201, json={
                 "order_id": self.order_id, "status": "submitted",
             })
@@ -74,8 +76,8 @@ class PaperVenue:
             }]})
         if path == "/trading/trades":
             return httpx.Response(200, json={"data": [{
-                "order_id": self.order_id, "amount": "0.2",
-                "price": "100", "fee": "0.08",
+                "order_id": self.order_id, "amount": self.filled_amount,
+                "price": "100", "fee": "0.0796",
             }]})
         raise AssertionError(f"unexpected paper API request: {request.method} {path}")
 
@@ -123,8 +125,8 @@ def test_alpha2_real_components_discover_submit_fill_and_survive_restart(tmp_pat
     state = governor.get_position_state(position["position_id"])
     assert position["asset_id"] == "BTC-USDT"
     assert position["status"] == "OPEN"
-    assert state["total_quantity"] == Decimal("0.2")
-    assert state["total_cost_basis_quote"] == Decimal("20.080")
+    assert state["total_quantity"] == Decimal("0.199")
+    assert state["total_cost_basis_quote"] == Decimal("19.9796")
 
     # Reconstruct the Governor over the same durable database, as after restart.
     restarted_governor = CapitalGovernor(db_path, environment=SAFE_ENV)
@@ -133,5 +135,5 @@ def test_alpha2_real_components_discover_submit_fill_and_survive_restart(tmp_pat
     assert second.skipped_existing_assets == 1
     assert len(venue.orders) == 1
     restarted_state = restarted_governor.get_position_state(position["position_id"])
-    assert restarted_state["total_quantity"] == Decimal("0.2")
-    assert restarted_state["total_cost_basis_quote"] == Decimal("20.080")
+    assert restarted_state["total_quantity"] == Decimal("0.199")
+    assert restarted_state["total_cost_basis_quote"] == Decimal("19.9796")
