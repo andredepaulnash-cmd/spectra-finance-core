@@ -48,11 +48,11 @@ class Alpha2Config:
         interval=float(env.get("SPECTRA_SCAN_INTERVAL_SECONDS","30"))
         timeout=float(env.get("SPECTRA_ORDER_TIMEOUT_SECONDS","60"))
         if interval<=0 or timeout<=0: raise ValueError("scan and order timeout values must be positive")
-        raw_min_volume=env.get("SPECTRA_MIN_QUOTE_VOLUME_24H","").strip()
+        raw_min_volume=env.get("SPECTRA_MIN_QUOTE_VOLUME_24H","10000000").strip()
         min_volume=decimal("SPECTRA_MIN_QUOTE_VOLUME_24H",raw_min_volume) if raw_min_volume else None
         quote_assets=frozenset(
             item.strip().upper()
-            for item in env.get("SPECTRA_ENTRY_QUOTE_ASSETS","").split(",")
+            for item in env.get("SPECTRA_ENTRY_QUOTE_ASSETS","USD").split(",")
             if item.strip()
         )
         if min_volume is not None and min_volume <= 0:
