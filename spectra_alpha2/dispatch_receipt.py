@@ -121,8 +121,8 @@ def _issue_executor_dispatch_receipt(
         resolved_pair = str(request_body["trading_pair"]).strip()
         if resolved_connector != connector:
             raise ValueError("Alpha 2.0 dispatch is restricted to kraken_paper_trade")
-        if not resolved_pair.endswith("-USDT"):
-            raise ValueError("Alpha 2.0 paper orders must use USDT-quoted markets")
+        if not resolved_pair.endswith("-USD"):
+            raise ValueError("Alpha 2.0 paper orders must use USD-quoted markets")
         if request_body["trade_type"] not in {"BUY", "SELL"}:
             raise ValueError("unsupported paper order side")
         if request_body["order_type"] not in {"LIMIT", "MARKET", "LIMIT_MAKER"}:
