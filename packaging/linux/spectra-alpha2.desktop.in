@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Spectra Finance Alpha 2.0
+GenericName=Paper Trading Dashboard
+Comment=Open the local Spectra Finance Alpha 2.0 command center
+Exec=@SPECTRA_EXEC@
+Icon=spectra-finance-alpha2
+Terminal=false
+Categories=Office;Utility;
+StartupNotify=true
