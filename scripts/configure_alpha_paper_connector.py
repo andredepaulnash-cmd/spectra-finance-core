@@ -12,10 +12,10 @@ def configure(path: Path) -> None:
     config = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     config["paper_trade"] = {
         "paper_trade_exchanges": ["kraken"],
-        "paper_trade_account_balance": {"USDT": 25000.0},
+        "paper_trade_account_balance": {"USD": 25000.0},
     }
     config["balance_asset_limit"] = {"kraken_paper_trade": {}}
-    config.setdefault("global_token", {})["global_token_name"] = "USDT"
+    config.setdefault("global_token", {})["global_token_name"] = "USD"
     config["global_token"]["global_token_symbol"] = "$"
     path.write_text(
         yaml.safe_dump(config, sort_keys=False, allow_unicode=True),
@@ -30,7 +30,7 @@ def main() -> int:
     if not args.config.is_file():
         raise SystemExit(f"Account config does not exist: {args.config}")
     configure(args.config)
-    print("Configured only kraken_paper_trade with a simulated 25,000 USDT balance.")
+    print("Configured only kraken_paper_trade with a simulated 25,000 USD balance.")
     return 0
 
 
