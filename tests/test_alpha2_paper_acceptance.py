@@ -62,6 +62,12 @@ class PaperVenue:
                 "bids": [{"price": "99.99", "amount": "100"}],
                 "asks": [{"price": "100.01", "amount": "100"}],
             })
+        if path == "/market-data/trading-pair/add":
+            payload = json.loads(request.read())
+            assert payload["connector_name"] == "kraken_paper_trade"
+            assert payload["trading_pair"] == "BTC-USD"
+            assert payload["account_name"] == "master_account"
+            return httpx.Response(200, json={"success": True})
         if path == "/trading/orders":
             body = request.read().decode()
             assert request.headers.get("X-Spectra-Dispatch-Receipt")
