@@ -45,7 +45,7 @@ class FakeGovernor:
 def authorization(action_id="INITIAL"):
     return CapitalAuthorization(
         authorization_id="auth-123",idempotency_key="idem-123",position_id="pos-1",
-        asset_id="BTC-USDT",action_id=action_id,pool=CapitalPool.INITIAL,
+        asset_id="BTC-USD",action_id=action_id,pool=CapitalPool.INITIAL,
         gross_notional=Decimal("20"),fee_reserve=Decimal("0.08"),
     )
 
@@ -53,21 +53,27 @@ def authorization(action_id="INITIAL"):
 def order_body():
     return {
         "account_name":"master_account","connector_name":"kraken_paper_trade",
-        "trading_pair":"BTC-USDT","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.2",
+        "trading_pair":"BTC-USD","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.2",
         "order_type":"MARKET","max_execution_price":"100","position_action":"OPEN",
     }
 
 
-def handler_for(requests,*,status="FILLED",trade_price="100"):
+def handler_for(requests,*,status="FILLED",trade_price="100",trade_fee="0.08"):
     def handler(request):
         requests.append(request)
         if request.url.path=="/trading/orders":
             assert request.headers.get("X-Spectra-Dispatch-Receipt")=="signed-paper-receipt"
             return httpx.Response(201,json={"order_id":"paper-order-1","status":"submitted"})
         if request.url.path=="/trading/orders/search":
+            filters=json.loads(request.content)
+            assert isinstance(filters["start_time"],int)
+            assert isinstance(filters["end_time"],int)
             return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","status":status}]})
         if request.url.path=="/trading/trades":
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":trade_price,"fee":"0.2"}]})
+            filters=json.loads(request.content)
+            assert isinstance(filters["start_time"],int)
+            assert isinstance(filters["end_time"],int)
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":trade_price,"fee_paid":trade_fee,"fee_currency":"USD"}]})
         raise AssertionError(request.url.path)
     return handler
 
@@ -84,7 +90,7 @@ async def test_executor_submits_only_governor_signed_order_and_settles_fill():
     assert result.order_id=="paper-order-1"
     assert result.status=="FILLED"
     assert result.gross_quote_notional==Decimal("20")
-    assert result.estimated_fee==Decimal("0.080")
+    assert result.fee_quote==Decimal("0.08")
     assert [x[0] for x in governor.calls]==["consume","receipt","bind","settle"]
     assert requests[0].url.path=="/trading/orders"
     await client.close()
@@ -97,18 +103,18 @@ async def test_executor_submits_governor_authorized_spot_sell_and_reconciles_net
     governor=FakeGovernor()
     sell_body={
         "account_name":"master_account","connector_name":"kraken_paper_trade",
-        "trading_pair":"BTC-USDT","trade_type":"SELL","amount":"0.2",
+        "trading_pair":"BTC-USD","trade_type":"SELL","amount":"0.2",
         "order_type":"LIMIT","price":"105","position_action":"OPEN",
     }
     exit_auth=type("ExitAuth",(),{"authorization_id":"exit-123","idempotency_key":"exit-idem"})()
     client=HummingbotPaperExecutionClient(
         "http://hummingbot",api_username="local-core",api_password="internal-only",
-        environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests,trade_price="105")),poll_interval_seconds=0,
+        environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests,trade_price="105",trade_fee="0.084")),poll_interval_seconds=0,
     )
     result=await client.submit_authorized_sell(governor,exit_auth,sell_body,timeout_seconds=1)
     assert result.order_id=="paper-order-1"
     assert result.gross_quote_notional==Decimal("21")
-    assert result.estimated_fee==Decimal("0.084")
+    assert result.fee_quote==Decimal("0.084")
     assert [x[0] for x in governor.calls]==["consume_exit","exit_receipt","bind_exit","settle_exit"]
     await client.close()
 
@@ -138,7 +144,7 @@ async def test_executor_recovers_order_id_after_lost_submit_response():
         if request.url.path=="/trading/orders/search":
             return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","status":"FILLED"}]})
         if request.url.path=="/trading/trades":
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":"100","fee":"0.1"}]})
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":"100","fee_paid":"0.1","fee_currency":"USD"}]})
         raise AssertionError(request.url.path)
     governor=FakeGovernor()
     client=HummingbotPaperExecutionClient(
