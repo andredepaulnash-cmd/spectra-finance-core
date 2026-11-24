@@ -79,6 +79,22 @@ def handler_for(requests,*,status="FILLED",trade_price="100",trade_fee="0.08"):
     return handler
 
 
+def test_trade_fees_are_converted_to_quote_currency_and_unknown_assets_fail_closed():
+    assert HummingbotPaperExecutionClient._quote_fee_for_trade(
+        {"fee_paid":"0.00001","fee_currency":"BTC","price":"100000"},
+        "BTC-USD",
+    )==Decimal("1.00000")
+    assert HummingbotPaperExecutionClient._quote_fee_for_trade(
+        {"fee_paid":"0.08","fee_currency":"USD","price":"100000"},
+        "BTC-USD",
+    )==Decimal("0.08")
+    with pytest.raises(ExecutionUncertain,match="neither base nor quote"):
+        HummingbotPaperExecutionClient._quote_fee_for_trade(
+            {"fee_paid":"0.08","fee_currency":"EUR","price":"100000"},
+            "BTC-USD",
+        )
+
+
 @pytest.mark.asyncio
 async def test_executor_submits_only_governor_signed_order_and_settles_fill():
     requests=[]
