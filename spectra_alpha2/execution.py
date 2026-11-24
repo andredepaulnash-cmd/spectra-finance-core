@@ -223,16 +223,16 @@ class HummingbotPaperExecutionClient:
         fee=Decimal(str(raw_fee))
         if not fee.is_finite() or fee<0:
             raise ExecutionUncertain("Hummingbot trade record contains an invalid fee amount")
-        if fee==0:
-            return Decimal("0")
         currency=str(trade.get("fee_currency") or "").strip().upper()
         if not currency:
-            raise ExecutionUncertain("Hummingbot reported a nonzero fee without its fee currency")
+            raise ExecutionUncertain("Hummingbot trade record is missing its fee currency")
         base,quote=trading_pair.rsplit("-",1)
         aliases={"XBT":"BTC","XXBT":"BTC","ZUSD":"USD","ZEUR":"EUR","ZGBP":"GBP","ZAUD":"AUD","ZCAD":"CAD","ZJPY":"JPY"}
         currency=aliases.get(currency,currency)
         base=aliases.get(base.upper(),base.upper())
         quote=aliases.get(quote.upper(),quote.upper())
+        if fee==0 and currency in {base,quote}:
+            return Decimal("0")
         if currency==quote:
             return fee
         if currency==base:
