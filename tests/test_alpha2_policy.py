@@ -19,11 +19,11 @@ class Alpha2PolicyTests(unittest.TestCase):
         self.assertEqual(INITIAL_ENTRY_BUDGET+VCAP_RECOVERY_POOL,PORTFOLIO_EQUITY)
         self.assertEqual(INITIAL_ENTRY_POOL_ACTIONS,frozenset({"ENTRY","PRESS","ROTATION"}))
 
-    def test_position_target_is_74_and_hard_ceiling_rejects_75th(self):
-        self.assertEqual(MAX_OPEN_POSITIONS,74)
-        self.assertTrue(can_admit_position(73))
-        self.assertFalse(can_admit_position(74))
-        self.assertFalse(can_admit_position(75))
+    def test_position_target_is_50_and_hard_ceiling_rejects_51st(self):
+        self.assertEqual(MAX_OPEN_POSITIONS,50)
+        self.assertTrue(can_admit_position(49))
+        self.assertFalse(can_admit_position(50))
+        self.assertFalse(can_admit_position(51))
 
     def test_vcap_has_two_shard_concurrency_ceiling_but_no_unapproved_ladder(self):
         self.assertEqual(MAX_ACTIVE_VCAP_SHARDS_PER_ASSET,2)
