@@ -170,7 +170,7 @@ class CapitalGovernorTests(unittest.TestCase):
         self.settle(auth,order_id="paper-order-initial-test")
         self.assertEqual(self.gov.snapshot()["open_positions"], 1)
 
-    def test_74_position_limit_is_atomic_under_concurrent_admission(self):
+    def test_50_position_limit_is_atomic_under_concurrent_admission(self):
         def reserve(i):
             try:
                 self.gov.reserve_initial_position(
@@ -182,8 +182,8 @@ class CapitalGovernorTests(unittest.TestCase):
                 return False
         with ThreadPoolExecutor(max_workers=12) as pool:
             results=list(pool.map(reserve,range(90)))
-        self.assertEqual(sum(results),74)
-        self.assertEqual(self.gov.snapshot()["open_positions"],74)
+        self.assertEqual(sum(results),50)
+        self.assertEqual(self.gov.snapshot()["open_positions"],50)
 
     def test_dca_and_unconfigured_vcap_recovery_are_rejected(self):
         self.open_position()
