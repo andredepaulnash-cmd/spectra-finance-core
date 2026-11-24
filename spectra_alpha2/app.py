@@ -93,9 +93,17 @@ async def _doctor() -> int:
         rules=await data_client.get_trading_rules()
         candidates=await supervisor.scanner.scan()
         usd_pair_intersection = sorted(
-            set(tickers).intersection(rules),
+            (
+                pair for pair in set(tickers).intersection(rules)
+                if pair.endswith("-USD")
+            ),
             key=lambda pair: (pair not in {"BTC-USD", "XBT-USD"}, pair),
         )
+        ticker_quote_counts = {}
+        for pair in tickers:
+            if "-" in pair:
+                quote = pair.rsplit("-", 1)[1]
+                ticker_quote_counts[quote] = ticker_quote_counts.get(quote, 0) + 1
         preferred_pairs = [
             pair for pair in usd_pair_intersection
             if pair.split("-", 1)[0].upper() in {"BTC", "XBT"}
@@ -125,6 +133,8 @@ async def _doctor() -> int:
             "usd_trading_rule_pair_count":sum(1 for pair in rules if pair.endswith("-USD")),
             "usd_ticker_rule_intersection_count":len(usd_pair_intersection),
             "usd_pair_sample":usd_pair_intersection[:20],
+            "ticker_pair_sample":sorted(tickers)[:40],
+            "ticker_quote_counts":dict(sorted(ticker_quote_counts.items(), key=lambda item: (-item[1], item[0]))[:20]),
             "public_candle_probe_pair":probe_pair,
             "public_candle_probe_count":candle_count,
             "public_candle_probe_error":candle_error,
