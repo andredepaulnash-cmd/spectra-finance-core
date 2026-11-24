@@ -62,6 +62,12 @@ def order_body():
 def handler_for(requests,*,status="FILLED",trade_price="100",trade_fee="0.08"):
     def handler(request):
         requests.append(request)
+        if request.url.path=="/market-data/trading-pair/add":
+            payload=json.loads(request.content)
+            assert payload["connector_name"]=="kraken_paper_trade"
+            assert payload["trading_pair"]=="BTC-USD"
+            assert payload["account_name"]=="master_account"
+            return httpx.Response(200,json={"success":True})
         if request.url.path=="/trading/orders":
             assert request.headers.get("X-Spectra-Dispatch-Receipt")=="signed-paper-receipt"
             return httpx.Response(201,json={"order_id":"paper-order-1","status":"submitted"})
@@ -109,7 +115,8 @@ async def test_executor_submits_only_governor_signed_order_and_settles_fill():
     assert result.gross_quote_notional==Decimal("20")
     assert result.fee_quote==Decimal("0.08")
     assert [x[0] for x in governor.calls]==["consume","receipt","bind","settle"]
-    assert requests[0].url.path=="/trading/orders"
+    assert requests[0].url.path=="/market-data/trading-pair/add"
+    assert requests[1].url.path=="/trading/orders"
     await client.close()
 
 
@@ -154,6 +161,8 @@ async def test_executor_recovers_order_id_after_lost_submit_response():
     requests=[]
     def handler(request):
         requests.append(request)
+        if request.url.path=="/market-data/trading-pair/add":
+            return httpx.Response(200,json={"success":True})
         if request.url.path=="/trading/orders":
             raise httpx.ReadTimeout("response lost")
         if request.url.path=="/spectra/dispatch-receipts/auth-123":
