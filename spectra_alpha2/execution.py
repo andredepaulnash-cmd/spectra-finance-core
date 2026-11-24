@@ -11,7 +11,6 @@ from typing import Any
 import httpx
 
 from .governor import CapitalAuthorization, CapitalGovernor
-from .policy import BUY_FEE_RATE, SELL_FEE_RATE
 from .safety import PaperSafetySettings
 
 
@@ -29,7 +28,7 @@ class ExecutionResult:
     status: str
     filled_quantity: Decimal
     gross_quote_notional: Decimal
-    estimated_fee: Decimal
+    fee_quote: Decimal
 
 
 class HummingbotPaperExecutionClient:
@@ -162,12 +161,15 @@ class HummingbotPaperExecutionClient:
         )
 
     async def _search_orders(self,trading_pair:str,*,start_time:datetime,end_time:datetime):
+        # Hummingbot API TimeRangePaginationParams requires Unix milliseconds,
+        # not ISO-8601 strings. Sending datetimes returns HTTP 422 and prevents
+        # fill reconciliation even after an order has been accepted.
         return await self._post("/trading/orders/search",{
             "account_names":["master_account"],
             "connector_names":["kraken_paper_trade"],
             "trading_pairs":[trading_pair],
-            "start_time":start_time.isoformat(),
-            "end_time":end_time.isoformat(),
+            "start_time":int(start_time.timestamp()*1000),
+            "end_time":int(end_time.timestamp()*1000),
             "limit":200,
         })
 
@@ -176,10 +178,39 @@ class HummingbotPaperExecutionClient:
             "account_names":["master_account"],
             "connector_names":["kraken_paper_trade"],
             "trading_pairs":[trading_pair],
-            "start_time":start_time.isoformat(),
-            "end_time":end_time.isoformat(),
+            "start_time":int(start_time.timestamp()*1000),
+            "end_time":int(end_time.timestamp()*1000),
             "limit":500,
         })
+
+    @staticmethod
+    def _quote_fee_for_trade(trade:dict[str,Any],trading_pair:str)->Decimal:
+        raw_fee=trade.get("fee_paid",trade.get("fee"))
+        if raw_fee is None:
+            raise ExecutionUncertain("Hummingbot trade record is missing its fee amount")
+        fee=Decimal(str(raw_fee))
+        if not fee.is_finite() or fee<0:
+            raise ExecutionUncertain("Hummingbot trade record contains an invalid fee amount")
+        if fee==0:
+            return Decimal("0")
+        currency=str(trade.get("fee_currency") or "").strip().upper()
+        if not currency:
+            raise ExecutionUncertain("Hummingbot reported a nonzero fee without its fee currency")
+        base,quote=trading_pair.rsplit("-",1)
+        aliases={"XBT":"BTC","XXBT":"BTC","ZUSD":"USD","ZEUR":"EUR","ZGBP":"GBP","ZAUD":"AUD","ZCAD":"CAD","ZJPY":"JPY"}
+        currency=aliases.get(currency,currency)
+        base=aliases.get(base.upper(),base.upper())
+        quote=aliases.get(quote.upper(),quote.upper())
+        if currency==quote:
+            return fee
+        if currency==base:
+            price=Decimal(str(trade.get("price","0")))
+            if not price.is_finite() or price<=0:
+                raise ExecutionUncertain("Cannot convert base-denominated trade fee without a valid fill price")
+            return fee*price
+        raise ExecutionUncertain(
+            f"Cannot reconcile {currency} fee for {trading_pair}; fee is neither base nor quote currency"
+        )
 
     async def _wait_and_settle(
         self,
@@ -214,17 +245,20 @@ class HummingbotPaperExecutionClient:
             governor.release_unfilled_reservation(authorization_id,confirmed_no_fill=True)
             return ExecutionResult(authorization_id,order_id,status,Decimal("0"),Decimal("0"),Decimal("0"))
         average_price=gross/quantity
-        estimated_fee=gross*BUY_FEE_RATE
+        actual_fee_quote=sum(
+            (self._quote_fee_for_trade(item,trading_pair) for item in fills),
+            Decimal("0"),
+        )
         governor.settle_fill(
             authorization_id,
             actual_gross_notional=gross,
-            actual_fee=estimated_fee,
+            actual_fee=actual_fee_quote,
             actual_quantity=quantity,
             average_price=average_price,
         )
         if shard_id:
             governor.activate_vcap_shard(shard_id)
-        return ExecutionResult(authorization_id,order_id,status,quantity,gross,estimated_fee)
+        return ExecutionResult(authorization_id,order_id,status,quantity,gross,actual_fee_quote)
 
 
     async def submit_authorized_sell(
@@ -303,11 +337,14 @@ class HummingbotPaperExecutionClient:
             governor.release_exit_authorization(authorization_id,confirmed_no_fill=True)
             return ExecutionResult(authorization_id,order_id,status,Decimal("0"),Decimal("0"),Decimal("0"))
         average_price=gross/quantity
-        estimated_fee=gross*SELL_FEE_RATE
-        governor.settle_exit_fill(
-            authorization_id,actual_quantity=quantity,average_price=average_price,actual_fee=estimated_fee
+        actual_fee_quote=sum(
+            (self._quote_fee_for_trade(item,trading_pair) for item in fills),
+            Decimal("0"),
         )
-        return ExecutionResult(authorization_id,order_id,status,quantity,gross,estimated_fee)
+        governor.settle_exit_fill(
+            authorization_id,actual_quantity=quantity,average_price=average_price,actual_fee=actual_fee_quote
+        )
+        return ExecutionResult(authorization_id,order_id,status,quantity,gross,actual_fee_quote)
 
     async def reconcile_pending(self,governor:CapitalGovernor,*,timeout_seconds:float=0.1) -> list[ExecutionResult]:
         self.safety.assert_paper_mode()
