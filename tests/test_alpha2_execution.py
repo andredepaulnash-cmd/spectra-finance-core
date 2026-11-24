@@ -94,6 +94,15 @@ def test_trade_fees_are_converted_to_quote_currency_and_unknown_assets_fail_clos
         {"fee_paid":"0.08","fee_currency":"USD","price":"100000"},
         "BTC-USD",
     )==Decimal("0.08")
+    assert HummingbotPaperExecutionClient._quote_fee_for_trade(
+        {"fee_paid":"0","fee_currency":"USD","price":"100000"},
+        "BTC-USD",
+    )==Decimal("0")
+    with pytest.raises(ExecutionUncertain,match="missing its fee currency"):
+        HummingbotPaperExecutionClient._quote_fee_for_trade(
+            {"fee_paid":"0","fee_currency":None,"price":"100000"},
+            "BTC-USD",
+        )
     with pytest.raises(ExecutionUncertain,match="neither base nor quote"):
         HummingbotPaperExecutionClient._quote_fee_for_trade(
             {"fee_paid":"0.08","fee_currency":"EUR","price":"100000"},
