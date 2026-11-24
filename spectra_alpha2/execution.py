@@ -71,6 +71,31 @@ class HummingbotPaperExecutionClient:
         response.raise_for_status()
         return response.json()
 
+    async def _ensure_paper_market_ready(self,trading_pair:str)->None:
+        """Initialize the pair in PaperTradeExchange before submitting an order.
+
+        Public tickers/rules/order books do not automatically add a pair to the
+        paper connector's simulated market set. Hummingbot requires its
+        /market-data/trading-pair/add readiness operation before trading.
+        """
+        if not trading_pair.endswith("-USD"):
+            raise ExecutionUncertain("Alpha 2.0 paper execution accepts USD-quoted markets only")
+        try:
+            result=await self._post("/market-data/trading-pair/add",{
+                "connector_name":"kraken_paper_trade",
+                "trading_pair":trading_pair,
+                "account_name":"master_account",
+                "timeout":30,
+            })
+        except httpx.HTTPError as exc:
+            raise ExecutionUncertain(
+                f"Could not initialize {trading_pair} in the Kraken paper connector"
+            ) from exc
+        if not isinstance(result,dict) or result.get("success") is not True:
+            raise ExecutionUncertain(
+                f"Hummingbot did not confirm paper-market initialization for {trading_pair}: {result!r}"
+            )
+
     async def _recover_order_id(self,governor:CapitalGovernor,authorization_id:str,*,is_exit:bool=False) -> str | None:
         try:
             result=await self._get(f"/spectra/dispatch-receipts/{authorization_id}")
@@ -106,6 +131,7 @@ class HummingbotPaperExecutionClient:
         self.safety.assert_paper_mode()
         if request_body.get("connector_name")!="kraken_paper_trade":
             raise ExecutionUncertain("executor refuses any connector except kraken_paper_trade")
+        await self._ensure_paper_market_ready(str(request_body.get("trading_pair","")))
         governor.consume_authorization(
             authorization.authorization_id,
             idempotency_key=authorization.idempotency_key,
@@ -272,6 +298,7 @@ class HummingbotPaperExecutionClient:
         self.safety.assert_paper_mode()
         if request_body.get("connector_name")!="kraken_paper_trade" or request_body.get("trade_type")!="SELL":
             raise ExecutionUncertain("executor permits only Governor-authorized Kraken paper sells")
+        await self._ensure_paper_market_ready(str(request_body.get("trading_pair","")))
         governor.consume_exit_authorization(
             authorization.authorization_id,
             idempotency_key=authorization.idempotency_key,
