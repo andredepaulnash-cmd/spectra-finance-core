@@ -46,7 +46,7 @@ class PaperVenue:
                 }
             }}})
         if path == "/connectors/kraken_paper_trade/trading-rules":
-            return httpx.Response(200, json={"BTC-USDT": {
+            return httpx.Response(200, json={"BTC-USD": {
                 "supports_limit_orders": True, "min_order_size": "0.001",
                 "min_notional_size": "5", "min_base_amount_increment": "0.001",
                 "min_price_increment": "0.01",
@@ -132,7 +132,7 @@ def test_alpha2_real_components_discover_submit_fill_and_survive_restart(tmp_pat
 
     position = governor.list_positions()[0]
     state = governor.get_position_state(position["position_id"])
-    assert position["asset_id"] == "BTC-USDT"
+    assert position["asset_id"] == "BTC-USD"
     assert position["status"] == "OPEN"
     assert state["total_quantity"] == Decimal("0.199")
     assert state["total_cost_basis_quote"] == Decimal("19.9796")
