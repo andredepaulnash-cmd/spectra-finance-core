@@ -216,6 +216,7 @@ set -Eeuo pipefail
 umask 077
 INSTALL_DIR="${SPECTRA_ALPHA2_HOME:-$HOME/SpectraFinance-Alpha2}"
 CORE_DIR="$INSTALL_DIR/spectra-finance-core"
+API_DIR="$INSTALL_DIR/spectra-hummingbot-api"
 if podman compose version >/dev/null 2>&1; then
   COMPOSE=(podman compose)
 else
