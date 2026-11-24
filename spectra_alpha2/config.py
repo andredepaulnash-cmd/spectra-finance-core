@@ -43,12 +43,12 @@ class Alpha2Config:
         target=integer("SPECTRA_MAX_POSITIONS",MAX_OPEN_POSITIONS)
         if not 1<=target<=MAX_OPEN_POSITIONS:
             raise ValueError(f"SPECTRA_MAX_POSITIONS must be between 1 and {MAX_OPEN_POSITIONS}")
-        max_new=integer("SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE",10)
+        max_new=integer("SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE",50)
         if max_new<1: raise ValueError("SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE must be positive")
-        interval=float(env.get("SPECTRA_SCAN_INTERVAL_SECONDS","30"))
+        interval=float(env.get("SPECTRA_SCAN_INTERVAL_SECONDS","10"))
         timeout=float(env.get("SPECTRA_ORDER_TIMEOUT_SECONDS","60"))
         if interval<=0 or timeout<=0: raise ValueError("scan and order timeout values must be positive")
-        raw_min_volume=env.get("SPECTRA_MIN_QUOTE_VOLUME_24H","10000000").strip()
+        raw_min_volume=env.get("SPECTRA_MIN_QUOTE_VOLUME_24H","100000").strip()
         min_volume=decimal("SPECTRA_MIN_QUOTE_VOLUME_24H",raw_min_volume) if raw_min_volume else None
         quote_assets=frozenset(
             item.strip().upper()
@@ -57,8 +57,8 @@ class Alpha2Config:
         )
         if min_volume is not None and min_volume <= 0:
             raise ValueError("SPECTRA_MIN_QUOTE_VOLUME_24H must be positive when configured")
-        max_spread=decimal("SPECTRA_MAX_SPREAD_FRACTION","0.003")
-        max_slippage=decimal("SPECTRA_MAX_SLIPPAGE_FRACTION","0.001")
+        max_spread=decimal("SPECTRA_MAX_SPREAD_FRACTION","0.01")
+        max_slippage=decimal("SPECTRA_MAX_SLIPPAGE_FRACTION","0.005")
         if not Decimal("0")<=max_spread<=Decimal("0.02") or not Decimal("0")<=max_slippage<=Decimal("0.02"):
             raise ValueError("market volume, spread, or slippage configuration is outside safe bounds")
         username=env.get("SPECTRA_HB_API_USERNAME","")
