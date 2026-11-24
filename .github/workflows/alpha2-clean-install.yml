@@ -45,6 +45,7 @@ jobs:
           PY
           bash -n /tmp/spectra-alpha2-wrapper.sh
           grep -q 'CORE_BRANCH="${SPECTRA_ALPHA2_CORE_BRANCH:-alpha2-paper-usd-release}"' scripts/install_bazzite_alpha2.sh
+          grep -q 'API_DIR="$INSTALL_DIR/spectra-hummingbot-api"' /tmp/spectra-alpha2-wrapper.sh
           test -s docs/ALPHA2_BAZZITE_RUNBOOK.md
 
   alpha2-clean-compose-install:
