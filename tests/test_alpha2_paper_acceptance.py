@@ -74,13 +74,21 @@ class PaperVenue:
                 "order_id": self.order_id, "status": "submitted",
             })
         if path == "/trading/orders/search":
+            filters = json.loads(request.read())
+            assert isinstance(filters["start_time"], int)
+            assert isinstance(filters["end_time"], int)
+            assert filters["start_time"] < filters["end_time"]
             return httpx.Response(200, json={"data": [{
                 "order_id": self.order_id, "status": "FILLED",
             }]})
         if path == "/trading/trades":
+            filters = json.loads(request.read())
+            assert isinstance(filters["start_time"], int)
+            assert isinstance(filters["end_time"], int)
+            assert filters["start_time"] < filters["end_time"]
             return httpx.Response(200, json={"data": [{
                 "order_id": self.order_id, "amount": self.filled_amount,
-                "price": "100", "fee": "0.0796",
+                "price": "100", "fee_paid": "0.0796", "fee_currency": "USD",
             }]})
         raise AssertionError(f"unexpected paper API request: {request.method} {path}")
 
