@@ -88,7 +88,7 @@ class HummingbotPaperExecutionClient:
                 "trading_pair":trading_pair,
                 "account_name":"master_account",
                 "timeout":30,
-            })
+            },timeout=35)
         except httpx.HTTPError as exc:
             raise ExecutionUncertain(
                 f"Could not initialize {trading_pair} in the Kraken paper connector"
