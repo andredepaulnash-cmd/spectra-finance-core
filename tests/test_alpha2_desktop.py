@@ -34,6 +34,8 @@ class Alpha2DesktopTests(unittest.TestCase):
             html = response.read().decode()
         self.assertIn("Spectra Finance Alpha 2.0", html)
         self.assertIn("Run one paper cycle", html)
+        self.assertIn("Update release", html)
+        self.assertIn("data-action=\"update\"", html)
         self.assertIn("LIVE EXECUTION DISABLED", html)
         self.assertIn("const esc=", html)
 
@@ -74,6 +76,9 @@ class Alpha2DesktopTests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(payload, expected)
             run_action.assert_called_once_with("once")
+
+    def test_update_is_an_allowlisted_operator_action(self):
+        self.assertIn("update", desktop.ALLOWED_ACTIONS)
 
     def test_unknown_action_is_rejected(self):
         with self.assertRaises(ValueError):
