@@ -298,7 +298,7 @@ class CapitalGovernor:
                     "SELECT COUNT(*) AS n FROM positions WHERE status IN ('RESERVED','OPEN')"
                 ).fetchone()["n"]
                 if count >= MAX_OPEN_POSITIONS:
-                    raise CapitalDenied("74-position hard ceiling reached")
+                    raise CapitalDenied("50-position hard ceiling reached")
                 if conn.execute("SELECT 1 FROM positions WHERE asset_id=? AND status IN ('RESERVED','OPEN')", (asset_id,)).fetchone():
                     raise CapitalDenied("asset already has a position")
                 if self._available_pool(conn, CapitalPool.INITIAL) < amount + fee:

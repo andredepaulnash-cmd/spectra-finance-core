@@ -101,6 +101,40 @@ class PortfolioSupervisorTests(unittest.TestCase):
         self.assertEqual(second.available_slots,0)
         self.assertEqual(execution.orders,10)
 
+    def test_supervisor_fills_fifty_position_target_from_gainer_candidates(self):
+        execution=FakeExecution()
+        supervisor=PortfolioSupervisor(
+            self.gov,FakeScanner([candidate(i) for i in range(60)]),
+            CondorAnalyzer(),execution,target_positions=50,max_new_positions_per_cycle=50,
+        )
+        report=asyncio.run(supervisor.run_once())
+        self.assertEqual(report.admitted_positions,50)
+        self.assertEqual(report.active_positions_after_cycle,50)
+        self.assertEqual(self.gov.snapshot()["open_positions"],50)
+        self.assertEqual(execution.orders,50)
+        second=asyncio.run(supervisor.run_once())
+        self.assertEqual(second.admitted_positions,0)
+        self.assertEqual(second.available_slots,0)
+        self.assertEqual(execution.orders,50)
+
+    def test_fully_sold_position_is_replaced_in_the_same_cycle(self):
+        self._open_position()
+        up=candidate(1,Decimal("104"))
+        replacement=candidate(2,Decimal("10"))
+        scanner=FakeScanner([up,replacement],snapshots={"COIN1-USDT":up})
+        execution=FakeExecution()
+        supervisor=PortfolioSupervisor(
+            self.gov,scanner,CondorAnalyzer(),execution,
+            target_positions=1,max_new_positions_per_cycle=1,
+        )
+        report=asyncio.run(supervisor.run_once())
+        self.assertEqual(report.realized_exit_fills,1)
+        self.assertEqual(report.admitted_positions,1)
+        self.assertEqual(report.active_positions_after_cycle,1)
+        self.assertEqual([p["asset_id"] for p in self.gov.list_positions()],["COIN2-USDT"])
+        self.assertEqual(execution.orders,1)
+        self.assertEqual(execution.sell_orders,1)
+
     def test_supervisor_stops_admission_when_order_outcome_is_uncertain(self):
         execution=FakeExecution(fail=True)
         supervisor=PortfolioSupervisor(

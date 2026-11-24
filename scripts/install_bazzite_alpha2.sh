@@ -69,12 +69,25 @@ ensure_checkout() {
 }
 
 # Preserve the existing Alpha 2.0 ledger before changing source or rebuilding containers.
+backup_stopped_container_volume() {
+  local container_name="$1" mount_path="$2" backup_label="$3"
+  local volume_name backup_path
+  volume_name="$(podman inspect --format "{{range .Mounts}}{{if eq .Destination \"$mount_path\"}}{{.Name}}{{end}}{{end}}" "$container_name" 2>/dev/null || true)"
+  [[ -n "$volume_name" ]] || die "Could not identify the named volume mounted at $mount_path in $container_name; refusing an unbacked upgrade."
+  podman volume exists "$volume_name" || die "Required data volume $volume_name is missing."
+  backup_path="$INSTALL_DIR/backups/$backup_label-$UPGRADE_STAMP.tar"
+  podman volume export "$volume_name" --output "$backup_path"
+  [[ -s "$backup_path" ]] || die "Volume backup was empty: $backup_path"
+  chmod 600 "$backup_path"
+  info "Created offline volume backup: $backup_path"
+}
+
 if podman container exists spectra-alpha2-core 2>/dev/null; then
-  running="$(podman inspect --format '{{.State.Running}}' spectra-alpha2-core 2>/dev/null || true)"
-  [[ "$running" == "true" ]] || die "An Alpha 2.0 Core container exists but is stopped. Start it and create a SQLite online backup before upgrading."
   mkdir -p "$INSTALL_DIR/backups"
-  backup_name="spectra-alpha2-preupgrade-$UPGRADE_STAMP.sqlite3"
-  podman exec spectra-alpha2-core python - "$backup_name" <<'PYBACKUP'
+  running="$(podman inspect --format '{{.State.Running}}' spectra-alpha2-core 2>/dev/null || true)"
+  if [[ "$running" == "true" ]]; then
+    backup_name="spectra-alpha2-preupgrade-$UPGRADE_STAMP.sqlite3"
+    podman exec spectra-alpha2-core python - "$backup_name" <<'PYBACKUP'
 import sqlite3
 import sys
 from pathlib import Path
@@ -85,19 +98,22 @@ with sqlite3.connect("/data/spectra_alpha2.sqlite3") as source, sqlite3.connect(
     source.backup(destination)
 target.chmod(0o600)
 PYBACKUP
-  podman cp "spectra-alpha2-core:/data/backups/$backup_name" "$INSTALL_DIR/backups/$backup_name"
-  chmod 600 "$INSTALL_DIR/backups/$backup_name"
-  info "Created pre-upgrade SQLite online backup: $INSTALL_DIR/backups/$backup_name"
+    podman cp "spectra-alpha2-core:/data/backups/$backup_name" "$INSTALL_DIR/backups/$backup_name"
+    chmod 600 "$INSTALL_DIR/backups/$backup_name"
+    info "Created pre-upgrade SQLite online backup: $INSTALL_DIR/backups/$backup_name"
+  else
+    # A Created/Exited container cannot run SQLite's online-backup API. Export
+    # its complete stopped data volume instead, preserving the DB and any WAL.
+    backup_stopped_container_volume "spectra-alpha2-core" "/data" "spectra-alpha2-core-volume-preupgrade"
+  fi
+
   backup_stamp="$UPGRADE_STAMP"
-  # A running Core installation must have its API and PostgreSQL peers available;
-  # otherwise we cannot create a complete, restorable pre-upgrade snapshot.
   podman container exists spectra-alpha2-hummingbot-api 2>/dev/null || die "Core exists without its Hummingbot API container; refusing an incomplete upgrade."
   api_running="$(podman inspect --format '{{.State.Running}}' spectra-alpha2-hummingbot-api 2>/dev/null || true)"
-  [[ "$api_running" == "true" ]] || die "Alpha 2.0 Hummingbot API exists but is stopped; refusing an unbacked upgrade."
-  # Preserve the API replay/idempotency database with SQLite online backup when it exists.
-  if podman exec spectra-alpha2-hummingbot-api test -f /hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite3; then
-    receipt_name="spectra-alpha2-api-receipts-preupgrade-$backup_stamp.sqlite3"
-    podman exec spectra-alpha2-hummingbot-api python - "$receipt_name" <<PYRECEIPT
+  if [[ "$api_running" == "true" ]]; then
+    if podman exec spectra-alpha2-hummingbot-api test -f /hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite3; then
+      receipt_name="spectra-alpha2-api-receipts-preupgrade-$backup_stamp.sqlite3"
+      podman exec spectra-alpha2-hummingbot-api python - "$receipt_name" <<PYRECEIPT
 import sqlite3
 import sys
 from pathlib import Path
@@ -106,17 +122,42 @@ with sqlite3.connect("/hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite
     source.backup(destination)
 target.chmod(0o600)
 PYRECEIPT
-    podman cp "spectra-alpha2-hummingbot-api:/tmp/$receipt_name" "$INSTALL_DIR/backups/$receipt_name"
-    podman exec spectra-alpha2-hummingbot-api rm -f "/tmp/$receipt_name"
-    chmod 600 "$INSTALL_DIR/backups/$receipt_name"
+      podman cp "spectra-alpha2-hummingbot-api:/tmp/$receipt_name" "$INSTALL_DIR/backups/$receipt_name"
+      podman exec spectra-alpha2-hummingbot-api rm -f "/tmp/$receipt_name"
+      chmod 600 "$INSTALL_DIR/backups/$receipt_name"
+    fi
+  elif [[ -d "$API_DIR/bots/data" ]]; then
+    # The API's bots directory is a host bind mount. Preserve the complete
+    # stopped data folder, including SQLite WAL/SHM files, without starting it.
+    receipt_backup="$INSTALL_DIR/backups/spectra-alpha2-api-data-preupgrade-$backup_stamp.tar"
+    tar -C "$API_DIR" -cf "$receipt_backup" bots/data
+    [[ -s "$receipt_backup" ]] || die "API data backup was empty: $receipt_backup"
+    chmod 600 "$receipt_backup"
+    info "Created offline API data backup: $receipt_backup"
   fi
-  # PostgreSQL stores API-side state separately from the Core ledger and is mandatory.
+
   podman container exists spectra-alpha2-postgres 2>/dev/null || die "Core exists without its PostgreSQL container; refusing an incomplete upgrade."
   pg_running="$(podman inspect --format "{{.State.Running}}" spectra-alpha2-postgres 2>/dev/null || true)"
-  [[ "$pg_running" == "true" ]] || die "Alpha 2.0 PostgreSQL exists but is stopped; refusing an unbacked upgrade."
-  pg_backup="$INSTALL_DIR/backups/spectra-alpha2-postgres-preupgrade-$backup_stamp.sql"
-  podman exec spectra-alpha2-postgres pg_dump -U hbot -d hummingbot_api > "$pg_backup"
-  chmod 600 "$pg_backup"
+  if [[ "$pg_running" == "true" ]]; then
+    pg_backup="$INSTALL_DIR/backups/spectra-alpha2-postgres-preupgrade-$backup_stamp.sql"
+    podman exec spectra-alpha2-postgres pg_dump -U hbot -d hummingbot_api > "$pg_backup"
+    [[ -s "$pg_backup" ]] || die "PostgreSQL backup was empty: $pg_backup"
+    chmod 600 "$pg_backup"
+  else
+    backup_stopped_container_volume "spectra-alpha2-postgres" "/var/lib/postgresql/data" "spectra-alpha2-postgres-volume-preupgrade"
+  fi
+
+  # Preserve stopped EMQX state as well. Running broker volumes remain in place
+  # during the update and are not exported while the broker is writing to them.
+  if podman container exists spectra-alpha2-broker 2>/dev/null; then
+    broker_running="$(podman inspect --format "{{.State.Running}}" spectra-alpha2-broker 2>/dev/null || true)"
+    if [[ "$broker_running" != "true" ]]; then
+      for mount_path in /opt/emqx/data /opt/emqx/log /opt/emqx/etc; do
+        backup_stopped_container_volume "spectra-alpha2-broker" "$mount_path" "spectra-alpha2-broker-volume-$(basename "$mount_path")-preupgrade"
+      done
+    fi
+  fi
+
   # Keep existing internal credentials and signing material recoverable.
   for config_file in "$CORE_DIR/.env" "$CORE_DIR/.env.core" "$CORE_DIR/docker-compose.alpha2.yml" "$API_DIR/.env" "$API_DIR/.emqx/auth-bootstrap.csv" "$API_DIR/bots/credentials/master_account/conf_client.yml"; do
     if [[ -f "$config_file" ]]; then
@@ -138,6 +179,7 @@ else
   existing_volumes="$(podman volume ls -q | grep 'spectra-alpha2' || true)"
   [[ -z "$existing_volumes" ]] || die "Alpha 2.0 data volumes exist without the Core container. Preserve/restore the ledger and create a backup before upgrading."
 fi
+
 
 ensure_checkout "$CORE_REPO" "$CORE_BRANCH" "$CORE_DIR"
 ensure_checkout "$API_REPO" "$API_BRANCH" "$API_DIR"
@@ -357,6 +399,6 @@ printf 'Pinned source commits:\n'
 cat "$INSTALL_DIR/installed-commits.txt"
 printf '\nCommands: %s {status|doctor|logs|once|update|backup|stop|start|restart}\n' "$WRAPPER"
 printf 'Hummingbot API: http://127.0.0.1:8002 (authenticated)\n'
-printf 'MQTT: 127.0.0.1:1884; EMQX dashboard: http://127.0.0.1:18084\n'
+printf 'MQTT: internal-only; EMQX dashboard: http://127.0.0.1:18084\n'
 printf 'Paper-only flags are enforced. No exchange credentials are configured or accepted.\n'
 printf 'Existing Alpha installations, data, volumes, and local source modifications were not removed.\n'

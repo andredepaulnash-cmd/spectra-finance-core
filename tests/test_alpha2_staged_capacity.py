@@ -53,12 +53,12 @@ class PaperExecution:
 
 
 class StagedCapacityTests(unittest.TestCase):
-    def test_staged_position_capacity_10_25_50_74_and_reject_75th(self):
+    def test_staged_position_capacity_10_25_50_and_reject_51st(self):
         with tempfile.TemporaryDirectory() as temp:
             governor=CapitalGovernor(f"{temp}/alpha2.sqlite3",environment=SAFE_ENV)
             execution=PaperExecution()
-            scanner=Scanner([market(i) for i in range(74)])
-            for target in (10,25,50,74):
+            scanner=Scanner([market(i) for i in range(60)])
+            for target in (10,25,50):
                 supervisor=PortfolioSupervisor(
                     governor,scanner,CondorAnalyzer(),execution,
                     target_positions=target,max_new_positions_per_cycle=10,
@@ -68,15 +68,15 @@ class StagedCapacityTests(unittest.TestCase):
                     asyncio.run(supervisor.run_once())
                     cycles+=1
                 self.assertEqual(len(governor.list_positions()),target)
-                self.assertLessEqual(len(governor.list_positions()),74)
+                self.assertLessEqual(len(governor.list_positions()),50)
             with self.assertRaises(CapitalDenied):
                 governor.reserve_initial_position(
-                    position_id="overflow-75",asset_id="OVERFLOW-USDT",
-                    reference_price=Decimal("1"),idempotency_key="overflow-75",
+                    position_id="overflow-51",asset_id="OVERFLOW-USDT",
+                    reference_price=Decimal("1"),idempotency_key="overflow-51",
                 )
             snapshot=governor.snapshot()
-            self.assertEqual(snapshot["open_positions"],74)
-            self.assertEqual(snapshot["open_lots"],74)
+            self.assertEqual(snapshot["open_positions"],50)
+            self.assertEqual(snapshot["open_lots"],50)
             self.assertEqual(snapshot["active_vcap_shards"],0)
 
 

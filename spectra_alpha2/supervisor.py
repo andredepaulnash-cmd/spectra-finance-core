@@ -180,11 +180,14 @@ class PortfolioSupervisor:
 
         # New admissions come only from the scanner's quality-filtered 24-hour gainer universe.
         candidates = await self.scanner.scan()
-        recommendations = self.condor.recommend(candidates, limit=self.target_positions)
+        # Recount after exits. A fully reconciled sale frees its slot immediately;
+        # do not count the just-closed asset as an occupied position. Exclude it
+        # from this cycle's candidate set to avoid an instant same-asset re-entry.
+        recommendations = self.condor.recommend(candidates, limit=max(1, len(candidates)))
         candidate_by_pair = {candidate.trading_pair: candidate for candidate in candidates}
-        existing_assets = {position["asset_id"] for position in self.governor.list_positions()}
-        existing_assets.update(blocked_assets)
-        slots = max(0, self.target_positions - len(existing_assets))
+        active_positions = self.governor.list_positions()
+        existing_assets = {position["asset_id"] for position in active_positions}
+        slots = max(0, self.target_positions - len(active_positions))
         admission_budget = min(slots, self.max_new_positions_per_cycle)
         admitted = 0
         pending_orders = exit_pending + sum(1 for result in reconciled if result.status == "PENDING")
@@ -195,7 +198,7 @@ class PortfolioSupervisor:
             candidate = candidate_by_pair.get(recommendation.trading_pair)
             if candidate is None:
                 continue
-            if candidate.trading_pair in existing_assets:
+            if candidate.trading_pair in existing_assets or candidate.trading_pair in blocked_assets:
                 skipped_existing += 1
                 continue
             if admitted >= admission_budget:

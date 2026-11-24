@@ -122,6 +122,24 @@ def test_condor_ranks_liquid_tight_spread_candidates_and_explains_score():
     assert ranked[0].score>ranked[1].score
 
 
+def test_condor_prioritizes_largest_positive_24h_gainer_before_liquidity_score():
+    def item(pair,volume,change):
+        return MarketCandidate(
+            trading_pair=pair,base_asset=pair.split("-")[0],quote_asset="USD",
+            last_price=Decimal("1"),best_bid=Decimal("0.999"),best_ask=Decimal("1.001"),
+            quote_volume_24h=Decimal(str(volume)),base_volume_24h=Decimal("100"),
+            spread_fraction=Decimal("0.001"),ticker_timestamp=time.time(),
+            min_order_size=Decimal("0.001"),min_notional_size=Decimal("0"),
+            base_amount_increment=Decimal("0.001"),price_increment=Decimal("0.01"),
+            change_24h_fraction=Decimal(str(change)),
+        )
+    ranked=CondorAnalyzer().recommend([
+        item("LIQUID-USD",100000000,0.03),
+        item("GAINER-USD",1000000,0.25),
+    ],limit=2)
+    assert ranked[0].trading_pair=="GAINER-USD"
+
+
 def test_condor_is_only_a_recommendation_layer():
     analyzer=CondorAnalyzer()
     assert not hasattr(analyzer,"place_order")

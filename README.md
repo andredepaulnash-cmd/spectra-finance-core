@@ -22,7 +22,7 @@ A paper-trading-only portfolio automation system. Alpha 2.0 is developed on the 
 
 ## Confirmed Alpha 2.0 strategy boundaries
 
-- Primary entries are quality-filtered 24-hour gainers. Quote-asset universe and liquidity metric/floor require explicit configuration; no entries are admitted when those settings are absent.
+- Primary entries are positive 24-hour gainers from Kraken USD spot markets. Alpha 2.0's paper portfolio target and hard ceiling are 50 simultaneous positions, with $20 gross initial MARKET BUYs and automatic replacement after fully reconciled exits. Permissive default paper-test filters still require fresh data, valid exchange rules, positive books, at least $100,000 24-hour USD quote volume, and a maximum 1% spread.
 - Every purchase is a MARKET BUY. LIMIT BUY and resting buy orders are prohibited.
 - Ordinary `TOP_GAINER` positions use the fixed +1.74% net take-profit after 0.40% buy and sell fee assumptions; exit sells are LIMIT orders and are not submitted until the current bid reaches the fee-aware target.
 - `TOP_LOSER_REVERSAL` is a separate, not-yet-enabled research/entry pathway. The discussed $1M research and $10M entry-liquidity targets still need metric/quote-asset semantics. Adaptive DTTP/DTSL is exclusive to that origin and is not applied to ordinary gainer positions.

@@ -67,7 +67,7 @@ The command wrapper is installed at `$HOME/.local/bin/spectra-alpha2`.
 - `once` runs one supervised portfolio cycle on demand without replacing the persistent service.
 - The desktop command center provides the corresponding controls.
 
-The default scan interval is 30 seconds (`SPECTRA_SCAN_INTERVAL_SECONDS`). The scanner admits only positive 24-hour USD gainers that pass the configured quote-volume, ticker-freshness, exchange-rule and spread checks. Every entry is a MARKET BUY through Kraken's paper connector. Ordinary top-gainer exits use the configured fee-aware LIMIT SELL only after the live paper bid reaches its target. The current release does not activate VCAP recovery or the advanced DTTP/DTSL reversal engine; those remain outside this release's verified scope.
+The default scan interval is 10 seconds (`SPECTRA_SCAN_INTERVAL_SECONDS`). The portfolio target and hard ceiling are 50 simultaneous positions, with a $20 initial MARKET BUY budget per position. The supervisor can submit up to 50 new entries in a cycle while vacancies remain. It ranks positive 24-hour USD gainers by percentage change and uses deliberately permissive paper-test defaults: at least $100,000 in 24-hour quote volume and no more than a 1% top-of-book spread. Fresh ticker data, valid Kraken trading rules, positive two-sided order books, minimum order sizes, signed capital authorization and the configured 0.5% market-buy slippage ceiling still apply. After a position is fully sold and the exit fill is reconciled, its slot is eligible for replacement in that same cycle using another qualifying gainer; the just-closed asset is not immediately re-entered in that cycle. Every entry is a MARKET BUY through Kraken's paper connector. Ordinary top-gainer exits use the configured fee-aware LIMIT SELL only after the live paper bid reaches its target. The current release does not activate VCAP recovery or the advanced DTTP/DTSL reversal engine; those remain outside this release's verified scope.
 
 If an order outcome is uncertain, the supervisor retains its capital reservation and reconciles it on a later cycle rather than blindly resubmitting the order. Check `logs` and `status` before intervening manually.
 
@@ -81,7 +81,9 @@ Use the installed updater:
 
 The updater is pinned to the verified Core release branch and dedicated API branch. Before changing source or rebuilding containers, it creates a pre-upgrade snapshot of the Core SQLite ledger, API dispatch-receipt database when present, PostgreSQL state, release manifest and important configuration files.
 
-The update refuses to proceed if the existing Core/API/PostgreSQL stack cannot be backed up or if local source modifications are detected.
+If the Core or API container is stopped or only in the **Created** state, the updater does not try to start the broken stack just to make a backup. It exports the stopped Core/PostgreSQL/EMQX named volumes and archives the API's host-side data directory, preserving SQLite database and WAL files. Running services use their application-level online backup or database dump. The updater never removes named volumes.
+
+The update refuses to proceed if a required data volume cannot be identified or backed up, or if local source modifications are detected.
 
 The desktop command center also provides a confirmed **Update release** action.
 
@@ -105,12 +107,11 @@ Do not use `podman compose down -v` for routine stop/update operations; `-v` rem
 
 ## Service endpoints
 
-The installer binds the local service endpoints to loopback:
+The installer binds the local service endpoints to loopback. MQTT remains internal to the isolated Compose network and is not published on a host port:
 
 | Service | Local endpoint |
 |---|---|
 | Hummingbot API | `http://127.0.0.1:8002` |
-| MQTT | `127.0.0.1:1884` |
 | EMQX dashboard | `http://127.0.0.1:18084` |
 
 API credentials are generated locally and stored in owner-only environment files. They are internal service credentials, not exchange credentials.
@@ -120,12 +121,16 @@ API credentials are generated locally and stored in owner-only environment files
 - Execution connector: `kraken_paper_trade`
 - Quote asset: USD
 - Paper balance: 25,000 USD
-- Default entry liquidity threshold: 10,000,000 USD 24-hour quote volume
+- Default entry liquidity threshold: 100,000 USD 24-hour quote volume
+- Default maximum top-of-book spread: 1%
+- Maximum simultaneous positions: 50
+- Initial paper buy budget: 20 USD per position
+- Maximum new entries attempted per cycle: 50
 - All purchases are MARKET BUY orders.
 - LIMIT orders are reserved for authorized exit sells.
 - Live execution remains disabled; no exchange API keys are configured or accepted.
 
-A successful doctor does not guarantee an entry on every cycle. The strategy must still find a qualifying market under its discovery, liquidity, gain and spread filters.
+A successful doctor does not guarantee that all 50 slots can be filled. The strategy fills only when enough distinct positive 24-hour USD gainers satisfy the permissive discovery filters and Kraken's minimum-order/execution checks. If fewer than 50 qualify, it continues scanning and fills vacancies as qualifying opportunities appear. This build automates initial entries, fee-aware take-profit exits and slot replacement; VCAP mean-reversion recovery and advanced DTTP/DTSL remain separate, unimplemented release work.
 
 ## Data-preserving stop and uninstall
 

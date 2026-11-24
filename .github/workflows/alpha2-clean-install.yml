@@ -2,9 +2,9 @@ name: Spectra Alpha 2.0 Clean Install
 
 on:
   push:
-    branches: [spectra-finance-alpha-2.0]
+    branches: [spectra-finance-alpha-2.0, alpha2-paper-usd-release]
   pull_request:
-    branches: [spectra-finance-alpha-2.0]
+    branches: [spectra-finance-alpha-2.0, alpha2-paper-usd-release]
   workflow_dispatch:
 
 permissions:
@@ -35,6 +35,8 @@ jobs:
         working-directory: spectra-finance-core
         run: |
           bash -n scripts/install_bazzite_alpha2.sh
+          grep -q 'backup_stopped_container_volume' scripts/install_bazzite_alpha2.sh
+          grep -q 'podman volume export' scripts/install_bazzite_alpha2.sh
           python - <<'PY'
           from pathlib import Path
           source = Path("scripts/install_bazzite_alpha2.sh").read_text(encoding="utf-8")
