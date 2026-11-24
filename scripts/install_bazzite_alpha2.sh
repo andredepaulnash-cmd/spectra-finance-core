@@ -22,6 +22,12 @@ done
 [[ "$INSTALL_DIR" == /* ]] || die "Installation path must be absolute."
 [[ ! -L "$INSTALL_DIR" ]] || die "Refusing to use a symlink as the Alpha 2.0 installation root."
 mkdir -p "$INSTALL_DIR"
+UPGRADE_STAMP="$(date +%Y%m%d-%H%M%S)"
+if [[ -f "$INSTALL_DIR/installed-commits.txt" ]]; then
+  mkdir -p "$INSTALL_DIR/backups"
+  cp -p -- "$INSTALL_DIR/installed-commits.txt" "$INSTALL_DIR/backups/installed-commits-preupgrade-$UPGRADE_STAMP.txt"
+  chmod 600 "$INSTALL_DIR/backups/installed-commits-preupgrade-$UPGRADE_STAMP.txt"
+fi
 
 AVAILABLE_KB="$(LC_ALL=C df -Pk "$HOME" | awk 'END {print $4}')"
 [[ "$AVAILABLE_KB" =~ ^[0-9]+$ ]] || die "Could not determine free space on $HOME."
@@ -82,7 +88,7 @@ PYBACKUP
   podman cp "spectra-alpha2-core:/data/backups/$backup_name" "$INSTALL_DIR/backups/$backup_name"
   chmod 600 "$INSTALL_DIR/backups/$backup_name"
   info "Created pre-upgrade SQLite online backup: $INSTALL_DIR/backups/$backup_name"
-  backup_stamp="$(date +%Y%m%d-%H%M%S)"
+  backup_stamp="$UPGRADE_STAMP"
   # Preserve the API replay/idempotency database with SQLite online backup.
   if podman container exists spectra-alpha2-hummingbot-api 2>/dev/null && podman exec spectra-alpha2-hummingbot-api test -f /hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite3; then
     receipt_name="spectra-alpha2-api-receipts-preupgrade-$backup_stamp.sqlite3"
@@ -108,7 +114,7 @@ PYRECEIPT
     chmod 600 "$pg_backup"
   fi
   # Keep existing internal credentials and signing material recoverable.
-  for config_file in "$CORE_DIR/.env" "$CORE_DIR/.env.core" "$API_DIR/.env" "$API_DIR/.emqx/auth-bootstrap.csv" "$API_DIR/bots/credentials/master_account/conf_client.yml"; do
+  for config_file in "$CORE_DIR/.env" "$CORE_DIR/.env.core" "$CORE_DIR/docker-compose.alpha2.yml" "$API_DIR/.env" "$API_DIR/.emqx/auth-bootstrap.csv" "$API_DIR/bots/credentials/master_account/conf_client.yml"; do
     if [[ -f "$config_file" ]]; then
       backup_config="$INSTALL_DIR/backups/$(basename "$config_file").preupgrade-$backup_stamp"
       cp -p -- "$config_file" "$backup_config"
@@ -211,7 +217,13 @@ case "${1:-status}" in
     compose ps
     podman exec spectra-alpha2-core python -m spectra_alpha2 status
     ;;
-  logs) compose logs -f --tail=200 "${2:-}" ;;
+  logs)
+    if [[ -n "${2:-}" ]]; then
+      compose logs -f --tail=200 "$2"
+    else
+      compose logs -f --tail=200
+    fi
+    ;;
   doctor) podman exec spectra-alpha2-core python -m spectra_alpha2 doctor ;;
   once) podman exec spectra-alpha2-core python -m spectra_alpha2 run-once ;;
   backup)
