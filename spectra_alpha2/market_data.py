@@ -128,7 +128,7 @@ class ResearchScanner:
         min_change_24h_fraction: Decimal = ZERO,
         max_ticker_age_seconds: int = 60,
         max_book_concurrency: int = 8,
-        max_candidates: int = 60,
+        max_candidates: int = 250,
         change_cache_ttl_seconds: int = 300,
         clock=time.time,
     ):
