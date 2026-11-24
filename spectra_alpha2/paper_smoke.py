@@ -50,11 +50,46 @@ async def run_smoke() -> dict:
                 min_quote_volume_24h=Decimal("1"),
                 max_spread_fraction=config.max_spread_fraction,
             )
-            candidate = await scanner.inspect_pair("BTC-USD")
+            # Do not assume a single market symbol is exposed by the connector.
+            # Kraken/Hummingbot symbol normalization can differ by connector version.
+            # Select only a real USD-quoted pair present in BOTH live ticker and rule maps.
+            tickers, rules = await asyncio.gather(
+                data.get_tickers(),
+                data.get_trading_rules(),
+            )
+            usd_pairs = sorted(
+                set(tickers).intersection(rules),
+                key=lambda pair: (pair not in {"BTC-USD", "XBT-USD"}, pair),
+            )
+            candidate = None
+            rejected = []
+            now = scanner.clock()
+            for pair in usd_pairs:
+                ticker = tickers.get(pair)
+                rule = rules.get(pair)
+                if not isinstance(ticker, dict) or not isinstance(rule, dict):
+                    continue
+                try:
+                    candidate = await scanner._candidate_from_snapshot(
+                        pair, ticker, rule, now=now, require_gainer=False
+                    )
+                except Exception as exc:
+                    rejected.append(f"{pair}: {type(exc).__name__}: {exc}")
+                    continue
+                if candidate is not None:
+                    break
             if candidate is None:
+                sample = {
+                    "ticker_count": len(tickers),
+                    "trading_rule_count": len(rules),
+                    "usd_ticker_pairs": [p for p in tickers if p.endswith("-USD")][:25],
+                    "usd_rule_pairs": [p for p in rules if p.endswith("-USD")][:25],
+                    "usd_intersection_pairs": usd_pairs[:25],
+                    "rejected": rejected[:10],
+                }
                 raise RuntimeError(
-                    "Kraken paper connector did not provide a valid BTC-USD ticker, "
-                    "trading rule, and order book; cannot prove paper execution."
+                    "Kraken paper connector did not expose a usable USD-quoted "
+                    "ticker/rule/order-book combination: " + json.dumps(sample, default=str)
                 )
 
             position_id = str(uuid.uuid4())
