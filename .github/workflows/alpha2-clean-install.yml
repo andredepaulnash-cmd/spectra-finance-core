@@ -72,7 +72,7 @@ jobs:
         working-directory: spectra-finance-core
         run: |
           python scripts/prepare_alpha2_environment.py --api-repo ../spectra-hummingbot-api
-          printf '\nSPECTRA_MAX_POSITIONS=1\nSPECTRA_MAX_NEW_POSITIONS_PER_CYCLE=1\n' >> .env.core
+          printf '\nSPECTRA_MAX_POSITIONS=1\nSPECTRA_MAX_NEW_POSITIONS_PER_CYCLE=1\nSPECTRA_SCAN_INTERVAL_SECONDS=5\n' >> .env.core
           chmod 600 .env .env.core ../spectra-hummingbot-api/.env
       - name: Generate and validate isolated Alpha 2.0 Compose stack
         working-directory: spectra-finance-core
