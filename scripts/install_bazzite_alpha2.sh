@@ -116,7 +116,16 @@ PYRECEIPT
   # Keep existing internal credentials and signing material recoverable.
   for config_file in "$CORE_DIR/.env" "$CORE_DIR/.env.core" "$CORE_DIR/docker-compose.alpha2.yml" "$API_DIR/.env" "$API_DIR/.emqx/auth-bootstrap.csv" "$API_DIR/bots/credentials/master_account/conf_client.yml"; do
     if [[ -f "$config_file" ]]; then
-      backup_config="$INSTALL_DIR/backups/$(basename "$config_file").preupgrade-$backup_stamp"
+      case "$config_file" in
+        "$CORE_DIR/.env") backup_label="core.env" ;;
+        "$CORE_DIR/.env.core") backup_label="core.env.core" ;;
+        "$CORE_DIR/docker-compose.alpha2.yml") backup_label="core.docker-compose.alpha2.yml" ;;
+        "$API_DIR/.env") backup_label="api.env" ;;
+        "$API_DIR/.emqx/auth-bootstrap.csv") backup_label="api.auth-bootstrap.csv" ;;
+        "$API_DIR/bots/credentials/master_account/conf_client.yml") backup_label="api.conf_client.yml" ;;
+        *) die "Unknown configuration backup path: $config_file" ;;
+      esac
+      backup_config="$INSTALL_DIR/backups/$backup_label.preupgrade-$backup_stamp"
       cp -p -- "$config_file" "$backup_config"
       chmod 600 "$backup_config"
     fi
@@ -226,6 +235,9 @@ case "${1:-status}" in
     ;;
   doctor) podman exec spectra-alpha2-core python -m spectra_alpha2 doctor ;;
   once) podman exec spectra-alpha2-core python -m spectra_alpha2 run-once ;;
+  update)
+    exec "$CORE_DIR/scripts/install_bazzite_alpha2.sh"
+    ;;
   backup)
     mkdir -p "$INSTALL_DIR/backups"
     target_name="spectra-alpha2-$(date +%Y%m%d-%H%M%S).sqlite3"
@@ -251,7 +263,7 @@ PYBACKUP
     compose down
     ;;
   *)
-    echo "Usage: spectra-alpha2 {start|stop|restart|status|doctor|logs|once|backup|uninstall}" >&2
+    echo "Usage: spectra-alpha2 {start|stop|restart|status|doctor|logs|once|update|backup|uninstall}" >&2
     exit 2
     ;;
 esac
@@ -306,7 +318,7 @@ info "Installation completed"
 printf 'Install directory: %s\n' "$INSTALL_DIR"
 printf 'Pinned source commits:\n'
 cat "$INSTALL_DIR/installed-commits.txt"
-printf '\nCommands: %s {status|doctor|logs|once|backup|stop|start|restart}\n' "$WRAPPER"
+printf '\nCommands: %s {status|doctor|logs|once|update|backup|stop|start|restart}\n' "$WRAPPER"
 printf 'Hummingbot API: http://127.0.0.1:8002 (authenticated)\n'
 printf 'MQTT: 127.0.0.1:1884; EMQX dashboard: http://127.0.0.1:18084\n'
 printf 'Paper-only flags are enforced. No exchange credentials are configured or accepted.\n'
