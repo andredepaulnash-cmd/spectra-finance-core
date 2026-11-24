@@ -58,7 +58,10 @@ async def run_smoke() -> dict:
                 data.get_trading_rules(),
             )
             usd_pairs = sorted(
-                set(tickers).intersection(rules),
+                (
+                    pair for pair in set(tickers).intersection(rules)
+                    if pair.endswith("-USD")
+                ),
                 key=lambda pair: (pair not in {"BTC-USD", "XBT-USD"}, pair),
             )
             candidate = None
@@ -85,6 +88,11 @@ async def run_smoke() -> dict:
                     "usd_ticker_pairs": [p for p in tickers if p.endswith("-USD")][:25],
                     "usd_rule_pairs": [p for p in rules if p.endswith("-USD")][:25],
                     "usd_intersection_pairs": usd_pairs[:25],
+                    "ticker_pair_sample": sorted(tickers)[:40],
+                    "ticker_quote_counts": {
+                        quote: sum(1 for pair in tickers if pair.endswith("-" + quote))
+                        for quote in sorted({pair.rsplit("-", 1)[1] for pair in tickers if "-" in pair})
+                    },
                     "rejected": rejected[:10],
                 }
                 raise RuntimeError(
