@@ -130,7 +130,7 @@ async def run_smoke() -> dict:
                 "order_status": result.status,
                 "filled_quantity": str(result.filled_quantity),
                 "gross_quote_notional": str(result.gross_quote_notional),
-                "estimated_fee_usd": str(result.estimated_fee),
+                "actual_fee_usd": str(result.fee_quote),
                 "ledger_position_status": positions[0]["status"],
                 "ledger_quantity": str(state["total_quantity"]),
                 "ledger_cost_basis_usd": str(state["total_cost_basis_quote"]),
