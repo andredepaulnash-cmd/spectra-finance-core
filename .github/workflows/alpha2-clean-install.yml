@@ -38,10 +38,10 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           source = Path("scripts/install_bazzite_alpha2.sh").read_text(encoding="utf-8")
-          marker = 'cat > "$WRAPPER" <<\'WRAPPER\'\\n'
+          marker = 'cat > "$WRAPPER" <<\'WRAPPER\'\n'
           start = source.index(marker) + len(marker)
-          end = source.index("\\nWRAPPER\\n", start)
-          Path("/tmp/spectra-alpha2-wrapper.sh").write_text(source[start:end] + "\\n", encoding="utf-8")
+          end = source.index("\nWRAPPER\n", start)
+          Path("/tmp/spectra-alpha2-wrapper.sh").write_text(source[start:end] + "\n", encoding="utf-8")
           PY
           bash -n /tmp/spectra-alpha2-wrapper.sh
           grep -q 'CORE_BRANCH="${SPECTRA_ALPHA2_CORE_BRANCH:-alpha2-paper-usd-release}"' scripts/install_bazzite_alpha2.sh
