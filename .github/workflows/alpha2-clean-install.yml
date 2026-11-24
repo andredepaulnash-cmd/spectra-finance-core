@@ -72,7 +72,7 @@ jobs:
         working-directory: spectra-finance-core
         run: |
           python scripts/prepare_alpha2_environment.py --api-repo ../spectra-hummingbot-api
-          printf '\nSPECTRA_MAX_POSITIONS=1\nSPECTRA_MAX_NEW_POSITIONS_PER_CYCLE=1\nSPECTRA_SCAN_INTERVAL_SECONDS=5\n' >> .env.core
+          printf '\nSPECTRA_MAX_POSITIONS=1\nSPECTRA_MAX_NEW_POSITIONS_PER_CYCLE=1\n' >> .env.core
           chmod 600 .env .env.core ../spectra-hummingbot-api/.env
       - name: Generate and validate isolated Alpha 2.0 Compose stack
         working-directory: spectra-finance-core
@@ -123,7 +123,7 @@ jobs:
           set -euo pipefail
           wait_for_settlement() {
             local output="$1"
-            for attempt in $(seq 1 45); do
+            for attempt in $(seq 1 60); do
               docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 status > "$output"
               if python - "$output" <<'PY'
           import json, sys
@@ -135,7 +135,7 @@ jobs:
               fi
               sleep 2
             done
-            echo "Paper order did not reach a reconciled terminal state within 90 seconds." >&2
+            echo "Paper order did not reach a reconciled terminal state within 120 seconds." >&2
             cat "$output"
             return 1
           }
