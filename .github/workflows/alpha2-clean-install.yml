@@ -4,7 +4,7 @@ on:
   push:
     branches: [spectra-finance-alpha-2.0, alpha2-paper-usd-release]
   pull_request:
-    branches: [spectra-finance-alpha-2.0]
+    branches: [spectra-finance-alpha-2.0, alpha2-paper-usd-release]
   workflow_dispatch:
 
 permissions:
