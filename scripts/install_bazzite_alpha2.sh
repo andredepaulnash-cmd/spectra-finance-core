@@ -357,6 +357,6 @@ printf 'Pinned source commits:\n'
 cat "$INSTALL_DIR/installed-commits.txt"
 printf '\nCommands: %s {status|doctor|logs|once|update|backup|stop|start|restart}\n' "$WRAPPER"
 printf 'Hummingbot API: http://127.0.0.1:8002 (authenticated)\n'
-printf 'MQTT: 127.0.0.1:1884; EMQX dashboard: http://127.0.0.1:18084\n'
+printf 'MQTT: internal-only; EMQX dashboard: http://127.0.0.1:18084\n'
 printf 'Paper-only flags are enforced. No exchange credentials are configured or accepted.\n'
 printf 'Existing Alpha installations, data, volumes, and local source modifications were not removed.\n'
