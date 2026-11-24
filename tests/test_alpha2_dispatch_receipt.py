@@ -33,7 +33,7 @@ def trade_body():
     return {
         "account_name":"master_account",
         "connector_name":"kraken_paper_trade",
-        "trading_pair":"BTC-USDT",
+        "trading_pair":"BTC-USD",
         "trade_type":"BUY","strategy_origin":"TOP_GAINER",
         "amount":"0.0003",
         "order_type":"MARKET",
@@ -59,7 +59,7 @@ def test_signed_trade_receipt_binds_exact_paper_order_and_governor_id(monkeypatc
     private.public_key().verify(signature,receipts.canonical_json(payload))
     assert payload["proposal_id"]=="capital-reservation-123"
     assert payload["connector_name"]=="kraken_paper_trade"
-    assert payload["trading_pair"]=="BTC-USDT"
+    assert payload["trading_pair"]=="BTC-USD"
     assert payload["amount"]=="20"
     assert payload["body_sha256"]==receipts.canonical_sha256(body)
     assert payload["policy_version"]=="spectra-alpha2-v1"
@@ -75,7 +75,7 @@ def test_dispatch_signing_fails_closed_without_paper_flags(monkeypatch):
         )
 
 
-def test_live_connector_and_non_usdt_market_receipts_are_rejected(monkeypatch):
+def test_live_connector_and_non_usd_market_receipts_are_rejected(monkeypatch):
     setup_signing(monkeypatch)
     body=trade_body()
     body["connector_name"]="kraken"
@@ -85,8 +85,8 @@ def test_live_connector_and_non_usdt_market_receipts_are_rejected(monkeypatch):
             amount_quote="20",now=time.time(),operation="place_trade",
         )
     body=trade_body()
-    body["trading_pair"]="BTC-USD"
-    with pytest.raises(ValueError,match="USDT-quoted"):
+    body["trading_pair"]="BTC-USDT"
+    with pytest.raises(ValueError,match="USD-quoted"):
         receipts._issue_executor_dispatch_receipt(
             request_body=body,proposal_id="reservation-1",intent="ENTRY",
             amount_quote="20",now=time.time(),operation="place_trade",
@@ -101,7 +101,7 @@ def test_cancel_receipt_binds_account_connector_order_and_intent(monkeypatch):
         method="POST",
         path="/trading/master_account/kraken_paper_trade/orders/client-123/cancel",
         account_name="master_account",connector_name="kraken_paper_trade",
-        trading_pair="BTC-USDT",
+        trading_pair="BTC-USD",
     )
     payload,signature=decode(receipt.token)
     private.public_key().verify(signature,receipts.canonical_json(payload))
@@ -119,5 +119,5 @@ def test_cancel_receipt_rejects_wrong_connector(monkeypatch):
             method="POST",
             path="/trading/master_account/binance_paper_trade/orders/client-123/cancel",
             account_name="master_account",connector_name="binance_paper_trade",
-            trading_pair="BTC-USDT",
+            trading_pair="BTC-USD",
         )
