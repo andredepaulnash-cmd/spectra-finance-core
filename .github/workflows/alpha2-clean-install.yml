@@ -140,7 +140,17 @@ jobs:
             return 1
           }
           # The Core container starts its continuous loop as soon as the stack is healthy.
-          # Let that first real strategy order settle before invoking additional cycles.
+          # Wait for its first completed cycle so a still-running market scan/order cannot race
+          # the explicit acceptance cycles below.
+          startup_cycle_complete=0
+          for attempt in $(seq 1 60); do
+            if docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml logs --tail=300 spectra-core | grep -q "portfolio cycle:"; then
+              startup_cycle_complete=1
+              break
+            fi
+            sleep 2
+          done
+          test "$startup_cycle_complete" -eq 1
           wait_for_settlement /tmp/spectra-alpha2-startup-status.json
           for cycle in 1 2 3; do
             echo "===== Spectra Alpha 2.0 paper cycle ${cycle}/3 ====="
