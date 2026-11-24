@@ -116,9 +116,24 @@ jobs:
       - name: Prove a real Kraken USD paper MARKET BUY and reconciled fill after dynamic market initialization
         working-directory: spectra-finance-core
         run: docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2.paper_smoke
-      - name: Execute one full paper-only strategy cycle
+      - name: Execute three persistent paper-only strategy cycles and verify ledger stability
         working-directory: spectra-finance-core
-        run: docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 run-once
+        run: |
+          set -euo pipefail
+          for cycle in 1 2 3; do
+            echo "===== Spectra Alpha 2.0 paper cycle ${cycle}/3 ====="
+            docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 run-once
+            docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 status > "/tmp/spectra-alpha2-status-${cycle}.json"
+            python - "/tmp/spectra-alpha2-status-${cycle}.json" <<'PY'
+          import json, sys
+          state = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert state["paper_only"] is True
+          assert state["live_execution"] is False
+          assert len(state["positions"]) <= 1
+          assert state["pending_authorizations"] == []
+          print("persistent paper ledger verified:", state["portfolio"])
+          PY
+          done
       - name: Capture clean-install logs on failure
         if: failure()
         working-directory: spectra-finance-core
