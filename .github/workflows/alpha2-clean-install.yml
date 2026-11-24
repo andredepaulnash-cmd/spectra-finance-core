@@ -35,6 +35,8 @@ jobs:
         working-directory: spectra-finance-core
         run: |
           bash -n scripts/install_bazzite_alpha2.sh
+          grep -q 'backup_stopped_container_volume' scripts/install_bazzite_alpha2.sh
+          grep -q 'podman volume export' scripts/install_bazzite_alpha2.sh
           python - <<'PY'
           from pathlib import Path
           source = Path("scripts/install_bazzite_alpha2.sh").read_text(encoding="utf-8")
