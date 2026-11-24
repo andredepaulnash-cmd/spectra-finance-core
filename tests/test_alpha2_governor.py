@@ -37,7 +37,7 @@ class CapitalGovernorTests(unittest.TestCase):
             average_price=price,
         )
 
-    def open_position(self, asset="BTC-USDT", position="p1"):
+    def open_position(self, asset="BTC-USD", position="p1"):
         auth = self.gov.reserve_initial_position(
             position_id=position,
             asset_id=asset,
@@ -55,12 +55,12 @@ class CapitalGovernorTests(unittest.TestCase):
 
     def test_only_submitted_governor_reservation_can_sign_exact_paper_order(self):
         auth=self.gov.reserve_initial_position(
-            position_id="p1",asset_id="BTC-USDT",reference_price=Decimal("100"),idempotency_key="receipt-i1"
+            position_id="p1",asset_id="BTC-USD",reference_price=Decimal("100"),idempotency_key="receipt-i1"
         )
         body={
             "account_name":"master_account",
             "connector_name":"kraken_paper_trade",
-            "trading_pair":"BTC-USDT",
+            "trading_pair":"BTC-USD",
             "trade_type":"BUY","strategy_origin":"TOP_GAINER",
             "amount":"0.0003",
             "order_type":"MARKET",
@@ -91,12 +91,12 @@ class CapitalGovernorTests(unittest.TestCase):
 
     def test_governor_refuses_to_sign_order_above_reserved_quote_amount(self):
         auth=self.gov.reserve_initial_position(
-            position_id="p1",asset_id="BTC-USDT",reference_price=Decimal("100"),idempotency_key="receipt-i2"
+            position_id="p1",asset_id="BTC-USD",reference_price=Decimal("100"),idempotency_key="receipt-i2"
         )
         self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
         body={
             "account_name":"master_account","connector_name":"kraken_paper_trade",
-            "trading_pair":"BTC-USDT","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.0004",
+            "trading_pair":"BTC-USD","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.0004",
             "order_type":"MARKET","max_execution_price":"65000","position_action":"OPEN",
         }
         private=Ed25519PrivateKey.generate()
@@ -122,7 +122,7 @@ class CapitalGovernorTests(unittest.TestCase):
         self.assertGreater(auth.minimum_price,Decimal("100"))
 
         other=self.gov.reserve_initial_position(
-            position_id="p2",asset_id="DOGE-USDT",reference_price=Decimal("100"),
+            position_id="p2",asset_id="DOGE-USD",reference_price=Decimal("100"),
             idempotency_key="top-loser-initial",strategy_origin="TOP_LOSER_REVERSAL",
         )
         self.gov.consume_authorization(other.authorization_id,idempotency_key=other.idempotency_key,connector="kraken_paper_trade")
@@ -161,7 +161,7 @@ class CapitalGovernorTests(unittest.TestCase):
 
     def test_initial_reservation_requires_paper_authorization_before_open(self):
         auth = self.gov.reserve_initial_position(
-            position_id="p1", asset_id="BTC-USDT", reference_price=Decimal("100"), idempotency_key="i1"
+            position_id="p1", asset_id="BTC-USD", reference_price=Decimal("100"), idempotency_key="i1"
         )
         self.assertEqual(self.gov.snapshot()["open_positions"], 1)
         with self.assertRaises(CapitalDenied):
@@ -174,7 +174,7 @@ class CapitalGovernorTests(unittest.TestCase):
         def reserve(i):
             try:
                 self.gov.reserve_initial_position(
-                    position_id=f"p{i}", asset_id=f"ASSET{i}-USDT",
+                    position_id=f"p{i}", asset_id=f"ASSET{i}-USD",
                     reference_price=Decimal("1"), idempotency_key=f"key-{i}"
                 )
                 return True
@@ -207,12 +207,12 @@ class CapitalGovernorTests(unittest.TestCase):
             self.gov.close_position("p1",confirmed_all_exits_reconciled=True)
         with self.assertRaises(CapitalDenied):
             self.gov.reserve_initial_position(
-                position_id="p2",asset_id="BTC-USDT",reference_price=Decimal("101"),idempotency_key="initial-p2"
+                position_id="p2",asset_id="BTC-USD",reference_price=Decimal("101"),idempotency_key="initial-p2"
             )
 
     def test_submitted_reservation_cannot_be_released_without_cancel_confirmation(self):
         auth=self.gov.reserve_initial_position(
-            position_id="p1",asset_id="BTC-USDT",reference_price=Decimal("100"),idempotency_key="i1"
+            position_id="p1",asset_id="BTC-USD",reference_price=Decimal("100"),idempotency_key="i1"
         )
         self.gov.consume_authorization(auth.authorization_id,idempotency_key="i1",connector="kraken_paper_trade")
         with self.assertRaises(CapitalDenied):
