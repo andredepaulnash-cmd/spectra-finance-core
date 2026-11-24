@@ -125,12 +125,39 @@ async def run_smoke() -> dict:
                 gross_quote_budget=authorization.gross_notional,
                 max_slippage_fraction=config.max_slippage_fraction,
             )
-            result = await execution.submit_authorized_buy(
-                governor,
-                authorization,
-                draft.request_body,
-                timeout_seconds=config.order_timeout_seconds,
-            )
+            try:
+                result = await execution.submit_authorized_buy(
+                    governor,
+                    authorization,
+                    draft.request_body,
+                    timeout_seconds=config.order_timeout_seconds,
+                )
+            except Exception as exc:
+                # Preserve the exact connector failure state in CI logs. A generic
+                # HTTP 500 is not enough to distinguish a startup race, a rejected
+                # symbol, an empty snapshot, or a dead WebSocket tracker.
+                try:
+                    diagnostics = await data._get(
+                        f"/market-data/order-book/diagnostics/{PAPER_CONNECTOR}"
+                    )
+                except Exception as diagnostic_exc:
+                    diagnostics = {
+                        "diagnostic_error": (
+                            f"{type(diagnostic_exc).__name__}: {diagnostic_exc}"
+                        )
+                    }
+                raise RuntimeError(
+                    "Kraken paper MARKET BUY preflight failed; no order should be "
+                    "assumed submitted. Connector diagnostics: "
+                    + json.dumps(
+                        {
+                            "pair": candidate.trading_pair,
+                            "error": f"{type(exc).__name__}: {exc}",
+                            "diagnostics": diagnostics,
+                        },
+                        default=str,
+                    )
+                ) from exc
             if result.status != "FILLED" or result.filled_quantity <= 0:
                 raise RuntimeError(
                     "Hummingbot paper order did not reach a reconciled FILLED state: "
