@@ -243,8 +243,11 @@ case "${1:-status}" in
     exec "$CORE_DIR/scripts/install_bazzite_alpha2.sh"
     ;;
   backup)
-    mkdir -p "$INSTALL_DIR/backups"
-    target_name="spectra-alpha2-$(date +%Y%m%d-%H%M%S).sqlite3"
+    backup_stamp="$(date +%Y%m%d-%H%M%S)"
+    backup_dir="$INSTALL_DIR/backups/manual-$backup_stamp"
+    mkdir -p "$backup_dir"
+    chmod 700 "$backup_dir"
+    target_name="spectra-alpha2-$backup_stamp.sqlite3"
     podman exec spectra-alpha2-core python - "$target_name" <<'PYBACKUP'
 import sqlite3
 import sys
@@ -255,11 +258,40 @@ target.parent.mkdir(parents=True, exist_ok=True)
 with sqlite3.connect("/data/spectra_alpha2.sqlite3") as source, sqlite3.connect(target) as destination:
     source.backup(destination)
 target.chmod(0o600)
-print(target)
 PYBACKUP
-    podman cp "spectra-alpha2-core:/data/backups/$target_name" "$INSTALL_DIR/backups/$target_name"
-    chmod 600 "$INSTALL_DIR/backups/$target_name"
-    printf 'Database backup: %s\n' "$INSTALL_DIR/backups/$target_name"
+    podman cp "spectra-alpha2-core:/data/backups/$target_name" "$backup_dir/core.sqlite3"
+    podman exec spectra-alpha2-core rm -f "/data/backups/$target_name"
+    if podman exec spectra-alpha2-hummingbot-api test -f /hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite3; then
+      receipt_name="spectra-alpha2-receipts-$backup_stamp.sqlite3"
+      podman exec spectra-alpha2-hummingbot-api python - "$receipt_name" <<'PYRECEIPT'
+import sqlite3
+import sys
+from pathlib import Path
+target=Path("/tmp")/sys.argv[1]
+with sqlite3.connect("/hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite3") as source, sqlite3.connect(target) as destination:
+    source.backup(destination)
+target.chmod(0o600)
+PYRECEIPT
+      podman cp "spectra-alpha2-hummingbot-api:/tmp/$receipt_name" "$backup_dir/api-receipts.sqlite3"
+      podman exec spectra-alpha2-hummingbot-api rm -f "/tmp/$receipt_name"
+    fi
+    podman exec spectra-alpha2-postgres pg_dump -U hbot -d hummingbot_api > "$backup_dir/postgres.sql"
+    for config_file in "$CORE_DIR/.env" "$CORE_DIR/.env.core" "$CORE_DIR/docker-compose.alpha2.yml" "$API_DIR/.env" "$API_DIR/.emqx/auth-bootstrap.csv" "$API_DIR/bots/credentials/master_account/conf_client.yml" "$INSTALL_DIR/installed-commits.txt"; do
+      if [[ -f "$config_file" ]]; then
+        case "$config_file" in
+          "$CORE_DIR/.env") backup_label="core.env" ;;
+          "$CORE_DIR/.env.core") backup_label="core.env.core" ;;
+          "$CORE_DIR/docker-compose.alpha2.yml") backup_label="core.docker-compose.alpha2.yml" ;;
+          "$API_DIR/.env") backup_label="api.env" ;;
+          "$API_DIR/.emqx/auth-bootstrap.csv") backup_label="api.auth-bootstrap.csv" ;;
+          "$API_DIR/bots/credentials/master_account/conf_client.yml") backup_label="api.conf_client.yml" ;;
+          "$INSTALL_DIR/installed-commits.txt") backup_label="installed-commits.txt" ;;
+        esac
+        cp -p -- "$config_file" "$backup_dir/$backup_label"
+      fi
+    done
+    chmod 600 "$backup_dir"/*
+    printf 'Complete paper-only backup: %s\n' "$backup_dir"
     ;;
   uninstall)
     read -r -p "Stop and remove only Alpha 2.0 containers/network while retaining named volumes and all files? [y/N] " answer
