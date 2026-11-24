@@ -24,7 +24,7 @@ API_ENV = API_DIR / ".env"
 CORE_ENV = CORE_DIR / ".env.core"
 WRAPPER = Path.home() / ".local" / "bin" / "spectra-alpha2"
 HTML_FILE = Path(__file__).with_name("desktop.html")
-ALLOWED_ACTIONS = {"start", "stop", "restart", "once", "doctor", "backup"}
+ALLOWED_ACTIONS = {"start", "stop", "restart", "once", "doctor", "backup", "update"}
 
 
 
@@ -132,7 +132,7 @@ def run_action(action: str) -> dict:
         [str(WRAPPER), action],
         capture_output=True,
         text=True,
-        timeout=360 if action in {"once", "doctor", "backup", "start", "restart"} else 60,
+        timeout=3600 if action == "update" else (360 if action in {"once", "doctor", "backup", "start", "restart"} else 60),
         check=False,
     )
     output = (result.stdout + "\n" + result.stderr).strip()
