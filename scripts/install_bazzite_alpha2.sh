@@ -73,7 +73,7 @@ if podman container exists spectra-alpha2-core 2>/dev/null; then
   running="$(podman inspect --format '{{.State.Running}}' spectra-alpha2-core 2>/dev/null || true)"
   [[ "$running" == "true" ]] || die "An Alpha 2.0 Core container exists but is stopped. Start it and create a SQLite online backup before upgrading."
   mkdir -p "$INSTALL_DIR/backups"
-  backup_name="spectra-alpha2-preupgrade-$(date +%Y%m%d-%H%M%S).sqlite3"
+  backup_name="spectra-alpha2-preupgrade-$UPGRADE_STAMP.sqlite3"
   podman exec spectra-alpha2-core python - "$backup_name" <<'PYBACKUP'
 import sqlite3
 import sys
@@ -89,8 +89,13 @@ PYBACKUP
   chmod 600 "$INSTALL_DIR/backups/$backup_name"
   info "Created pre-upgrade SQLite online backup: $INSTALL_DIR/backups/$backup_name"
   backup_stamp="$UPGRADE_STAMP"
-  # Preserve the API replay/idempotency database with SQLite online backup.
-  if podman container exists spectra-alpha2-hummingbot-api 2>/dev/null && podman exec spectra-alpha2-hummingbot-api test -f /hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite3; then
+  # A running Core installation must have its API and PostgreSQL peers available;
+  # otherwise we cannot create a complete, restorable pre-upgrade snapshot.
+  podman container exists spectra-alpha2-hummingbot-api 2>/dev/null || die "Core exists without its Hummingbot API container; refusing an incomplete upgrade."
+  api_running="$(podman inspect --format '{{.State.Running}}' spectra-alpha2-hummingbot-api 2>/dev/null || true)"
+  [[ "$api_running" == "true" ]] || die "Alpha 2.0 Hummingbot API exists but is stopped; refusing an unbacked upgrade."
+  # Preserve the API replay/idempotency database with SQLite online backup when it exists.
+  if podman exec spectra-alpha2-hummingbot-api test -f /hummingbot-api/bots/data/spectra_dispatch_receipts.sqlite3; then
     receipt_name="spectra-alpha2-api-receipts-preupgrade-$backup_stamp.sqlite3"
     podman exec spectra-alpha2-hummingbot-api python - "$receipt_name" <<PYRECEIPT
 import sqlite3
@@ -105,14 +110,13 @@ PYRECEIPT
     podman exec spectra-alpha2-hummingbot-api rm -f "/tmp/$receipt_name"
     chmod 600 "$INSTALL_DIR/backups/$receipt_name"
   fi
-  # PostgreSQL stores API-side state separately from the Core ledger.
-  if podman container exists spectra-alpha2-postgres 2>/dev/null; then
-    pg_running="$(podman inspect --format "{{.State.Running}}" spectra-alpha2-postgres 2>/dev/null || true)"
-    [[ "$pg_running" == "true" ]] || die "Alpha 2.0 PostgreSQL exists but is stopped; refusing an unbacked upgrade."
-    pg_backup="$INSTALL_DIR/backups/spectra-alpha2-postgres-preupgrade-$backup_stamp.sql"
-    podman exec spectra-alpha2-postgres pg_dump -U hbot -d hummingbot_api > "$pg_backup"
-    chmod 600 "$pg_backup"
-  fi
+  # PostgreSQL stores API-side state separately from the Core ledger and is mandatory.
+  podman container exists spectra-alpha2-postgres 2>/dev/null || die "Core exists without its PostgreSQL container; refusing an incomplete upgrade."
+  pg_running="$(podman inspect --format "{{.State.Running}}" spectra-alpha2-postgres 2>/dev/null || true)"
+  [[ "$pg_running" == "true" ]] || die "Alpha 2.0 PostgreSQL exists but is stopped; refusing an unbacked upgrade."
+  pg_backup="$INSTALL_DIR/backups/spectra-alpha2-postgres-preupgrade-$backup_stamp.sql"
+  podman exec spectra-alpha2-postgres pg_dump -U hbot -d hummingbot_api > "$pg_backup"
+  chmod 600 "$pg_backup"
   # Keep existing internal credentials and signing material recoverable.
   for config_file in "$CORE_DIR/.env" "$CORE_DIR/.env.core" "$CORE_DIR/docker-compose.alpha2.yml" "$API_DIR/.env" "$API_DIR/.emqx/auth-bootstrap.csv" "$API_DIR/bots/credentials/master_account/conf_client.yml"; do
     if [[ -f "$config_file" ]]; then
