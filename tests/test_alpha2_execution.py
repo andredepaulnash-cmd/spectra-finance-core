@@ -5,7 +5,7 @@ from decimal import Decimal
 import httpx
 import pytest
 
-from spectra_alpha2.execution import HummingbotPaperExecutionClient, ExecutionUncertain
+from spectra_alpha2.execution import HummingbotPaperExecutionClient, ExecutionRejected, ExecutionUncertain
 from spectra_alpha2.governor import CapitalAuthorization, CapitalPool
 
 
@@ -180,6 +180,24 @@ async def test_executor_recovers_order_id_after_lost_submit_response():
     result=await client.submit_authorized_buy(governor,authorization(),order_body(),timeout_seconds=1)
     assert result.order_id=="paper-order-1"
     assert any(x[0]=="bind" for x in governor.calls)
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_paper_market_initialization_failure_is_rejected_before_order_authorization():
+    requests=[]
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(500,json={"detail":"pair initialization failed"})
+    governor=FakeGovernor()
+    client=HummingbotPaperExecutionClient(
+        "http://hummingbot",api_username="local-core",api_password="internal-only",
+        environment=SAFE_ENV,transport=httpx.MockTransport(handler),poll_interval_seconds=0,
+    )
+    with pytest.raises(ExecutionRejected,match="no order was submitted"):
+        await client.submit_authorized_buy(governor,authorization(),order_body(),timeout_seconds=1)
+    assert [request.url.path for request in requests]==["/market-data/trading-pair/add"]
+    assert governor.calls==[]
     await client.close()
 
 
