@@ -18,7 +18,7 @@ class MarketRecommendation:
 
 
 class CondorAnalyzer:
-    """Ranks quality-screened 24h gainers; liquidity and spread temper momentum."""
+    """Ranks quality-screened 24h gainers by percentage change, then execution quality."""
 
     def recommend(self, candidates: list[MarketCandidate], *, limit: int = 74) -> list[MarketRecommendation]:
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
@@ -50,10 +50,13 @@ class CondorAnalyzer:
                 change_24h_fraction=change,
                 rationale=rationale,
             ))
+        # Architect's portfolio-building policy prioritizes the strongest positive
+        # 24-hour gainers. Liquidity/spread remain hard scanner gates and score
+        # tie-breakers; they do not displace a stronger gainer from the shortlist.
         ranked.sort(
             key=lambda item: (
-                item.score,
                 item.change_24h_fraction,
+                item.score,
                 item.quote_volume_24h,
                 item.trading_pair,
             ),
