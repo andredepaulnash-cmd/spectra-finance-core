@@ -31,9 +31,21 @@ jobs:
       - name: Compile Alpha 2.0 modules and scripts
         working-directory: spectra-finance-core
         run: python -m compileall -q spectra_alpha2 scripts
-      - name: Validate Bazzite installer shell syntax
+      - name: Validate Bazzite installer and generated operator wrapper syntax
         working-directory: spectra-finance-core
-        run: bash -n scripts/install_bazzite_alpha2.sh
+        run: |
+          bash -n scripts/install_bazzite_alpha2.sh
+          python - <<'PY'
+          from pathlib import Path
+          source = Path("scripts/install_bazzite_alpha2.sh").read_text(encoding="utf-8")
+          marker = 'cat > "$WRAPPER" <<\'WRAPPER\'\\n'
+          start = source.index(marker) + len(marker)
+          end = source.index("\\nWRAPPER\\n", start)
+          Path("/tmp/spectra-alpha2-wrapper.sh").write_text(source[start:end] + "\\n", encoding="utf-8")
+          PY
+          bash -n /tmp/spectra-alpha2-wrapper.sh
+          grep -q 'CORE_BRANCH="${SPECTRA_ALPHA2_CORE_BRANCH:-alpha2-paper-usd-release}"' scripts/install_bazzite_alpha2.sh
+          test -s docs/ALPHA2_BAZZITE_RUNBOOK.md
 
   alpha2-clean-compose-install:
     runs-on: ubuntu-latest
