@@ -81,7 +81,9 @@ Use the installed updater:
 
 The updater is pinned to the verified Core release branch and dedicated API branch. Before changing source or rebuilding containers, it creates a pre-upgrade snapshot of the Core SQLite ledger, API dispatch-receipt database when present, PostgreSQL state, release manifest and important configuration files.
 
-The update refuses to proceed if the existing Core/API/PostgreSQL stack cannot be backed up or if local source modifications are detected.
+If the Core or API container is stopped or only in the **Created** state, the updater does not try to start the broken stack just to make a backup. It exports the stopped Core/PostgreSQL/EMQX named volumes and archives the API's host-side data directory, preserving SQLite database and WAL files. Running services use their application-level online backup or database dump. The updater never removes named volumes.
+
+The update refuses to proceed if a required data volume cannot be identified or backed up, or if local source modifications are detected.
 
 The desktop command center also provides a confirmed **Update release** action.
 
