@@ -59,11 +59,17 @@ The command wrapper is installed at `$HOME/.local/bin/spectra-alpha2`.
 ~/.local/bin/spectra-alpha2 restart
 ```
 
-- `status` reports the paper-only state, positions, pending authorizations and capital pools.
+- `start` starts the persistent Core service. Its default command runs the supervised paper-trading loop continuously; the container is configured to restart unless stopped.
+- `stop` stops the stack without deleting its named data volumes. `restart` restarts the services.
+- `status` reports the paper-only state, open positions, pending authorizations and capital pools.
 - `doctor` checks authenticated API access, Kraken paper tickers/rules, public candles and discovery configuration.
-- `logs` follows the Compose service logs.
-- `once` runs one supervised portfolio cycle.
+- `logs` follows the Core and API service logs.
+- `once` runs one supervised portfolio cycle on demand without replacing the persistent service.
 - The desktop command center provides the corresponding controls.
+
+The default scan interval is 30 seconds (`SPECTRA_SCAN_INTERVAL_SECONDS`). The scanner admits only positive 24-hour USD gainers that pass the configured quote-volume, ticker-freshness, exchange-rule and spread checks. Every entry is a MARKET BUY through Kraken's paper connector. Ordinary top-gainer exits use the configured fee-aware LIMIT SELL only after the live paper bid reaches its target. The current release does not activate VCAP recovery or the advanced DTTP/DTSL reversal engine; those remain outside this release's verified scope.
+
+If an order outcome is uncertain, the supervisor retains its capital reservation and reconciles it on a later cycle rather than blindly resubmitting the order. Check `logs` and `status` before intervening manually.
 
 ## Updating
 
