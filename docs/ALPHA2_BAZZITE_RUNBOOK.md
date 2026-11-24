@@ -105,12 +105,11 @@ Do not use `podman compose down -v` for routine stop/update operations; `-v` rem
 
 ## Service endpoints
 
-The installer binds the local service endpoints to loopback:
+The installer binds the local service endpoints to loopback. MQTT remains internal to the isolated Compose network and is not published on a host port:
 
 | Service | Local endpoint |
 |---|---|
 | Hummingbot API | `http://127.0.0.1:8002` |
-| MQTT | `127.0.0.1:1884` |
 | EMQX dashboard | `http://127.0.0.1:18084` |
 
 API credentials are generated locally and stored in owner-only environment files. They are internal service credentials, not exchange credentials.
