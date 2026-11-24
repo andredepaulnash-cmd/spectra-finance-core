@@ -138,7 +138,7 @@ async def run_smoke() -> dict:
                 # symbol, an empty snapshot, or a dead WebSocket tracker.
                 try:
                     diagnostics = await data._get(
-                        f"/market-data/order-book/diagnostics/{PAPER_CONNECTOR}"
+                        "/market-data/order-book/diagnostics/kraken_paper_trade"
                     )
                 except Exception as diagnostic_exc:
                     diagnostics = {
