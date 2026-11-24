@@ -101,7 +101,7 @@ jobs:
         run: |
           docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 doctor
           docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 status
-      - name: Prove a real Kraken paper MARKET BUY and reconciled fill
+      - name: Prove a real Kraken USD paper MARKET BUY and reconciled fill after dynamic market initialization
         working-directory: spectra-finance-core
         run: docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2.paper_smoke
       - name: Execute one full paper-only strategy cycle
