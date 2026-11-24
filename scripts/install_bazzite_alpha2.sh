@@ -4,7 +4,7 @@ umask 077
 
 CORE_REPO="${SPECTRA_ALPHA2_CORE_REPO:-https://github.com/andredepaulnash-cmd/spectra-finance-core.git}"
 API_REPO="${SPECTRA_ALPHA2_API_REPO:-https://github.com/andredepaulnash-cmd/spectra-hummingbot-api.git}"
-CORE_BRANCH="${SPECTRA_ALPHA2_CORE_BRANCH:-spectra-finance-alpha-2.0}"
+CORE_BRANCH="${SPECTRA_ALPHA2_CORE_BRANCH:-alpha2-paper-usd-release}"
 API_BRANCH="${SPECTRA_ALPHA2_API_BRANCH:-spectra-finance-alpha-2.0}"
 INSTALL_DIR="${SPECTRA_ALPHA2_HOME:-$HOME/SpectraFinance-Alpha2}"
 CORE_DIR="$INSTALL_DIR/spectra-finance-core"
