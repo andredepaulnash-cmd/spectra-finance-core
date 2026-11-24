@@ -92,11 +92,19 @@ async def _doctor() -> int:
         tickers=await data_client.get_tickers()
         rules=await data_client.get_trading_rules()
         candidates=await supervisor.scanner.scan()
-        preferred_pairs=[
-            pair for pair in rules
-            if pair.split("-",1)[0].upper() in {"BTC","XBT"}
+        usd_pair_intersection = sorted(
+            set(tickers).intersection(rules),
+            key=lambda pair: (pair not in {"BTC-USD", "XBT-USD"}, pair),
+        )
+        preferred_pairs = [
+            pair for pair in usd_pair_intersection
+            if pair.split("-", 1)[0].upper() in {"BTC", "XBT"}
         ]
-        probe_pair=preferred_pairs[0] if preferred_pairs else (next(iter(rules),None))
+        probe_pair = (
+            preferred_pairs[0]
+            if preferred_pairs
+            else (usd_pair_intersection[0] if usd_pair_intersection else None)
+        )
         candle_count=0
         candle_error=None
         if probe_pair:
@@ -113,6 +121,10 @@ async def _doctor() -> int:
             "api_url":config.hummingbot_api_url,
             "ticker_count":len(tickers),
             "trading_rule_count":len(rules),
+            "usd_ticker_pair_count":sum(1 for pair in tickers if pair.endswith("-USD")),
+            "usd_trading_rule_pair_count":sum(1 for pair in rules if pair.endswith("-USD")),
+            "usd_ticker_rule_intersection_count":len(usd_pair_intersection),
+            "usd_pair_sample":usd_pair_intersection[:20],
             "public_candle_probe_pair":probe_pair,
             "public_candle_probe_count":candle_count,
             "public_candle_probe_error":candle_error,
@@ -123,7 +135,7 @@ async def _doctor() -> int:
             "portfolio":governor.snapshot(),
         }
         print(json.dumps(report,indent=2,default=str))
-        return 0 if tickers and rules and candle_count > 0 and discovery_configured else 2
+        return 0 if tickers and rules and usd_pair_intersection and candle_count > 0 and discovery_configured else 2
     finally:
         await execution.close()
         await data_client.close()
