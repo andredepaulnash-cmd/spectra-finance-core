@@ -59,9 +59,11 @@ class HummingbotPaperExecutionClient:
         )
         self.poll_interval_seconds=poll_interval_seconds
 
-    async def _post(self,path:str,payload:dict[str,Any],*,headers:dict[str,str]|None=None):
+    async def _post(
+        self,path:str,payload:dict[str,Any],*,headers:dict[str,str]|None=None,timeout:float|None=None
+    ):
         self.safety.assert_paper_mode()
-        response=await self._client.post(path,json=payload,headers=headers)
+        response=await self._client.post(path,json=payload,headers=headers,timeout=timeout)
         response.raise_for_status()
         return response.json()
 
