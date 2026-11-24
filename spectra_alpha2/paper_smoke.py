@@ -82,6 +82,17 @@ async def run_smoke() -> dict:
                 if candidate is not None:
                     break
             if candidate is None:
+                probe_pair = "BTC-USD" if "BTC-USD" in usd_pairs else (usd_pairs[0] if usd_pairs else None)
+                probe = {"pair": probe_pair}
+                if probe_pair:
+                    ticker = tickers.get(probe_pair, {})
+                    rule = rules.get(probe_pair, {})
+                    probe["ticker"] = ticker
+                    probe["rule"] = rule
+                    try:
+                        probe["order_book"] = await data.get_order_book(probe_pair, depth=5)
+                    except Exception as exc:
+                        probe["order_book_error"] = f"{type(exc).__name__}: {exc}"
                 sample = {
                     "ticker_count": len(tickers),
                     "trading_rule_count": len(rules),
@@ -93,6 +104,7 @@ async def run_smoke() -> dict:
                         quote: sum(1 for pair in tickers if pair.endswith("-" + quote))
                         for quote in sorted({pair.rsplit("-", 1)[1] for pair in tickers if "-" in pair})
                     },
+                    "probe": probe,
                     "rejected": rejected[:10],
                 }
                 raise RuntimeError(
