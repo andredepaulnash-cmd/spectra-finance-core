@@ -192,14 +192,14 @@ class PortfolioSupervisor:
         skipped_limits = exit_skipped
 
         for recommendation in recommendations:
-            if admitted >= admission_budget:
-                break
             candidate = candidate_by_pair.get(recommendation.trading_pair)
             if candidate is None:
                 continue
             if candidate.trading_pair in existing_assets:
                 skipped_existing += 1
                 continue
+            if admitted >= admission_budget:
+                break
             position_id = str(uuid.uuid4())
             idempotency_key = f"alpha2-initial-{position_id}"
             authorization = None
