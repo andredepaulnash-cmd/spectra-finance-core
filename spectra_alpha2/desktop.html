@@ -32,6 +32,7 @@ main{max-width:1240px;margin:0 auto;padding:28px 24px 48px}.top{display:flex;ali
  <button class="button" data-action="stop">Stop engine</button>
  <button class="button" data-action="restart">Restart</button>
  <button class="button primary" data-action="once">Run one paper cycle</button>
+ <button class="button" data-action="update">Update release</button>
  <button class="button" data-action="doctor">Run diagnostics</button>
  <button class="button" data-action="backup">Back up ledger</button>
  <button class="button" id="refresh">Refresh</button>
@@ -115,7 +116,7 @@ async function refresh(){
  finally{$('refresh').disabled=false}
 }
 async function action(name){
- if(['stop','restart','once'].includes(name)&&!confirm(name==='once'?'Run one supervised paper-trading cycle?':'Run '+name+' on the paper-only engine?'))return;
+ if(['stop','restart','once','update'].includes(name)&&!confirm(name==='once'?'Run one supervised paper-trading cycle?':name==='update'?'Back up the current paper ledger, update the Core/API branches, rebuild the paper-only stack and restart services?':'Run '+name+' on the paper-only engine?'))return;
  const buttons=[...document.querySelectorAll('[data-action]')];buttons.forEach(b=>b.disabled=true);notify('Running '+name+'…');
  try{const r=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:name})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||d.output||'Action failed');notify(name+' completed');if(d.output)$('logPanel').textContent=d.output;await refresh()}
  catch(e){notify('Action failed: '+e.message)}
