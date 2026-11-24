@@ -73,7 +73,7 @@ def main()->int:
     broker=services["emqx"]
     broker["container_name"]="spectra-alpha2-broker"
     broker["image"]="docker.io/emqx/emqx:5.10.5"
-    broker["ports"]=["127.0.0.1:1884:1883","127.0.0.1:18084:18083"]
+    broker["ports"]=["127.0.0.1:18084:18083"]
     broker["volumes"]=[
         absolute_volume(volume,api_root)
         for volume in broker.get("volumes",[])
@@ -141,7 +141,7 @@ def main()->int:
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(text,encoding="utf-8")
     print(f"Generated isolated Alpha 2.0 Compose file: {args.output.resolve()}")
-    print("Host ports: API 127.0.0.1:8002, MQTT 127.0.0.1:1884, dashboard 127.0.0.1:18084.")
+    print("Host ports: API 127.0.0.1:8002, EMQX dashboard 127.0.0.1:18084. MQTT stays internal to the isolated Compose network.")
     print("No Docker socket, host /proc, host disk probe, or host-gateway mount.")
     return 0
 
