@@ -21,6 +21,10 @@ class ExecutionUncertain(RuntimeError):
     """Order state cannot be proven; reservation remains held for reconciliation."""
 
 
+class ExecutionRejected(RuntimeError):
+    """Order was not submitted; the caller may safely release its reservation."""
+
+
 @dataclass(frozen=True, slots=True)
 class ExecutionResult:
     authorization_id: str
@@ -81,7 +85,7 @@ class HummingbotPaperExecutionClient:
         /market-data/trading-pair/add readiness operation before trading.
         """
         if not trading_pair.endswith("-USD"):
-            raise ExecutionUncertain("Alpha 2.0 paper execution accepts USD-quoted markets only")
+            raise ExecutionRejected("Alpha 2.0 paper execution accepts USD-quoted markets only")
         try:
             result=await self._post("/market-data/trading-pair/add",{
                 "connector_name":"kraken_paper_trade",
@@ -90,12 +94,12 @@ class HummingbotPaperExecutionClient:
                 "timeout":30,
             },timeout=35)
         except httpx.HTTPError as exc:
-            raise ExecutionUncertain(
-                f"Could not initialize {trading_pair} in the Kraken paper connector"
+            raise ExecutionRejected(
+                f"Could not initialize {trading_pair} in the Kraken paper connector; no order was submitted"
             ) from exc
         if not isinstance(result,dict) or result.get("success") is not True:
-            raise ExecutionUncertain(
-                f"Hummingbot did not confirm paper-market initialization for {trading_pair}: {result!r}"
+            raise ExecutionRejected(
+                f"Hummingbot did not confirm paper-market initialization for {trading_pair}: {result!r}; no order was submitted"
             )
 
     async def _recover_order_id(self,governor:CapitalGovernor,authorization_id:str,*,is_exit:bool=False) -> str | None:
@@ -300,7 +304,11 @@ class HummingbotPaperExecutionClient:
         self.safety.assert_paper_mode()
         if request_body.get("connector_name")!="kraken_paper_trade" or request_body.get("trade_type")!="SELL":
             raise ExecutionUncertain("executor permits only Governor-authorized Kraken paper sells")
-        await self._ensure_paper_market_ready(str(request_body.get("trading_pair","")))
+        try:
+            await self._ensure_paper_market_ready(str(request_body.get("trading_pair","")))
+        except ExecutionRejected:
+            governor.release_exit_authorization(authorization.authorization_id,confirmed_no_fill=True)
+            raise
         governor.consume_exit_authorization(
             authorization.authorization_id,
             idempotency_key=authorization.idempotency_key,
