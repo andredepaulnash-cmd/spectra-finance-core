@@ -216,7 +216,12 @@ class ResearchScanner:
         min_order = _decimal(rule.get("min_order_size"))
         base_increment = _decimal(rule.get("min_base_amount_increment"))
         price_increment = _decimal(rule.get("min_price_increment"))
-        if min_notional <= ZERO or min_order <= ZERO or base_increment <= ZERO or price_increment <= ZERO:
+        # Kraken's TradingRule does not publish a separate min-notional field;
+        # Hummingbot therefore supplies its default zero. The exchange's positive
+        # min_order_size remains authoritative and is enforced by the order builder.
+        # Reject negative values, but do not discard every Kraken market for a
+        # legitimate absent/zero min-notional constraint.
+        if min_notional < ZERO or min_order <= ZERO or base_increment <= ZERO or price_increment <= ZERO:
             return None
         if require_gainer and min_notional > Decimal("20"):
             return None
