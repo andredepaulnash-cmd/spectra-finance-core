@@ -121,10 +121,31 @@ jobs:
         working-directory: spectra-finance-core
         run: |
           set -euo pipefail
+          wait_for_settlement() {
+            local output="$1"
+            for attempt in $(seq 1 45); do
+              docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 status > "$output"
+              if python - "$output" <<'PY'
+          import json, sys
+          state = json.load(open(sys.argv[1], encoding="utf-8"))
+          raise SystemExit(0 if not state["pending_authorizations"] else 1)
+          PY
+              then
+                return 0
+              fi
+              sleep 2
+            done
+            echo "Paper order did not reach a reconciled terminal state within 90 seconds." >&2
+            cat "$output"
+            return 1
+          }
+          # The Core container starts its continuous loop as soon as the stack is healthy.
+          # Let that first real strategy order settle before invoking additional cycles.
+          wait_for_settlement /tmp/spectra-alpha2-startup-status.json
           for cycle in 1 2 3; do
             echo "===== Spectra Alpha 2.0 paper cycle ${cycle}/3 ====="
             docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 run-once
-            docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 status > "/tmp/spectra-alpha2-status-${cycle}.json"
+            wait_for_settlement "/tmp/spectra-alpha2-status-${cycle}.json"
             python - "/tmp/spectra-alpha2-status-${cycle}.json" <<'PY'
           import json, sys
           state = json.load(open(sys.argv[1], encoding="utf-8"))
