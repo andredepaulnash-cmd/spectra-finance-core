@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from .condor import CondorAnalyzer
-from .execution import ExecutionUncertain, HummingbotPaperExecutionClient
+from .execution import ExecutionRejected, ExecutionUncertain, HummingbotPaperExecutionClient
 from .governor import CapitalDenied, CapitalGovernor
 from .market_data import ResearchScanner
 from .order_builder import build_buy_market_order, build_take_profit_limit_order
@@ -231,6 +231,12 @@ class PortfolioSupervisor:
                     draft.request_body,
                     timeout_seconds=self.order_timeout_seconds,
                 )
+            except ExecutionRejected:
+                self.governor.release_unfilled_reservation(
+                    authorization.authorization_id, confirmed_no_fill=True
+                )
+                skipped_limits += 1
+                continue
             except ExecutionUncertain:
                 raise
             if result.filled_quantity > 0:
