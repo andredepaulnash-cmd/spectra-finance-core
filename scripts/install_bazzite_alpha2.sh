@@ -23,7 +23,7 @@ done
 [[ ! -L "$INSTALL_DIR" ]] || die "Refusing to use a symlink as the Alpha 2.0 installation root."
 mkdir -p "$INSTALL_DIR"
 UPGRADE_STAMP="$(date +%Y%m%d-%H%M%S)"
-if [[ -f "$INSTALL_DIR/installed-commits.txt" ]]; then
+if [[ "${SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS:-false}" == "true" && -f "$INSTALL_DIR/installed-commits.txt" ]]; then
   mkdir -p "$INSTALL_DIR/backups"
   cp -p -- "$INSTALL_DIR/installed-commits.txt" "$INSTALL_DIR/backups/installed-commits-preupgrade-$UPGRADE_STAMP.txt"
   chmod 600 "$INSTALL_DIR/backups/installed-commits-preupgrade-$UPGRADE_STAMP.txt"
@@ -83,7 +83,8 @@ backup_stopped_container_volume() {
 }
 
 if podman container exists spectra-alpha2-core 2>/dev/null; then
-  mkdir -p "$INSTALL_DIR/backups"
+  if [[ "${SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS:-false}" == "true" ]]; then
+    mkdir -p "$INSTALL_DIR/backups"
   running="$(podman inspect --format '{{.State.Running}}' spectra-alpha2-core 2>/dev/null || true)"
   if [[ "$running" == "true" ]]; then
     backup_name="spectra-alpha2-preupgrade-$UPGRADE_STAMP.sqlite3"
@@ -175,6 +176,7 @@ PYRECEIPT
       chmod 600 "$backup_config"
     fi
   done
+  fi
 else
   existing_volumes="$(podman volume ls -q | grep 'spectra-alpha2' || true)"
   [[ -z "$existing_volumes" ]] || die "Alpha 2.0 data volumes exist without the Core container. Preserve/restore the ledger and create a backup before upgrading."
@@ -214,6 +216,13 @@ compose() {
 
 info "Validating isolated Alpha 2.0 Compose configuration"
 compose config >/dev/null
+
+if [[ "${SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS:-false}" == "true" ]]; then
+  info "Pre-upgrade backups were explicitly enabled; existing data and configuration snapshots were created above."
+else
+  info "Automatic pre-upgrade backups are disabled to conserve disk space."
+  info "Existing named volumes and configuration files are retained in place; no data is deleted."
+fi
 
 info "Building and starting Alpha 2.0 paper services without deleting existing volumes"
 compose up -d --build
@@ -401,4 +410,5 @@ printf '\nCommands: %s {status|doctor|logs|once|update|backup|stop|start|restart
 printf 'Hummingbot API: http://127.0.0.1:8002 (authenticated)\n'
 printf 'MQTT: internal-only; EMQX dashboard: http://127.0.0.1:18084\n'
 printf 'Paper-only flags are enforced. No exchange credentials are configured or accepted.\n'
+printf 'Automatic pre-upgrade backups: disabled by default (set SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS=true to opt in).\n'
 printf 'Existing Alpha installations, data, volumes, and local source modifications were not removed.\n'
