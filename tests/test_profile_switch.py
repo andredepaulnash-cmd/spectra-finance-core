@@ -24,17 +24,17 @@ def _live():
 def test_switch_requires_stopped_supervisor_and_reconciled_exchange_state():
     assert_profile_switch_allowed(
         _paper(), _live(),
-        ProfileRuntimeState(True, 0, 0, True),
+        ProfileRuntimeState(True, 0, 0, True, True),
     )
 
 
 @pytest.mark.parametrize(
     ("state", "message"),
     [
-        (ProfileRuntimeState(False, 0, 0, True), "supervisor"),
-        (ProfileRuntimeState(True, 1, 0, True), "orders are pending"),
-        (ProfileRuntimeState(True, 0, 1, True), "fills remain unreconciled"),
-        (ProfileRuntimeState(True, 0, 0, False), "balances are reconciled"),
+        (ProfileRuntimeState(False, 0, 0, True, True), "supervisor"),
+        (ProfileRuntimeState(True, 1, 0, True, True), "orders are pending"),
+        (ProfileRuntimeState(True, 0, 1, True, True), "fills remain unreconciled"),
+        (ProfileRuntimeState(True, 0, 0, False, True), "balances are reconciled"),
     ],
 )
 def test_switch_refuses_non_quiescent_runtime(state, message):
@@ -49,10 +49,17 @@ def test_same_namespace_transition_is_rejected():
     })
     with pytest.raises(ProfileSwitchRejected, match="separate state namespaces"):
         assert_profile_switch_allowed(
-            paper, other_paper, ProfileRuntimeState(True, 0, 0, True)
+            paper, other_paper, ProfileRuntimeState(True, 0, 0, True, True)
+        )
+
+
+def test_target_profile_must_be_ready():
+    with pytest.raises(ProfileSwitchRejected, match="target execution profile is not ready"):
+        assert_profile_switch_allowed(
+            _paper(), _live(), ProfileRuntimeState(True, 0, 0, True, False)
         )
 
 
 def test_negative_reconciliation_counts_are_invalid():
     with pytest.raises(ValueError, match="cannot be negative"):
-        ProfileRuntimeState(True, -1, 0, True)
+        ProfileRuntimeState(True, -1, 0, True, True)
