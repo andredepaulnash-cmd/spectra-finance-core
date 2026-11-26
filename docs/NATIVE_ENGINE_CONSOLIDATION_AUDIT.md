@@ -1,6 +1,6 @@
 # Native Engine Consolidation Audit — Spectra Alpha 2.0
 
-Status: repository-backed architecture decision; implementation track in progress.
+Status: architecture decision plus initial profile-contract implementation; runtime integration remains in progress.
 Working branch: `architecture/native-engine-consolidation`
 
 ## Executive decision
@@ -59,6 +59,8 @@ Each profile resolves to an explicit Hummingbot account and connector:
 
 The strategy, Governor policy interface, order intent model, VCAP rules, and portfolio lifecycle are shared. The execution adapter resolves the active profile and binds it into every authorization and dispatch receipt. A mode switch is rejected while orders are pending, positions are not reconciled, or the target profile is not ready; it never silently transfers balances or positions between ledgers.
 
+Initial implementation now exists on this branch in `spectra_alpha2/execution_profile.py` and `spectra_alpha2/profile_switch.py`, with tests in `tests/test_execution_profile.py` and `tests/test_profile_switch.py`. The matching API-side resolver is `utils/spectra_execution_profile.py`. These modules establish matching profile identity and a pure reconciliation gate; they are not yet wired into startup, dispatch receipt signing/verification, connector initialization, or persisted UI selection. The current release's paper-only safety/execution path therefore remains active until the cross-service integration is completed.
+
 The profile boundary includes:
 - profile, account, connector, market, side, order type, quantity/notional cap, slippage bound, strategy origin, policy version, expiry, and idempotency key in every authorization;
 - separate paper/live account identities, databases or namespaces, and portfolio ledgers;
@@ -70,9 +72,9 @@ PAPER and LIVE are both supported product modes. A live profile can be implement
 
 ## Migration sequence
 
-1. Record the exact Hummingbot API/core versions and trace the vendored Condor source to its upstream repository/commit.
+1. Record the exact Hummingbot API/core versions and trace the vendored Condor source to its upstream repository/commit. (Hummingbot API version is recorded; Condor provenance remains open.)
 2. Build a capability matrix for Core, Hummingbot API, and Condor: native equivalent, gaps, retained Spectra-specific logic, and test criteria.
-3. Introduce a typed execution-profile contract and a narrow execution port; keep the current paper adapter working behind it.
+3. Introduce a typed execution-profile contract and a narrow execution port; keep the current paper adapter working behind it. (Typed Core/API profile resolvers and a pure switch gate are now present; runtime wiring and the execution port remain open.)
 4. Make the Hummingbot adapter profile-aware and event-driven. Move connector readiness, order lifecycle, and fill state ownership to Hummingbot while preserving Governor pre-trade authorization.
 5. Replace duplicate market-data and lifecycle code with Hummingbot/Condor native services only where their API is stable and sufficient.
 6. Integrate Condor's bounded research/agent loops without giving them direct trading authority or duplicating the portfolio supervisor.
