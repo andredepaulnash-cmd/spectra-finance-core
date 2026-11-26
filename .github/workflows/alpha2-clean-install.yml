@@ -74,7 +74,7 @@ jobs:
         working-directory: spectra-finance-core
         run: |
           python scripts/prepare_alpha2_environment.py --api-repo ../spectra-hummingbot-api
-          printf '\nSPECTRA_MAX_POSITIONS=1\nSPECTRA_MAX_NEW_POSITIONS_PER_CYCLE=1\n' >> .env.core
+          printf '\nSPECTRA_MAX_POSITIONS=1\nSPECTRA_MAX_NEW_POSITIONS_PER_CYCLE=1\nSPECTRA_AUTONOMOUS_LOOP_ENABLED=false\n' >> .env.core
           chmod 600 .env .env.core ../spectra-hummingbot-api/.env
       - name: Generate and validate isolated Alpha 2.0 Compose stack
         working-directory: spectra-finance-core
@@ -141,19 +141,10 @@ jobs:
             cat "$output"
             return 1
           }
-          # The Core container starts its continuous loop as soon as the stack is healthy.
-          # Wait for its first completed cycle so a still-running market scan/order cannot race
-          # the explicit acceptance cycles below.
-          startup_cycle_complete=0
-          for attempt in $(seq 1 60); do
-            if docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml logs --tail=300 spectra-core | grep -F "portfolio cycle:" >/dev/null; then
-              startup_cycle_complete=1
-              break
-            fi
-            sleep 2
-          done
-          test "$startup_cycle_complete" -eq 1
-          wait_for_settlement /tmp/spectra-alpha2-startup-status.json
+          # Keep the autonomous loop paused in this acceptance stack. The smoke
+          # order and explicit run-once cycles then exercise the same ledger without
+          # a second background scheduler racing the test harness.
+          wait_for_settlement /tmp/spectra-alpha2-smoke-status.json
           for cycle in 1 2 3; do
             echo "===== Spectra Alpha 2.0 paper cycle ${cycle}/3 ====="
             docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 run-once
