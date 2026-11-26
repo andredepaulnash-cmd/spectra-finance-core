@@ -70,16 +70,24 @@ async def _run_once() -> int:
 
 async def _run_forever() -> int:
     config,governor,data_client,execution,supervisor=build_runtime()
-    LOGGER.info("Spectra Finance Alpha 2.0 paper loop starting; max_positions=%s",config.target_positions)
+    enabled = os.getenv("SPECTRA_AUTONOMOUS_LOOP_ENABLED", "true").strip().lower()
+    if enabled not in {"true", "false"}:
+        raise RuntimeError("SPECTRA_AUTONOMOUS_LOOP_ENABLED must be true or false")
+    LOGGER.info(
+        "Spectra Finance Alpha 2.0 paper loop starting; max_positions=%s autonomous=%s",
+        config.target_positions,
+        enabled == "true",
+    )
     try:
         while True:
-            try:
-                report=await supervisor.run_once()
-                LOGGER.info("portfolio cycle: %s",json.dumps(asdict(report),default=str))
-            except Exception:
-                # An uncertain order leaves its reservation in place. Reconciliation runs
-                # again next cycle; the supervisor cannot admit beyond reserved capital.
-                LOGGER.exception("paper cycle halted; no unverified order will be retried")
+            if enabled == "true":
+                try:
+                    report=await supervisor.run_once()
+                    LOGGER.info("portfolio cycle: %s",json.dumps(asdict(report),default=str))
+                except Exception:
+                    # An uncertain order leaves its reservation in place. Reconciliation runs
+                    # again next cycle; the supervisor cannot admit beyond reserved capital.
+                    LOGGER.exception("paper cycle halted; no unverified order will be retried")
             await asyncio.sleep(config.scan_interval_seconds)
     finally:
         await execution.close()
