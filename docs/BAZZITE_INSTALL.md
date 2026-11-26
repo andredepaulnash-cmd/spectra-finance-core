@@ -31,7 +31,7 @@ bash <(curl -fsSL \
 
 The installer creates `$HOME/SpectraFinance-Alpha2` with separate Core and Hummingbot API checkouts, creates a host-side virtual environment, generates keyless paper configuration, builds an isolated Compose file, and starts the services. It pins both checkouts to the dedicated `spectra-finance-alpha-2.0` branches.
 
-It records the exact checked-out source commits in `installed-commits.txt`. On an in-place upgrade, it first backs up the running Core SQLite ledger and API receipt database with SQLite's online backup API, exports the Alpha 2.0 PostgreSQL database, and copies internal signing/configuration files under `backups/` with restrictive permissions. It refuses to overwrite local source changes and stops if an existing Alpha 2.0 data volume cannot be safely backed up. It never removes Alpha 1.x files, containers, databases, or volumes and never runs `podman compose down -v`.
+It records the exact checked-out source commits in `installed-commits.txt`. Automatic pre-upgrade backups are disabled by default to conserve disk space. Existing Alpha 2.0 named volumes, databases, signing material, credentials, and configuration files are retained in place; the installer does not delete or reset them. If you explicitly want pre-upgrade copies, set `SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS=true` before running the installer. The installer refuses to overwrite local source changes. It never removes Alpha 1.x files, containers, databases, or volumes and never runs `podman compose down -v`.
 
 ## Commands
 
