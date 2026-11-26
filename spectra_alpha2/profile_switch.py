@@ -21,6 +21,7 @@ class ProfileRuntimeState:
     pending_orders: int
     unreconciled_fills: int
     balances_reconciled: bool
+    target_profile_ready: bool
 
     def __post_init__(self) -> None:
         if self.pending_orders < 0 or self.unreconciled_fills < 0:
@@ -45,3 +46,5 @@ def assert_profile_switch_allowed(
         raise ProfileSwitchRejected("cannot switch while fills remain unreconciled")
     if not state.balances_reconciled:
         raise ProfileSwitchRejected("cannot switch before exchange balances are reconciled")
+    if not state.target_profile_ready:
+        raise ProfileSwitchRejected("target execution profile is not ready")
