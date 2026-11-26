@@ -86,6 +86,39 @@ class PortfolioSupervisorTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_concurrent_cycles_are_serialized_and_cannot_over_admit(self):
+        async def scenario():
+            entered = asyncio.Event()
+            release = asyncio.Event()
+
+            class GatedScanner(FakeScanner):
+                async def scan(self):
+                    entered.set()
+                    await release.wait()
+                    return self.items
+
+            execution = FakeExecution()
+            supervisor = PortfolioSupervisor(
+                self.gov,
+                GatedScanner([candidate(1), candidate(2)]),
+                CondorAnalyzer(),
+                execution,
+                target_positions=1,
+                max_new_positions_per_cycle=1,
+            )
+            first = asyncio.create_task(supervisor.run_once())
+            await entered.wait()
+            second = asyncio.create_task(supervisor.run_once())
+            await asyncio.sleep(0)
+            release.set()
+            first_report, second_report = await asyncio.gather(first, second)
+            self.assertEqual(first_report.admitted_positions, 1)
+            self.assertEqual(second_report.admitted_positions, 0)
+            self.assertEqual(execution.orders, 1)
+            self.assertEqual(self.gov.snapshot()["open_positions"], 1)
+
+        asyncio.run(scenario())
+
     def test_supervisor_admits_only_to_configured_ten_position_target(self):
         execution=FakeExecution()
         supervisor=PortfolioSupervisor(
