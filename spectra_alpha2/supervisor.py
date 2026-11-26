@@ -65,6 +65,9 @@ class PortfolioSupervisor:
         self.max_new_positions_per_cycle = max_new_positions_per_cycle
         self.max_slippage_fraction = max_slippage_fraction
         self.order_timeout_seconds = order_timeout_seconds
+        # Serialize autonomous and operator-triggered cycles. Without this gate,
+        # concurrent scans can both observe the same free slot and over-admit.
+        self._cycle_lock = asyncio.Lock()
 
     async def _process_recovery(self, positions: list[dict]) -> int:
         """Apply the confirmed outer-boundary safety review; do not invent VCAP policy."""
@@ -171,6 +174,11 @@ class PortfolioSupervisor:
         return exit_orders, pending_orders, skipped, realized_fills, blocked_assets
 
     async def run_once(self) -> CycleReport:
+        """Run one portfolio cycle; serialize all callers against the same ledger."""
+        async with self._cycle_lock:
+            return await self._run_once()
+
+    async def _run_once(self) -> CycleReport:
         self.safety.assert_paper_mode()
         reconciled = await self.execution.reconcile_pending(self.governor, timeout_seconds=0.1)
         positions_before = self.governor.list_positions()
