@@ -762,7 +762,11 @@ class CapitalGovernor:
                 reserved_gross=Decimal(row["gross_notional"])
                 fee_reserve=Decimal(row["fee_reserve"])
                 if actual > reserved_gross or actual_fee > fee_reserve:
-                    raise CapitalDenied("actual fill or fee exceeds authorized reserve")
+                    raise CapitalDenied(
+                        "actual fill or fee exceeds authorized reserve "
+                        f"(gross actual={actual}, gross authorized={reserved_gross}, "
+                        f"fee actual={actual_fee}, fee authorized={fee_reserve})"
+                    )
                 pool=CapitalPool(row["pool_id"])
                 poolrow=conn.execute("SELECT reserved,spent FROM pools WHERE pool_id=?",(pool.value,)).fetchone()
                 new_reserved=Decimal(poolrow["reserved"])-reserved_gross-fee_reserve
