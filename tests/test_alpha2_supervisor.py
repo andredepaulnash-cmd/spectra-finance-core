@@ -33,7 +33,7 @@ class FakeScanner:
 
 
 class FakeExecution:
-    def __init__(self,fail=False): self.fail=fail; self.orders=0; self.sell_orders=0
+    def __init__(self,fail=False,pending=False): self.fail=fail; self.pending=pending; self.orders=0; self.sell_orders=0
     async def reconcile_pending(self,governor,timeout_seconds=0.1): return []
     async def submit_authorized_buy(self,governor,authorization,request_body,timeout_seconds=60,shard_id=None):
         self.orders+=1
@@ -50,6 +50,8 @@ class FakeExecution:
         price=Decimal(request_body["max_execution_price"])
         gross=quantity*price
         fee=gross*Decimal("0.004")
+        if self.pending:
+            return ExecutionResult(authorization.authorization_id,order_id,"PENDING",Decimal("0"),Decimal("0"),Decimal("0"))
         governor.settle_fill(
             authorization.authorization_id,actual_gross_notional=gross,actual_fee=fee,
             actual_quantity=quantity,average_price=price,
@@ -118,6 +120,20 @@ class PortfolioSupervisorTests(unittest.TestCase):
             self.assertEqual(self.gov.snapshot()["open_positions"], 1)
 
         asyncio.run(scenario())
+
+    def test_pending_order_consumes_the_only_available_position_slot(self):
+        execution=FakeExecution(pending=True)
+        supervisor=PortfolioSupervisor(
+            self.gov,FakeScanner([candidate(i) for i in range(5)]),
+            CondorAnalyzer(),execution,target_positions=1,max_new_positions_per_cycle=1,
+        )
+        report=asyncio.run(supervisor.run_once())
+        self.assertEqual(report.admitted_positions,0)
+        self.assertEqual(report.pending_orders,1)
+        self.assertEqual(report.active_positions_after_cycle,1)
+        self.assertEqual(len(self.gov.list_positions()),1)
+        self.assertEqual(self.gov.list_positions()[0]["status"],"RESERVED")
+        self.assertEqual(execution.orders,1)
 
     def test_supervisor_admits_only_to_configured_ten_position_target(self):
         execution=FakeExecution()
