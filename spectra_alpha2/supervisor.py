@@ -198,6 +198,11 @@ class PortfolioSupervisor:
         slots = max(0, self.target_positions - len(active_positions))
         admission_budget = min(slots, self.max_new_positions_per_cycle)
         admitted = 0
+        # A submitted-but-unresolved order already owns a durable position slot.
+        # Count it against this cycle's admission budget just like a confirmed fill;
+        # otherwise the loop can submit another asset while the first reservation
+        # is still pending, exceeding the configured target.
+        admission_slots_used = 0
         pending_orders = exit_pending + sum(1 for result in reconciled if result.status == "PENDING")
         skipped_existing = 0
         skipped_limits = exit_skipped
@@ -209,7 +214,7 @@ class PortfolioSupervisor:
             if candidate.trading_pair in existing_assets or candidate.trading_pair in blocked_assets:
                 skipped_existing += 1
                 continue
-            if admitted >= admission_budget:
+            if admission_slots_used >= admission_budget:
                 break
             position_id = str(uuid.uuid4())
             idempotency_key = f"alpha2-initial-{position_id}"
@@ -252,9 +257,11 @@ class PortfolioSupervisor:
                 raise
             if result.filled_quantity > 0:
                 admitted += 1
+                admission_slots_used += 1
                 existing_assets.add(candidate.trading_pair)
             elif result.status == "PENDING":
                 pending_orders += 1
+                admission_slots_used += 1
                 existing_assets.add(candidate.trading_pair)
             else:
                 skipped_limits += 1
