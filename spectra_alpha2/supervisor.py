@@ -11,7 +11,12 @@ from .execution import ExecutionRejected, ExecutionUncertain, HummingbotPaperExe
 from .governor import CapitalDenied, CapitalGovernor
 from .market_data import ResearchScanner
 from .order_builder import build_buy_market_order, build_take_profit_limit_order
-from .policy import MAX_OPEN_POSITIONS, VCAP_OUTER_BOUNDARY
+from .policy import (
+    INITIAL_TARGET_POSITIONS,
+    MAX_NEW_POSITIONS_PER_CYCLE,
+    MAX_OPEN_POSITIONS,
+    VCAP_OUTER_BOUNDARY,
+)
 from .safety import PaperSafetySettings
 from .strategy import calculate_drawdown
 
@@ -44,15 +49,15 @@ class PortfolioSupervisor:
         condor: CondorAnalyzer,
         execution: HummingbotPaperExecutionClient,
         *,
-        target_positions: int = MAX_OPEN_POSITIONS,
-        max_new_positions_per_cycle: int = 10,
+        target_positions: int = INITIAL_TARGET_POSITIONS,
+        max_new_positions_per_cycle: int = MAX_NEW_POSITIONS_PER_CYCLE,
         max_slippage_fraction: Decimal = Decimal("0.001"),
         order_timeout_seconds: float = 60,
     ):
         if isinstance(target_positions, bool) or not isinstance(target_positions, int) or not 1 <= target_positions <= MAX_OPEN_POSITIONS:
             raise ValueError(f"target_positions must be between 1 and {MAX_OPEN_POSITIONS}")
-        if isinstance(max_new_positions_per_cycle, bool) or not isinstance(max_new_positions_per_cycle, int) or max_new_positions_per_cycle < 1:
-            raise ValueError("max_new_positions_per_cycle must be positive")
+        if isinstance(max_new_positions_per_cycle, bool) or not isinstance(max_new_positions_per_cycle, int) or not 1 <= max_new_positions_per_cycle <= MAX_NEW_POSITIONS_PER_CYCLE:
+            raise ValueError(f"max_new_positions_per_cycle must be between 1 and {MAX_NEW_POSITIONS_PER_CYCLE}")
         if not isinstance(max_slippage_fraction, Decimal) or not max_slippage_fraction.is_finite() or not Decimal("0") <= max_slippage_fraction <= Decimal("0.02"):
             raise ValueError("max_slippage_fraction must be between 0% and 2%")
         self.safety = governor.safety

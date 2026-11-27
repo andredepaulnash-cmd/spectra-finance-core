@@ -42,10 +42,12 @@ class FakeClient:
 
 
 @pytest.mark.asyncio
-async def test_research_scanner_filters_quote_volume_spread_staleness_and_quote_asset():
+async def test_research_scanner_filters_quote_volume_spread_staleness_quote_asset_and_mean_reversion():
     scanner=ResearchScanner(FakeClient(),entry_quote_assets={"USDT"},min_quote_volume_24h=Decimal("10000000"),clock=time.time)
     candidates=await scanner.scan()
-    assert [x.trading_pair for x in candidates]==["BTC-USDT","ETH-USDT"]
+    assert [x.trading_pair for x in candidates]==["BTC-USDT","ETH-USDT","LOSER-USDT"]
+    loser=next(x for x in candidates if x.trading_pair=="LOSER-USDT")
+    assert loser.change_24h_fraction < 0  # no positive 24h change required for mean-reversion evaluation
     assert all(x.quote_asset=="USDT" for x in candidates)
     assert all(x.spread_fraction<=Decimal("0.003") for x in candidates)
 

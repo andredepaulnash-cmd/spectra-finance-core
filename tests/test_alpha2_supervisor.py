@@ -105,11 +105,14 @@ class PortfolioSupervisorTests(unittest.TestCase):
         execution=FakeExecution()
         supervisor=PortfolioSupervisor(
             self.gov,FakeScanner([candidate(i) for i in range(60)]),
-            CondorAnalyzer(),execution,target_positions=50,max_new_positions_per_cycle=50,
+            CondorAnalyzer(),execution,target_positions=50,max_new_positions_per_cycle=10,
         )
-        report=asyncio.run(supervisor.run_once())
-        self.assertEqual(report.admitted_positions,50)
-        self.assertEqual(report.active_positions_after_cycle,50)
+        # Normal operating target is 50; per-cycle maximum is 10, so it fills over cycles.
+        cycles=0
+        while self.gov.snapshot()["open_positions"]<50 and cycles<10:
+            report=asyncio.run(supervisor.run_once())
+            self.assertLessEqual(report.admitted_positions,10)
+            cycles+=1
         self.assertEqual(self.gov.snapshot()["open_positions"],50)
         self.assertEqual(execution.orders,50)
         second=asyncio.run(supervisor.run_once())
@@ -206,11 +209,28 @@ class PortfolioSupervisorTests(unittest.TestCase):
         self.assertEqual(execution.orders,0)
 
     def test_global_position_cap_cannot_be_exceeded_by_configuration(self):
+        # Configured target 74 is valid; target 75 is rejected. Hard cap 74 > initial target 50.
+        PortfolioSupervisor(
+            self.gov,FakeScanner([]),CondorAnalyzer(),FakeExecution(),
+            target_positions=74,
+        )
         with self.assertRaises(ValueError):
             PortfolioSupervisor(
                 self.gov,FakeScanner([]),CondorAnalyzer(),FakeExecution(),
                 target_positions=75,
             )
+
+    def test_per_cycle_maximum_cannot_be_raised_above_10(self):
+        # Supervisor default and maximum per-cycle admission are both 10.
+        supervisor=PortfolioSupervisor(self.gov,FakeScanner([]),CondorAnalyzer(),FakeExecution())
+        self.assertEqual(supervisor.max_new_positions_per_cycle,10)
+        self.assertEqual(supervisor.target_positions,50)
+        for bad in (0,11,50,100):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                PortfolioSupervisor(
+                    self.gov,FakeScanner([]),CondorAnalyzer(),FakeExecution(),
+                    max_new_positions_per_cycle=bad,
+                )
 
 
 if __name__=="__main__":

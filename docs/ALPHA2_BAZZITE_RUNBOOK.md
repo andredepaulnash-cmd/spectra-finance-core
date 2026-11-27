@@ -67,7 +67,7 @@ The command wrapper is installed at `$HOME/.local/bin/spectra-alpha2`.
 - `once` runs one supervised portfolio cycle on demand without replacing the persistent service.
 - The desktop command center provides the corresponding controls.
 
-The default scan interval is 10 seconds (`SPECTRA_SCAN_INTERVAL_SECONDS`). The portfolio target and hard ceiling are 50 simultaneous positions, with a $20 initial MARKET BUY budget per position. The supervisor can submit up to 50 new entries in a cycle while vacancies remain. It ranks positive 24-hour USD gainers by percentage change and uses deliberately permissive paper-test defaults: at least $100,000 in 24-hour quote volume and no more than a 1% top-of-book spread. Fresh ticker data, valid Kraken trading rules, positive two-sided order books, minimum order sizes, signed capital authorization and the configured 0.5% market-buy slippage ceiling still apply. After a position is fully sold and the exit fill is reconciled, its slot is eligible for replacement in that same cycle using another qualifying gainer; the just-closed asset is not immediately re-entered in that cycle. Every entry is a MARKET BUY through Kraken's paper connector. Ordinary top-gainer exits use the configured fee-aware LIMIT SELL only after the live paper bid reaches its target. The current release does not activate VCAP recovery or the advanced DTTP/DTSL reversal engine; those remain outside this release's verified scope.
+The default scan interval is 10 seconds (`SPECTRA_SCAN_INTERVAL_SECONDS`). The portfolio hard ceiling is 74 concurrent reserved/open positions with an initial operating target of 50 (`MAX_OPEN_POSITIONS=74`, `INITIAL_TARGET_POSITIONS=50`, `SPECTRA_MAX_POSITIONS` default 50 range 1-74), with a $30 initial MARKET BUY budget per position. The supervisor admits at most 10 new entries per cycle (`MAX_NEW_POSITIONS_PER_CYCLE=10`, `SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE` default 10 range 1-10) while vacancies remain; staged 10/25/50/74; never opens a position merely to fill the target. It ranks positive 24-hour USD gainers by percentage change and uses deliberately permissive paper-test defaults: at least $100,000 in 24-hour quote volume and no more than a 1% top-of-book spread. Fresh ticker data, valid Kraken trading rules, positive two-sided order books, minimum order sizes, signed capital authorization and the configured 0.5% market-buy slippage ceiling still apply. After a position is fully sold and the exit fill is reconciled, its slot is eligible for replacement in that same cycle using another qualifying gainer; the just-closed asset is not immediately re-entered in that cycle. Every entry is a MARKET BUY through Kraken's paper connector. Ordinary top-gainer exits use the configured fee-aware LIMIT SELL only after the live paper bid reaches its target. The current release does not activate VCAP recovery or the advanced DTTP/DTSL reversal engine; those remain outside this release's verified scope.
 
 If an order outcome is uncertain, the supervisor retains its capital reservation and reconciles it on a later cycle rather than blindly resubmitting the order. Check `logs` and `status` before intervening manually.
 
@@ -123,9 +123,10 @@ API credentials are generated locally and stored in owner-only environment files
 - Paper balance: 25,000 USD
 - Default entry liquidity threshold: 100,000 USD 24-hour quote volume
 - Default maximum top-of-book spread: 1%
-- Maximum simultaneous positions: 50
-- Initial paper buy budget: 20 USD per position
-- Maximum new entries attempted per cycle: 50
+- Initial paper buy budget: 30 USD per position
+- Maximum new entries attempted per cycle: 10
+- Maximum concurrent reserved/open positions (hard limit): 74
+- Initial operating target: 50
 - All purchases are MARKET BUY orders.
 - LIMIT orders are reserved for authorized exit sells.
 - Live execution remains disabled; no exchange API keys are configured or accepted.

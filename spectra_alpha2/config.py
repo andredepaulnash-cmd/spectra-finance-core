@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 
-from .policy import MAX_OPEN_POSITIONS
+from .policy import INITIAL_TARGET_POSITIONS, MAX_NEW_POSITIONS_PER_CYCLE, MAX_OPEN_POSITIONS
 from .safety import PaperSafetySettings
 
 
@@ -40,11 +40,16 @@ class Alpha2Config:
             except Exception as exc: raise ValueError(f"{name} must be a decimal") from exc
             if not value.is_finite(): raise ValueError(f"{name} must be finite")
             return value
-        target=integer("SPECTRA_MAX_POSITIONS",MAX_OPEN_POSITIONS)
+        # Configured operating target, separate from the hard concurrent ceiling.
+        # SPECTRA_MAX_POSITIONS: default INITIAL_TARGET_POSITIONS (50), range 1..MAX_OPEN_POSITIONS (74).
+        target=integer("SPECTRA_MAX_POSITIONS",INITIAL_TARGET_POSITIONS)
         if not 1<=target<=MAX_OPEN_POSITIONS:
             raise ValueError(f"SPECTRA_MAX_POSITIONS must be between 1 and {MAX_OPEN_POSITIONS}")
-        max_new=integer("SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE",50)
-        if max_new<1: raise ValueError("SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE must be positive")
+        # SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE: default MAX_NEW_POSITIONS_PER_CYCLE (10), range 1..10.
+        # An environment value can lower it but can never silently raise it above 10.
+        max_new=integer("SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE",MAX_NEW_POSITIONS_PER_CYCLE)
+        if not 1<=max_new<=MAX_NEW_POSITIONS_PER_CYCLE:
+            raise ValueError(f"SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE must be between 1 and {MAX_NEW_POSITIONS_PER_CYCLE}")
         interval=float(env.get("SPECTRA_SCAN_INTERVAL_SECONDS","10"))
         timeout=float(env.get("SPECTRA_ORDER_TIMEOUT_SECONDS","60"))
         if interval<=0 or timeout<=0: raise ValueError("scan and order timeout values must be positive")

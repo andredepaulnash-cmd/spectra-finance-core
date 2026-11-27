@@ -20,7 +20,7 @@ The initial scanner requires:
 - positive price and 24-hour base volume;
 - at least $100,000 USDT 24-hour quote volume;
 - Hummingbot limit-order support;
-- exchange minimum notional no greater than the $20 initial order;
+- exchange minimum notional no greater than the $30 initial order;
 - a valid top-of-book snapshot;
 - top-of-book spread no greater than 0.30%.
 

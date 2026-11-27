@@ -5,6 +5,7 @@ import math
 from dataclasses import dataclass
 
 from .market_data import MarketCandidate
+from .policy import MAX_OPEN_POSITIONS
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,7 +21,7 @@ class MarketRecommendation:
 class CondorAnalyzer:
     """Ranks quality-screened 24h gainers by percentage change, then execution quality."""
 
-    def recommend(self, candidates: list[MarketCandidate], *, limit: int = 74) -> list[MarketRecommendation]:
+    def recommend(self, candidates: list[MarketCandidate], *, limit: int = MAX_OPEN_POSITIONS) -> list[MarketRecommendation]:
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
             raise ValueError("limit must be a positive integer")
         ranked = []

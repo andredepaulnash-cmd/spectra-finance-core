@@ -11,6 +11,7 @@ from datetime import datetime
 import httpx
 
 from .safety import PaperSafetySettings
+from .policy import INITIAL_ENTRY_NOTIONAL
 
 
 PAPER_CONNECTOR = "kraken_paper_trade"
@@ -125,7 +126,7 @@ class ResearchScanner:
         min_quote_volume_24h: Decimal | None = None,
         entry_quote_assets: frozenset[str] | set[str] = frozenset(),
         max_spread_fraction: Decimal = Decimal("0.003"),
-        min_change_24h_fraction: Decimal = ZERO,
+        min_change_24h_fraction: Decimal = Decimal("-Infinity"),
         max_ticker_age_seconds: int = 60,
         max_book_concurrency: int = 8,
         max_candidates: int = 250,
@@ -149,11 +150,15 @@ class ResearchScanner:
         self.change_cache_ttl_seconds = change_cache_ttl_seconds
         self.clock = clock
         self._change_cache: dict[str, tuple[float, Decimal]] = {}
+        self.last_scan_diagnostics: dict[str, Any] = {}
 
     async def _change_24h(self, pair: str, last_price: Decimal, now: float) -> Decimal | None:
         cached = self._change_cache.get(pair)
         if cached is not None and 0 <= now - cached[0] < self.change_cache_ttl_seconds:
-            return cached[1]
+            reference_close = cached[1]
+            if reference_close <= ZERO or last_price <= ZERO:
+                return None
+            return last_price / reference_close - ONE
         try:
             candles = await self.client.get_hourly_candles(pair, max_records=28)
         except (httpx.HTTPError, RuntimeError, ValueError):
@@ -178,9 +183,10 @@ class ResearchScanner:
         if not eligible:
             return None
         _, reference_close = max(eligible, key=lambda item: item[0])
-        change = last_price / reference_close - ONE
-        self._change_cache[pair] = (now, change)
-        return change
+        if reference_close <= ZERO or last_price <= ZERO:
+            return None
+        self._change_cache[pair] = (now, reference_close)
+        return last_price / reference_close - ONE
 
     async def _candidate_from_snapshot(
         self,
@@ -190,77 +196,73 @@ class ResearchScanner:
         *,
         now: float,
         require_gainer: bool,
+        rejection_sink: list[str] | None = None,
     ) -> MarketCandidate | None:
         if "-" not in pair:
-            return None
+            _reject(rejection_sink, "pair_malformed"); return None
         base, quote = pair.rsplit("-", 1)
         if not base or not quote or base in {"USDT", "USDC", "DAI", "TUSD", "USDE", "FDUSD"}:
-            return None
+            _reject(rejection_sink, "stablecoin_base"); return None
         if require_gainer and quote not in self.entry_quote_assets:
-            return None
-        if not isinstance(rule, dict) or not rule.get("supports_limit_orders", False):
-            return None
+            _reject(rejection_sink, "quote_not_in_entry_quote_assets"); return None
+        if not isinstance(rule, dict):
+            _reject(rejection_sink, "invalid_rule"); return None
+        # Initial purchases are MARKET BUY. Do not require LIMIT-order support.
+        if rule.get("supports_market_orders") is False or rule.get("supports_market_orders") == 0 or str(rule.get("supports_market_orders", "")).strip().lower() in {"false", "no", "off", "0"}:
+            _reject(rejection_sink, "unsupported_market_orders"); return None
         price = _decimal(ticker.get("price"))
         quote_volume = _decimal(ticker.get("quote_volume"))
         base_volume = _decimal(ticker.get("base_volume"))
         timestamp = _safe_float(ticker.get("timestamp"))
-        if price <= ZERO or quote_volume <= ZERO or base_volume <= ZERO:
-            return None
+        if price <= ZERO:
+            _reject(rejection_sink, "invalid_price"); return None
+        if quote_volume <= ZERO:
+            _reject(rejection_sink, "nonpositive_quote_volume"); return None
+        if base_volume <= ZERO:
+            _reject(rejection_sink, "nonpositive_base_volume"); return None
         if require_gainer and (
             self.min_quote_volume_24h is None or quote_volume < self.min_quote_volume_24h
         ):
-            return None
+            _reject(rejection_sink, "min_quote_volume"); return None
         if timestamp <= 0 or now - timestamp > self.max_ticker_age_seconds or timestamp > now + 5:
-            return None
+            _reject(rejection_sink, "missing_or_stale_ticker"); return None
         min_notional = _decimal(rule.get("min_notional_size"))
         min_order = _decimal(rule.get("min_order_size"))
         base_increment = _decimal(rule.get("min_base_amount_increment"))
         price_increment = _decimal(rule.get("min_price_increment"))
-        # Kraken's TradingRule does not publish a separate min-notional field;
-        # Hummingbot therefore supplies its default zero. The exchange's positive
-        # min_order_size remains authoritative and is enforced by the order builder.
-        # Reject negative values, but do not discard every Kraken market for a
-        # legitimate absent/zero min-notional constraint.
+        # Kraken's TradingRule may omit min-notional; positive min_order_size is authoritative.
         if min_notional < ZERO or min_order <= ZERO or base_increment <= ZERO or price_increment <= ZERO:
-            return None
-        if require_gainer and min_notional > Decimal("20"):
-            return None
+            _reject(rejection_sink, "invalid_trading_rule"); return None
+        if require_gainer and min_notional > INITIAL_ENTRY_NOTIONAL:
+            _reject(rejection_sink, "min_notional_above_initial_entry"); return None
 
         change = ZERO
         if require_gainer:
             change = await self._change_24h(pair, price, now)
-            if change is None or change <= self.min_change_24h_fraction:
-                return None
+            if change is None:
+                _reject(rejection_sink, "missing_or_stale_candles"); return None
+            if change <= self.min_change_24h_fraction:
+                _reject(rejection_sink, "change_below_min"); return None
 
         book = await self.client.get_order_book(pair, depth=5)
         bids = book.get("bids") or []
         asks = book.get("asks") or []
         if not bids or not asks:
-            return None
+            _reject(rejection_sink, "empty_order_book"); return None
         bid = _decimal(bids[0].get("price"))
         ask = _decimal(asks[0].get("price"))
         if bid <= ZERO or ask <= bid:
-            return None
+            _reject(rejection_sink, "invalid_bid_ask"); return None
         mid = (bid + ask) / Decimal("2")
         spread = (ask - bid) / mid
         if spread > self.max_spread_fraction:
-            return None
+            _reject(rejection_sink, "spread_above_max"); return None
         return MarketCandidate(
-            trading_pair=pair,
-            base_asset=base,
-            quote_asset=quote,
-            last_price=price,
-            best_bid=bid,
-            best_ask=ask,
-            quote_volume_24h=quote_volume,
-            base_volume_24h=base_volume,
-            spread_fraction=spread,
-            ticker_timestamp=timestamp,
-            min_order_size=min_order,
-            min_notional_size=min_notional,
-            base_amount_increment=base_increment,
-            price_increment=price_increment,
-            change_24h_fraction=change,
+            trading_pair=pair, base_asset=base, quote_asset=quote, last_price=price,
+            best_bid=bid, best_ask=ask, quote_volume_24h=quote_volume, base_volume_24h=base_volume,
+            spread_fraction=spread, ticker_timestamp=timestamp, min_order_size=min_order,
+            min_notional_size=min_notional, base_amount_increment=base_increment,
+            price_increment=price_increment, change_24h_fraction=change,
         )
 
     async def inspect_pair(self, trading_pair: str) -> MarketCandidate | None:
@@ -283,6 +285,7 @@ class ResearchScanner:
     async def scan(self) -> list[MarketCandidate]:
         # Entry universe and liquidity semantics are Architect-configured, not guessed.
         if not self.entry_quote_assets or self.min_quote_volume_24h is None:
+            self.last_scan_diagnostics={"result":"not_configured","candidate_count":0,"rejection_counts":{}}
             return []
         tickers, rules = await asyncio.gather(
             self.client.get_tickers(),
@@ -290,16 +293,17 @@ class ResearchScanner:
         )
         now = self.clock()
         preliminary = []
+        rejections: list[str] = []
         for pair, ticker in tickers.items():
             if not isinstance(ticker, dict):
-                continue
+                _reject(rejections, "malformed_ticker"); continue
             if "-" not in pair or pair.rsplit("-",1)[1] not in self.entry_quote_assets:
-                continue
+                _reject(rejections, "quote_filter"); continue
             rule = rules.get(pair)
             if not isinstance(rule, dict):
-                continue
+                _reject(rejections, "rule_missing"); continue
             if _decimal(ticker.get("quote_volume")) < self.min_quote_volume_24h:
-                continue
+                _reject(rejections, "preliminary_min_quote_volume"); continue
             preliminary.append((pair, ticker, rule))
         preliminary.sort(key=lambda row: _decimal(row[1].get("quote_volume")), reverse=True)
         preliminary = preliminary[: self.max_candidates]
@@ -307,12 +311,18 @@ class ResearchScanner:
 
         async def inspect(row):
             pair, ticker, rule = row
+            local: list[str] = []
             try:
                 async with semaphore:
-                    return await self._candidate_from_snapshot(
-                        pair, ticker, rule, now=now, require_gainer=True
+                    result = await self._candidate_from_snapshot(
+                        pair, ticker, rule, now=now, require_gainer=True, rejection_sink=local
                     )
+                if result is None and not local:
+                    _reject(local, "scanner_error")
+                rejections.extend(local)
+                return result
             except (httpx.HTTPError, RuntimeError, ValueError):
+                _reject(rejections, "scanner_error")
                 return None
 
         inspected = await asyncio.gather(*(inspect(row) for row in preliminary))
@@ -326,7 +336,23 @@ class ResearchScanner:
             ),
             reverse=True,
         )
+        counts: dict[str, int] = {}
+        for reason in rejections:
+            counts[reason] = counts.get(reason, 0) + 1
+        self.last_scan_diagnostics={
+            "result":"scanned", "ticker_count":len(tickers), "rule_count":len(rules),
+            "preliminary_count":len(preliminary), "candidate_count":len(candidates),
+            "rejected_count":len(rejections), "rejection_counts":dict(sorted(counts.items())),
+            "rejection_reasons":list(rejections), "max_candidates":self.max_candidates,
+            "min_quote_volume_24h":str(self.min_quote_volume_24h),
+            "entry_quote_assets":sorted(self.entry_quote_assets),
+        }
         return candidates
+
+
+def _reject(sink: list[str] | None, reason: str) -> None:
+    if sink is not None:
+        sink.append(reason)
 
 
 def _decimal(value: Any) -> Decimal:

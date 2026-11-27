@@ -1,5 +1,6 @@
 import json
 import asyncio
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import httpx
@@ -59,7 +60,7 @@ def order_body():
     }
 
 
-def handler_for(requests,*,status="FILLED",trade_price="100",trade_fee="0.08"):
+def handler_for(requests,*,status="FILLED",trade_price="100",trade_fee="0.08",side="BUY",order_type="MARKET"):
     def handler(request):
         requests.append(request)
         if request.url.path=="/market-data/trading-pair/add":
@@ -75,12 +76,12 @@ def handler_for(requests,*,status="FILLED",trade_price="100",trade_fee="0.08"):
             filters=json.loads(request.content)
             assert isinstance(filters["start_time"],int)
             assert isinstance(filters["end_time"],int)
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","status":status}]})
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","trading_pair":"BTC-USD","connector_name":"kraken_paper_trade","account_name":"master_account","side":side,"trade_type":side,"order_type":order_type,"amount":"0.2","executed_amount_base":"0.2","executed_amount_quote":str(Decimal("0.2")*Decimal(trade_price)),"fee":trade_fee,"status":status}]})
         if request.url.path=="/trading/trades":
             filters=json.loads(request.content)
             assert isinstance(filters["start_time"],int)
             assert isinstance(filters["end_time"],int)
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":trade_price,"fee_paid":trade_fee,"fee_currency":"USD"}]})
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","trade_id":"trade-1","trading_pair":"BTC-USD","connector_name":"kraken_paper_trade","side":side,"trade_type":side,"amount":"0.2","price":trade_price,"fee_paid":trade_fee,"fee_currency":"USD","timestamp":datetime.now(timezone.utc).isoformat()}]})
         raise AssertionError(request.url.path)
     return handler
 
@@ -142,7 +143,7 @@ async def test_executor_submits_governor_authorized_spot_sell_and_reconciles_net
     exit_auth=type("ExitAuth",(),{"authorization_id":"exit-123","idempotency_key":"exit-idem"})()
     client=HummingbotPaperExecutionClient(
         "http://hummingbot",api_username="local-core",api_password="internal-only",
-        environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests,trade_price="105",trade_fee="0.084")),poll_interval_seconds=0,
+        environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests,trade_price="105",trade_fee="0.084",side="SELL",order_type="LIMIT")),poll_interval_seconds=0,
     )
     result=await client.submit_authorized_sell(governor,exit_auth,sell_body,timeout_seconds=1)
     assert result.order_id=="paper-order-1"
@@ -177,9 +178,9 @@ async def test_executor_recovers_order_id_after_lost_submit_response():
         if request.url.path=="/spectra/dispatch-receipts/auth-123":
             return httpx.Response(200,json={"order_id":"paper-order-1","response_status":201})
         if request.url.path=="/trading/orders/search":
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","status":"FILLED"}]})
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","trading_pair":"BTC-USD","connector_name":"kraken_paper_trade","account_name":"master_account","side":"BUY","trade_type":"BUY","order_type":"MARKET","amount":"0.2","executed_amount_base":"0.2","executed_amount_quote":"20","fee":"0.08","status":"FILLED"}]})
         if request.url.path=="/trading/trades":
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":"100","fee_paid":"0.1","fee_currency":"USD"}]})
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","trade_id":"trade-1","trading_pair":"BTC-USD","connector_name":"kraken_paper_trade","side":"BUY","trade_type":"BUY","amount":"0.2","price":"100","fee_paid":"0.08","fee_currency":"USD","timestamp":datetime.now(timezone.utc).isoformat()}]})
         raise AssertionError(request.url.path)
     governor=FakeGovernor()
     client=HummingbotPaperExecutionClient(

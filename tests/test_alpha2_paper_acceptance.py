@@ -94,7 +94,7 @@ class PaperVenue:
             assert filters["start_time"] < filters["end_time"]
             return httpx.Response(200, json={"data": [{
                 "order_id": self.order_id, "amount": self.filled_amount,
-                "price": "100", "fee_paid": "0.0796", "fee_currency": "USD",
+                "price": "100", "fee_paid": "0.1196", "fee_currency": "USD",
             }]})
         raise AssertionError(f"unexpected paper API request: {request.method} {path}")
 
@@ -148,8 +148,8 @@ def test_alpha2_real_components_discover_submit_fill_and_survive_restart(tmp_pat
     state = governor.get_position_state(position["position_id"])
     assert position["asset_id"] == "BTC-USD"
     assert position["status"] == "OPEN"
-    assert state["total_quantity"] == Decimal("0.199")
-    assert state["total_cost_basis_quote"] == Decimal("19.9796")
+    assert state["total_quantity"] == Decimal("0.284")
+    assert state["total_cost_basis_quote"] == Decimal("28.5196")
 
     # Reconstruct the Governor over the same durable database, as after restart.
     restarted_governor = CapitalGovernor(db_path, environment=SAFE_ENV)
@@ -158,5 +158,5 @@ def test_alpha2_real_components_discover_submit_fill_and_survive_restart(tmp_pat
     assert second.skipped_existing_assets == 1
     assert len(venue.orders) == 1
     restarted_state = restarted_governor.get_position_state(position["position_id"])
-    assert restarted_state["total_quantity"] == Decimal("0.199")
-    assert restarted_state["total_cost_basis_quote"] == Decimal("19.9796")
+    assert restarted_state["total_quantity"] == Decimal("0.284")
+    assert restarted_state["total_cost_basis_quote"] == Decimal("28.5196")

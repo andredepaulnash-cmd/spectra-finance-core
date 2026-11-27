@@ -1,6 +1,6 @@
 """Live Hummingbot Kraken paper-connector smoke test (never a live exchange order).
 
-Uses a disposable SQLite ledger and a $20 USD authorization. It exercises the
+Uses a disposable SQLite ledger and a $30 USD authorization. It exercises the
 actual running Hummingbot API and kraken_paper_trade connector, then requires
 a reconciled simulated fill before returning success.
 """

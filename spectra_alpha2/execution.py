@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -10,11 +11,15 @@ from typing import Any
 
 import httpx
 
-from .governor import CapitalAuthorization, CapitalGovernor
+from .governor import CapitalAuthorization, CapitalDenied, CapitalGovernor
 from .safety import PaperSafetySettings
+
+LOGGER = logging.getLogger("spectra_alpha2.execution")
 
 
 TERMINAL_ORDER_STATES={"FILLED","CANCELED","CANCELLED","REJECTED","FAILED","EXPIRED"}
+PAPER_CONNECTOR="kraken_paper_trade"
+ZERO=Decimal("0")
 
 
 class ExecutionUncertain(RuntimeError):
@@ -62,6 +67,12 @@ class HummingbotPaperExecutionClient:
             transport=transport,
         )
         self.poll_interval_seconds=poll_interval_seconds
+        self.quarantined_authorization_ids=frozenset(
+            item.strip() for item in str(environment.get("SPECTRA_QUARANTINED_AUTHORIZATION_IDS", "")).split(",") if item.strip()
+        )
+        self.quarantined_order_ids=frozenset(
+            item.strip() for item in str(environment.get("SPECTRA_QUARANTINED_ORDER_IDS", "")).split(",") if item.strip()
+        )
 
     async def _post(
         self,path:str,payload:dict[str,Any],*,headers:dict[str,str]|None=None,timeout:float|None=None
@@ -254,40 +265,140 @@ class HummingbotPaperExecutionClient:
         shard_id: str | None,
         timeout_seconds: float,
     ) -> ExecutionResult:
+        self.safety.assert_paper_mode()
+        if not authorization_id or not str(authorization_id).strip():
+            raise ExecutionUncertain("CapitalGovernor authorization ID is required")
+        if not order_id or not str(order_id).strip():
+            raise ExecutionUncertain("Hummingbot order ID is required for fill settlement")
+        order_id=str(order_id).strip()
+        authorization_id=str(authorization_id).strip()
+        base, quote = trading_pair.rsplit("-", 1)
+        base = base.upper()
+        quote = quote.upper()
         started=datetime.now(timezone.utc)
         deadline=time.monotonic()+timeout_seconds
         order=None
         while time.monotonic() < deadline:
             now=datetime.now(timezone.utc)
-            result=await self._search_orders(trading_pair,start_time=started-timedelta(minutes=2),end_time=now+timedelta(seconds=2))
+            result=await self._search_orders(trading_pair,start_time=started-timedelta(hours=24),end_time=now+timedelta(seconds=2))
             order=next((item for item in result.get("data",[]) if str(item.get("order_id"))==order_id),None)
             if order and str(order.get("status","")).upper() in TERMINAL_ORDER_STATES:
                 break
             await asyncio.sleep(self.poll_interval_seconds)
-        if order is None or str(order.get("status","")).upper() not in TERMINAL_ORDER_STATES:
+        if order is None:
+            return ExecutionResult(authorization_id,order_id,"PENDING",Decimal("0"),Decimal("0"),Decimal("0"))
+        status=str(order.get("status","")).upper()
+        if status not in TERMINAL_ORDER_STATES:
             return ExecutionResult(authorization_id,order_id,"PENDING",Decimal("0"),Decimal("0"),Decimal("0"))
 
+        # Evidence validation: the connector order must match the authorized market,
+        # side, order type, connector, account, and signed base quantity.
+        if str(order.get("trading_pair","")).strip() and str(order.get("trading_pair")).strip() != trading_pair:
+            raise ExecutionUncertain("connector order trading pair does not match the authorized market")
+        if str(order.get("connector_name","")).strip().lower() not in ("", PAPER_CONNECTOR):
+            raise ExecutionUncertain("connector order is not from kraken_paper_trade")
+        if str(order.get("account_name","")).strip() not in ("", "master_account"):
+            raise ExecutionUncertain("connector order is not for the master paper account")
+        if str(order.get("side","")).upper() not in ("", "BUY"):
+            raise ExecutionUncertain("connector order side is not BUY")
+        if str(order.get("trade_type","")).upper() not in ("", "BUY"):
+            raise ExecutionUncertain("connector order trade type is not BUY")
+        if str(order.get("order_type","")).upper() not in ("", "MARKET"):
+            raise ExecutionUncertain("connector order is not a MARKET BUY")
+        order_amount = None
+        if order.get("amount") not in (None, ""):
+            order_amount = Decimal(str(order.get("amount")))
+            if not order_amount.is_finite() or order_amount <= ZERO:
+                raise ExecutionUncertain("connector order amount is invalid")
+        executed_base = None
+        if order.get("executed_amount_base") not in (None, ""):
+            executed_base = Decimal(str(order.get("executed_amount_base")))
+            if not executed_base.is_finite() or executed_base < ZERO:
+                raise ExecutionUncertain("connector executed base amount is invalid")
+        executed_quote = None
+        if order.get("executed_amount_quote") not in (None, ""):
+            executed_quote = Decimal(str(order.get("executed_amount_quote")))
+            if not executed_quote.is_finite() or executed_quote < ZERO:
+                raise ExecutionUncertain("connector executed quote amount is invalid")
+
         end=datetime.now(timezone.utc)
-        trades=await self._search_trades(trading_pair,start_time=started-timedelta(minutes=2),end_time=end+timedelta(seconds=2))
-        fills=[item for item in trades.get("data",[]) if str(item.get("order_id"))==order_id]
+        trades=await self._search_trades(trading_pair,start_time=started-timedelta(hours=24),end_time=end+timedelta(seconds=2))
+        fills=[]
+        seen_trade_ids=set()
+        for item in trades.get("data", []):
+            if str(item.get("order_id")) != order_id:
+                continue
+            trade_id = item.get("trade_id")
+            dedup_key = trade_id if trade_id is not None else (item.get("timestamp"), item.get("amount"), item.get("price"))
+            if dedup_key in seen_trade_ids:
+                continue
+            seen_trade_ids.add(dedup_key)
+            fills.append(item)
+
+        # Validate every trade before any settlement or capital release.
+        for item in fills:
+            if str(item.get("trading_pair","")).strip() and str(item.get("trading_pair")).strip() != trading_pair:
+                raise ExecutionUncertain("trade trading pair does not match the authorized market")
+            if str(item.get("connector_name","")).strip().lower() not in ("", PAPER_CONNECTOR):
+                raise ExecutionUncertain("trade is not from kraken_paper_trade")
+            if str(item.get("side","")).upper() not in ("", "BUY"):
+                raise ExecutionUncertain("trade side is not BUY")
+            if str(item.get("trade_type","")).upper() not in ("", "BUY"):
+                raise ExecutionUncertain("trade type is not BUY")
+            amount = Decimal(str(item.get("amount","0")))
+            price = Decimal(str(item.get("price","0")))
+            if not amount.is_finite() or amount <= ZERO:
+                raise ExecutionUncertain("trade amount must be positive")
+            if not price.is_finite() or price <= ZERO:
+                raise ExecutionUncertain("trade price must be positive")
+            timestamp = item.get("timestamp")
+            if timestamp not in (None, ""):
+                try:
+                    if isinstance(timestamp, str):
+                        trade_time = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+                    else:
+                        trade_time = datetime.fromtimestamp(float(timestamp), tz=timezone.utc)
+                    if trade_time < started - timedelta(minutes=2) or trade_time > end + timedelta(seconds=2):
+                        raise ExecutionUncertain("trade timestamp is outside the authorized order window")
+                except (TypeError, ValueError, OSError, OverflowError) as exc:
+                    raise ExecutionUncertain("trade timestamp is invalid") from exc
+
         quantity=sum((Decimal(str(item.get("amount","0"))) for item in fills),Decimal("0"))
         gross=sum((Decimal(str(item.get("amount","0")))*Decimal(str(item.get("price","0"))) for item in fills),Decimal("0"))
-        status=str(order.get("status","")).upper()
         if quantity<=0 or gross<=0:
             governor.release_unfilled_reservation(authorization_id,confirmed_no_fill=True)
             return ExecutionResult(authorization_id,order_id,status,Decimal("0"),Decimal("0"),Decimal("0"))
+        # Evidence-backed quantity checks.
+        tolerance = Decimal("0.00000001")
+        if order_amount is not None and quantity > order_amount + (tolerance * max(order_amount, Decimal("1"))):
+            raise ExecutionUncertain("fill quantity exceeds the connector order amount")
+        if executed_base is not None and abs(quantity - executed_base) > (tolerance * max(executed_base, Decimal("1"))):
+            raise ExecutionUncertain("fill quantity does not match connector executed base amount")
+        if executed_quote is not None and abs(gross - executed_quote) > (tolerance * max(executed_quote, Decimal("1"))):
+            raise ExecutionUncertain("fill gross does not match connector executed quote amount")
         average_price=gross/quantity
         actual_fee_quote=sum(
             (self._quote_fee_for_trade(item,trading_pair) for item in fills),
             Decimal("0"),
         )
-        governor.settle_fill(
-            authorization_id,
-            actual_gross_notional=gross,
-            actual_fee=actual_fee_quote,
-            actual_quantity=quantity,
-            average_price=average_price,
-        )
+        # Fee sanity: Kraken paper fees should not exceed the configured buy fee plus a small tolerance.
+        if actual_fee_quote > gross * Decimal("0.004") * Decimal("1.1"):
+            raise ExecutionUncertain("fill fee exceeds the configured Kraken paper fee allowance")
+        try:
+            governor.settle_fill(
+                authorization_id,
+                actual_gross_notional=gross,
+                actual_fee=actual_fee_quote,
+                actual_quantity=quantity,
+                average_price=average_price,
+                order_id=order_id,
+            )
+        except CapitalDenied as exc:
+            # Idempotent reconciliation: an already-settled authorization must not be
+            # treated as a new fill or cause an unrecoverable cycle halt.
+            if "submitted authorization" in str(exc).lower() or "already" in str(exc).lower():
+                return ExecutionResult(authorization_id,order_id,status,quantity,gross,actual_fee_quote)
+            raise ExecutionUncertain(f"Governor refused fill settlement: {exc}") from exc
         if shard_id:
             governor.activate_vcap_shard(shard_id)
         return ExecutionResult(authorization_id,order_id,status,quantity,gross,actual_fee_quote)
@@ -352,24 +463,71 @@ class HummingbotPaperExecutionClient:
         self,governor:CapitalGovernor,authorization_id:str,order_id:str,trading_pair:str,
         *,timeout_seconds:float,
     ) -> ExecutionResult:
+        self.safety.assert_paper_mode()
+        if not authorization_id or not str(authorization_id).strip():
+            raise ExecutionUncertain("CapitalGovernor exit authorization ID is required")
+        if not order_id or not str(order_id).strip():
+            raise ExecutionUncertain("Hummingbot exit order ID is required for settlement")
+        order_id=str(order_id).strip()
+        authorization_id=str(authorization_id).strip()
+        base, quote = trading_pair.rsplit("-", 1)
+        base = base.upper()
+        quote = quote.upper()
         started=datetime.now(timezone.utc)
         deadline=time.monotonic()+timeout_seconds
         order=None
         while time.monotonic()<deadline:
             now=datetime.now(timezone.utc)
-            result=await self._search_orders(trading_pair,start_time=started-timedelta(minutes=2),end_time=now+timedelta(seconds=2))
+            result=await self._search_orders(trading_pair,start_time=started-timedelta(hours=24),end_time=now+timedelta(seconds=2))
             order=next((item for item in result.get("data",[]) if str(item.get("order_id"))==order_id),None)
             if order and str(order.get("status","")).upper() in TERMINAL_ORDER_STATES:
                 break
             await asyncio.sleep(self.poll_interval_seconds)
         if order is None or str(order.get("status","")).upper() not in TERMINAL_ORDER_STATES:
             return ExecutionResult(authorization_id,order_id,"PENDING",Decimal("0"),Decimal("0"),Decimal("0"))
+        status=str(order.get("status","")).upper()
+        if str(order.get("trading_pair","")).strip() and str(order.get("trading_pair")).strip() != trading_pair:
+            raise ExecutionUncertain("exit connector order trading pair does not match the authorized market")
+        if str(order.get("connector_name","")).strip().lower() not in ("", PAPER_CONNECTOR):
+            raise ExecutionUncertain("exit connector order is not from kraken_paper_trade")
+        if str(order.get("account_name","")).strip() not in ("", "master_account"):
+            raise ExecutionUncertain("exit connector order is not for the master paper account")
+        if str(order.get("side","")).upper() not in ("", "SELL"):
+            raise ExecutionUncertain("exit connector order side is not SELL")
+        if str(order.get("trade_type","")).upper() not in ("", "SELL"):
+            raise ExecutionUncertain("exit connector order trade type is not SELL")
+        if str(order.get("order_type","")).upper() not in ("", "LIMIT"):
+            raise ExecutionUncertain("exit connector order is not a LIMIT SELL")
         end=datetime.now(timezone.utc)
-        trades=await self._search_trades(trading_pair,start_time=started-timedelta(minutes=2),end_time=end+timedelta(seconds=2))
-        fills=[item for item in trades.get("data",[]) if str(item.get("order_id"))==order_id]
+        trades=await self._search_trades(trading_pair,start_time=started-timedelta(hours=24),end_time=end+timedelta(seconds=2))
+        fills=[]
+        seen_trade_ids=set()
+        for item in trades.get("data", []):
+            if str(item.get("order_id")) != order_id:
+                continue
+            trade_id = item.get("trade_id")
+            dedup_key = trade_id if trade_id is not None else (item.get("timestamp"), item.get("amount"), item.get("price"))
+            if dedup_key in seen_trade_ids:
+                continue
+            seen_trade_ids.add(dedup_key)
+            fills.append(item)
+        for item in fills:
+            if str(item.get("trading_pair","")).strip() and str(item.get("trading_pair")).strip() != trading_pair:
+                raise ExecutionUncertain("exit trade trading pair does not match the authorized market")
+            if str(item.get("connector_name","")).strip().lower() not in ("", PAPER_CONNECTOR):
+                raise ExecutionUncertain("exit trade is not from kraken_paper_trade")
+            if str(item.get("side","")).upper() not in ("", "SELL"):
+                raise ExecutionUncertain("exit trade side is not SELL")
+            if str(item.get("trade_type","")).upper() not in ("", "SELL"):
+                raise ExecutionUncertain("exit trade type is not SELL")
+            amount = Decimal(str(item.get("amount","0")))
+            price = Decimal(str(item.get("price","0")))
+            if not amount.is_finite() or amount <= ZERO:
+                raise ExecutionUncertain("exit trade amount must be positive")
+            if not price.is_finite() or price <= ZERO:
+                raise ExecutionUncertain("exit trade price must be positive")
         quantity=sum((Decimal(str(item.get("amount","0"))) for item in fills),Decimal("0"))
         gross=sum((Decimal(str(item.get("amount","0")))*Decimal(str(item.get("price","0"))) for item in fills),Decimal("0"))
-        status=str(order.get("status","")).upper()
         if quantity<=0 or gross<=0:
             governor.release_exit_authorization(authorization_id,confirmed_no_fill=True)
             return ExecutionResult(authorization_id,order_id,status,Decimal("0"),Decimal("0"),Decimal("0"))
@@ -378,15 +536,23 @@ class HummingbotPaperExecutionClient:
             (self._quote_fee_for_trade(item,trading_pair) for item in fills),
             Decimal("0"),
         )
-        governor.settle_exit_fill(
-            authorization_id,actual_quantity=quantity,average_price=average_price,actual_fee=actual_fee_quote
-        )
+        try:
+            governor.settle_exit_fill(
+                authorization_id,actual_quantity=quantity,average_price=average_price,actual_fee=actual_fee_quote,order_id=order_id
+            )
+        except CapitalDenied as exc:
+            if "submitted" in str(exc).lower() or "already" in str(exc).lower():
+                return ExecutionResult(authorization_id,order_id,status,quantity,gross,actual_fee_quote)
+            raise ExecutionUncertain(f"Governor refused exit fill settlement: {exc}") from exc
         return ExecutionResult(authorization_id,order_id,status,quantity,gross,actual_fee_quote)
 
     async def reconcile_pending(self,governor:CapitalGovernor,*,timeout_seconds:float=0.1) -> list[ExecutionResult]:
         self.safety.assert_paper_mode()
         results=[]
         for pending in governor.list_pending_authorizations():
+            if pending["authorization_id"] in self.quarantined_authorization_ids or str(pending.get("order_id") or "") in self.quarantined_order_ids:
+                LOGGER.warning("skipping quarantined legacy authorization %s / order %s during reconciliation", pending["authorization_id"], pending.get("order_id"))
+                continue
             order_id=pending["order_id"]
             if not order_id:
                 recovered=await self._recover_order_id(

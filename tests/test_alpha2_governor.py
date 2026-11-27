@@ -86,7 +86,7 @@ class CapitalGovernorTests(unittest.TestCase):
         payload=json.loads(decode(token_payload))
         private.public_key().verify(decode(signature),__import__("spectra_alpha2.dispatch_receipt",fromlist=["canonical_json"]).canonical_json(payload))
         self.assertEqual(payload["proposal_id"],auth.authorization_id)
-        self.assertEqual(payload["amount"],"20")
+        self.assertEqual(payload["amount"],"30")
         self.assertEqual(payload["connector_name"],"kraken_paper_trade")
 
     def test_governor_refuses_to_sign_order_above_reserved_quote_amount(self):
@@ -96,7 +96,7 @@ class CapitalGovernorTests(unittest.TestCase):
         self.gov.consume_authorization(auth.authorization_id,idempotency_key=auth.idempotency_key,connector="kraken_paper_trade")
         body={
             "account_name":"master_account","connector_name":"kraken_paper_trade",
-            "trading_pair":"BTC-USD","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.0004",
+            "trading_pair":"BTC-USD","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.0005",
             "order_type":"MARKET","max_execution_price":"65000","position_action":"OPEN",
         }
         private=Ed25519PrivateKey.generate()
@@ -170,7 +170,7 @@ class CapitalGovernorTests(unittest.TestCase):
         self.settle(auth,order_id="paper-order-initial-test")
         self.assertEqual(self.gov.snapshot()["open_positions"], 1)
 
-    def test_50_position_limit_is_atomic_under_concurrent_admission(self):
+    def test_74_position_limit_is_atomic_under_concurrent_admission(self):
         def reserve(i):
             try:
                 self.gov.reserve_initial_position(
@@ -181,9 +181,36 @@ class CapitalGovernorTests(unittest.TestCase):
             except CapitalDenied:
                 return False
         with ThreadPoolExecutor(max_workers=12) as pool:
-            results=list(pool.map(reserve,range(90)))
-        self.assertEqual(sum(results),50)
-        self.assertEqual(self.gov.snapshot()["open_positions"],50)
+            results=list(pool.map(reserve,range(100)))
+        self.assertEqual(sum(results),74)
+        self.assertEqual(self.gov.snapshot()["open_positions"],74)
+        # 74th concurrent reservation can succeed when otherwise authorized; 75th rejected.
+        with self.assertRaises(CapitalDenied):
+            self.gov.reserve_initial_position(
+                position_id="overflow-75",asset_id="OVERFLOW-USD",
+                reference_price=Decimal("1"),idempotency_key="overflow-75",
+            )
+        self.assertEqual(self.gov.snapshot()["open_positions"],74)
+
+    def test_reserved_and_open_count_and_one_active_position_per_asset(self):
+        a1=self.gov.reserve_initial_position(position_id="p1",asset_id="BTC-USD",reference_price=Decimal("100"),idempotency_key="i1")
+        a2=self.gov.reserve_initial_position(position_id="p2",asset_id="ETH-USD",reference_price=Decimal("100"),idempotency_key="i2")
+        # Both RESERVED positions count toward the concurrent limit.
+        self.assertEqual(self.gov.snapshot()["open_positions"],2)
+        self.assertEqual(len(self.gov.list_positions()),2)
+        # One active position per asset while RESERVED.
+        with self.assertRaises(CapitalDenied):
+            self.gov.reserve_initial_position(position_id="p3",asset_id="BTC-USD",reference_price=Decimal("100"),idempotency_key="i3")
+        # Convert one to OPEN; OPEN + RESERVED still count.
+        self.gov.consume_authorization(a2.authorization_id,idempotency_key=a2.idempotency_key,connector="kraken_paper_trade")
+        self.settle(a2,order_id="paper-order-p2-initial")
+        self.assertEqual(self.gov.snapshot()["open_positions"],2)
+        with self.assertRaises(CapitalDenied):
+            self.gov.reserve_initial_position(position_id="p4",asset_id="ETH-USD",reference_price=Decimal("100"),idempotency_key="i4")
+        # A slot is not reusable until exit is fully reconciled and close is confirmed.
+        with self.assertRaises(CapitalDenied):
+            self.gov.close_position("p2",confirmed_all_exits_reconciled=True)
+        self.assertEqual(self.gov.snapshot()["open_positions"],2)
 
     def test_dca_and_unconfigured_vcap_recovery_are_rejected(self):
         self.open_position()
@@ -219,6 +246,24 @@ class CapitalGovernorTests(unittest.TestCase):
             self.gov.release_unfilled_reservation(auth.authorization_id)
         self.gov.release_unfilled_reservation(auth.authorization_id,confirmed_no_fill=True)
         self.assertEqual(self.gov.snapshot()["open_positions"],0)
+
+    def test_initial_entry_reserves_30_gross_and_0_12_fee_reserve(self):
+        from spectra_alpha2.policy import BUY_FEE_RATE, INITIAL_ENTRY_NOTIONAL
+
+        # Phase 1: $30 initial-entry gross notional; $0.12 = $30 * 0.004 buy fee reserve.
+        self.assertEqual(INITIAL_ENTRY_NOTIONAL,Decimal("30"))
+        self.assertEqual(INITIAL_ENTRY_NOTIONAL*BUY_FEE_RATE,Decimal("0.12"))
+        auth=self.gov.reserve_initial_position(
+            position_id="p1",asset_id="BTC-USD",reference_price=Decimal("100"),idempotency_key="initial-30"
+        )
+        # Authorized gross purchase budget is exactly $30, NOT $30.12 (fee reserve is not purchase notional).
+        self.assertEqual(auth.gross_notional,Decimal("30"))
+        self.assertEqual(auth.fee_reserve,Decimal("0.12"))
+        snap=self.gov.snapshot()
+        self.assertEqual(snap["pools"]["INITIAL"]["budget"],Decimal("6250"))
+        self.assertEqual(snap["pools"]["INITIAL"]["reserved"],Decimal("30.12"))
+        self.assertEqual(snap["pools"]["RECOVERY"]["budget"],Decimal("18750"))
+        self.assertEqual(snap["pools"]["RECOVERY"]["reserved"],Decimal("0"))
 
 
 if __name__ == "__main__":

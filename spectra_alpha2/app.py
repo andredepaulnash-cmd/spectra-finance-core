@@ -142,6 +142,7 @@ async def _doctor() -> int:
             "entry_quote_assets":sorted(config.entry_quote_assets),
             "min_quote_volume_24h":str(config.min_quote_volume_24h) if config.min_quote_volume_24h is not None else None,
             "eligible_market_count":len(candidates),
+            "scanner_diagnostics":getattr(supervisor.scanner, "last_scan_diagnostics", {}),
             "portfolio":governor.snapshot(),
         }
         print(json.dumps(report,indent=2,default=str))

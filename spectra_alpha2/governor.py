@@ -17,9 +17,11 @@ from .policy import (
     SELL_FEE_RATE,
     INITIAL_ENTRY_BUDGET,
     INITIAL_ENTRY_NOTIONAL,
+    MAX_ASSET_GROSS_NOTIONAL,
     MAX_OPEN_POSITIONS,
     VCAP_RECOVERY_POOL,
     gross_sell_notional_for_net_target,
+    validate_asset_exposure,
 )
 
 
@@ -272,6 +274,62 @@ class CapitalGovernor:
         row = conn.execute("SELECT budget,reserved,spent,recovered FROM pools WHERE pool_id=?", (pool.value,)).fetchone()
         return Decimal(row["budget"]) - Decimal(row["reserved"]) - Decimal(row["spent"]) + Decimal(row["recovered"])
 
+    @staticmethod
+    def _nonnegative_decimal(value, name: str) -> Decimal:
+        try:
+            result = Decimal(str(value))
+        except Exception as exc:
+            raise CapitalDenied(f"cannot reliably calculate outstanding asset exposure: {name}") from exc
+        if not result.is_finite() or result < ZERO:
+            raise CapitalDenied(f"cannot reliably calculate outstanding asset exposure: {name}")
+        return result
+
+    def _asset_outstanding_gross(self, conn: sqlite3.Connection, asset_id: str) -> Decimal:
+        """Outstanding gross notional (excluding fees) for one asset; no double counting.
+
+        RESERVED: count positions.gross_committed (proposed/actual reservation), not fee_reserve
+        and not the separate RESERVED lot.
+        OPEN: count only active/filled position_lots' unsold remaining quantity times actual
+        gross buy notional per unit; do NOT add positions.gross_committed. Gross buy excludes
+        buy fees; remaining_cost_basis_quote (which includes buy fee) is not used.
+        CANCELLED/CLOSED/RELEASED/SETTLED-only/RESOLVED/no-fill/history contribute nothing.
+        Called inside BEGIN IMMEDIATE; any unreliable value raises CapitalDenied (fail closed).
+        """
+        try:
+            total = ZERO
+            reserved_rows = conn.execute(
+                "SELECT gross_committed FROM positions WHERE asset_id=? AND status='RESERVED'",
+                (asset_id,),
+            ).fetchall()
+            for row in reserved_rows:
+                # RESERVED has no active lot yet; do not also sum reservations.gross_notional/position_lots.
+                total += self._nonnegative_decimal(row["gross_committed"], "positions.gross_committed")
+            lot_rows = conn.execute(
+                """SELECT l.gross_buy_notional,l.filled_quantity,l.remaining_quantity
+                FROM position_lots l JOIN positions p ON p.position_id=l.position_id
+                WHERE p.asset_id=? AND p.status='OPEN' AND l.status IN ('ACTIVE','FILLED')""",
+                (asset_id,),
+            ).fetchall()
+            for row in lot_rows:
+                remaining = self._nonnegative_decimal(row["remaining_quantity"], "position_lots.remaining_quantity")
+                if remaining == ZERO:
+                    continue
+                gross_buy = self._nonnegative_decimal(row["gross_buy_notional"], "position_lots.gross_buy_notional")
+                filled = self._nonnegative_decimal(row["filled_quantity"], "position_lots.filled_quantity")
+                if gross_buy <= ZERO or filled <= ZERO:
+                    raise CapitalDenied("cannot reliably calculate outstanding asset exposure: missing actual fill")
+                if remaining > filled:
+                    raise CapitalDenied("cannot reliably calculate outstanding asset exposure: remaining exceeds filled")
+                # OPEN positions' exposure comes from lots only; positions.gross_committed is not added.
+                total += remaining * gross_buy / filled
+            if not total.is_finite() or total < ZERO:
+                raise CapitalDenied("cannot reliably calculate outstanding asset exposure")
+            return total
+        except CapitalDenied:
+            raise
+        except Exception as exc:
+            raise CapitalDenied("cannot reliably calculate outstanding asset exposure") from exc
+
     def reserve_initial_position(
         self,
         *,
@@ -298,9 +356,15 @@ class CapitalGovernor:
                     "SELECT COUNT(*) AS n FROM positions WHERE status IN ('RESERVED','OPEN')"
                 ).fetchone()["n"]
                 if count >= MAX_OPEN_POSITIONS:
-                    raise CapitalDenied("50-position hard ceiling reached")
+                    raise CapitalDenied(f"{MAX_OPEN_POSITIONS}-position hard ceiling reached")
                 if conn.execute("SELECT 1 FROM positions WHERE asset_id=? AND status IN ('RESERVED','OPEN')", (asset_id,)).fetchone():
                     raise CapitalDenied("asset already has a position")
+                # Atomic per-asset outstanding-gross check + reservation; fail closed; no fee reserve in gross.
+                committed = self._asset_outstanding_gross(conn, asset_id)
+                try:
+                    validate_asset_exposure(committed, amount)
+                except ValueError as exc:
+                    raise CapitalDenied("per-asset gross-notional cap exceeded") from exc
                 if self._available_pool(conn, CapitalPool.INITIAL) < amount + fee:
                     raise CapitalDenied("initial-entry pool has insufficient available capital")
                 conn.execute(
@@ -640,6 +704,7 @@ class CapitalGovernor:
         actual_quantity: Decimal,
         average_price: Decimal,
         actual_fee: Decimal,
+        order_id: str | None = None,
     ) -> Decimal:
         """Settle a terminal sell order and credit only actual net proceeds."""
         self._assert_paper()
@@ -655,8 +720,16 @@ class CapitalGovernor:
             conn.execute("BEGIN IMMEDIATE")
             try:
                 auth=conn.execute("SELECT e.*,p.strategy_origin FROM exit_authorizations e JOIN positions p ON p.position_id=e.position_id WHERE e.authorization_id=?",(authorization_id,)).fetchone()
-                if auth is None or auth["status"] != ReservationStatus.SUBMITTED.value or not auth["order_id"]:
+                if auth is None:
+                    raise CapitalDenied("unknown exit authorization")
+                if auth["status"] == ReservationStatus.SETTLED.value:
+                    if order_id is not None and auth["order_id"] != order_id:
+                        raise CapitalDenied("settled exit authorization is bound to a different Hummingbot order")
+                    return Decimal("0")
+                if auth["status"] != ReservationStatus.SUBMITTED.value or not auth["order_id"]:
                     raise CapitalDenied("submitted exit authorization with bound order ID is required")
+                if order_id is not None and auth["order_id"] != order_id:
+                    raise CapitalDenied("Hummingbot exit order ID does not match the persisted authorization")
                 authorized_qty=Decimal(auth["quantity"])
                 if qty>authorized_qty:
                     raise CapitalDenied("actual sell quantity exceeds authorized quantity")
@@ -741,6 +814,7 @@ class CapitalGovernor:
         actual_fee: Decimal,
         actual_quantity: Decimal,
         average_price: Decimal,
+        order_id: str | None = None,
     ) -> None:
         self._assert_paper()
         actual=self._positive(actual_gross_notional,"actual_gross_notional")
@@ -755,10 +829,18 @@ class CapitalGovernor:
             conn.execute("BEGIN IMMEDIATE")
             try:
                 row=conn.execute("SELECT * FROM reservations WHERE reservation_id=?",(authorization_id,)).fetchone()
-                if row is None or row["status"] != ReservationStatus.SUBMITTED.value:
+                if row is None:
+                    raise CapitalDenied("unknown CapitalGovernor authorization")
+                if row["status"] == ReservationStatus.SETTLED.value:
+                    if order_id is not None and row["order_id"] != order_id:
+                        raise CapitalDenied("settled authorization is bound to a different Hummingbot order")
+                    return
+                if row["status"] != ReservationStatus.SUBMITTED.value:
                     raise CapitalDenied("only a submitted authorization can be settled")
                 if not row["order_id"]:
                     raise CapitalDenied("Hummingbot order ID must be persisted before fill settlement")
+                if order_id is not None and row["order_id"] != order_id:
+                    raise CapitalDenied("Hummingbot order ID does not match the persisted authorization")
                 reserved_gross=Decimal(row["gross_notional"])
                 fee_reserve=Decimal(row["fee_reserve"])
                 if actual > reserved_gross or actual_fee > fee_reserve:

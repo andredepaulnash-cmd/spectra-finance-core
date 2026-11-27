@@ -60,9 +60,9 @@ The Core and Hummingbot API communicate over the private Compose network. Postgr
 
 ## Portfolio behavior
 
-The hard maximum is 74 reserved/open positions. The supervisor admits no more than 10 new positions per cycle, only when Condor recommends an eligible market and CapitalGovernor authorizes the $20 initial entry. A pending order consumes a slot immediately. A slot is released only after all independent lots have been sold and reconciled.
+The hard maximum is 74 reserved/open positions. The supervisor admits no more than 10 new positions per cycle, only when Condor recommends an eligible market and CapitalGovernor authorizes the $30 initial entry. A pending order consumes a slot immediately. A slot is released only after all independent lots have been sold and reconciled.
 
-The simulated portfolio starts with 25,000 USDT, split into the 6,250 USDT initial-entry pool and 18,750 USDT recovery pool. The maximum cumulative gross exposure per asset is 1,000 USDT.
+The simulated portfolio starts with 25,000 USDT, split into the 6,250 USDT initial-entry pool and 18,750 USDT recovery pool. The maximum outstanding gross exposure per asset is 1,000 USDT.
 
 ## Persistence and backups
 
