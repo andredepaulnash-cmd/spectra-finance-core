@@ -79,11 +79,7 @@ Use the installed updater:
 ~/.local/bin/spectra-alpha2 update
 ```
 
-The updater is pinned to the verified Core release branch and dedicated API branch. Before changing source or rebuilding containers, it creates a pre-upgrade snapshot of the Core SQLite ledger, API dispatch-receipt database when present, PostgreSQL state, release manifest and important configuration files.
-
-If the Core or API container is stopped or only in the **Created** state, the updater does not try to start the broken stack just to make a backup. It exports the stopped Core/PostgreSQL/EMQX named volumes and archives the API's host-side data directory, preserving SQLite database and WAL files. Running services use their application-level online backup or database dump. The updater never removes named volumes.
-
-The update refuses to proceed if a required data volume cannot be identified or backed up, or if local source modifications are detected.
+The updater is pinned to the Alpha 2.0 Core release branch and dedicated API branch. To conserve disk space, automatic pre-upgrade backups are disabled by default. Existing Core/API/PostgreSQL/EMQX data volumes, internal credentials, signing keys, and configuration files remain in place and are not reset or deleted. If you explicitly choose to create pre-upgrade copies, run the updater with `SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS=true`. The updater refuses to proceed when local source modifications are detected.
 
 The desktop command center also provides a confirmed **Update release** action.
 
