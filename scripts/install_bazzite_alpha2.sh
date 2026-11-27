@@ -83,6 +83,9 @@ backup_stopped_container_volume() {
 }
 
 if podman container exists spectra-alpha2-core 2>/dev/null; then
+  # Structural safety checks are mandatory even when disk-saving backups are disabled.
+  podman container exists spectra-alpha2-hummingbot-api 2>/dev/null || die "Core exists without its Hummingbot API container; refusing an incomplete upgrade."
+  podman container exists spectra-alpha2-postgres 2>/dev/null || die "Core exists without its PostgreSQL container; refusing an incomplete upgrade."
   if [[ "${SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS:-false}" == "true" ]]; then
     mkdir -p "$INSTALL_DIR/backups"
   running="$(podman inspect --format '{{.State.Running}}' spectra-alpha2-core 2>/dev/null || true)"
