@@ -56,11 +56,29 @@ ensure_checkout() {
   [[ -d "$directory/.git" ]] || die "$directory already exists but is not a Git checkout. It was left untouched."
   remote_url="$(git -C "$directory" remote get-url origin 2>/dev/null || true)"
   [[ "$remote_url" == *"$(basename "$repository" .git)"* ]] || die "Unexpected Git origin in $directory. It was left untouched."
-  [[ -z "$(git -C "$directory" status --porcelain)" ]] || die "Local source changes exist in $directory. They were preserved; review or back them up before upgrading."
+  local_changes="$(git -C "$directory" status --porcelain --untracked-files=all | awk '
+    substr($0,1,2) == "??" && (
+      substr($0,4) == ".env" ||
+      substr($0,4) == ".env.core" ||
+      substr($0,4) == "docker-compose.alpha2.yml" ||
+      index(substr($0,4), "spectra_finance_alpha2.egg-info/") == 1
+    ) { next }
+    { print }
+  ')"
+  [[ -z "$local_changes" ]] || die "Local source changes exist in $directory. They were preserved; review or back them up before upgrading."
   git -C "$directory" fetch origin "$branch"
   if git -C "$directory" show-ref --verify --quiet "refs/heads/$branch"; then
     git -C "$directory" checkout "$branch"
-    [[ -z "$(git -C "$directory" status --porcelain)" ]] || die "Checkout of $branch exposed local changes in $directory; nothing was overwritten."
+    local_changes="$(git -C "$directory" status --porcelain --untracked-files=all | awk '
+      substr($0,1,2) == "??" && (
+        substr($0,4) == ".env" ||
+        substr($0,4) == ".env.core" ||
+        substr($0,4) == "docker-compose.alpha2.yml" ||
+        index(substr($0,4), "spectra_finance_alpha2.egg-info/") == 1
+      ) { next }
+      { print }
+    ')"
+    [[ -z "$local_changes" ]] || die "Checkout of $branch exposed local source changes in $directory; nothing was overwritten."
     git -C "$directory" merge --ff-only FETCH_HEAD
   else
     git -C "$directory" checkout -b "$branch" FETCH_HEAD
@@ -207,7 +225,17 @@ fi
 
 info "Preparing keyless paper-only configuration"
 "$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/prepare_alpha2_environment.py" --api-repo "$API_DIR"
-"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/build_alpha2_compose.py" --api-repo "$API_DIR" --output "$CORE_DIR/docker-compose.alpha2.yml"
+generated_compose="$CORE_DIR/.docker-compose.alpha2.generated.yml"
+"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/build_alpha2_compose.py" --api-repo "$API_DIR" --output "$generated_compose"
+if [[ -f "$CORE_DIR/docker-compose.alpha2.yml" ]]; then
+  if ! cmp -s "$generated_compose" "$CORE_DIR/docker-compose.alpha2.yml"; then
+    rm -f -- "$generated_compose"
+    die "Existing docker-compose.alpha2.yml differs from the generated release configuration. It was preserved; review the difference before upgrading."
+  fi
+  rm -f -- "$generated_compose"
+else
+  mv -- "$generated_compose" "$CORE_DIR/docker-compose.alpha2.yml"
+fi
 
 compose() {
   if [[ "$COMPOSE_KIND" == "podman compose" ]]; then
