@@ -1,0 +1,141 @@
+services:
+  hummingbot-api:
+    container_name: spectra-alpha2-hummingbot-api
+    image: localhost/spectra-finance/hummingbot-api:local
+    build:
+      context: /var/home/spectra-entertainment/SpectraFinance-Alpha2/spectra-hummingbot-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+    - 127.0.0.1:8002:8000
+    volumes:
+    - /var/home/spectra-entertainment/SpectraFinance-Alpha2/spectra-hummingbot-api/bots:/hummingbot-api/bots:z
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    env_file:
+    - /var/home/spectra-entertainment/SpectraFinance-Alpha2/spectra-hummingbot-api/.env
+    environment:
+    - BROKER_HOST=emqx
+    - DATABASE_URL=postgresql+asyncpg://hbot:${POSTGRES_PASSWORD}@postgres:5432/hummingbot_api
+    networks:
+    - emqx-bridge
+    depends_on:
+      postgres:
+        condition: service_healthy
+      emqx:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - python -c "import os,base64,urllib.request; r=urllib.request.Request('http://127.0.0.1:8000/spectra/health');
+        r.add_header('Authorization','Basic '+base64.b64encode((os.environ['USERNAME']+':'+os.environ['PASSWORD']).encode()).decode());
+        urllib.request.urlopen(r,timeout=5).read()"
+      interval: 10s
+      timeout: 7s
+      retries: 30
+      start_period: 60s
+  emqx:
+    container_name: spectra-alpha2-broker
+    image: docker.io/emqx/emqx:5.10.5
+    restart: unless-stopped
+    environment:
+    - EMQX_NAME=emqx
+    - EMQX_HOST=node1.emqx.local
+    - EMQX_CLUSTER__DISCOVERY_STRATEGY=static
+    - EMQX_CLUSTER__STATIC__SEEDS=[emqx@node1.emqx.local]
+    - EMQX_LOADED_PLUGINS="emqx_recon,emqx_retainer,emqx_management,emqx_dashboard"
+    - EMQX_AUTHENTICATION__1__MECHANISM=password_based
+    - EMQX_AUTHENTICATION__1__BACKEND=built_in_database
+    - EMQX_AUTHENTICATION__1__USER_ID_TYPE=username
+    - EMQX_AUTHENTICATION__1__BOOTSTRAP_FILE=/opt/emqx/etc/auth-bootstrap.csv
+    - EMQX_AUTHENTICATION__1__BOOTSTRAP_TYPE=plain
+    - EMQX_DASHBOARD__DEFAULT_PASSWORD=${BROKER_DASHBOARD_PASSWORD:-password}
+    - EMQX_AUTHORIZATION__NO_MATCH=deny
+    volumes:
+    - spectra-alpha2-emqx-data:/opt/emqx/data
+    - spectra-alpha2-emqx-log:/opt/emqx/log
+    - spectra-alpha2-emqx-etc:/opt/emqx/etc
+    - /var/home/spectra-entertainment/SpectraFinance-Alpha2/spectra-hummingbot-api/.emqx/auth-bootstrap.csv:/opt/emqx/etc/auth-bootstrap.csv:ro
+    - /var/home/spectra-entertainment/SpectraFinance-Alpha2/spectra-hummingbot-api/emqx/acl.conf:/opt/emqx/etc/acl.conf:ro,z
+    ports:
+    - 127.0.0.1:1885:1883
+    - 127.0.0.1:18085:18083
+    networks:
+      emqx-bridge:
+        aliases:
+        - node1.emqx.local
+    healthcheck:
+      test:
+      - CMD
+      - /opt/emqx/bin/emqx_ctl
+      - status
+      interval: 5s
+      timeout: 25s
+      retries: 5
+  postgres:
+    container_name: spectra-alpha2-postgres
+    image: docker.io/library/postgres:16.10
+    restart: unless-stopped
+    environment:
+    - POSTGRES_DB=hummingbot_api
+    - POSTGRES_USER=hbot
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - POSTGRES_INITDB_ARGS=--encoding=UTF8
+    volumes:
+    - spectra-alpha2-postgres-data:/var/lib/postgresql/data
+    - /var/home/spectra-entertainment/SpectraFinance-Alpha2/spectra-hummingbot-api/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports: []
+    networks:
+    - emqx-bridge
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U hbot -d hummingbot_api
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  spectra-core:
+    container_name: spectra-alpha2-core
+    image: localhost/spectra-finance/spectra-core-alpha2:local
+    build:
+      context: /var/home/spectra-entertainment/SpectraFinance-Alpha2/spectra-finance-core
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+    - /var/home/spectra-entertainment/SpectraFinance-Alpha2/spectra-finance-core/.env.core
+    environment:
+      SPECTRA_HB_API_URL: http://hummingbot-api:8000
+      SPECTRA_DB_PATH: /data/spectra_alpha2.sqlite3
+      SPECTRA_MAX_POSITIONS: '50'
+      SPECTRA_QUARANTINED_AUTHORIZATION_IDS: '8d4ffbe1-4c69-4520-83f1-53d16f36b10f'
+      SPECTRA_QUARANTINED_ORDER_IDS: 'buy://HYPE-USD/d53ae0e4c69c0fd94647900bfe'
+    volumes:
+    - spectra-alpha2-core-data:/data
+    depends_on:
+      hummingbot-api:
+        condition: service_healthy
+    networks:
+    - emqx-bridge
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -m
+      - spectra_alpha2
+      - status
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+networks:
+  emqx-bridge:
+    driver: bridge
+volumes:
+  spectra-alpha2-emqx-data: {}
+  spectra-alpha2-emqx-log: {}
+  spectra-alpha2-emqx-etc: {}
+  spectra-alpha2-postgres-data: {}
+  spectra-alpha2-core-data: {}

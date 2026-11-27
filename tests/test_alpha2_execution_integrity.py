@@ -320,6 +320,55 @@ async def test_fee_mismatch_is_uncertain():
 
 
 @pytest.mark.asyncio
+async def test_partial_fill_across_reconciliation_cycles_settles_once():
+    def partial_handler(request):
+        if request.url.path == "/market-data/trading-pair/add":
+            return httpx.Response(200, json={"success": True})
+        if request.url.path == "/trading/orders":
+            return httpx.Response(201, json={"order_id": "paper-order-1", "status": "submitted"})
+        if request.url.path == "/trading/orders/search":
+            return httpx.Response(200, json={"data": [order_payload(status="PARTIALLY_FILLED", executed_base="0.1", executed_quote="10")]})
+        if request.url.path == "/trading/trades":
+            return httpx.Response(200, json={"data": [trade_payload(amount="0.1", price="100", fee="0.04", trade_id="trade-1")]})
+        raise AssertionError(request.url.path)
+
+    def filled_handler(request):
+        if request.url.path == "/market-data/trading-pair/add":
+            return httpx.Response(200, json={"success": True})
+        if request.url.path == "/trading/orders":
+            return httpx.Response(201, json={"order_id": "paper-order-1", "status": "submitted"})
+        if request.url.path == "/trading/orders/search":
+            return httpx.Response(200, json={"data": [order_payload(status="FILLED", executed_base="0.2", executed_quote="20")]})
+        if request.url.path == "/trading/trades":
+            return httpx.Response(200, json={"data": [
+                trade_payload(amount="0.1", price="100", fee="0.04", trade_id="trade-1"),
+                trade_payload(amount="0.1", price="100", fee="0.04", trade_id="trade-2"),
+            ]})
+        raise AssertionError(request.url.path)
+
+    governor = FakeGovernor()
+    client = make_client(partial_handler, timeout=0.01)
+    first = await client.submit_authorized_buy(governor, authorization(), order_body(), timeout_seconds=0.01)
+    assert first.status == "PENDING"
+    assert not any(c[0] == "settle" for c in governor.calls)
+    await client.close()
+
+    # Later reconciliation cycle sees the now-terminal order and settles once.
+    client2 = make_client(filled_handler, timeout=1)
+    second = await client2._wait_and_settle(
+        governor,
+        "auth-123",
+        "paper-order-1",
+        "BTC-USD",
+        shard_id=None,
+        timeout_seconds=1,
+    )
+    assert second.status == "FILLED"
+    assert sum(1 for c in governor.calls if c[0] == "settle") == 1
+    await client2.close()
+
+
+@pytest.mark.asyncio
 async def test_expired_order_with_uncertain_status_does_not_settle():
     def handler(request):
         if request.url.path == "/market-data/trading-pair/add":
