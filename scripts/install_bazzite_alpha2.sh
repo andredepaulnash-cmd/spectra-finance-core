@@ -57,12 +57,7 @@ ensure_checkout() {
   remote_url="$(git -C "$directory" remote get-url origin 2>/dev/null || true)"
   [[ "$remote_url" == *"$(basename "$repository" .git)"* ]] || die "Unexpected Git origin in $directory. It was left untouched."
   local_changes="$(git -C "$directory" status --porcelain --untracked-files=all | awk '
-    substr($0,1,2) == "??" && (
-      substr($0,4) == ".env" ||
-      substr($0,4) == ".env.core" ||
-      substr($0,4) == "docker-compose.alpha2.yml" ||
-      index(substr($0,4), "spectra_finance_alpha2.egg-info/") == 1
-    ) { next }
+    substr($0,1,2) == "??" && (substr($0,4) == ".env" || substr($0,4) == ".env.core" || substr($0,4) == "docker-compose.alpha2.yml" || index(substr($0,4), "spectra_finance_alpha2.egg-info/") == 1) { next }
     { print }
   ')"
   [[ -z "$local_changes" ]] || die "Local source changes exist in $directory. They were preserved; review or back them up before upgrading."
@@ -70,12 +65,7 @@ ensure_checkout() {
   if git -C "$directory" show-ref --verify --quiet "refs/heads/$branch"; then
     git -C "$directory" checkout "$branch"
     local_changes="$(git -C "$directory" status --porcelain --untracked-files=all | awk '
-      substr($0,1,2) == "??" && (
-        substr($0,4) == ".env" ||
-        substr($0,4) == ".env.core" ||
-        substr($0,4) == "docker-compose.alpha2.yml" ||
-        index(substr($0,4), "spectra_finance_alpha2.egg-info/") == 1
-      ) { next }
+      substr($0,1,2) == "??" && (substr($0,4) == ".env" || substr($0,4) == ".env.core" || substr($0,4) == "docker-compose.alpha2.yml" || index(substr($0,4), "spectra_finance_alpha2.egg-info/") == 1) { next }
       { print }
     ')"
     [[ -z "$local_changes" ]] || die "Checkout of $branch exposed local source changes in $directory; nothing was overwritten."
