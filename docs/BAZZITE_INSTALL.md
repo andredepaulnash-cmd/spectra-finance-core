@@ -26,12 +26,12 @@ From a fresh terminal:
 
 ```bash
 bash <(curl -fsSL \
-  https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/spectra-finance-alpha-2.0/scripts/install_bazzite_alpha2.sh)
+  https://raw.githubusercontent.com/andredepaulnash-cmd/spectra-finance-core/alpha2-paper-usd-release/scripts/install_bazzite_alpha2.sh)
 ```
 
-The installer creates `$HOME/SpectraFinance-Alpha2` with separate Core and Hummingbot API checkouts, creates a host-side virtual environment, generates keyless paper configuration, builds an isolated Compose file, and starts the services. It pins both checkouts to the dedicated `spectra-finance-alpha-2.0` branches.
+The installer creates `$HOME/SpectraFinance-Alpha2` with separate Core and Hummingbot API checkouts, creates a host-side virtual environment, generates keyless paper configuration, builds an isolated Compose file, and starts the services. It pins the Core checkout to `alpha2-paper-usd-release` and the Hummingbot API checkout to `spectra-finance-alpha-2.0`.
 
-It records the exact checked-out source commits in `installed-commits.txt`. On an in-place upgrade, it first backs up the running Core SQLite ledger and API receipt database with SQLite's online backup API, exports the Alpha 2.0 PostgreSQL database, and copies internal signing/configuration files under `backups/` with restrictive permissions. It refuses to overwrite local source changes and stops if an existing Alpha 2.0 data volume cannot be safely backed up. It never removes Alpha 1.x files, containers, databases, or volumes and never runs `podman compose down -v`.
+It records the exact checked-out source commits in `installed-commits.txt`. Automatic pre-upgrade backups are disabled by default to conserve disk space. Existing Alpha 2.0 named volumes, databases, signing material, credentials, and configuration files are retained in place; the installer does not delete or reset them. If you explicitly want pre-upgrade copies, set `SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS=true` before running the installer. The installer refuses to overwrite local source changes. It never removes Alpha 1.x files, containers, databases, or volumes and never runs `podman compose down -v`.
 
 ## Commands
 
@@ -66,7 +66,7 @@ The simulated portfolio starts with 25,000 USDT, split into the 6,250 USDT initi
 
 ## Persistence and backups
 
-The Core SQLite ledger, PostgreSQL database, and EMQX data use Alpha 2.0-scoped named volumes. The `backup` command uses SQLite's online backup API for the Core ledger and writes a mode-0600 database copy under `backups/`. The installer also creates the broader pre-upgrade backup set described above.
+The Core SQLite ledger, PostgreSQL database, and EMQX data use Alpha 2.0-scoped named volumes. The `backup` command uses SQLite's online backup API for the Core ledger and writes a mode-0600 database copy under `backups/`. The installer creates pre-upgrade copies only when explicitly opted in; backups are disabled by default to conserve disk space.
 
 `spectra-alpha2 uninstall` stops and removes only Alpha 2.0 containers and its Compose network. It deliberately keeps named volumes and files. It does not run `podman system prune` or delete Alpha 1.0 resources.
 

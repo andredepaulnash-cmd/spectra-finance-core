@@ -23,7 +23,7 @@ done
 [[ ! -L "$INSTALL_DIR" ]] || die "Refusing to use a symlink as the Alpha 2.0 installation root."
 mkdir -p "$INSTALL_DIR"
 UPGRADE_STAMP="$(date +%Y%m%d-%H%M%S)"
-if [[ -f "$INSTALL_DIR/installed-commits.txt" ]]; then
+if [[ "${SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS:-false}" == "true" && -f "$INSTALL_DIR/installed-commits.txt" ]]; then
   mkdir -p "$INSTALL_DIR/backups"
   cp -p -- "$INSTALL_DIR/installed-commits.txt" "$INSTALL_DIR/backups/installed-commits-preupgrade-$UPGRADE_STAMP.txt"
   chmod 600 "$INSTALL_DIR/backups/installed-commits-preupgrade-$UPGRADE_STAMP.txt"
@@ -56,11 +56,29 @@ ensure_checkout() {
   [[ -d "$directory/.git" ]] || die "$directory already exists but is not a Git checkout. It was left untouched."
   remote_url="$(git -C "$directory" remote get-url origin 2>/dev/null || true)"
   [[ "$remote_url" == *"$(basename "$repository" .git)"* ]] || die "Unexpected Git origin in $directory. It was left untouched."
-  [[ -z "$(git -C "$directory" status --porcelain)" ]] || die "Local source changes exist in $directory. They were preserved; review or back them up before upgrading."
+  local_changes="$(git -C "$directory" status --porcelain --untracked-files=all | awk '
+    substr($0,1,2) == "??" && (
+      substr($0,4) == ".env" ||
+      substr($0,4) == ".env.core" ||
+      substr($0,4) == "docker-compose.alpha2.yml" ||
+      index(substr($0,4), "spectra_finance_alpha2.egg-info/") == 1
+    ) { next }
+    { print }
+  ')"
+  [[ -z "$local_changes" ]] || die "Local source changes exist in $directory. They were preserved; review or back them up before upgrading."
   git -C "$directory" fetch origin "$branch"
   if git -C "$directory" show-ref --verify --quiet "refs/heads/$branch"; then
     git -C "$directory" checkout "$branch"
-    [[ -z "$(git -C "$directory" status --porcelain)" ]] || die "Checkout of $branch exposed local changes in $directory; nothing was overwritten."
+    local_changes="$(git -C "$directory" status --porcelain --untracked-files=all | awk '
+      substr($0,1,2) == "??" && (
+        substr($0,4) == ".env" ||
+        substr($0,4) == ".env.core" ||
+        substr($0,4) == "docker-compose.alpha2.yml" ||
+        index(substr($0,4), "spectra_finance_alpha2.egg-info/") == 1
+      ) { next }
+      { print }
+    ')"
+    [[ -z "$local_changes" ]] || die "Checkout of $branch exposed local source changes in $directory; nothing was overwritten."
     git -C "$directory" merge --ff-only FETCH_HEAD
   else
     git -C "$directory" checkout -b "$branch" FETCH_HEAD
@@ -83,7 +101,11 @@ backup_stopped_container_volume() {
 }
 
 if podman container exists spectra-alpha2-core 2>/dev/null; then
-  mkdir -p "$INSTALL_DIR/backups"
+  # Structural safety checks are mandatory even when disk-saving backups are disabled.
+  podman container exists spectra-alpha2-hummingbot-api 2>/dev/null || die "Core exists without its Hummingbot API container; refusing an incomplete upgrade."
+  podman container exists spectra-alpha2-postgres 2>/dev/null || die "Core exists without its PostgreSQL container; refusing an incomplete upgrade."
+  if [[ "${SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS:-false}" == "true" ]]; then
+    mkdir -p "$INSTALL_DIR/backups"
   running="$(podman inspect --format '{{.State.Running}}' spectra-alpha2-core 2>/dev/null || true)"
   if [[ "$running" == "true" ]]; then
     backup_name="spectra-alpha2-preupgrade-$UPGRADE_STAMP.sqlite3"
@@ -175,6 +197,7 @@ PYRECEIPT
       chmod 600 "$backup_config"
     fi
   done
+  fi
 else
   existing_volumes="$(podman volume ls -q | grep 'spectra-alpha2' || true)"
   [[ -z "$existing_volumes" ]] || die "Alpha 2.0 data volumes exist without the Core container. Preserve/restore the ledger and create a backup before upgrading."
@@ -202,7 +225,17 @@ fi
 
 info "Preparing keyless paper-only configuration"
 "$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/prepare_alpha2_environment.py" --api-repo "$API_DIR"
-"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/build_alpha2_compose.py" --api-repo "$API_DIR" --output "$CORE_DIR/docker-compose.alpha2.yml"
+generated_compose="$CORE_DIR/.docker-compose.alpha2.generated.yml"
+"$CORE_DIR/.venv/bin/python" "$CORE_DIR/scripts/build_alpha2_compose.py" --api-repo "$API_DIR" --output "$generated_compose"
+if [[ -f "$CORE_DIR/docker-compose.alpha2.yml" ]]; then
+  if ! cmp -s "$generated_compose" "$CORE_DIR/docker-compose.alpha2.yml"; then
+    rm -f -- "$generated_compose"
+    die "Existing docker-compose.alpha2.yml differs from the generated release configuration. It was preserved; review the difference before upgrading."
+  fi
+  rm -f -- "$generated_compose"
+else
+  mv -- "$generated_compose" "$CORE_DIR/docker-compose.alpha2.yml"
+fi
 
 compose() {
   if [[ "$COMPOSE_KIND" == "podman compose" ]]; then
@@ -214,6 +247,13 @@ compose() {
 
 info "Validating isolated Alpha 2.0 Compose configuration"
 compose config >/dev/null
+
+if [[ "${SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS:-false}" == "true" ]]; then
+  info "Pre-upgrade backups were explicitly enabled; existing data and configuration snapshots were created above."
+else
+  info "Automatic pre-upgrade backups are disabled to conserve disk space."
+  info "Existing named volumes and configuration files are retained in place; no data is deleted."
+fi
 
 info "Building and starting Alpha 2.0 paper services without deleting existing volumes"
 compose up -d --build
@@ -401,4 +441,5 @@ printf '\nCommands: %s {status|doctor|logs|once|update|backup|stop|start|restart
 printf 'Hummingbot API: http://127.0.0.1:8002 (authenticated)\n'
 printf 'MQTT: internal-only; EMQX dashboard: http://127.0.0.1:18084\n'
 printf 'Paper-only flags are enforced. No exchange credentials are configured or accepted.\n'
+printf 'Automatic pre-upgrade backups: disabled by default (set SPECTRA_ALPHA2_CREATE_PREUPGRADE_BACKUPS=true to opt in).\n'
 printf 'Existing Alpha installations, data, volumes, and local source modifications were not removed.\n'
