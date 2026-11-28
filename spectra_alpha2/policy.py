@@ -13,8 +13,13 @@ ONE = Decimal("1")
 PORTFOLIO_EQUITY = Decimal("25000")
 INITIAL_ENTRY_BUDGET = Decimal("6250")
 VCAP_RECOVERY_POOL = Decimal("18750")
+# Hard concurrent-position ceiling: RESERVED + OPEN; reject the 75th reservation.
 MAX_OPEN_POSITIONS = 74
-INITIAL_ENTRY_NOTIONAL = Decimal("20")
+# Initial operating target, not the hard limit; never open positions just to fill it.
+INITIAL_TARGET_POSITIONS = 50
+# Maximum new positions admitted per cycle; default and upper bound are both 10.
+MAX_NEW_POSITIONS_PER_CYCLE = 10
+INITIAL_ENTRY_NOTIONAL = Decimal("30")
 MAX_ASSET_GROSS_NOTIONAL = Decimal("1000")
 BUY_FEE_RATE = Decimal("0.004")
 SELL_FEE_RATE = Decimal("0.004")
@@ -37,6 +42,10 @@ def validate_portfolio_policy() -> None:
         raise ValueError("capital pools must equal simulated portfolio equity")
     if INITIAL_ENTRY_NOTIONAL <= ZERO or INITIAL_ENTRY_NOTIONAL > MAX_ASSET_GROSS_NOTIONAL:
         raise ValueError("initial entry must remain within the per-asset gross-notional cap")
+    if not 1 <= INITIAL_TARGET_POSITIONS <= MAX_OPEN_POSITIONS:
+        raise ValueError("initial target must be between 1 and the hard position ceiling")
+    if not 1 <= MAX_NEW_POSITIONS_PER_CYCLE <= MAX_OPEN_POSITIONS:
+        raise ValueError("per-cycle admission ceiling must be a positive integer")
     if MAX_ACTIVE_VCAP_SHARDS_PER_ASSET != 2:
         raise ValueError("Alpha 2.0 VCAP concurrency ceiling must remain two shards per asset")
     if INITIAL_ENTRY_POOL_ACTIONS != frozenset({"ENTRY", "PRESS", "ROTATION"}):

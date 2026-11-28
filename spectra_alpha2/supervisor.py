@@ -7,11 +7,16 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from .condor import CondorAnalyzer
-from .execution import ExecutionUncertain, HummingbotPaperExecutionClient
+from .execution import ExecutionRejected, ExecutionUncertain, HummingbotPaperExecutionClient
 from .governor import CapitalDenied, CapitalGovernor
 from .market_data import ResearchScanner
 from .order_builder import build_buy_market_order, build_take_profit_limit_order
-from .policy import MAX_OPEN_POSITIONS, VCAP_OUTER_BOUNDARY
+from .policy import (
+    INITIAL_TARGET_POSITIONS,
+    MAX_NEW_POSITIONS_PER_CYCLE,
+    MAX_OPEN_POSITIONS,
+    VCAP_OUTER_BOUNDARY,
+)
 from .safety import PaperSafetySettings
 from .strategy import calculate_drawdown
 
@@ -44,15 +49,15 @@ class PortfolioSupervisor:
         condor: CondorAnalyzer,
         execution: HummingbotPaperExecutionClient,
         *,
-        target_positions: int = MAX_OPEN_POSITIONS,
-        max_new_positions_per_cycle: int = 10,
+        target_positions: int = INITIAL_TARGET_POSITIONS,
+        max_new_positions_per_cycle: int = MAX_NEW_POSITIONS_PER_CYCLE,
         max_slippage_fraction: Decimal = Decimal("0.001"),
         order_timeout_seconds: float = 60,
     ):
         if isinstance(target_positions, bool) or not isinstance(target_positions, int) or not 1 <= target_positions <= MAX_OPEN_POSITIONS:
             raise ValueError(f"target_positions must be between 1 and {MAX_OPEN_POSITIONS}")
-        if isinstance(max_new_positions_per_cycle, bool) or not isinstance(max_new_positions_per_cycle, int) or max_new_positions_per_cycle < 1:
-            raise ValueError("max_new_positions_per_cycle must be positive")
+        if isinstance(max_new_positions_per_cycle, bool) or not isinstance(max_new_positions_per_cycle, int) or not 1 <= max_new_positions_per_cycle <= MAX_NEW_POSITIONS_PER_CYCLE:
+            raise ValueError(f"max_new_positions_per_cycle must be between 1 and {MAX_NEW_POSITIONS_PER_CYCLE}")
         if not isinstance(max_slippage_fraction, Decimal) or not max_slippage_fraction.is_finite() or not Decimal("0") <= max_slippage_fraction <= Decimal("0.02"):
             raise ValueError("max_slippage_fraction must be between 0% and 2%")
         self.safety = governor.safety
@@ -65,6 +70,9 @@ class PortfolioSupervisor:
         self.max_new_positions_per_cycle = max_new_positions_per_cycle
         self.max_slippage_fraction = max_slippage_fraction
         self.order_timeout_seconds = order_timeout_seconds
+        # Serialize autonomous and operator-triggered cycles. Without this gate,
+        # concurrent scans can both observe the same free slot and over-admit.
+        self._cycle_lock = asyncio.Lock()
 
     async def _process_recovery(self, positions: list[dict]) -> int:
         """Apply the confirmed outer-boundary safety review; do not invent VCAP policy."""
@@ -171,6 +179,11 @@ class PortfolioSupervisor:
         return exit_orders, pending_orders, skipped, realized_fills, blocked_assets
 
     async def run_once(self) -> CycleReport:
+        """Run one portfolio cycle; serialize all callers against the same ledger."""
+        async with self._cycle_lock:
+            return await self._run_once()
+
+    async def _run_once(self) -> CycleReport:
         self.safety.assert_paper_mode()
         reconciled = await self.execution.reconcile_pending(self.governor, timeout_seconds=0.1)
         positions_before = self.governor.list_positions()
@@ -180,26 +193,34 @@ class PortfolioSupervisor:
 
         # New admissions come only from the scanner's quality-filtered 24-hour gainer universe.
         candidates = await self.scanner.scan()
-        recommendations = self.condor.recommend(candidates, limit=self.target_positions)
+        # Recount after exits. A fully reconciled sale frees its slot immediately;
+        # do not count the just-closed asset as an occupied position. Exclude it
+        # from this cycle's candidate set to avoid an instant same-asset re-entry.
+        recommendations = self.condor.recommend(candidates, limit=max(1, len(candidates)))
         candidate_by_pair = {candidate.trading_pair: candidate for candidate in candidates}
-        existing_assets = {position["asset_id"] for position in self.governor.list_positions()}
-        existing_assets.update(blocked_assets)
-        slots = max(0, self.target_positions - len(existing_assets))
+        active_positions = self.governor.list_positions()
+        existing_assets = {position["asset_id"] for position in active_positions}
+        slots = max(0, self.target_positions - len(active_positions))
         admission_budget = min(slots, self.max_new_positions_per_cycle)
         admitted = 0
+        # A submitted-but-unresolved order already owns a durable position slot.
+        # Count it against this cycle's admission budget just like a confirmed fill;
+        # otherwise the loop can submit another asset while the first reservation
+        # is still pending, exceeding the configured target.
+        admission_slots_used = 0
         pending_orders = exit_pending + sum(1 for result in reconciled if result.status == "PENDING")
         skipped_existing = 0
         skipped_limits = exit_skipped
 
         for recommendation in recommendations:
-            if admitted >= admission_budget:
-                break
             candidate = candidate_by_pair.get(recommendation.trading_pair)
             if candidate is None:
                 continue
-            if candidate.trading_pair in existing_assets:
+            if candidate.trading_pair in existing_assets or candidate.trading_pair in blocked_assets:
                 skipped_existing += 1
                 continue
+            if admission_slots_used >= admission_budget:
+                break
             position_id = str(uuid.uuid4())
             idempotency_key = f"alpha2-initial-{position_id}"
             authorization = None
@@ -231,13 +252,21 @@ class PortfolioSupervisor:
                     draft.request_body,
                     timeout_seconds=self.order_timeout_seconds,
                 )
+            except ExecutionRejected:
+                self.governor.release_unfilled_reservation(
+                    authorization.authorization_id, confirmed_no_fill=True
+                )
+                skipped_limits += 1
+                continue
             except ExecutionUncertain:
                 raise
             if result.filled_quantity > 0:
                 admitted += 1
+                admission_slots_used += 1
                 existing_assets.add(candidate.trading_pair)
             elif result.status == "PENDING":
                 pending_orders += 1
+                admission_slots_used += 1
                 existing_assets.add(candidate.trading_pair)
             else:
                 skipped_limits += 1

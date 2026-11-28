@@ -70,16 +70,24 @@ async def _run_once() -> int:
 
 async def _run_forever() -> int:
     config,governor,data_client,execution,supervisor=build_runtime()
-    LOGGER.info("Spectra Finance Alpha 2.0 paper loop starting; max_positions=%s",config.target_positions)
+    enabled = os.getenv("SPECTRA_AUTONOMOUS_LOOP_ENABLED", "true").strip().lower()
+    if enabled not in {"true", "false"}:
+        raise RuntimeError("SPECTRA_AUTONOMOUS_LOOP_ENABLED must be true or false")
+    LOGGER.info(
+        "Spectra Finance Alpha 2.0 paper loop starting; max_positions=%s autonomous=%s",
+        config.target_positions,
+        enabled == "true",
+    )
     try:
         while True:
-            try:
-                report=await supervisor.run_once()
-                LOGGER.info("portfolio cycle: %s",json.dumps(asdict(report),default=str))
-            except Exception:
-                # An uncertain order leaves its reservation in place. Reconciliation runs
-                # again next cycle; the supervisor cannot admit beyond reserved capital.
-                LOGGER.exception("paper cycle halted; no unverified order will be retried")
+            if enabled == "true":
+                try:
+                    report=await supervisor.run_once()
+                    LOGGER.info("portfolio cycle: %s",json.dumps(asdict(report),default=str))
+                except Exception:
+                    # An uncertain order leaves its reservation in place. Reconciliation runs
+                    # again next cycle; the supervisor cannot admit beyond reserved capital.
+                    LOGGER.exception("paper cycle halted; no unverified order will be retried")
             await asyncio.sleep(config.scan_interval_seconds)
     finally:
         await execution.close()
@@ -92,11 +100,27 @@ async def _doctor() -> int:
         tickers=await data_client.get_tickers()
         rules=await data_client.get_trading_rules()
         candidates=await supervisor.scanner.scan()
-        preferred_pairs=[
-            pair for pair in rules
-            if pair.split("-",1)[0].upper() in {"BTC","XBT"}
+        usd_pair_intersection = sorted(
+            (
+                pair for pair in set(tickers).intersection(rules)
+                if pair.endswith("-USD")
+            ),
+            key=lambda pair: (pair not in {"BTC-USD", "XBT-USD"}, pair),
+        )
+        ticker_quote_counts = {}
+        for pair in tickers:
+            if "-" in pair:
+                quote = pair.rsplit("-", 1)[1]
+                ticker_quote_counts[quote] = ticker_quote_counts.get(quote, 0) + 1
+        preferred_pairs = [
+            pair for pair in usd_pair_intersection
+            if pair.split("-", 1)[0].upper() in {"BTC", "XBT"}
         ]
-        probe_pair=preferred_pairs[0] if preferred_pairs else (next(iter(rules),None))
+        probe_pair = (
+            preferred_pairs[0]
+            if preferred_pairs
+            else (usd_pair_intersection[0] if usd_pair_intersection else None)
+        )
         candle_count=0
         candle_error=None
         if probe_pair:
@@ -113,6 +137,12 @@ async def _doctor() -> int:
             "api_url":config.hummingbot_api_url,
             "ticker_count":len(tickers),
             "trading_rule_count":len(rules),
+            "usd_ticker_pair_count":sum(1 for pair in tickers if pair.endswith("-USD")),
+            "usd_trading_rule_pair_count":sum(1 for pair in rules if pair.endswith("-USD")),
+            "usd_ticker_rule_intersection_count":len(usd_pair_intersection),
+            "usd_pair_sample":usd_pair_intersection[:20],
+            "ticker_pair_sample":sorted(tickers)[:40],
+            "ticker_quote_counts":dict(sorted(ticker_quote_counts.items(), key=lambda item: (-item[1], item[0]))[:20]),
             "public_candle_probe_pair":probe_pair,
             "public_candle_probe_count":candle_count,
             "public_candle_probe_error":candle_error,
@@ -120,10 +150,11 @@ async def _doctor() -> int:
             "entry_quote_assets":sorted(config.entry_quote_assets),
             "min_quote_volume_24h":str(config.min_quote_volume_24h) if config.min_quote_volume_24h is not None else None,
             "eligible_market_count":len(candidates),
+            "scanner_diagnostics":getattr(supervisor.scanner, "last_scan_diagnostics", {}),
             "portfolio":governor.snapshot(),
         }
         print(json.dumps(report,indent=2,default=str))
-        return 0 if tickers and rules and candle_count > 0 else 2
+        return 0 if tickers and rules and usd_pair_intersection and candle_count > 0 and discovery_configured else 2
     finally:
         await execution.close()
         await data_client.close()

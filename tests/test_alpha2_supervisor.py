@@ -33,7 +33,7 @@ class FakeScanner:
 
 
 class FakeExecution:
-    def __init__(self,fail=False): self.fail=fail; self.orders=0; self.sell_orders=0
+    def __init__(self,fail=False,pending=False): self.fail=fail; self.pending=pending; self.orders=0; self.sell_orders=0
     async def reconcile_pending(self,governor,timeout_seconds=0.1): return []
     async def submit_authorized_buy(self,governor,authorization,request_body,timeout_seconds=60,shard_id=None):
         self.orders+=1
@@ -50,6 +50,8 @@ class FakeExecution:
         price=Decimal(request_body["max_execution_price"])
         gross=quantity*price
         fee=gross*Decimal("0.004")
+        if self.pending:
+            return ExecutionResult(authorization.authorization_id,order_id,"PENDING",Decimal("0"),Decimal("0"),Decimal("0"))
         governor.settle_fill(
             authorization.authorization_id,actual_gross_notional=gross,actual_fee=fee,
             actual_quantity=quantity,average_price=price,
@@ -86,6 +88,53 @@ class PortfolioSupervisorTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_concurrent_cycles_are_serialized_and_cannot_over_admit(self):
+        async def scenario():
+            entered = asyncio.Event()
+            release = asyncio.Event()
+
+            class GatedScanner(FakeScanner):
+                async def scan(self):
+                    entered.set()
+                    await release.wait()
+                    return self.items
+
+            execution = FakeExecution()
+            supervisor = PortfolioSupervisor(
+                self.gov,
+                GatedScanner([candidate(1), candidate(2)]),
+                CondorAnalyzer(),
+                execution,
+                target_positions=1,
+                max_new_positions_per_cycle=1,
+            )
+            first = asyncio.create_task(supervisor.run_once())
+            await entered.wait()
+            second = asyncio.create_task(supervisor.run_once())
+            await asyncio.sleep(0)
+            release.set()
+            first_report, second_report = await asyncio.gather(first, second)
+            self.assertEqual(first_report.admitted_positions, 1)
+            self.assertEqual(second_report.admitted_positions, 0)
+            self.assertEqual(execution.orders, 1)
+            self.assertEqual(self.gov.snapshot()["open_positions"], 1)
+
+        asyncio.run(scenario())
+
+    def test_pending_order_consumes_the_only_available_position_slot(self):
+        execution=FakeExecution(pending=True)
+        supervisor=PortfolioSupervisor(
+            self.gov,FakeScanner([candidate(i) for i in range(5)]),
+            CondorAnalyzer(),execution,target_positions=1,max_new_positions_per_cycle=1,
+        )
+        report=asyncio.run(supervisor.run_once())
+        self.assertEqual(report.admitted_positions,0)
+        self.assertEqual(report.pending_orders,1)
+        self.assertEqual(report.active_positions_after_cycle,1)
+        self.assertEqual(len(self.gov.list_positions()),1)
+        self.assertEqual(self.gov.list_positions()[0]["status"],"RESERVED")
+        self.assertEqual(execution.orders,1)
+
     def test_supervisor_admits_only_to_configured_ten_position_target(self):
         execution=FakeExecution()
         supervisor=PortfolioSupervisor(
@@ -100,6 +149,43 @@ class PortfolioSupervisorTests(unittest.TestCase):
         self.assertEqual(second.admitted_positions,0)
         self.assertEqual(second.available_slots,0)
         self.assertEqual(execution.orders,10)
+
+    def test_supervisor_fills_fifty_position_target_from_gainer_candidates(self):
+        execution=FakeExecution()
+        supervisor=PortfolioSupervisor(
+            self.gov,FakeScanner([candidate(i) for i in range(60)]),
+            CondorAnalyzer(),execution,target_positions=50,max_new_positions_per_cycle=10,
+        )
+        # Normal operating target is 50; per-cycle maximum is 10, so it fills over cycles.
+        cycles=0
+        while self.gov.snapshot()["open_positions"]<50 and cycles<10:
+            report=asyncio.run(supervisor.run_once())
+            self.assertLessEqual(report.admitted_positions,10)
+            cycles+=1
+        self.assertEqual(self.gov.snapshot()["open_positions"],50)
+        self.assertEqual(execution.orders,50)
+        second=asyncio.run(supervisor.run_once())
+        self.assertEqual(second.admitted_positions,0)
+        self.assertEqual(second.available_slots,0)
+        self.assertEqual(execution.orders,50)
+
+    def test_fully_sold_position_is_replaced_in_the_same_cycle(self):
+        self._open_position()
+        up=candidate(1,Decimal("104"))
+        replacement=candidate(2,Decimal("10"))
+        scanner=FakeScanner([up,replacement],snapshots={"COIN1-USDT":up})
+        execution=FakeExecution()
+        supervisor=PortfolioSupervisor(
+            self.gov,scanner,CondorAnalyzer(),execution,
+            target_positions=1,max_new_positions_per_cycle=1,
+        )
+        report=asyncio.run(supervisor.run_once())
+        self.assertEqual(report.realized_exit_fills,1)
+        self.assertEqual(report.admitted_positions,1)
+        self.assertEqual(report.active_positions_after_cycle,1)
+        self.assertEqual([p["asset_id"] for p in self.gov.list_positions()],["COIN2-USDT"])
+        self.assertEqual(execution.orders,1)
+        self.assertEqual(execution.sell_orders,1)
 
     def test_supervisor_stops_admission_when_order_outcome_is_uncertain(self):
         execution=FakeExecution(fail=True)
@@ -172,11 +258,28 @@ class PortfolioSupervisorTests(unittest.TestCase):
         self.assertEqual(execution.orders,0)
 
     def test_global_position_cap_cannot_be_exceeded_by_configuration(self):
+        # Configured target 74 is valid; target 75 is rejected. Hard cap 74 > initial target 50.
+        PortfolioSupervisor(
+            self.gov,FakeScanner([]),CondorAnalyzer(),FakeExecution(),
+            target_positions=74,
+        )
         with self.assertRaises(ValueError):
             PortfolioSupervisor(
                 self.gov,FakeScanner([]),CondorAnalyzer(),FakeExecution(),
                 target_positions=75,
             )
+
+    def test_per_cycle_maximum_cannot_be_raised_above_10(self):
+        # Supervisor default and maximum per-cycle admission are both 10.
+        supervisor=PortfolioSupervisor(self.gov,FakeScanner([]),CondorAnalyzer(),FakeExecution())
+        self.assertEqual(supervisor.max_new_positions_per_cycle,10)
+        self.assertEqual(supervisor.target_positions,50)
+        for bad in (0,11,50,100):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                PortfolioSupervisor(
+                    self.gov,FakeScanner([]),CondorAnalyzer(),FakeExecution(),
+                    max_new_positions_per_cycle=bad,
+                )
 
 
 if __name__=="__main__":

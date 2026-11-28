@@ -84,7 +84,10 @@ def main()->int:
         f"{api_values['BROKER_USERNAME']},{api_values['BROKER_PASSWORD']},false\n",
         encoding="utf-8",
     )
-    os.chmod(bootstrap,0o600)
+    # EMQX drops privileges before reading its mounted bootstrap file. Keep the
+    # containing .emqx directory owner-only (0700), while allowing the container's
+    # unprivileged process to read the file through the bind mount.
+    os.chmod(bootstrap,0o644)
 
     credential_dir=api_root/"bots/credentials/master_account"
     credential_dir.mkdir(parents=True,exist_ok=True)

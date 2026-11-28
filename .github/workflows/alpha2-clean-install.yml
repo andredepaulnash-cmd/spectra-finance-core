@@ -2,9 +2,9 @@ name: Spectra Alpha 2.0 Clean Install
 
 on:
   push:
-    branches: [spectra-finance-alpha-2.0]
+    branches: [spectra-finance-alpha-2.0, alpha2-paper-usd-release]
   pull_request:
-    branches: [spectra-finance-alpha-2.0]
+    branches: [spectra-finance-alpha-2.0, alpha2-paper-usd-release]
   workflow_dispatch:
 
 permissions:
@@ -31,9 +31,24 @@ jobs:
       - name: Compile Alpha 2.0 modules and scripts
         working-directory: spectra-finance-core
         run: python -m compileall -q spectra_alpha2 scripts
-      - name: Validate Bazzite installer shell syntax
+      - name: Validate Bazzite installer and generated operator wrapper syntax
         working-directory: spectra-finance-core
-        run: bash -n scripts/install_bazzite_alpha2.sh
+        run: |
+          bash -n scripts/install_bazzite_alpha2.sh
+          grep -q 'backup_stopped_container_volume' scripts/install_bazzite_alpha2.sh
+          grep -q 'podman volume export' scripts/install_bazzite_alpha2.sh
+          python - <<'PY'
+          from pathlib import Path
+          source = Path("scripts/install_bazzite_alpha2.sh").read_text(encoding="utf-8")
+          marker = 'cat > "$WRAPPER" <<\'WRAPPER\'\n'
+          start = source.index(marker) + len(marker)
+          end = source.index("\nWRAPPER\n", start)
+          Path("/tmp/spectra-alpha2-wrapper.sh").write_text(source[start:end] + "\n", encoding="utf-8")
+          PY
+          bash -n /tmp/spectra-alpha2-wrapper.sh
+          grep -q 'CORE_BRANCH="${SPECTRA_ALPHA2_CORE_BRANCH:-alpha2-paper-usd-release}"' scripts/install_bazzite_alpha2.sh
+          grep -q 'API_DIR="$INSTALL_DIR/spectra-hummingbot-api"' /tmp/spectra-alpha2-wrapper.sh
+          test -s docs/ALPHA2_BAZZITE_RUNBOOK.md
 
   alpha2-clean-compose-install:
     runs-on: ubuntu-latest
@@ -59,7 +74,7 @@ jobs:
         working-directory: spectra-finance-core
         run: |
           python scripts/prepare_alpha2_environment.py --api-repo ../spectra-hummingbot-api
-          printf '\nSPECTRA_MAX_POSITIONS=1\nSPECTRA_MAX_NEW_POSITIONS_PER_CYCLE=1\n' >> .env.core
+          printf '\nSPECTRA_MAX_POSITIONS=1\nSPECTRA_MAX_NEW_POSITIONS_PER_CYCLE=1\nSPECTRA_AUTONOMOUS_LOOP_ENABLED=false\n' >> .env.core
           chmod 600 .env .env.core ../spectra-hummingbot-api/.env
       - name: Generate and validate isolated Alpha 2.0 Compose stack
         working-directory: spectra-finance-core
@@ -101,9 +116,49 @@ jobs:
         run: |
           docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 doctor
           docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 status
-      - name: Execute one full paper-only strategy cycle
+      - name: Prove a real Kraken USD paper MARKET BUY and reconciled fill after dynamic market initialization
         working-directory: spectra-finance-core
-        run: docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 run-once
+        run: docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2.paper_smoke
+      - name: Execute three persistent paper-only strategy cycles and verify ledger stability
+        working-directory: spectra-finance-core
+        run: |
+          set -euo pipefail
+          wait_for_settlement() {
+            local output="$1"
+            for attempt in $(seq 1 60); do
+              docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 status > "$output"
+              if python - "$output" <<'PY'
+          import json, sys
+          state = json.load(open(sys.argv[1], encoding="utf-8"))
+          raise SystemExit(0 if not state["pending_authorizations"] else 1)
+          PY
+              then
+                return 0
+              fi
+              sleep 2
+            done
+            echo "Paper order did not reach a reconciled terminal state within 120 seconds." >&2
+            cat "$output"
+            return 1
+          }
+          # Keep the autonomous loop paused in this acceptance stack. The smoke
+          # order and explicit run-once cycles then exercise the same ledger without
+          # a second background scheduler racing the test harness.
+          wait_for_settlement /tmp/spectra-alpha2-smoke-status.json
+          for cycle in 1 2 3; do
+            echo "===== Spectra Alpha 2.0 paper cycle ${cycle}/3 ====="
+            docker compose -p spectra-alpha2-ci -f docker-compose.alpha2.yml exec -T spectra-core python -m spectra_alpha2 run-once
+            wait_for_settlement "/tmp/spectra-alpha2-status-${cycle}.json"
+            python - "/tmp/spectra-alpha2-status-${cycle}.json" <<'PY'
+          import json, sys
+          state = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert state["paper_only"] is True
+          assert state["live_execution"] is False
+          assert len(state["positions"]) <= 1
+          assert state["pending_authorizations"] == []
+          print("persistent paper ledger verified:", state["portfolio"])
+          PY
+          done
       - name: Capture clean-install logs on failure
         if: failure()
         working-directory: spectra-finance-core

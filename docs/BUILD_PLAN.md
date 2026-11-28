@@ -14,7 +14,7 @@
 ### Confirmed
 - [x] 74 concurrent position hard ceiling.
 - [x] $25,000 simulated equity; $6,250 initial pool; $18,750 recovery pool.
-- [x] $20 initial entry; $1,000 cumulative per-asset gross buy ceiling.
+- [x] $30 initial entry; $1,000 outstanding per-asset gross exposure ceiling.
 - [x] ENTRY, PRESS, ROTATION share the initial-entry pool; RECOVERY is separate.
 - [x] 0.40% buy and 0.40% sell fee assumptions; ordinary TOP_GAINER fixed take-profit is +1.74% net after fees.
 - [x] Every purchase is MARKET BUY; LIMIT orders are for exit sells only.

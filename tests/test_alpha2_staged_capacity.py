@@ -57,7 +57,7 @@ class StagedCapacityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             governor=CapitalGovernor(f"{temp}/alpha2.sqlite3",environment=SAFE_ENV)
             execution=PaperExecution()
-            scanner=Scanner([market(i) for i in range(74)])
+            scanner=Scanner([market(i) for i in range(80)])
             for target in (10,25,50,74):
                 supervisor=PortfolioSupervisor(
                     governor,scanner,CondorAnalyzer(),execution,

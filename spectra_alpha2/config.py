@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 
-from .policy import MAX_OPEN_POSITIONS
+from .policy import INITIAL_TARGET_POSITIONS, MAX_NEW_POSITIONS_PER_CYCLE, MAX_OPEN_POSITIONS
 from .safety import PaperSafetySettings
 
 
@@ -40,25 +40,30 @@ class Alpha2Config:
             except Exception as exc: raise ValueError(f"{name} must be a decimal") from exc
             if not value.is_finite(): raise ValueError(f"{name} must be finite")
             return value
-        target=integer("SPECTRA_MAX_POSITIONS",MAX_OPEN_POSITIONS)
+        # Configured operating target, separate from the hard concurrent ceiling.
+        # SPECTRA_MAX_POSITIONS: default INITIAL_TARGET_POSITIONS (50), range 1..MAX_OPEN_POSITIONS (74).
+        target=integer("SPECTRA_MAX_POSITIONS",INITIAL_TARGET_POSITIONS)
         if not 1<=target<=MAX_OPEN_POSITIONS:
             raise ValueError(f"SPECTRA_MAX_POSITIONS must be between 1 and {MAX_OPEN_POSITIONS}")
-        max_new=integer("SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE",10)
-        if max_new<1: raise ValueError("SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE must be positive")
-        interval=float(env.get("SPECTRA_SCAN_INTERVAL_SECONDS","30"))
+        # SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE: default MAX_NEW_POSITIONS_PER_CYCLE (10), range 1..10.
+        # An environment value can lower it but can never silently raise it above 10.
+        max_new=integer("SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE",MAX_NEW_POSITIONS_PER_CYCLE)
+        if not 1<=max_new<=MAX_NEW_POSITIONS_PER_CYCLE:
+            raise ValueError(f"SPECTRA_MAX_NEW_POSITIONS_PER_CYCLE must be between 1 and {MAX_NEW_POSITIONS_PER_CYCLE}")
+        interval=float(env.get("SPECTRA_SCAN_INTERVAL_SECONDS","10"))
         timeout=float(env.get("SPECTRA_ORDER_TIMEOUT_SECONDS","60"))
         if interval<=0 or timeout<=0: raise ValueError("scan and order timeout values must be positive")
-        raw_min_volume=env.get("SPECTRA_MIN_QUOTE_VOLUME_24H","").strip()
+        raw_min_volume=env.get("SPECTRA_MIN_QUOTE_VOLUME_24H","100000").strip()
         min_volume=decimal("SPECTRA_MIN_QUOTE_VOLUME_24H",raw_min_volume) if raw_min_volume else None
         quote_assets=frozenset(
             item.strip().upper()
-            for item in env.get("SPECTRA_ENTRY_QUOTE_ASSETS","").split(",")
+            for item in env.get("SPECTRA_ENTRY_QUOTE_ASSETS","USD").split(",")
             if item.strip()
         )
         if min_volume is not None and min_volume <= 0:
             raise ValueError("SPECTRA_MIN_QUOTE_VOLUME_24H must be positive when configured")
-        max_spread=decimal("SPECTRA_MAX_SPREAD_FRACTION","0.003")
-        max_slippage=decimal("SPECTRA_MAX_SLIPPAGE_FRACTION","0.001")
+        max_spread=decimal("SPECTRA_MAX_SPREAD_FRACTION","0.01")
+        max_slippage=decimal("SPECTRA_MAX_SLIPPAGE_FRACTION","0.005")
         if not Decimal("0")<=max_spread<=Decimal("0.02") or not Decimal("0")<=max_slippage<=Decimal("0.02"):
             raise ValueError("market volume, spread, or slippage configuration is outside safe bounds")
         username=env.get("SPECTRA_HB_API_USERNAME","")

@@ -55,8 +55,10 @@ def build_buy_market_order(
         candidate.price_increment,
         ROUND_UP,
     )
+    # Size conservatively: the paper connector may fill above the estimated maximum
+    # execution price, so leave a small buffer below the Governor's quote reserve.
     quantity = _round_to_increment(
-        gross_quote_budget / maximum_execution_price,
+        gross_quote_budget * Decimal("0.95") / maximum_execution_price,
         candidate.base_amount_increment,
         ROUND_DOWN,
     )

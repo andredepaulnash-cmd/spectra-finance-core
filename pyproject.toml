@@ -16,6 +16,10 @@ dependencies = [
 [project.optional-dependencies]
 api = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1"]
 test = ["pytest>=8.3,<9", "pytest-asyncio>=0.25,<1"]
+desktop = ["PyQt6>=6.6,<7", "PyQt6-WebEngine>=6.6,<7"]
 
 [tool.setuptools.packages.find]
 include = ["spectra_alpha2*"]
+
+[tool.setuptools.package-data]
+spectra_alpha2 = ["desktop.html"]

@@ -5,6 +5,7 @@ import math
 from dataclasses import dataclass
 
 from .market_data import MarketCandidate
+from .policy import MAX_OPEN_POSITIONS
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,9 +19,9 @@ class MarketRecommendation:
 
 
 class CondorAnalyzer:
-    """Ranks quality-screened 24h gainers; liquidity and spread temper momentum."""
+    """Ranks quality-screened 24h gainers by percentage change, then execution quality."""
 
-    def recommend(self, candidates: list[MarketCandidate], *, limit: int = 74) -> list[MarketRecommendation]:
+    def recommend(self, candidates: list[MarketCandidate], *, limit: int = MAX_OPEN_POSITIONS) -> list[MarketRecommendation]:
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
             raise ValueError("limit must be a positive integer")
         ranked = []
@@ -38,9 +39,9 @@ class CondorAnalyzer:
             score = 0.40 * liquidity_score + 0.35 * spread_score + 0.25 * momentum_score
             rationale = (
                 f"24h price change {change * 100:+.2f}%",
-                f"24h quote volume {volume:,.0f} USDT",
+                f"24h quote volume {volume:,.0f} USD",
                 f"top-of-book spread {spread * 100:.3f}%",
-                "USDT spot market with Kraken public candles and paper execution",
+                "USD spot market with Kraken public candles and paper execution",
             )
             ranked.append(MarketRecommendation(
                 trading_pair=candidate.trading_pair,
@@ -50,10 +51,13 @@ class CondorAnalyzer:
                 change_24h_fraction=change,
                 rationale=rationale,
             ))
+        # Architect's portfolio-building policy prioritizes the strongest positive
+        # 24-hour gainers. Liquidity/spread remain hard scanner gates and score
+        # tie-breakers; they do not displace a stronger gainer from the shortlist.
         ranked.sort(
             key=lambda item: (
-                item.score,
                 item.change_24h_fraction,
+                item.score,
                 item.quote_volume_24h,
                 item.trading_pair,
             ),

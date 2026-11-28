@@ -6,6 +6,7 @@ import pytest
 
 from spectra_alpha2.condor import CondorAnalyzer
 from spectra_alpha2.market_data import HummingbotPaperDataClient, MarketCandidate, ResearchScanner
+from spectra_alpha2.order_builder import build_buy_market_order
 
 
 SAFE_ENV={"SPECTRA_PAPER_ONLY":"true","SPECTRA_ALLOW_LIVE_EXECUTION":"false"}
@@ -41,12 +42,66 @@ class FakeClient:
 
 
 @pytest.mark.asyncio
-async def test_research_scanner_filters_quote_volume_spread_staleness_and_quote_asset():
+async def test_research_scanner_filters_quote_volume_spread_staleness_quote_asset_and_mean_reversion():
     scanner=ResearchScanner(FakeClient(),entry_quote_assets={"USDT"},min_quote_volume_24h=Decimal("10000000"),clock=time.time)
     candidates=await scanner.scan()
-    assert [x.trading_pair for x in candidates]==["BTC-USDT","ETH-USDT"]
+    assert [x.trading_pair for x in candidates]==["BTC-USDT","ETH-USDT","LOSER-USDT"]
+    loser=next(x for x in candidates if x.trading_pair=="LOSER-USDT")
+    assert loser.change_24h_fraction < 0  # no positive 24h change required for mean-reversion evaluation
     assert all(x.quote_asset=="USDT" for x in candidates)
     assert all(x.spread_fraction<=Decimal("0.003") for x in candidates)
+
+
+
+class KrakenUsdZeroNotionalClient(FakeClient):
+    async def get_tickers(self):
+        now=time.time()
+        return {
+            "BTC-USD":{"price":65000,"quote_volume":15000000,"base_volume":230,"timestamp":now},
+        }
+
+    async def get_trading_rules(self):
+        # Kraken publishes ordermin but no separate min-notional constraint.
+        return {
+            "BTC-USD":{
+                "supports_limit_orders":True,
+                "min_order_size":"0.00001",
+                "min_notional_size":"0",
+                "min_base_amount_increment":"0.00001",
+                "min_price_increment":"0.1",
+            }
+        }
+
+    async def get_hourly_candles(self,pair,max_records=28):
+        now=time.time()
+        return [
+            {"timestamp":now-25*3600,"close":"63725"},
+            {"timestamp":now-24*3600,"close":"63725"},
+        ]
+
+    async def get_order_book(self,pair,depth=5):
+        return {
+            "bids":[{"price":"64990","amount":"10"}],
+            "asks":[{"price":"65010","amount":"10"}],
+        }
+
+
+@pytest.mark.asyncio
+async def test_kraken_usd_market_with_zero_min_notional_remains_buy_eligible():
+    scanner=ResearchScanner(
+        KrakenUsdZeroNotionalClient(),
+        entry_quote_assets={"USD"},
+        min_quote_volume_24h=Decimal("10000000"),
+        clock=time.time,
+    )
+    candidates=await scanner.scan()
+    assert [candidate.trading_pair for candidate in candidates]==["BTC-USD"]
+    candidate=candidates[0]
+    assert candidate.min_notional_size==Decimal("0")
+    draft=build_buy_market_order(candidate,gross_quote_budget=Decimal("20"))
+    assert draft.request_body["trading_pair"]=="BTC-USD"
+    assert draft.request_body["order_type"]=="MARKET"
+    assert draft.base_quantity>=candidate.min_order_size
 
 
 def test_condor_ranks_liquid_tight_spread_candidates_and_explains_score():
@@ -67,6 +122,24 @@ def test_condor_ranks_liquid_tight_spread_candidates_and_explains_score():
     assert ranked[0].trading_pair=="HIGH-USDT"
     assert ranked[0].rationale
     assert ranked[0].score>ranked[1].score
+
+
+def test_condor_prioritizes_largest_positive_24h_gainer_before_liquidity_score():
+    def item(pair,volume,change):
+        return MarketCandidate(
+            trading_pair=pair,base_asset=pair.split("-")[0],quote_asset="USD",
+            last_price=Decimal("1"),best_bid=Decimal("0.999"),best_ask=Decimal("1.001"),
+            quote_volume_24h=Decimal(str(volume)),base_volume_24h=Decimal("100"),
+            spread_fraction=Decimal("0.001"),ticker_timestamp=time.time(),
+            min_order_size=Decimal("0.001"),min_notional_size=Decimal("0"),
+            base_amount_increment=Decimal("0.001"),price_increment=Decimal("0.01"),
+            change_24h_fraction=Decimal(str(change)),
+        )
+    ranked=CondorAnalyzer().recommend([
+        item("LIQUID-USD",100000000,0.03),
+        item("GAINER-USD",1000000,0.25),
+    ],limit=2)
+    assert ranked[0].trading_pair=="GAINER-USD"
 
 
 def test_condor_is_only_a_recommendation_layer():

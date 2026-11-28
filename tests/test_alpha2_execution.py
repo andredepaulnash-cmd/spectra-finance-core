@@ -1,10 +1,12 @@
+import json
 import asyncio
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import httpx
 import pytest
 
-from spectra_alpha2.execution import HummingbotPaperExecutionClient, ExecutionUncertain
+from spectra_alpha2.execution import HummingbotPaperExecutionClient, ExecutionRejected, ExecutionUncertain
 from spectra_alpha2.governor import CapitalAuthorization, CapitalPool
 
 
@@ -45,7 +47,7 @@ class FakeGovernor:
 def authorization(action_id="INITIAL"):
     return CapitalAuthorization(
         authorization_id="auth-123",idempotency_key="idem-123",position_id="pos-1",
-        asset_id="BTC-USDT",action_id=action_id,pool=CapitalPool.INITIAL,
+        asset_id="BTC-USD",action_id=action_id,pool=CapitalPool.INITIAL,
         gross_notional=Decimal("20"),fee_reserve=Decimal("0.08"),
     )
 
@@ -53,23 +55,60 @@ def authorization(action_id="INITIAL"):
 def order_body():
     return {
         "account_name":"master_account","connector_name":"kraken_paper_trade",
-        "trading_pair":"BTC-USDT","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.2",
+        "trading_pair":"BTC-USD","trade_type":"BUY","strategy_origin":"TOP_GAINER","amount":"0.2",
         "order_type":"MARKET","max_execution_price":"100","position_action":"OPEN",
     }
 
 
-def handler_for(requests,*,status="FILLED",trade_price="100"):
+def handler_for(requests,*,status="FILLED",trade_price="100",trade_fee="0.08",side="BUY",order_type="MARKET"):
     def handler(request):
         requests.append(request)
+        if request.url.path=="/market-data/trading-pair/add":
+            payload=json.loads(request.content)
+            assert payload["connector_name"]=="kraken_paper_trade"
+            assert payload["trading_pair"]=="BTC-USD"
+            assert payload["account_name"]=="master_account"
+            return httpx.Response(200,json={"success":True})
         if request.url.path=="/trading/orders":
             assert request.headers.get("X-Spectra-Dispatch-Receipt")=="signed-paper-receipt"
             return httpx.Response(201,json={"order_id":"paper-order-1","status":"submitted"})
         if request.url.path=="/trading/orders/search":
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","status":status}]})
+            filters=json.loads(request.content)
+            assert isinstance(filters["start_time"],int)
+            assert isinstance(filters["end_time"],int)
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","trading_pair":"BTC-USD","connector_name":"kraken_paper_trade","account_name":"master_account","side":side,"trade_type":side,"order_type":order_type,"amount":"0.2","executed_amount_base":"0.2","executed_amount_quote":str(Decimal("0.2")*Decimal(trade_price)),"fee":trade_fee,"status":status}]})
         if request.url.path=="/trading/trades":
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":trade_price,"fee":"0.2"}]})
+            filters=json.loads(request.content)
+            assert isinstance(filters["start_time"],int)
+            assert isinstance(filters["end_time"],int)
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","trade_id":"trade-1","trading_pair":"BTC-USD","connector_name":"kraken_paper_trade","side":side,"trade_type":side,"amount":"0.2","price":trade_price,"fee_paid":trade_fee,"fee_currency":"USD","timestamp":datetime.now(timezone.utc).isoformat()}]})
         raise AssertionError(request.url.path)
     return handler
+
+
+def test_trade_fees_are_converted_to_quote_currency_and_unknown_assets_fail_closed():
+    assert HummingbotPaperExecutionClient._quote_fee_for_trade(
+        {"fee_paid":"0.00001","fee_currency":"BTC","price":"100000"},
+        "BTC-USD",
+    )==Decimal("1.00000")
+    assert HummingbotPaperExecutionClient._quote_fee_for_trade(
+        {"fee_paid":"0.08","fee_currency":"USD","price":"100000"},
+        "BTC-USD",
+    )==Decimal("0.08")
+    assert HummingbotPaperExecutionClient._quote_fee_for_trade(
+        {"fee_paid":"0","fee_currency":"USD","price":"100000"},
+        "BTC-USD",
+    )==Decimal("0")
+    with pytest.raises(ExecutionUncertain,match="missing its fee currency"):
+        HummingbotPaperExecutionClient._quote_fee_for_trade(
+            {"fee_paid":"0","fee_currency":None,"price":"100000"},
+            "BTC-USD",
+        )
+    with pytest.raises(ExecutionUncertain,match="neither base nor quote"):
+        HummingbotPaperExecutionClient._quote_fee_for_trade(
+            {"fee_paid":"0.08","fee_currency":"EUR","price":"100000"},
+            "BTC-USD",
+        )
 
 
 @pytest.mark.asyncio
@@ -84,9 +123,10 @@ async def test_executor_submits_only_governor_signed_order_and_settles_fill():
     assert result.order_id=="paper-order-1"
     assert result.status=="FILLED"
     assert result.gross_quote_notional==Decimal("20")
-    assert result.estimated_fee==Decimal("0.080")
+    assert result.fee_quote==Decimal("0.08")
     assert [x[0] for x in governor.calls]==["consume","receipt","bind","settle"]
-    assert requests[0].url.path=="/trading/orders"
+    assert requests[0].url.path=="/market-data/trading-pair/add"
+    assert requests[1].url.path=="/trading/orders"
     await client.close()
 
 
@@ -97,18 +137,18 @@ async def test_executor_submits_governor_authorized_spot_sell_and_reconciles_net
     governor=FakeGovernor()
     sell_body={
         "account_name":"master_account","connector_name":"kraken_paper_trade",
-        "trading_pair":"BTC-USDT","trade_type":"SELL","amount":"0.2",
+        "trading_pair":"BTC-USD","trade_type":"SELL","amount":"0.2",
         "order_type":"LIMIT","price":"105","position_action":"OPEN",
     }
     exit_auth=type("ExitAuth",(),{"authorization_id":"exit-123","idempotency_key":"exit-idem"})()
     client=HummingbotPaperExecutionClient(
         "http://hummingbot",api_username="local-core",api_password="internal-only",
-        environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests,trade_price="105")),poll_interval_seconds=0,
+        environment=SAFE_ENV,transport=httpx.MockTransport(handler_for(requests,trade_price="105",trade_fee="0.084",side="SELL",order_type="LIMIT")),poll_interval_seconds=0,
     )
     result=await client.submit_authorized_sell(governor,exit_auth,sell_body,timeout_seconds=1)
     assert result.order_id=="paper-order-1"
     assert result.gross_quote_notional==Decimal("21")
-    assert result.estimated_fee==Decimal("0.084")
+    assert result.fee_quote==Decimal("0.084")
     assert [x[0] for x in governor.calls]==["consume_exit","exit_receipt","bind_exit","settle_exit"]
     await client.close()
 
@@ -131,14 +171,16 @@ async def test_executor_recovers_order_id_after_lost_submit_response():
     requests=[]
     def handler(request):
         requests.append(request)
+        if request.url.path=="/market-data/trading-pair/add":
+            return httpx.Response(200,json={"success":True})
         if request.url.path=="/trading/orders":
             raise httpx.ReadTimeout("response lost")
         if request.url.path=="/spectra/dispatch-receipts/auth-123":
             return httpx.Response(200,json={"order_id":"paper-order-1","response_status":201})
         if request.url.path=="/trading/orders/search":
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","status":"FILLED"}]})
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","trading_pair":"BTC-USD","connector_name":"kraken_paper_trade","account_name":"master_account","side":"BUY","trade_type":"BUY","order_type":"MARKET","amount":"0.2","executed_amount_base":"0.2","executed_amount_quote":"20","fee":"0.08","status":"FILLED"}]})
         if request.url.path=="/trading/trades":
-            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","amount":"0.2","price":"100","fee":"0.1"}]})
+            return httpx.Response(200,json={"data":[{"order_id":"paper-order-1","trade_id":"trade-1","trading_pair":"BTC-USD","connector_name":"kraken_paper_trade","side":"BUY","trade_type":"BUY","amount":"0.2","price":"100","fee_paid":"0.08","fee_currency":"USD","timestamp":datetime.now(timezone.utc).isoformat()}]})
         raise AssertionError(request.url.path)
     governor=FakeGovernor()
     client=HummingbotPaperExecutionClient(
@@ -148,6 +190,24 @@ async def test_executor_recovers_order_id_after_lost_submit_response():
     result=await client.submit_authorized_buy(governor,authorization(),order_body(),timeout_seconds=1)
     assert result.order_id=="paper-order-1"
     assert any(x[0]=="bind" for x in governor.calls)
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_paper_market_initialization_failure_is_rejected_before_order_authorization():
+    requests=[]
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(500,json={"detail":"pair initialization failed"})
+    governor=FakeGovernor()
+    client=HummingbotPaperExecutionClient(
+        "http://hummingbot",api_username="local-core",api_password="internal-only",
+        environment=SAFE_ENV,transport=httpx.MockTransport(handler),poll_interval_seconds=0,
+    )
+    with pytest.raises(ExecutionRejected,match="no order was submitted"):
+        await client.submit_authorized_buy(governor,authorization(),order_body(),timeout_seconds=1)
+    assert [request.url.path for request in requests]==["/market-data/trading-pair/add"]
+    assert governor.calls==[]
     await client.close()
 
 

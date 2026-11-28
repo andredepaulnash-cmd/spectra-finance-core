@@ -13,8 +13,8 @@
 | Initial-entry pool | $6,250 USDT (25%) |
 | Recovery pool | $18,750 USDT (75%) |
 | Concurrent position hard ceiling | 74 |
-| Initial entry | $20 USDT |
-| Maximum cumulative gross buy notional per asset | $1,000 USDT |
+| Initial entry | $30 USDT |
+| Maximum outstanding gross exposure per asset | $1,000 USDT |
 | Concurrent capital-bearing VCAP shards per asset | 2 |
 | Kraken paper buy fee assumption | 0.40% |
 | Kraken paper sell fee assumption | 0.40% |
@@ -23,7 +23,7 @@
 
 The $6,250 initial-entry ceiling is shared collectively by ENTRY, PRESS, and ROTATION. RECOVERY is outside that pool and uses the separate recovery allocation. The pool ceiling applies to aggregate reservations and spending; strategy labels do not create additional capital.
 
-The initial-entry pool is a ceiling, not an instruction to spend all available funds. The system must not open a position solely to fill the 74-position target. It may operate below 74 when market quality, eligibility, liquidity, or available capital do not justify another entry.
+The initial-entry pool is a ceiling, not an instruction to spend all available funds. The system must not open a position solely to fill the 50-position initial target or the 74-position hard limit. It may operate below 50 when market quality, eligibility, liquidity, or available capital do not justify another entry, and between 50 and 74 only up to configured target and hard limit.
 
 ### Purchase and sale order types
 
@@ -43,7 +43,7 @@ The primary discovery strategy is to identify reasonably solid assets among 24-h
 Confirmed entry constraints include:
 - Identify positive 24-hour gainers using public hourly candle history, not today's opening price or volume rank.
 - Use fresh ticker data.
-- Enforce exchange trading rules compatible with the $20 initial order.
+- Enforce exchange trading rules compatible with the $30 initial order.
 - Enforce a configured maximum top-of-book spread.
 - Condor ranks and explains candidates; it cannot reserve capital or submit orders.
 
@@ -138,7 +138,7 @@ On startup: validate paper-only mode, load and integrity-check state, reconcile 
 Implemented or actively being validated:
 - paper-only Core/API separation and signed order receipts;
 - $25,000 initial/recovery pool accounting and 74-position ceiling;
-- $20 initial entry and $1,000 per-asset gross cap;
+- $30 initial entry and $1,000 per-asset gross cap;
 - gainer-first scanner using public hourly candles, a $10M entry-liquidity floor, freshness, spread, and exchange rules;
 - Condor momentum/liquidity/spread ranking;
 - MARKET BUY construction and Governor/API enforcement;
